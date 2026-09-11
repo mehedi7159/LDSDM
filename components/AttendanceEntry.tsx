@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { RemarkRecord } from '../types';
 import { formatNumber } from '../services/utils';
-import { Button } from './ui/Button';
-import { Save, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 
 export const AttendanceEntry = () => {
-  const { students, exams, classes, remarks, updateRemark, t, language, schoolProfile } = useApp();
+  const { students, exams, classes, remarks, updateRemark, t, language } = useApp();
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '');
   const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
   const [sortBy, setSortBy] = useState<'name' | 'id'>('name');
 
-  const [localData, setLocalData] = useState<Record<string, Partial<RemarkRecord> & { isDirty: boolean }>>({});
+  const [localData, setLocalData] = useState<Record<string, Partial<RemarkRecord>>>({});
+  const pendingUpdatesRef = useRef<Record<string, Partial<RemarkRecord>>>({});
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (exams.length > 0 && !selectedExamId) {
@@ -30,8 +30,36 @@ export const AttendanceEntry = () => {
         return a.name.localeCompare(b.name);
     });
 
+  const flushPendingSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (!selectedExamId) return;
+
+    const studentIds = Object.keys(pendingUpdatesRef.current);
+    if (studentIds.length === 0) return;
+
+    studentIds.forEach(studentId => {
+      const data = pendingUpdatesRef.current[studentId];
+      if (data) {
+        updateRemark(studentId, selectedExamId, {
+          workingDays: data.workingDays,
+          totalPresent: data.totalPresent,
+          totalAbsent: data.totalAbsent,
+          remark: data.remark
+        });
+      }
+    });
+
+    pendingUpdatesRef.current = {};
+    setSaveStatus('saved');
+  }, [selectedExamId, updateRemark]);
+
   useEffect(() => {
-      const initialData: Record<string, Partial<RemarkRecord> & { isDirty: boolean }> = {};
+      flushPendingSave();
+
+      const initialData: Record<string, Partial<RemarkRecord>> = {};
       if (selectedExamId) {
           enrolledStudents.forEach(student => {
               const existing = remarks.find(r => r.studentId === student.id && r.examId === selectedExamId);
@@ -40,51 +68,40 @@ export const AttendanceEntry = () => {
                   totalPresent: existing?.totalPresent ?? undefined,
                   totalAbsent: existing?.totalAbsent ?? undefined,
                   remark: existing?.remark ?? '',
-                  isDirty: false
               };
           });
       }
       setLocalData(initialData);
+      setSaveStatus('saved');
   }, [selectedClass, selectedExamId, remarks]); 
 
+  useEffect(() => {
+    return () => {
+      flushPendingSave();
+    };
+  }, [flushPendingSave]);
+
   const handleInputChange = (studentId: string, field: keyof RemarkRecord, value: string) => {
+      setSaveStatus('saving');
+
       setLocalData(prev => {
-          const current = prev[studentId] || { isDirty: false };
+          const current = prev[studentId] || {};
           const parsedValue = field === 'remark' ? value : (value === '' ? undefined : Number(value));
-          const updated = { ...current, [field]: parsedValue, isDirty: true };
+          const updated = { ...current, [field]: parsedValue };
+          
+          pendingUpdatesRef.current[studentId] = updated;
+
+          if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = setTimeout(() => {
+            flushPendingSave();
+          }, 300);
+
           return { ...prev, [studentId]: updated };
       });
   };
 
-  const handleSaveAll = () => {
-      if (!selectedExamId) return;
-      setIsSaving(true);
-      
-      const studentIds = Object.keys(localData);
-      
-      studentIds.forEach(studentId => {
-          const data = localData[studentId];
-          if (data.isDirty) {
-              updateRemark(studentId, selectedExamId, {
-                  workingDays: data.workingDays,
-                  totalPresent: data.totalPresent,
-                  totalAbsent: data.totalAbsent,
-                  remark: data.remark
-              });
-          }
-      });
-
-      setLocalData(prev => {
-          const next = { ...prev };
-          Object.keys(next).forEach(k => {
-              if (next[k]) next[k].isDirty = false;
-          });
-          return next;
-      });
-
-      setIsSaving(false);
-      setFeedback(language === 'bn' ? 'উপস্থিতি ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে' : 'Attendance & Remarks saved successfully');
-      setTimeout(() => setFeedback(null), 3000);
+  const handleInputBlur = () => {
+    flushPendingSave();
   };
 
   return (
@@ -92,15 +109,19 @@ export const AttendanceEntry = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">{t('attendance')} & {t('comments')}</h2>
-          <p className="text-gray-500 text-sm">{language === 'bn' ? 'শিক্ষার্থীদের কর্মদিবস, উপস্থিতি এবং মন্তব্য লিখুন।' : 'Enter working days, attendance, and remarks for students.'}</p>
+          <p className="text-gray-500 text-sm">{language === 'bn' ? 'শিক্ষার্থীদের কর্মদিবস, উপস্থিতি এবং মন্তব্য লিখুন (স্বয়ংক্রিয়ভাবে সেভ হয়)।' : 'Enter working days, attendance, and remarks for students (Auto-saved).'}</p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-            {feedback && <div className="text-green-600 text-sm font-medium animate-pulse bg-green-50 px-3 py-1 rounded whitespace-nowrap">{feedback}</div>}
-            {enrolledStudents.length > 0 && (
-                 <Button onClick={handleSaveAll} disabled={isSaving} className="w-full sm:w-auto">
-                    {isSaving ? <Loader2 className="animate-spin mr-2" size={16}/> : <Save className="mr-2" size={16}/>}
-                    {t('save')} All
-                </Button>
+        <div className="flex items-center gap-2">
+            {saveStatus === 'saving' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-xs">
+                <Loader2 size={13} className="animate-spin text-amber-600" />
+                {language === 'bn' ? 'সংরক্ষিত হচ্ছে...' : 'Auto-saving...'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs transition-all">
+                <CheckCircle2 size={14} className="text-emerald-600" />
+                {language === 'bn' ? 'অটো-সেভ সক্রিয়' : 'Auto-saved'}
+              </span>
             )}
         </div>
       </div>
@@ -158,15 +179,15 @@ export const AttendanceEntry = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {enrolledStudents.map((student, index) => {
-                const data = localData[student.id] || { isDirty: false };
+                const data = localData[student.id] || {};
                 
                 return (
-                  <tr key={student.id} className={`hover:bg-gray-50 ${data.isDirty ? 'bg-yellow-50' : ''}`}>
+                  <tr key={student.id} className="hover:bg-blue-50/40 focus-within:bg-blue-50/80 transition-colors">
                     <td className="px-6 py-3 font-medium text-gray-500">{formatNumber(index + 1, language)}</td>
-                    <td className="px-6 py-3 font-medium text-gray-900">{student.studentId ? formatNumber(student.studentId, language) : '-'}</td>
+                    <td className="px-6 py-3 font-medium text-gray-900 font-mono">{student.studentId ? formatNumber(student.studentId, language) : '-'}</td>
                     <td className="px-6 py-3 text-gray-700">
                         <div className="font-bold text-gray-900 truncate max-w-[200px] font-bangla">{language === 'bn' ? (student.nameBn || student.name) : student.name}</div>
-                        <div className="text-[10px] text-gray-400">ID: {student.studentId ? formatNumber(student.studentId, language) : '-'}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">ID: {student.studentId ? formatNumber(student.studentId, language) : '-'}</div>
                     </td>
                     
                     <td className="px-6 py-3 text-center">
@@ -175,6 +196,7 @@ export const AttendanceEntry = () => {
                             className="w-20 border rounded px-2 py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300"
                             value={data.workingDays ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'workingDays', e.target.value)}
+                            onBlur={handleInputBlur}
                         />
                     </td>
                     <td className="px-6 py-3 text-center">
@@ -183,6 +205,7 @@ export const AttendanceEntry = () => {
                             className="w-20 border rounded px-2 py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300"
                             value={data.totalPresent ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'totalPresent', e.target.value)}
+                            onBlur={handleInputBlur}
                         />
                     </td>
                     <td className="px-6 py-3 text-center">
@@ -191,6 +214,7 @@ export const AttendanceEntry = () => {
                             className="w-20 border rounded px-2 py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300"
                             value={data.totalAbsent ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'totalAbsent', e.target.value)}
+                            onBlur={handleInputBlur}
                         />
                     </td>
                     <td className="px-6 py-3 text-left">
@@ -199,6 +223,7 @@ export const AttendanceEntry = () => {
                             className="w-full border rounded px-3 py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none border-gray-300"
                             value={data.remark ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'remark', e.target.value)}
+                            onBlur={handleInputBlur}
                         />
                     </td>
                   </tr>
@@ -208,11 +233,16 @@ export const AttendanceEntry = () => {
           </table>
           </div>
           
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
-               <Button onClick={handleSaveAll} disabled={isSaving} size="lg">
-                    {isSaving ? <Loader2 className="animate-spin mr-2" size={20}/> : <Save className="mr-2" size={20}/>}
-                    {t('save')} All
-               </Button>
+          <div className="bg-gray-50/70 px-6 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Sparkles size={14} className="text-indigo-500" />
+              {language === 'bn' 
+                ? 'উপস্থিতি ও মন্তব্য লেখার সাথে সাথে স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।' 
+                : 'Attendance and remarks are auto-saved in real-time as you type.'}
+            </span>
+            <span className="font-mono text-gray-400">
+              Total {enrolledStudents.length} {language === 'bn' ? 'শিক্ষার্থী' : 'students'}
+            </span>
           </div>
         </div>
       ) : (

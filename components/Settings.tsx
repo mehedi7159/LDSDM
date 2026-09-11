@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Exam, SchoolClass } from '../types';
 import { CloudSyncWidget } from './CloudSyncWidget';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 export const Settings = () => {
   const { 
@@ -56,6 +57,11 @@ export const Settings = () => {
   const [formData, setFormData] = useState(schoolProfile);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'info' | 'subjects_exam' | 'backup'>('info');
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Confirmation dialog states
+  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  const [classToDelete, setClassToDelete] = useState<SchoolClass | null>(null);
+  const [isConfirmEmptyTrashOpen, setIsConfirmEmptyTrashOpen] = useState(false);
 
   // Exam Form State
   const [newExamName, setNewExamName] = useState('');
@@ -805,7 +811,7 @@ export const Settings = () => {
                             % {exam.contributions?.length || 0}
                           </button>
                           <button onClick={() => startEditingExam(exam)} className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"><Edit2 size={15}/></button>
-                          <button onClick={() => { if(confirm('Delete exam?')) deleteExam(exam.id); }} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all"><Trash2 size={15}/></button>
+                          <button onClick={() => setExamToDelete(exam)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all" title="Delete"><Trash2 size={15}/></button>
                         </div>
                       </div>
 
@@ -944,7 +950,7 @@ export const Settings = () => {
                       </span>
                       <div className="flex items-center gap-1">
                         <button onClick={() => startEditingClass(cls)} className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"><Edit2 size={14}/></button>
-                        <button onClick={() => { if(confirm('Delete class?')) deleteClass(cls.id); }} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all"><Trash2 size={14}/></button>
+                        <button onClick={() => setClassToDelete(cls)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all" title="Delete"><Trash2 size={14}/></button>
                       </div>
                     </>
                   )}
@@ -1009,7 +1015,7 @@ export const Settings = () => {
                   {trashBin.length} {language === 'bn' ? 'টি আইটেম' : 'items'}
                 </span>
                 {trashBin.length > 0 && (
-                  <button onClick={emptyTrash} className="px-3 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all cursor-pointer">
+                  <button onClick={() => setIsConfirmEmptyTrashOpen(true)} className="px-3 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all cursor-pointer">
                     {t('emptyTrash')}
                   </button>
                 )}
@@ -1140,6 +1146,63 @@ export const Settings = () => {
 
         </div>
       )}
+
+      {/* Delete Exam Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!examToDelete}
+        onClose={() => setExamToDelete(null)}
+        onConfirm={() => {
+          if (examToDelete) {
+            deleteExam(examToDelete.id);
+            setExamToDelete(null);
+          }
+        }}
+        title={language === 'bn' ? 'পরীক্ষা ডিলিট নিশ্চিতকরণ' : 'Confirm Exam Deletion'}
+        message={language === 'bn' 
+          ? 'আপনি কি নিশ্চিত যে এই পরীক্ষাটি ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে রিস্টোর করা যাবে)' 
+          : 'Are you sure you want to delete this exam? (It will be moved to the Trash Bin)'}
+        highlightText={examToDelete ? `${examToDelete.name} ${examToDelete.nameBn ? `(${examToDelete.nameBn})` : ''}` : undefined}
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
+
+      {/* Delete Class Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!classToDelete}
+        onClose={() => setClassToDelete(null)}
+        onConfirm={() => {
+          if (classToDelete) {
+            deleteClass(classToDelete.id);
+            setClassToDelete(null);
+          }
+        }}
+        title={language === 'bn' ? 'শ্রেণি ডিলিট নিশ্চিতকরণ' : 'Confirm Class Deletion'}
+        message={language === 'bn' 
+          ? 'আপনি কি নিশ্চিত যে এই শ্রেণিটি ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে রিস্টোর করা যাবে)' 
+          : 'Are you sure you want to delete this class? (It will be moved to the Trash Bin)'}
+        highlightText={classToDelete ? `${classToDelete.name} ${classToDelete.nameBn ? `(${classToDelete.nameBn})` : ''}` : undefined}
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
+
+      {/* Empty Trash Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isConfirmEmptyTrashOpen}
+        onClose={() => setIsConfirmEmptyTrashOpen(false)}
+        onConfirm={() => {
+          emptyTrash();
+          setIsConfirmEmptyTrashOpen(false);
+        }}
+        title={language === 'bn' ? 'রিসাইকেল বিন খালি করা' : 'Empty Recycle Bin'}
+        message={language === 'bn' 
+          ? 'সতর্কতা: রিসাইকেল বিন খালি করলে সকল ট্র্যাশ আইটেম চিরতরে মুছে যাবে এবং আর কখনো পুনরুদ্ধার করা সম্ভব হবে না। আপনি কি নিশ্চিত?' 
+          : 'Warning: Emptying the trash bin will permanently erase all trashed items forever. This cannot be undone. Are you sure?'}
+        confirmLabel={language === 'bn' ? 'স্থায়ীভাবে মুছুন' : 'Empty Trash'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
 
     </div>
   );

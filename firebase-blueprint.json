@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "Institution": {
+      "collection": "institution",
+      "fields": {
+        "id": { "type": "string", "description": "Profile ID" },
+        "name": { "type": "string", "description": "School name in English" },
+        "nameBn": { "type": "string", "description": "School name in Bangla" },
+        "address": { "type": "string", "description": "Address in English" },
+        "addressBn": { "type": "string", "description": "Address in Bangla" },
+        "eiin": { "type": "string", "description": "EIIN code" },
+        "phone": { "type": "string", "description": "Contact phone" },
+        "email": { "type": "string", "description": "Contact email" },
+        "established": { "type": "string", "description": "Established year" },
+        "logoUrl": { "type": "string", "description": "Logo URL" },
+        "signatureUrl": { "type": "string", "description": "Headmaster signature" },
+        "watermarkUrl": { "type": "string", "description": "Watermark URL" },
+        "updatedAt": { "type": "string", "description": "Last updated timestamp" }
+      }
+    },
+    "Student": {
+      "collection": "students",
+      "fields": {
+        "id": { "type": "string", "description": "Student unique ID" },
+        "studentId": { "type": "string", "description": "Roll or Registration ID" },
+        "name": { "type": "string", "description": "Student name in English" },
+        "nameBn": { "type": "string", "description": "Student name in Bangla" },
+        "className": { "type": "string", "description": "Enrolled class" },
+        "roll": { "type": "string", "description": "Roll number" }
+      }
+    },
+    "Subject": {
+      "collection": "subjects",
+      "fields": {
+        "id": { "type": "string", "description": "Subject unique ID" },
+        "name": { "type": "string", "description": "Subject name" },
+        "code": { "type": "string", "description": "Subject code" },
+        "className": { "type": "string", "description": "Applicable class" }
+      }
+    },
+    "Exam": {
+      "collection": "exams",
+      "fields": {
+        "id": { "type": "string", "description": "Exam ID" },
+        "name": { "type": "string", "description": "Exam name" },
+        "category": { "type": "string", "description": "Exam category" }
+      }
+    },
+    "Mark": {
+      "collection": "marks",
+      "fields": {
+        "id": { "type": "string", "description": "Marks record ID" },
+        "studentId": { "type": "string", "description": "Student ID" },
+        "examId": { "type": "string", "description": "Exam ID" },
+        "subjectId": { "type": "string", "description": "Subject ID" },
+        "obtainedMarks": { "type": "number", "description": "Obtained mark" }
+      }
+    },
+    "SchoolClass": {
+      "collection": "classes",
+      "fields": {
+        "id": { "type": "string", "description": "Class ID" },
+        "name": { "type": "string", "description": "Class name" }
+      }
+    },
+    "TrashItem": {
+      "collection": "trashBin",
+      "fields": {
+        "id": { "type": "string", "description": "Deleted item ID" },
+        "type": { "type": "string", "description": "Deleted entity type" },
+        "deletedAt": { "type": "string", "description": "Deletion timestamp" },
+        "data": { "type": "object", "description": "Item payload" }
+      }
+    }
+  }
+}

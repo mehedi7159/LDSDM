@@ -9,6 +9,7 @@ import { AttendanceEntry } from './components/AttendanceEntry';
 import { ResultGenerator } from './components/ResultView';
 import { ClassResultView } from './components/ClassResultView';
 import { Settings } from './components/Settings';
+import { AccessRestrictedView } from './components/AccessRestrictedView';
 import { Button } from './components/ui/Button';
 import { Download, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -16,17 +17,19 @@ import html2canvas from 'html2canvas';
 
 // Wrapper component to handle tab logic cleanly inside context
 const AppContent = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { exams, classes, t, language, schoolProfile, isAdmin } = useApp();
+  const [activeTab, setActiveTab] = useState(() => {
+    return isAdmin ? 'dashboard' : 'results';
+  });
   
   // States for Result switching
-  const { exams, classes, t, language, schoolProfile } = useApp();
   const [resultMode, setResultMode] = useState<'individual' | 'class'>('individual');
   const [classViewConfig, setClassViewConfig] = useState({ classLevel: classes[0]?.name || '', examId: '' });
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-      document.title = t('madrasha') + ' Management System';
-  }, [language, t]);
+      document.title = (schoolProfile.nameBn || schoolProfile.name || t('madrasha')) + ' - Result System';
+  }, [language, t, schoolProfile]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -151,26 +154,32 @@ const AppContent = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard />;
-      case 'students': return <StudentManager />;
-      case 'subjects': return <SubjectManager />;
-      case 'marks': return <MarksEntry />;
-      case 'attendance': return <AttendanceEntry />;
-      case 'settings': return <Settings />;
+      case 'dashboard': 
+        return <Dashboard />;
+      case 'students': 
+        return isAdmin ? <StudentManager /> : <AccessRestrictedView moduleName={t('students')} onGoToResults={() => setActiveTab('results')} />;
+      case 'subjects': 
+        return isAdmin ? <SubjectManager /> : <AccessRestrictedView moduleName={t('subjects')} onGoToResults={() => setActiveTab('results')} />;
+      case 'marks': 
+        return isAdmin ? <MarksEntry /> : <AccessRestrictedView moduleName={t('marks')} onGoToResults={() => setActiveTab('results')} />;
+      case 'attendance': 
+        return isAdmin ? <AttendanceEntry /> : <AccessRestrictedView moduleName={t('attendance')} onGoToResults={() => setActiveTab('results')} />;
+      case 'settings': 
+        return isAdmin ? <Settings /> : <AccessRestrictedView moduleName={t('settings')} onGoToResults={() => setActiveTab('results')} />;
       case 'results': 
         return (
             <div className="space-y-4">
                {/* Toggle for Result Type */}
-               <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100 inline-flex gap-2 print:hidden mb-4">
+               <div className="bg-white p-1.5 rounded-2xl shadow-xs border border-slate-200/80 inline-flex gap-1.5 print:hidden mb-2">
                   <button 
                     onClick={() => setResultMode('individual')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${resultMode === 'individual' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${resultMode === 'individual' ? 'bg-blue-600 text-white shadow-xs' : 'hover:bg-slate-100 text-slate-600'}`}
                   >
                     {t('individualCards')}
                   </button>
                   <button 
                     onClick={() => setResultMode('class')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${resultMode === 'class' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${resultMode === 'class' ? 'bg-blue-600 text-white shadow-xs' : 'hover:bg-slate-100 text-slate-600'}`}
                   >
                     {t('tabulationSheet')}
                   </button>
@@ -180,9 +189,9 @@ const AppContent = () => {
                    <ResultGenerator />
                ) : (
                    <div className="space-y-4">
-                        <div className="flex flex-wrap gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 print:hidden items-center">
+                        <div className="flex flex-wrap gap-3 bg-white p-4 rounded-2xl shadow-xs border border-slate-200/80 print:hidden items-center">
                             <select 
-                                className="border rounded p-2 bg-white text-gray-900 min-w-[200px]"
+                                className="border border-slate-200 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-medium min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 onChange={(e) => setClassViewConfig({...classViewConfig, examId: e.target.value})}
                                 value={classViewConfig.examId}
                             >
@@ -190,7 +199,7 @@ const AppContent = () => {
                                 {exams.map(e => <option key={e.id} value={e.id}>{language === 'bn' ? (e.nameBn || e.name) : e.name}</option>)}
                             </select>
                             <select 
-                                className="border rounded p-2 bg-white text-gray-900 min-w-[150px]"
+                                className="border border-slate-200 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-medium min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 value={classViewConfig.classLevel}
                                 onChange={(e) => setClassViewConfig({...classViewConfig, classLevel: e.target.value})}
                             >

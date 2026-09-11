@@ -1,29 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { MarkRecord } from '../types';
 import { formatNumber } from '../services/utils';
-import { Button } from './ui/Button';
-import { Save, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 
 interface EditableMark {
     obtained: number | string;
     cq: number | string;
     mcq: number | string;
     isAbsent: boolean;
-    isDirty: boolean;
 }
 
 export const MarksEntry = () => {
-  const { students, subjects, marks, exams, classes, bulkUpdateMarks, t, language, schoolProfile } = useApp();
+  const { students, subjects, marks, exams, classes, bulkUpdateMarks, t, language } = useApp();
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
   const [sortBy, setSortBy] = useState<'name' | 'id'>('name');
 
-  // Local state to store edits before saving
+  // Local state to store edits for fast snappy input response
   const [localMarks, setLocalMarks] = useState<Record<string, EditableMark>>({});
+  const pendingUpdatesRef = useRef<Record<string, EditableMark>>({});
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const classSubjectsInThisClass = subjects.filter(s => s.classLevel === selectedClass);
   const subjectsAssignedToThisExam = classSubjectsInThisClass.filter(s => s.examIds && s.examIds.includes(selectedExamId));
@@ -70,8 +69,50 @@ export const MarksEntry = () => {
         return a.name.localeCompare(b.name);
     });
 
-  // Initialize/Reset local state when selection changes
+  // Flush any pending auto-save immediately
+  const flushPendingSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    
+    if (!currentSubject || !selectedExamId) return;
+    const studentIds = Object.keys(pendingUpdatesRef.current);
+    if (studentIds.length === 0) return;
+
+    const updates: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
+    studentIds.forEach(studentId => {
+      const markData = pendingUpdatesRef.current[studentId];
+      if (!markData) return;
+      
+      const obtained = markData.obtained === '' ? 0 : Number(markData.obtained);
+      const cq = markData.cq === '' ? undefined : Number(markData.cq);
+      const mcq = markData.mcq === '' ? undefined : Number(markData.mcq);
+
+      updates.push({
+        studentId,
+        subjectId: currentSubject.id,
+        examId: selectedExamId,
+        obtained,
+        obtainedCQ: cq,
+        obtainedMCQ: mcq,
+        isAbsent: markData.isAbsent,
+        total: currentSubject.fullMarks
+      });
+    });
+
+    if (updates.length > 0) {
+      bulkUpdateMarks(updates);
+    }
+    pendingUpdatesRef.current = {};
+    setSaveStatus('saved');
+  }, [currentSubject, selectedExamId, bulkUpdateMarks]);
+
+  // Initialize local state when selection changes
   useEffect(() => {
+      // Flush before switching
+      flushPendingSave();
+
       const initialMarks: Record<string, EditableMark> = {};
       if (currentSubject && selectedExamId) {
           enrolledStudents.forEach(student => {
@@ -85,12 +126,19 @@ export const MarksEntry = () => {
                   cq: existing?.obtainedCQ ?? '',
                   mcq: existing?.obtainedMCQ ?? '',
                   isAbsent: existing?.isAbsent ?? false,
-                  isDirty: false
               };
           });
       }
       setLocalMarks(initialMarks);
-  }, [selectedClass, selectedSubjectId, selectedExamId, currentSubject]); 
+      setSaveStatus('saved');
+  }, [selectedClass, selectedSubjectId, selectedExamId, currentSubject?.id]); 
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      flushPendingSave();
+    };
+  }, [flushPendingSave]);
 
   const handleInputChange = (studentId: string, field: 'obtained' | 'cq' | 'mcq' | 'isAbsent', value: string | boolean) => {
       // Validate Max Value
@@ -99,14 +147,15 @@ export const MarksEntry = () => {
           if (!isNaN(numValue)) {
               if (field === 'cq' && numValue > (currentSubject.cqMarks || 0)) return;
               if (field === 'mcq' && numValue > (currentSubject.mcqMarks || 0)) return;
-              // If simple obtained (no CQ/MCQ), max is full marks
               if (field === 'obtained' && !currentSubject.hasCQ && !currentSubject.hasMCQ && numValue > currentSubject.fullMarks) return;
           }
       }
 
+      setSaveStatus('saving');
+
       setLocalMarks(prev => {
-          const current = prev[studentId] || { obtained: '', cq: '', mcq: '', isAbsent: false, isDirty: false };
-          const updated = { ...current, [field]: value, isDirty: true };
+          const current = prev[studentId] || { obtained: '', cq: '', mcq: '', isAbsent: false };
+          const updated = { ...current, [field]: value };
           
           if (field === 'isAbsent' && value === true) {
               updated.obtained = 0;
@@ -116,7 +165,6 @@ export const MarksEntry = () => {
 
           // Auto-calculate total if CQ/MCQ present
           if (currentSubject && (currentSubject.hasCQ || currentSubject.hasMCQ) && field !== 'isAbsent') {
-              // Parse numbers safely
               const parse = (val: string | number | undefined | null) => (val === undefined || val === null || val === '') ? 0 : parseFloat(String(val));
               
               if (field === 'cq' || field === 'mcq') {
@@ -125,8 +173,25 @@ export const MarksEntry = () => {
                   updated.obtained = cqVal + mcqVal;
               }
           }
+
+          // Track pending update
+          pendingUpdatesRef.current[studentId] = updated;
+
+          // Schedule auto-save
+          if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+          
+          const delay = field === 'isAbsent' ? 50 : 300;
+          saveTimeoutRef.current = setTimeout(() => {
+            flushPendingSave();
+          }, delay);
+
           return { ...prev, [studentId]: updated };
       });
+  };
+
+  const handleInputBlur = () => {
+    // Immediately persist on blur for extra guarantee
+    flushPendingSave();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number, currentField: 'cq' | 'mcq' | 'obtained') => {
@@ -197,66 +262,24 @@ export const MarksEntry = () => {
     }
   };
 
-  const handleSaveAll = () => {
-      if (!currentSubject || !selectedExamId) return;
-      setIsSaving(true);
-
-      const updates: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
-      
-      // We iterate over the students to ensure we capture all, even if localMarks is partial (though it shouldn't be)
-      // However, iterating over localMarks is safer for what has been touched/loaded
-      const studentIds = Object.keys(localMarks);
-      
-      studentIds.forEach(studentId => {
-          const markData = localMarks[studentId];
-          
-          // Basic validation parsing
-          let obtained = markData.obtained === '' ? 0 : Number(markData.obtained);
-          let cq = markData.cq === '' ? undefined : Number(markData.cq);
-          let mcq = markData.mcq === '' ? undefined : Number(markData.mcq);
-
-          updates.push({
-              studentId,
-              subjectId: currentSubject.id,
-              examId: selectedExamId,
-              obtained,
-              obtainedCQ: cq,
-              obtainedMCQ: mcq,
-              isAbsent: markData.isAbsent,
-              total: currentSubject.fullMarks
-          });
-      });
-
-      bulkUpdateMarks(updates);
-      
-      // Reset dirty flags
-      setLocalMarks(prev => {
-          const next = { ...prev };
-          Object.keys(next).forEach(k => {
-              if (next[k]) next[k].isDirty = false;
-          });
-          return next;
-      });
-
-      setIsSaving(false);
-      setFeedback('All marks saved successfully');
-      setTimeout(() => setFeedback(null), 3000);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">{t('marks')}</h2>
-          <p className="text-gray-500 text-sm">{t('marksEntryDesc')}</p>
+          <p className="text-gray-500 text-sm">{language === 'bn' ? 'নম্বর লিখলেই স্বয়ংক্রিয়ভাবে ক্লাউড ও মেমোরিতে সেভ হয়ে যাবে (আলাদা সেভ বোতাম লাগবে না)।' : 'Marks are automatically saved in real-time as you type.'}</p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-            {feedback && <div className="text-green-600 text-sm font-medium animate-pulse bg-green-50 px-3 py-1 rounded whitespace-nowrap">{feedback}</div>}
-            {currentSubject && enrolledStudents.length > 0 && (
-                 <Button onClick={handleSaveAll} disabled={isSaving} className="w-full sm:w-auto">
-                    {isSaving ? <Loader2 className="animate-spin mr-2" size={16}/> : <Save className="mr-2" size={16}/>}
-                    {t('save')} All
-                </Button>
+        <div className="flex items-center gap-2">
+            {saveStatus === 'saving' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-xs">
+                <Loader2 size={13} className="animate-spin text-amber-600" />
+                {language === 'bn' ? 'সংরক্ষিত হচ্ছে...' : 'Auto-saving...'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs transition-all">
+                <CheckCircle2 size={14} className="text-emerald-600" />
+                {language === 'bn' ? 'অটো-সেভ সক্রিয়' : 'Auto-saved'}
+              </span>
             )}
         </div>
       </div>
@@ -325,7 +348,7 @@ export const MarksEntry = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {enrolledStudents.map((student, index) => {
-                const markData = localMarks[student.id] || { obtained: '', cq: '', mcq: '', isAbsent: false, isDirty: false };
+                const markData = localMarks[student.id] || { obtained: '', cq: '', mcq: '', isAbsent: false };
                 
                 // Logic to determine fail status in row visual only
                 let isFail = false;
@@ -341,7 +364,7 @@ export const MarksEntry = () => {
                 const hasEntry = markData.obtained !== '' || markData.cq !== '' || markData.mcq !== '';
 
                 return (
-                  <tr key={student.id} className={`transition-colors hover:bg-blue-50/40 focus-within:bg-blue-50/80 ${markData.isDirty ? 'bg-yellow-50' : ''}`}>
+                  <tr key={student.id} className="transition-colors hover:bg-blue-50/40 focus-within:bg-blue-50/80">
                     <td className="px-3 py-2.5 font-medium text-gray-500 text-center text-sm">{formatNumber(index + 1, language)}</td>
                     <td className="px-3 py-2.5 font-medium text-gray-900 text-center font-mono text-sm">{student.studentId ? formatNumber(student.studentId, language) : '-'}</td>
                     <td className="px-4 py-2.5 text-right pr-4">
@@ -362,6 +385,7 @@ export const MarksEntry = () => {
                                 placeholder="0"
                                 disabled={markData.isAbsent}
                                 onChange={(e) => handleInputChange(student.id, 'cq', e.target.value)}
+                                onBlur={handleInputBlur}
                                 onKeyDown={(e) => handleKeyDown(e, index, 'cq')}
                             />
                         </td>
@@ -380,6 +404,7 @@ export const MarksEntry = () => {
                                 placeholder="0"
                                 disabled={markData.isAbsent}
                                 onChange={(e) => handleInputChange(student.id, 'mcq', e.target.value)}
+                                onBlur={handleInputBlur}
                                 onKeyDown={(e) => handleKeyDown(e, index, 'mcq')}
                             />
                         </td>
@@ -401,6 +426,7 @@ export const MarksEntry = () => {
                         placeholder="0"
                         readOnly={!!(currentSubject.hasCQ || currentSubject.hasMCQ) || markData.isAbsent}
                         onChange={(e) => handleInputChange(student.id, 'obtained', e.target.value)}
+                        onBlur={handleInputBlur}
                         onKeyDown={(e) => !currentSubject.hasCQ && !currentSubject.hasMCQ && handleKeyDown(e, index, 'obtained')}
                       />
                     </td>
@@ -430,11 +456,16 @@ export const MarksEntry = () => {
           </table>
           </div>
           
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
-               <Button onClick={handleSaveAll} disabled={isSaving} size="lg">
-                    {isSaving ? <Loader2 className="animate-spin mr-2" size={20}/> : <Save className="mr-2" size={20}/>}
-                    {t('save')} All Marks
-               </Button>
+          <div className="bg-gray-50/70 px-6 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Sparkles size={14} className="text-indigo-500" />
+              {language === 'bn' 
+                ? 'কীবোর্ডের Enter চেপে পরবর্তী শিক্ষার্থীর নম্বরে যান। প্রতিটি নম্বর স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।' 
+                : 'Press Enter to jump to the next student. All entries are auto-saved in real-time.'}
+            </span>
+            <span className="font-mono text-gray-400">
+              Total {enrolledStudents.length} {language === 'bn' ? 'শিক্ষার্থী' : 'students'}
+            </span>
           </div>
         </div>
       ) : (

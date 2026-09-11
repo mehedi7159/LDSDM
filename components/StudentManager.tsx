@@ -4,6 +4,7 @@ import { Student } from '../types';
 import { formatNumber } from '../services/utils';
 import { Button } from './ui/Button';
 import { Plus, Search, Edit2, Trash2, Filter, Users, UserMinus, UserCheck, UserX, RotateCcw, Info } from 'lucide-react';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 export const StudentManager = () => {
   const { students, addStudent, updateStudent, deleteStudent, classes, t, language } = useApp();
@@ -21,11 +22,12 @@ export const StudentManager = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Modals for moving to former and restoring
+  // Modals for moving to former, restoring, and deleting
   const [studentToMoveFormer, setStudentToMoveFormer] = useState<Student | null>(null);
   const [moveFormerReason, setMoveFormerReason] = useState('');
   const [moveFormerDate, setMoveFormerDate] = useState(new Date().toISOString().split('T')[0]);
   const [studentToRestore, setStudentToRestore] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   const [formData, setFormData] = useState<Omit<Student, 'id'>>({
     studentId: '',
@@ -526,7 +528,7 @@ export const StudentManager = () => {
                         </button>
                         <button 
                           type="button"
-                          onClick={() => deleteStudent(student.id)} 
+                          onClick={() => setStudentToDelete(student)} 
                           title="Delete"
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer transition-colors"
                         >
@@ -828,6 +830,26 @@ export const StudentManager = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!studentToDelete}
+        onClose={() => setStudentToDelete(null)}
+        onConfirm={() => {
+          if (studentToDelete) {
+            deleteStudent(studentToDelete.id);
+            setStudentToDelete(null);
+          }
+        }}
+        title={language === 'bn' ? 'শিক্ষার্থী ডিলিট নিশ্চিতকরণ' : 'Confirm Student Deletion'}
+        message={language === 'bn' 
+          ? 'আপনি কি নিশ্চিত যে এই শিক্ষার্থীর সকল তথ্য ও রেকর্ড ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)' 
+          : 'Are you sure you want to delete this student record? (It will be moved to the Trash Bin)'}
+        highlightText={studentToDelete ? `${language === 'bn' ? (studentToDelete.nameBn || studentToDelete.name) : studentToDelete.name} • ${studentToDelete.classLevel} ${studentToDelete.studentId ? `(${studentToDelete.studentId})` : ''}` : undefined}
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
     </div>
   );
 };

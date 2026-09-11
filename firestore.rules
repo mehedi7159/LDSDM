@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Institution configuration & profile
+    match /institution/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Students collection
+    match /students/{studentId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Subjects collection
+    match /subjects/{subjectId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Exams collection
+    match /exams/{examId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Marks collection
+    match /marks/{markId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Remarks collection
+    match /remarks/{remarkId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Classes collection
+    match /classes/{classId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Recycle bin collection
+    match /trashBin/{trashId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Fallback rule
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

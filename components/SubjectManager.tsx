@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Subject } from '../types';
 import { Button } from './ui/Button';
 import { Plus, Trash2, Edit2, X } from 'lucide-react';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 export const SubjectManager = () => {
   const { subjects, addSubject, updateSubject, deleteSubject, classes, exams, t, language } = useApp();
@@ -10,6 +11,7 @@ export const SubjectManager = () => {
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '');
   const [selectedExamId, setSelectedExamId] = useState<string>(exams[0]?.id || '');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
   
   const [newSubject, setNewSubject] = useState<Omit<Subject, 'id'>>({
     name: '',
@@ -246,10 +248,10 @@ export const SubjectManager = () => {
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">{t('core')}</span>}
                         </td>
                         <td className="px-4 py-2 flex gap-2">
-                          <button onClick={() => handleEdit(sub)} className="text-blue-600 hover:text-blue-800">
+                          <button onClick={() => handleEdit(sub)} className="text-blue-600 hover:text-blue-800 cursor-pointer">
                              <Edit2 size={16} />
                           </button>
-                          <button onClick={() => deleteSubject(sub.id)} className="text-red-500 hover:text-red-700">
+                          <button onClick={() => setSubjectToDelete(sub)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
                             <Trash2 size={16} />
                           </button>
                         </td>
@@ -394,6 +396,26 @@ export const SubjectManager = () => {
       </div>
       </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!subjectToDelete}
+        onClose={() => setSubjectToDelete(null)}
+        onConfirm={() => {
+          if (subjectToDelete) {
+            deleteSubject(subjectToDelete.id);
+            setSubjectToDelete(null);
+          }
+        }}
+        title={language === 'bn' ? 'বিষয় ডিলিট নিশ্চিতকরণ' : 'Confirm Subject Deletion'}
+        message={language === 'bn' 
+          ? 'আপনি কি নিশ্চিত যে এই বিষয়টি ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং প্রয়োজনে পরে রিস্টোর করা যাবে)' 
+          : 'Are you sure you want to delete this subject? (It will be moved to the Trash Bin)'}
+        highlightText={subjectToDelete ? `${language === 'bn' ? (subjectToDelete.nameBn || subjectToDelete.name) : subjectToDelete.name} • ${subjectToDelete.classLevel}` : undefined}
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
     </div>
   );
 };
