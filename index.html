@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Madrasha Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Guard against libraries trying to overwrite read-only window.fetch
+      // This error often occurs when a library (like html2pdf.js) bundles a fetch polyfill
+      (function() {
+        try {
+          const originalFetch = window.fetch;
+          if (originalFetch) {
+            // Try to make it configurable first
+            try {
+              Object.defineProperty(window, 'fetch', {
+                value: originalFetch,
+                writable: true,
+                configurable: true,
+                enumerable: true
+              });
+            } catch (e) {}
+
+            // Now define with a dummy setter to prevent "only a getter" errors
+            Object.defineProperty(window, 'fetch', {
+              get: function() { return originalFetch; },
+              set: function(v) { 
+                console.warn('Blocked attempt to overwrite window.fetch');
+              },
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch (e) {
+          console.error('Fetch guard failed:', e);
+        }
+      })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+Bengali:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700;800&family=Hind+Siliguri:wght@300;400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700;800&family=Mina:wght@400;700&family=Atma:wght@300;400;500;600;700&family=Galada&family=Alkatra:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+      
+      :root {
+        --bangla-font: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+        --bangla-num-font: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+      }
+      
+      @font-face {
+        font-family: 'Kalpurush';
+        src: url('https://fonts.gstatic.com/s/hindsiliguri/v12/ijwTs5OBPpxv18956WySev98Z-7S_A.woff2') format('woff2');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      
+      body {
+        font-family: 'Lora', serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      
+      select, option, input, textarea, button {
+        font-family: var(--bangla-font) !important;
+      }
+      
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .font-bangla {
+        font-family: var(--bangla-font) !important;
+        font-weight: 500;
+        letter-spacing: normal !important;
+        word-spacing: normal !important;
+      }
+
+      .font-bangla .font-mono {
+        font-family: var(--bangla-num-font) !important;
+      }
+
+      .font-bangla .font-serif,
+      .font-bangla h1,
+      .font-bangla h2 {
+        font-family: var(--bangla-font) !important;
+        letter-spacing: normal !important;
+        word-spacing: normal !important;
+      }
+
+      .font-bangla .font-sans,
+      .font-bangla h3,
+      .font-bangla h4 {
+        font-family: var(--bangla-font) !important;
+        letter-spacing: normal !important;
+        word-spacing: normal !important;
+      }
+
+      .font-bangla * {
+        letter-spacing: normal !important;
+        word-spacing: normal !important;
+      }
+
+      .font-bangla b, .font-bangla strong {
+        font-weight: 700;
+      }
+
+      @media print {
+        @page {
+          size: A4;
+          margin: 0;
+        }
+
+        /* 
+           STRATEGY: 
+           1. Hide everything in the body by default using visibility (preserves layout calculations but hides pixels).
+           2. Make the .print-container visible.
+           3. Position .print-container absolutely at (0,0) to overlay any hidden app shell elements.
+           4. Reset height/overflow constraints on root elements so the print job sees all pages.
+        */
+
+        body {
+          margin: 0;
+          padding: 0;
+          background-color: white;
+        }
+
+        /* Hide generic app elements */
+        body * {
+          visibility: hidden;
+        }
+
+        /* Reset structural constraints that cause clipping */
+        html, body, #root, .h-screen, .h-full, .overflow-hidden, .overflow-auto {
+          height: auto !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+        }
+
+        /* Show the print container and its children */
+        .print-container, .print-container * {
+          visibility: visible;
+        }
+
+        /* Position the content to print at the top-left */
+        .print-container {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Ensure standard elements are hidden to be safe */
+        header, aside, nav, button, .no-print, .print\:hidden, input, select {
+          display: none !important;
+        }
+
+        /* Card styling for print */
+        .page-break {
+          page-break-after: always !important;
+          break-after: page !important;
+          break-inside: avoid !important;
+          margin-bottom: 0 !important;
+          box-shadow: none !important;
+          border: 1px solid #ddd !important;
+          width: 100% !important;
+          max-width: none !important;
+        }
+
+        /* Support for 2 cards per page */
+        .two-per-page {
+          height: 140mm !important; /* Approx half A4 height minus some margin */
+          page-break-after: auto !important;
+          break-after: auto !important;
+          margin-bottom: 10mm !important;
+          border-bottom: 1px dashed #ccc !important;
+        }
+
+        .two-per-page:nth-child(even) {
+          page-break-after: always !important;
+          break-after: page !important;
+          border-bottom: none !important;
+        }
+
+        /* Ensure borders and colors print correctly */
+        table, th, td {
+          border-color: #000 !important;
+        }
+        
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        /* Hide scrollbars */
+        ::-webkit-scrollbar {
+          display: none;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-50 text-gray-900">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
