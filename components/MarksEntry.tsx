@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { MarkRecord } from '../types';
+import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
-import { CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 
 interface EditableMark {
     obtained: number | string;
@@ -11,12 +11,77 @@ interface EditableMark {
     isAbsent: boolean;
 }
 
+interface MarkValidationResult {
+  isValid: boolean;
+  cqError?: string;
+  mcqError?: string;
+  obtainedError?: string;
+}
+
+const validateStudentMark = (mark: EditableMark | undefined, subject: Subject | undefined, language: string): MarkValidationResult => {
+  if (!mark || !subject || mark.isAbsent) {
+    return { isValid: true };
+  }
+
+  let isValid = true;
+  let cqError: string | undefined;
+  let mcqError: string | undefined;
+  let obtainedError: string | undefined;
+
+  // Validate CQ
+  if (subject.hasCQ && mark.cq !== '' && mark.cq !== undefined && mark.cq !== null) {
+    const numCQ = parseFloat(String(mark.cq));
+    const maxCQ = subject.cqMarks ?? 0;
+    if (isNaN(numCQ) || numCQ < 0 || numCQ > maxCQ) {
+      isValid = false;
+      cqError = numCQ > maxCQ 
+        ? (language === 'bn' ? `সর্বোচ্চ ${formatNumber(maxCQ, language)}` : `Max: ${maxCQ}`)
+        : (language === 'bn' ? 'অবৈধ নম্বর' : 'Invalid');
+    }
+  }
+
+  // Validate MCQ
+  if (subject.hasMCQ && mark.mcq !== '' && mark.mcq !== undefined && mark.mcq !== null) {
+    const numMCQ = parseFloat(String(mark.mcq));
+    const maxMCQ = subject.mcqMarks ?? 0;
+    if (isNaN(numMCQ) || numMCQ < 0 || numMCQ > maxMCQ) {
+      isValid = false;
+      mcqError = numMCQ > maxMCQ 
+        ? (language === 'bn' ? `সর্বোচ্চ ${formatNumber(maxMCQ, language)}` : `Max: ${maxMCQ}`)
+        : (language === 'bn' ? 'অবৈধ নম্বর' : 'Invalid');
+    }
+  }
+
+  // Validate Simple Obtained (when subject has no CQ/MCQ breakdown)
+  if (!subject.hasCQ && !subject.hasMCQ && mark.obtained !== '' && mark.obtained !== undefined && mark.obtained !== null) {
+    const numObtained = parseFloat(String(mark.obtained));
+    const maxObtained = subject.fullMarks;
+    if (isNaN(numObtained) || numObtained < 0 || numObtained > maxObtained) {
+      isValid = false;
+      obtainedError = numObtained > maxObtained 
+        ? (language === 'bn' ? `সর্বোচ্চ ${formatNumber(maxObtained, language)}` : `Max: ${maxObtained}`)
+        : (language === 'bn' ? 'অবৈধ নম্বর' : 'Invalid');
+    }
+  }
+
+  // Validate Total Sum if CQ/MCQ breakdown exceeds fullMarks
+  if ((subject.hasCQ || subject.hasMCQ) && mark.obtained !== '' && mark.obtained !== undefined && mark.obtained !== null) {
+    const numObtained = parseFloat(String(mark.obtained));
+    if (numObtained > subject.fullMarks) {
+      isValid = false;
+      obtainedError = language === 'bn' ? `মোট সর্বোচ্চ ${formatNumber(subject.fullMarks, language)}` : `Max Total: ${subject.fullMarks}`;
+    }
+  }
+
+  return { isValid, cqError, mcqError, obtainedError };
+};
+
 export const MarksEntry = () => {
   const { students, subjects, marks, exams, classes, bulkUpdateMarks, t, language } = useApp();
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'idle'>('saved');
   const [sortBy, setSortBy] = useState<'name' | 'id'>('name');
 
   // Local state to store edits for fast snappy input response
@@ -69,7 +134,10 @@ export const MarksEntry = () => {
         return a.name.localeCompare(b.name);
     });
 
-  // Flush any pending auto-save immediately
+  // Check if any mark in current table has an error
+  const hasAnyInvalidMarks = (Object.values(localMarks) as EditableMark[]).some(m => !validateStudentMark(m, currentSubject, language).isValid);
+
+  // Flush any pending auto-save immediately, skipping any invalid records
   const flushPendingSave = useCallback(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -81,10 +149,19 @@ export const MarksEntry = () => {
     if (studentIds.length === 0) return;
 
     const updates: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
+    const remainingPending: Record<string, EditableMark> = {};
+
     studentIds.forEach(studentId => {
       const markData = pendingUpdatesRef.current[studentId];
       if (!markData) return;
       
+      const validation = validateStudentMark(markData, currentSubject, language);
+      if (!validation.isValid) {
+        // Keep in pending, DO NOT auto-save invalid value
+        remainingPending[studentId] = markData;
+        return;
+      }
+
       const obtained = markData.obtained === '' ? 0 : Number(markData.obtained);
       const cq = markData.cq === '' ? undefined : Number(markData.cq);
       const mcq = markData.mcq === '' ? undefined : Number(markData.mcq);
@@ -104,9 +181,14 @@ export const MarksEntry = () => {
     if (updates.length > 0) {
       bulkUpdateMarks(updates);
     }
-    pendingUpdatesRef.current = {};
-    setSaveStatus('saved');
-  }, [currentSubject, selectedExamId, bulkUpdateMarks]);
+    
+    pendingUpdatesRef.current = remainingPending;
+    if (Object.keys(remainingPending).length > 0) {
+      setSaveStatus('error');
+    } else {
+      setSaveStatus('saved');
+    }
+  }, [currentSubject, selectedExamId, bulkUpdateMarks, language]);
 
   // Initialize local state when selection changes
   useEffect(() => {
@@ -141,18 +223,6 @@ export const MarksEntry = () => {
   }, [flushPendingSave]);
 
   const handleInputChange = (studentId: string, field: 'obtained' | 'cq' | 'mcq' | 'isAbsent', value: string | boolean) => {
-      // Validate Max Value
-      if (currentSubject && typeof value === 'string') {
-          const numValue = parseFloat(value);
-          if (!isNaN(numValue)) {
-              if (field === 'cq' && numValue > (currentSubject.cqMarks || 0)) return;
-              if (field === 'mcq' && numValue > (currentSubject.mcqMarks || 0)) return;
-              if (field === 'obtained' && !currentSubject.hasCQ && !currentSubject.hasMCQ && numValue > currentSubject.fullMarks) return;
-          }
-      }
-
-      setSaveStatus('saving');
-
       setLocalMarks(prev => {
           const current = prev[studentId] || { obtained: '', cq: '', mcq: '', isAbsent: false };
           const updated = { ...current, [field]: value };
@@ -177,20 +247,26 @@ export const MarksEntry = () => {
           // Track pending update
           pendingUpdatesRef.current[studentId] = updated;
 
-          // Schedule auto-save
-          if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-          
-          const delay = field === 'isAbsent' ? 50 : 300;
-          saveTimeoutRef.current = setTimeout(() => {
-            flushPendingSave();
-          }, delay);
+          const validation = validateStudentMark(updated, currentSubject, language);
+          if (!validation.isValid) {
+            setSaveStatus('error');
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+          } else {
+            setSaveStatus('saving');
+            // Schedule auto-save for valid entries
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+            const delay = field === 'isAbsent' ? 50 : 300;
+            saveTimeoutRef.current = setTimeout(() => {
+              flushPendingSave();
+            }, delay);
+          }
 
           return { ...prev, [studentId]: updated };
       });
   };
 
   const handleInputBlur = () => {
-    // Immediately persist on blur for extra guarantee
+    // Immediately persist on blur for extra guarantee (skips invalid)
     flushPendingSave();
   };
 
@@ -267,10 +343,15 @@ export const MarksEntry = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">{t('marks')}</h2>
-          <p className="text-gray-500 text-sm">{language === 'bn' ? 'নম্বর লিখলেই স্বয়ংক্রিয়ভাবে ক্লাউড ও মেমোরিতে সেভ হয়ে যাবে (আলাদা সেভ বোতাম লাগবে না)।' : 'Marks are automatically saved in real-time as you type.'}</p>
+          <p className="text-gray-500 text-sm">{language === 'bn' ? 'নম্বর লিখলেই স্বয়ংক্রিয়ভাবে সেভ হবে। সর্বোচ্চ নম্বরের বেশি লিখলে সতর্কবার্তা দেখাবে।' : 'Marks auto-save as you type. Exceeding marks are highlighted in red.'}</p>
         </div>
         <div className="flex items-center gap-2">
-            {saveStatus === 'saving' ? (
+            {hasAnyInvalidMarks || saveStatus === 'error' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-300 shadow-xs animate-pulse">
+                <AlertTriangle size={14} className="text-red-600" />
+                {language === 'bn' ? 'সর্বোচ্চ ছাড়িয়েছে (অটো-সেভ স্থগিত)' : 'Max limit exceeded (Auto-save paused)'}
+              </span>
+            ) : saveStatus === 'saving' ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-xs">
                 <Loader2 size={13} className="animate-spin text-amber-600" />
                 {language === 'bn' ? 'সংরক্ষিত হচ্ছে...' : 'Auto-saving...'}
@@ -339,9 +420,9 @@ export const MarksEntry = () => {
                 <th className="px-3 py-3 text-xs font-semibold text-gray-500 uppercase w-14 text-center">S/N</th>
                 <th className="px-3 py-3 text-xs font-semibold text-gray-500 uppercase w-28 text-center">{t('studentId')}</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right pr-4">{t('name')}</th>
-                {currentSubject.hasCQ && <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-28">{t('cqMarks')} <span className="text-gray-400">({currentSubject.cqMarks})</span></th>}
-                {currentSubject.hasMCQ && <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-28">{t('mcqMarks')} <span className="text-gray-400">({currentSubject.mcqMarks})</span></th>}
-                <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-28">{t('totalMarks')} <span className="text-gray-400">({currentSubject.fullMarks})</span></th>
+                {currentSubject.hasCQ && <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-32">{t('cqMarks')} <span className="text-gray-400 font-mono">({currentSubject.cqMarks})</span></th>}
+                {currentSubject.hasMCQ && <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-32">{t('mcqMarks')} <span className="text-gray-400 font-mono">({currentSubject.mcqMarks})</span></th>}
+                <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-32">{t('totalMarks')} <span className="text-gray-400 font-mono">({currentSubject.fullMarks})</span></th>
                 <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-20">{t('absent')}</th>
                 <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-20">{t('status')}</th>
               </tr>
@@ -349,7 +430,8 @@ export const MarksEntry = () => {
             <tbody className="divide-y divide-gray-100">
               {enrolledStudents.map((student, index) => {
                 const markData = localMarks[student.id] || { obtained: '', cq: '', mcq: '', isAbsent: false };
-                
+                const validation = validateStudentMark(markData, currentSubject, language);
+
                 // Logic to determine fail status in row visual only
                 let isFail = false;
                 const ob = Number(markData.obtained);
@@ -364,7 +446,7 @@ export const MarksEntry = () => {
                 const hasEntry = markData.obtained !== '' || markData.cq !== '' || markData.mcq !== '';
 
                 return (
-                  <tr key={student.id} className="transition-colors hover:bg-blue-50/40 focus-within:bg-blue-50/80">
+                  <tr key={student.id} className={`transition-colors hover:bg-blue-50/40 focus-within:bg-blue-50/80 ${!validation.isValid ? 'bg-red-50/30' : ''}`}>
                     <td className="px-3 py-2.5 font-medium text-gray-500 text-center text-sm">{formatNumber(index + 1, language)}</td>
                     <td className="px-3 py-2.5 font-medium text-gray-900 text-center font-mono text-sm">{student.studentId ? formatNumber(student.studentId, language) : '-'}</td>
                     <td className="px-4 py-2.5 text-right pr-4">
@@ -373,73 +455,104 @@ export const MarksEntry = () => {
                     </td>
                     
                     {currentSubject.hasCQ && (
-                        <td className="px-2 py-2.5 text-center">
-                            <input 
-                                id={`mark-input-cq-${index}`}
-                                type="number" min="0" max={currentSubject.cqMarks}
-                                className={`w-24 border rounded px-3 py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center
-                                    ${Number(markData.cq) > (currentSubject.cqMarks || 100) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}
-                                    ${markData.isAbsent ? 'opacity-50' : ''}
-                                `}
-                                value={markData.cq ?? ''}
-                                placeholder="0"
-                                disabled={markData.isAbsent}
-                                onChange={(e) => handleInputChange(student.id, 'cq', e.target.value)}
-                                onBlur={handleInputBlur}
-                                onKeyDown={(e) => handleKeyDown(e, index, 'cq')}
-                            />
+                        <td className="px-2 py-2.5 text-center align-top">
+                            <div className="flex flex-col items-center">
+                              <input 
+                                  id={`mark-input-cq-${index}`}
+                                  type="number" min="0" max={currentSubject.cqMarks}
+                                  className={`w-24 border rounded px-2.5 py-1.5 outline-none text-center transition-all
+                                      ${validation.cqError 
+                                        ? 'bg-red-50 border-red-500 text-red-700 font-bold ring-2 ring-red-400 focus:ring-red-500' 
+                                        : 'bg-white text-gray-900 border-gray-300 focus:ring-2 focus:ring-blue-500'}
+                                      ${markData.isAbsent ? 'opacity-50' : ''}
+                                  `}
+                                  value={markData.cq ?? ''}
+                                  placeholder="0"
+                                  disabled={markData.isAbsent}
+                                  onChange={(e) => handleInputChange(student.id, 'cq', e.target.value)}
+                                  onBlur={handleInputBlur}
+                                  onKeyDown={(e) => handleKeyDown(e, index, 'cq')}
+                              />
+                              {validation.cqError && (
+                                <span className="text-[10px] text-red-600 font-bold mt-1 bg-red-100/90 px-1.5 py-0.5 rounded shadow-xs whitespace-nowrap animate-bounce">
+                                  ⚠️ {validation.cqError}
+                                </span>
+                              )}
+                            </div>
                         </td>
                     )}
 
                     {currentSubject.hasMCQ && (
-                        <td className="px-2 py-2.5 text-center">
-                            <input 
-                                id={`mark-input-mcq-${index}`}
-                                type="number" min="0" max={currentSubject.mcqMarks}
-                                className={`w-24 border rounded px-3 py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center
-                                    ${Number(markData.mcq) > (currentSubject.mcqMarks || 100) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}
-                                    ${markData.isAbsent ? 'opacity-50' : ''}
-                                `}
-                                value={markData.mcq ?? ''}
-                                placeholder="0"
-                                disabled={markData.isAbsent}
-                                onChange={(e) => handleInputChange(student.id, 'mcq', e.target.value)}
-                                onBlur={handleInputBlur}
-                                onKeyDown={(e) => handleKeyDown(e, index, 'mcq')}
-                            />
+                        <td className="px-2 py-2.5 text-center align-top">
+                            <div className="flex flex-col items-center">
+                              <input 
+                                  id={`mark-input-mcq-${index}`}
+                                  type="number" min="0" max={currentSubject.mcqMarks}
+                                  className={`w-24 border rounded px-2.5 py-1.5 outline-none text-center transition-all
+                                      ${validation.mcqError 
+                                        ? 'bg-red-50 border-red-500 text-red-700 font-bold ring-2 ring-red-400 focus:ring-red-500' 
+                                        : 'bg-white text-gray-900 border-gray-300 focus:ring-2 focus:ring-blue-500'}
+                                      ${markData.isAbsent ? 'opacity-50' : ''}
+                                  `}
+                                  value={markData.mcq ?? ''}
+                                  placeholder="0"
+                                  disabled={markData.isAbsent}
+                                  onChange={(e) => handleInputChange(student.id, 'mcq', e.target.value)}
+                                  onBlur={handleInputBlur}
+                                  onKeyDown={(e) => handleKeyDown(e, index, 'mcq')}
+                              />
+                              {validation.mcqError && (
+                                <span className="text-[10px] text-red-600 font-bold mt-1 bg-red-100/90 px-1.5 py-0.5 rounded shadow-xs whitespace-nowrap animate-bounce">
+                                  ⚠️ {validation.mcqError}
+                                </span>
+                              )}
+                            </div>
                         </td>
                     )}
 
-                    <td className="px-2 py-2.5 text-center">
+                    <td className="px-2 py-2.5 text-center align-top">
+                      <div className="flex flex-col items-center">
                         {/* Only editable if NO CQ/MCQ, else read-only sum */}
-                      <input 
-                        id={`mark-input-obtained-${index}`}
-                        type="number" 
-                        min="0"
-                        max={currentSubject.fullMarks}
-                        className={`w-24 border rounded px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none transition-colors text-gray-900 text-center
-                            ${currentSubject.hasCQ || currentSubject.hasMCQ ? 'bg-gray-100 font-bold' : 'bg-white'}
-                            ${(isFail || markData.isAbsent) && hasEntry ? 'border-red-300 text-red-700' : 'border-gray-300'}
-                            ${markData.isAbsent ? 'opacity-50' : ''}
-                        `}
-                        value={markData.obtained ?? ''}
-                        placeholder="0"
-                        readOnly={!!(currentSubject.hasCQ || currentSubject.hasMCQ) || markData.isAbsent}
-                        onChange={(e) => handleInputChange(student.id, 'obtained', e.target.value)}
-                        onBlur={handleInputBlur}
-                        onKeyDown={(e) => !currentSubject.hasCQ && !currentSubject.hasMCQ && handleKeyDown(e, index, 'obtained')}
-                      />
+                        <input 
+                          id={`mark-input-obtained-${index}`}
+                          type="number" 
+                          min="0"
+                          max={currentSubject.fullMarks}
+                          className={`w-24 border rounded px-2.5 py-1.5 outline-none transition-all text-center
+                              ${currentSubject.hasCQ || currentSubject.hasMCQ ? 'bg-gray-100 font-bold' : 'bg-white'}
+                              ${validation.obtainedError 
+                                ? 'bg-red-50 border-red-500 text-red-700 font-bold ring-2 ring-red-400 focus:ring-red-500' 
+                                : ((isFail || markData.isAbsent) && hasEntry ? 'border-red-300 text-red-700' : 'border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500')}
+                              ${markData.isAbsent ? 'opacity-50' : ''}
+                          `}
+                          value={markData.obtained ?? ''}
+                          placeholder="0"
+                          readOnly={!!(currentSubject.hasCQ || currentSubject.hasMCQ) || markData.isAbsent}
+                          onChange={(e) => handleInputChange(student.id, 'obtained', e.target.value)}
+                          onBlur={handleInputBlur}
+                          onKeyDown={(e) => !currentSubject.hasCQ && !currentSubject.hasMCQ && handleKeyDown(e, index, 'obtained')}
+                        />
+                        {validation.obtainedError && (
+                          <span className="text-[10px] text-red-600 font-bold mt-1 bg-red-100/90 px-1.5 py-0.5 rounded shadow-xs whitespace-nowrap animate-bounce">
+                            ⚠️ {validation.obtainedError}
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-2 py-2.5 text-center">
+                    <td className="px-2 py-2.5 text-center align-middle">
                         <input 
                             type="checkbox"
-                            className="w-5 h-5 cursor-pointer"
+                            className="w-5 h-5 cursor-pointer accent-blue-600"
                             checked={markData.isAbsent}
                             onChange={(e) => handleInputChange(student.id, 'isAbsent', e.target.checked)}
                         />
                     </td>
-                    <td className="px-2 py-2.5 text-center">
-                        {markData.isAbsent ? (
+                    <td className="px-2 py-2.5 text-center align-middle">
+                        {!validation.isValid ? (
+                            <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-red-100 text-red-700 border border-red-300">
+                                {language === 'bn' ? 'অবৈধ' : 'Invalid'}
+                            </span>
+                        ) : markData.isAbsent ? (
                             <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-700">
                                 {t('absent')}
                             </span>
@@ -456,12 +569,12 @@ export const MarksEntry = () => {
           </table>
           </div>
           
-          <div className="bg-gray-50/70 px-6 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+          <div className="bg-gray-50/70 px-6 py-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500">
             <span className="flex items-center gap-1.5 font-medium">
               <Sparkles size={14} className="text-indigo-500" />
               {language === 'bn' 
-                ? 'কীবোর্ডের Enter চেপে পরবর্তী শিক্ষার্থীর নম্বরে যান। প্রতিটি নম্বর স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।' 
-                : 'Press Enter to jump to the next student. All entries are auto-saved in real-time.'}
+                ? 'কীবোর্ডের Enter চেপে পরবর্তী শিক্ষার্থীর নম্বরে যান। প্রতিটি সঠিক নম্বর স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।' 
+                : 'Press Enter to jump to the next student. Valid entries auto-save in real-time.'}
             </span>
             <span className="font-mono text-gray-400">
               Total {enrolledStudents.length} {language === 'bn' ? 'শিক্ষার্থী' : 'students'}
