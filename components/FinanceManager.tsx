@@ -193,6 +193,7 @@ export const FinanceManager: React.FC = () => {
             onAddTransaction={addTransaction}
             onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
             showToast={showToast}
+            onNavigateTab={(t) => setActiveTab(t)}
           />
         )}
 
