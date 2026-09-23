@@ -24,6 +24,8 @@ import {
 import { formatBanglaNumber } from '../../services/utils';
 import { FUND_METAS, FinanceFilterCategory } from './types';
 import { Button } from '../ui/Button';
+import { useApp } from '../../context/AppContext';
+import { LedgerStatementModal } from './LedgerStatementModal';
 
 interface FinanceLedgerProps {
   transactions: FinanceTransaction[];
@@ -40,6 +42,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
   onDeleteTransaction,
   showToast,
 }) => {
+  const { schoolProfile } = useApp();
   const isBn = language === 'bn';
 
   const [pillarFilter, setPillarFilter] = useState<FinanceFilterCategory>('ALL');
@@ -49,6 +52,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
   const [dateFilterMode, setDateFilterMode] = useState<'ALL' | 'TODAY' | 'THIS_MONTH' | 'LAST_MONTH' | 'CUSTOM'>('THIS_MONTH');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [showStatementModal, setShowStatementModal] = useState<boolean>(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const currentMonthStr = todayStr.slice(0, 7);
@@ -335,19 +339,19 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
               onClick={handleExportCSV}
               size="sm"
               variant="secondary"
-              className="text-xs"
+              className="text-xs font-semibold"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-              {isBn ? 'এক্সেল / CSV' : 'Export CSV'}
+              <span>{isBn ? 'এক্সেল / CSV' : 'Export CSV'}</span>
             </Button>
             <Button
-              onClick={handlePrintCashBook}
+              onClick={() => setShowStatementModal(true)}
               size="sm"
-              variant="secondary"
-              className="text-xs"
+              variant="primary"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs"
             >
-              <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
-              {isBn ? 'ক্যাশ বুক প্রিন্ট' : 'Print Ledger'}
+              <Printer className="w-3.5 h-3.5 mr-1.5" />
+              <span>{isBn ? 'স্টেটমেন্ট ও পিডিএফ রিপোর্ট' : 'Statement & PDF'}</span>
             </Button>
           </div>
         </div>
@@ -471,6 +475,23 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Ledger Statement & PDF Modal */}
+      {showStatementModal && (
+        <LedgerStatementModal
+          transactions={filteredTransactions}
+          schoolProfile={schoolProfile}
+          filterMeta={{
+            pillar: pillarFilter,
+            fund: fundFilter,
+            dateMode: dateFilterMode,
+            startDate: dateFilterMode === 'CUSTOM' ? startDate : undefined,
+            endDate: dateFilterMode === 'CUSTOM' ? endDate : undefined,
+          }}
+          language={language}
+          onClose={() => setShowStatementModal(false)}
+        />
+      )}
     </div>
   );
 };

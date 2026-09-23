@@ -143,17 +143,31 @@
 
         /* Show the print container and its children */
         .print-container, .print-container * {
-          visibility: visible;
+          visibility: visible !important;
         }
 
         /* Position the content to print at the top-left */
         .print-container {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          margin: 0;
-          padding: 0;
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          z-index: 99999 !important;
+        }
+
+        /* Ensure fixed modal backdrops and toolbars are reset or hidden */
+        .fixed:has(.print-container),
+        div:has(> .print-container) {
+          position: static !important;
+          background: transparent !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          overflow: visible !important;
         }
 
         /* Ensure standard elements are hidden to be safe */
