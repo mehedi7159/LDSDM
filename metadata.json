@@ -1,6 +1,6 @@
 {
-  "name": "Remix: Madrasha Result Management System",
-  "description": "A production-ready School Result Management System for managing students, exams, marks, and generating professional result cards and reports.",
+  "name": "Madrasah Management System",
+  "description": "A comprehensive Madrasah Management System for managing students, exams, marks, subjects, and generating professional result cards and tabulation reports.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

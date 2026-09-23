@@ -167,9 +167,9 @@ export const ClassResultView: React.FC<Props> = ({ exam, classLevel }) => {
                   <tr className="bg-gray-100 text-black">
                       {classSubjects.map(sub => (
                           <React.Fragment key={`sub-header-${sub.id}`}>
-                              {sub.hasCQ && <th className="border border-black px-0.5 py-1 text-[9.5px] text-gray-800 font-bold text-center min-w-[28px]">{t('cq') || 'CQ'}</th>}
-                              {sub.hasMCQ && <th className="border border-black px-0.5 py-1 text-[9.5px] text-gray-800 font-bold text-center min-w-[28px]">{t('mcq') || 'MCQ'}</th>}
-                              <th className="border border-black px-0.5 py-1 text-[10px] font-black text-center min-w-[32px]">{t('tot') || 'মোট'}</th>
+                              {sub.hasCQ && <th className="border border-black px-0.5 py-1 text-[9.5px] text-gray-800 font-bold text-center align-middle min-w-[28px]">{t('cq') || 'CQ'}</th>}
+                              {sub.hasMCQ && <th className="border border-black px-0.5 py-1 text-[9.5px] text-gray-800 font-bold text-center align-middle min-w-[28px]">{t('mcq') || 'MCQ'}</th>}
+                              <th className="border border-black px-0.5 py-1 text-[10px] font-black text-center align-middle min-w-[32px]">{t('tot') || 'মোট'}</th>
                           </React.Fragment>
                       ))}
                   </tr>
@@ -183,15 +183,15 @@ export const ClassResultView: React.FC<Props> = ({ exam, classLevel }) => {
                             className={`border-b border-black/70 hover:bg-yellow-50/40 ${idx % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'}`}
                           >
                               {/* Position / SL */}
-                              <td className={`border border-black ${rowPaddingClass} text-center font-mono font-bold text-black`}>
+                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-mono font-bold text-black`}>
                                   {formatNumber(idx + 1, language)}
                               </td>
                               {/* Roll No */}
-                              <td className={`border border-black ${rowPaddingClass} text-center font-mono font-bold text-black`}>
+                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-mono font-bold text-black`}>
                                   {student.studentId ? formatNumber(student.studentId, language) : '—'}
                               </td>
                               {/* Student Name */}
-                              <td className={`border border-black ${rowPaddingClass} px-2.5 font-bold text-black text-left whitespace-nowrap overflow-hidden text-ellipsis`}>
+                              <td className={`border border-black ${rowPaddingClass} px-2.5 font-bold text-black text-left align-middle whitespace-nowrap overflow-hidden text-ellipsis`}>
                                   <span className="text-[12px]">{language === 'bn' ? (student.nameBn || student.name) : student.name}</span>
                                   {student.group && (
                                     <span className="ml-1 text-[9.5px] font-normal text-gray-600">
@@ -205,9 +205,9 @@ export const ClassResultView: React.FC<Props> = ({ exam, classLevel }) => {
                                   if (!isApplicable) {
                                       return (
                                           <React.Fragment key={`sub-cell-${sub.id}-${student.id}`}>
-                                              {sub.hasCQ && <td className={`border border-black ${rowPaddingClass} text-center text-gray-400 font-mono`}>—</td>}
-                                              {sub.hasMCQ && <td className={`border border-black ${rowPaddingClass} text-center text-gray-400 font-mono`}>—</td>}
-                                              <td className={`border border-black ${rowPaddingClass} text-center text-gray-400 font-mono`}>—</td>
+                                              {sub.hasCQ && <td className={`border border-black ${rowPaddingClass} text-center align-middle text-gray-400 font-mono`}>—</td>}
+                                              {sub.hasMCQ && <td className={`border border-black ${rowPaddingClass} text-center align-middle text-gray-400 font-mono`}>—</td>}
+                                              <td className={`border border-black ${rowPaddingClass} text-center align-middle text-gray-400 font-mono`}>—</td>
                                           </React.Fragment>
                                       );
                                   }
@@ -223,35 +223,35 @@ export const ClassResultView: React.FC<Props> = ({ exam, classLevel }) => {
                                   return (
                                       <React.Fragment key={`sub-cell-${sub.id}-${student.id}`}>
                                           {sub.hasCQ && (
-                                              <td className={`border border-black ${rowPaddingClass} text-center font-mono ${isCQFail || mark?.isAbsent ? 'text-red-700 font-bold bg-red-50/30' : 'text-gray-800'}`}>
+                                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-mono ${isCQFail || mark?.isAbsent ? 'text-red-700 font-bold bg-red-50/30' : 'text-gray-800'}`}>
                                                   {mark?.isAbsent ? 'অনুপ' : (mark?.obtainedCQ !== undefined ? formatNumber(mark.obtainedCQ, language) : '—')}
                                               </td>
                                           )}
                                           {sub.hasMCQ && (
-                                              <td className={`border border-black ${rowPaddingClass} text-center font-mono ${isCQFail || mark?.isAbsent ? 'text-red-700 font-bold bg-red-50/30' : 'text-gray-800'}`}>
+                                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-mono ${isCQFail || mark?.isAbsent ? 'text-red-700 font-bold bg-red-50/30' : 'text-gray-800'}`}>
                                                   {mark?.isAbsent ? 'অনুপ' : (mark?.obtainedMCQ !== undefined ? formatNumber(mark.obtainedMCQ, language) : '—')}
                                               </td>
                                           )}
-                                          <td className={`border border-black ${rowPaddingClass} text-center font-mono font-bold ${specificFail ? 'text-red-700 font-black bg-red-50/40' : 'text-black'}`}>
+                                          <td className={`border border-black ${rowPaddingClass} text-center align-middle font-mono font-bold ${specificFail ? 'text-red-700 font-black bg-red-50/40' : 'text-black'}`}>
                                               {mark ? (mark.isAbsent ? (language === 'bn' ? 'অনুপ' : 'Abs') : formatNumber(val, language)) : '—'}
                                           </td>
                                       </React.Fragment>
                                   );
                               })}
                               {/* Total Marks */}
-                              <td className={`border border-black ${rowPaddingClass} text-center font-mono font-black bg-gray-50 text-black`}>
+                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-mono font-black bg-gray-50 text-black`}>
                                   {formatNumber(student.totalMarks, language)}
                               </td>
                               {/* GPA */}
-                              <td className={`border border-black ${rowPaddingClass} text-center font-mono font-black bg-gray-50 ${isPassing ? 'text-black' : 'text-red-700'}`}>
+                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-mono font-black bg-gray-50 ${isPassing ? 'text-black' : 'text-red-700'}`}>
                                   {formatNumber(student.gpa.toFixed(2), language)}
                               </td>
                               {/* Letter Grade */}
-                              <td className={`border border-black ${rowPaddingClass} text-center font-black bg-gray-50 ${isPassing ? (student.grade === 'A+' ? 'text-emerald-800' : 'text-black') : 'text-red-700'}`}>
+                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-black bg-gray-50 ${isPassing ? (student.grade === 'A+' ? 'text-emerald-800' : 'text-black') : 'text-red-700'}`}>
                                   {student.grade}
                               </td>
                               {/* Status */}
-                              <td className={`border border-black ${rowPaddingClass} text-center font-bold text-[10.5px] whitespace-nowrap`}>
+                              <td className={`border border-black ${rowPaddingClass} text-center align-middle font-bold text-[10.5px] whitespace-nowrap`}>
                                   {isPassing ? (
                                     <span className="text-emerald-800 font-extrabold">{language === 'bn' ? 'উত্তীর্ণ' : 'Passed'}</span>
                                   ) : (

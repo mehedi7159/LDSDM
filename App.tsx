@@ -9,6 +9,7 @@ import { AttendanceEntry } from './components/AttendanceEntry';
 import { ResultGenerator } from './components/ResultView';
 import { ClassResultView } from './components/ClassResultView';
 import { Settings } from './components/Settings';
+import { FinanceManager } from './components/FinanceManager';
 import { AccessRestrictedView } from './components/AccessRestrictedView';
 import { Button } from './components/ui/Button';
 import { Download, Loader2 } from 'lucide-react';
@@ -28,7 +29,7 @@ const AppContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-      document.title = (schoolProfile.nameBn || schoolProfile.name || t('madrasha')) + ' - Result System';
+      document.title = (schoolProfile.nameBn || schoolProfile.name || (language === 'bn' ? 'মাদ্রাসা' : 'Madrasah')) + ' - Madrasah Management System';
   }, [language, t, schoolProfile]);
 
   useEffect(() => {
@@ -156,6 +157,8 @@ const AppContent = () => {
     switch (activeTab) {
       case 'dashboard': 
         return <Dashboard />;
+      case 'finance':
+        return isAdmin ? <FinanceManager /> : <AccessRestrictedView moduleName={t('finance')} onGoToResults={() => setActiveTab('results')} />;
       case 'students': 
         return isAdmin ? <StudentManager /> : <AccessRestrictedView moduleName={t('students')} onGoToResults={() => setActiveTab('results')} />;
       case 'subjects': 

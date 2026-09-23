@@ -1,15 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { SchoolProfile, Student, Subject, Exam, MarkRecord, RemarkRecord, SchoolClass } from '../types';
+import { SchoolProfile, Student, Subject, Exam, MarkRecord, RemarkRecord, SchoolClass, FinanceTransaction, ClassFeeStructure } from '../types';
 import { generateId } from '../services/utils';
 import { translations, Language } from '../services/translations';
-import { generateSampleMadrashaData } from '../services/sampleData';
+import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider } from '../services/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 
 export interface TrashItem {
   id: string;
-  type: 'student' | 'subject' | 'exam' | 'class';
+  type: 'student' | 'subject' | 'exam' | 'class' | 'transaction';
   data: any;
   deletedAt: string;
 }
@@ -25,6 +25,8 @@ interface AppState {
   marks: MarkRecord[];
   remarks: RemarkRecord[];
   classes: SchoolClass[];
+  transactions: FinanceTransaction[];
+  feeStructures: ClassFeeStructure[];
   language: Language;
   trashBin: TrashItem[];
   cloudStatus: CloudSyncStatus;
@@ -53,6 +55,12 @@ interface AppContextType extends AppState {
   addClass: (name: string, nameBn?: string) => void;
   updateClass: (cls: SchoolClass) => void;
   deleteClass: (id: string) => void;
+  addTransaction: (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
+  updateTransaction: (transaction: FinanceTransaction) => void;
+  deleteTransaction: (id: string) => void;
+  setTransactions: (transactions: FinanceTransaction[]) => void;
+  updateFeeStructure: (structure: ClassFeeStructure) => void;
+  setFeeStructures: (structures: ClassFeeStructure[]) => void;
   restoreFromTrash: (trashId: string) => void;
   emptyTrash: () => void;
   setLanguage: (lang: Language) => void;
@@ -147,6 +155,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [transactions, setTransactions] = useState<FinanceTransaction[]>(() => {
+    const saved = localStorage.getItem('madrasha_transactions');
+    return saved ? JSON.parse(saved) : generateSampleFinanceData();
+  });
+
+  const [feeStructures, setFeeStructures] = useState<ClassFeeStructure[]>(() => {
+    const saved = localStorage.getItem('madrasha_fee_structures');
+    return saved ? JSON.parse(saved) : defaultFeeStructures;
+  });
+
   // Cloud Sync & Security State
   const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus>('syncing');
   const [cloudLastSynced, setCloudLastSynced] = useState<string>('Initializing...');
@@ -232,6 +250,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             setClasses(data.classes);
             localStorage.setItem('classes', JSON.stringify(data.classes));
           }
+          if (data.transactions && Array.isArray(data.transactions)) {
+            setTransactions(data.transactions);
+            localStorage.setItem('madrasha_transactions', JSON.stringify(data.transactions));
+          }
+          if (data.feeStructures && Array.isArray(data.feeStructures)) {
+            setFeeStructures(data.feeStructures);
+            localStorage.setItem('madrasha_fee_structures', JSON.stringify(data.feeStructures));
+          }
           if (data.trashBin && Array.isArray(data.trashBin)) {
             setTrashBin(data.trashBin);
             localStorage.setItem('madrasha_trash_bin', JSON.stringify(data.trashBin));
@@ -258,6 +284,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             marks,
             remarks,
             classes,
+            transactions,
+            feeStructures,
             trashBin,
             updatedAt: new Date().toISOString()
           };
@@ -301,6 +329,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           marks,
           remarks,
           classes,
+          transactions,
+          feeStructures,
           trashBin,
           adminPin: adminPin || localStorage.getItem('madrasha_admin_pin') || '123456',
           updatedBy: adminEmail || 'mehedihasansagor26@gmail.com',
@@ -319,7 +349,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [schoolProfile, students, subjects, exams, marks, remarks, classes, trashBin, isAdmin, adminEmail]);
+  }, [schoolProfile, students, subjects, exams, marks, remarks, classes, transactions, feeStructures, trashBin, isAdmin, adminEmail]);
 
   // Offline LocalStorage updates
   useEffect(() => {
@@ -329,6 +359,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('classes', JSON.stringify(classes));
   }, [classes]);
+
+  useEffect(() => {
+    localStorage.setItem('madrasha_transactions', JSON.stringify(transactions));
+  }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem('madrasha_fee_structures', JSON.stringify(feeStructures));
+  }, [feeStructures]);
 
   useEffect(() => {
     localStorage.setItem('madrasha_trash_bin', JSON.stringify(trashBin));
@@ -370,6 +408,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         marks,
         remarks,
         classes,
+        transactions,
+        feeStructures,
         trashBin,
         adminPin: adminPin || localStorage.getItem('madrasha_admin_pin') || '123456',
         updatedBy: adminEmail || 'mehedihasansagor26@gmail.com',
@@ -397,6 +437,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         if (data.marks) setMarks(data.marks);
         if (data.remarks) setRemarks(data.remarks);
         if (data.classes) setClasses(data.classes);
+        if (data.transactions && Array.isArray(data.transactions)) setTransactions(data.transactions);
+        if (data.feeStructures && Array.isArray(data.feeStructures)) setFeeStructures(data.feeStructures);
         if (data.trashBin) setTrashBin(data.trashBin);
         if (data.adminPin && typeof data.adminPin === 'string') {
           setAdminPin(data.adminPin);
@@ -582,6 +624,39 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  const addTransaction = (txData: Omit<FinanceTransaction, 'id' | 'createdAt'>): FinanceTransaction => {
+    const newTx: FinanceTransaction = {
+      ...txData,
+      id: generateId(),
+      createdAt: new Date().toISOString()
+    };
+    setTransactions(prev => [newTx, ...prev]);
+    return newTx;
+  };
+
+  const updateTransaction = (updatedTx: FinanceTransaction) => {
+    setTransactions(prev => prev.map(tx => tx.id === updatedTx.id ? updatedTx : tx));
+  };
+
+  const deleteTransaction = (id: string) => {
+    const tx = transactions.find(t => t.id === id);
+    if (tx) {
+      setTrashBin(prev => [{ id: generateId(), type: 'transaction', data: tx, deletedAt: new Date().toLocaleString() }, ...prev]);
+      setTransactions(prev => prev.filter(t => t.id !== id));
+    }
+  };
+
+  const updateFeeStructure = (updatedStructure: ClassFeeStructure) => {
+    setFeeStructures(prev => {
+      const exists = prev.find(f => f.classLevel === updatedStructure.classLevel || f.id === updatedStructure.id);
+      if (exists) {
+        return prev.map(f => (f.classLevel === updatedStructure.classLevel || f.id === updatedStructure.id) ? updatedStructure : f);
+      } else {
+        return [...prev, { ...updatedStructure, id: generateId() }];
+      }
+    });
+  };
+
   const restoreFromTrash = (trashId: string) => {
     const item = trashBin.find(t => t.id === trashId);
     if (!item) return;
@@ -594,6 +669,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setExams(prev => [...prev, item.data]);
     } else if (item.type === 'class') {
       setClasses(prev => [...prev, item.data]);
+    } else if (item.type === 'transaction') {
+      setTransactions(prev => [item.data, ...prev]);
     }
 
     setTrashBin(prev => prev.filter(t => t.id !== trashId));
@@ -636,6 +713,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const toAdd = sampleMarks.filter(m => !existingKeys.has(`${m.studentId}-${m.subjectId}-${m.examId}`));
       return [...prev, ...toAdd];
     });
+    const sampleFinance = generateSampleFinanceData(sampleStudents);
+    setTransactions(prev => {
+      if (prev.length === 0) return sampleFinance;
+      const existingIds = new Set(prev.map(t => t.id));
+      const toAdd = sampleFinance.filter(t => !existingIds.has(t.id));
+      return [...toAdd, ...prev];
+    });
   };
 
   const t = (key: keyof typeof translations['en']) => {
@@ -651,6 +735,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       marks,
       remarks,
       classes,
+      transactions,
+      feeStructures,
       language,
       trashBin,
       cloudStatus,
@@ -676,6 +762,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       addClass,
       updateClass,
       deleteClass,
+      addTransaction,
+      updateTransaction,
+      deleteTransaction,
+      setTransactions,
+      updateFeeStructure,
+      setFeeStructures,
       restoreFromTrash,
       emptyTrash,
       setLanguage,

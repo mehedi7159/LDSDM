@@ -280,3 +280,115 @@ export const shortenSubjectName = (name: string): string => {
 
   return s.trim();
 };
+
+/**
+ * Converts a numeric amount to Bengali words (e.g. 5250 -> "পাঁচ হাজার দুই শত পঞ্চাশ টাকা মাত্র")
+ */
+export const amountToBengaliWords = (amount: number): string => {
+  if (isNaN(amount) || amount === 0) return 'শূন্য টাকা মাত্র';
+  
+  const ones = ['', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়', 'দশ', 
+    'এগারো', 'বারো', 'তেরো', 'চোদ্দ', 'পনেরো', 'ষোলো', 'সতেরো', 'আঠারো', 'উনিশ', 'বিশ',
+    'একুশ', 'বাইশ', 'তেইশ', 'চব্বিশ', 'পঁচিশ', 'ছাব্বিশ', 'সাতাশ', 'আঠাশ', 'উনত্রিশ', 'ত্রিশ',
+    'একত্রিশ', 'বত্রিশ', 'তেত্রিশ', 'চৌত্রিশ', 'পঁয়ত্রিশ', 'ছত্রিশ', 'সাঁইত্রিশ', 'আটত্রিশ', 'উনচল্লিশ', 'চল্লিশ',
+    'একচল্লিশ', 'বিয়াল্লিশ', 'তেতাল্লিশ', 'চুয়াল্লিশ', 'পঁয়তাল্লিশ', 'ছেচল্লিশ', 'সাতচল্লিশ', 'আটচল্লিশ', 'উনপঞ্চাশ', 'পঞ্চাশ',
+    'একান্ন', 'বায়ান্ন', 'তিপ্পান্ন', 'চুয়ান্ন', 'পঞ্চান্ন', 'ছাপ্পান্ন', 'সাতান্ন', 'আটান্ন', 'উনষাট', 'ষাট',
+    'একষট্টি', 'বাষট্টি', 'তেষট্টি', 'চৌষট্টি', 'পঁয়ষট্টি', 'ছেষট্টি', 'সাতষট্টি', 'আটষট্টি', 'উনসত্তর', 'সত্তর',
+    'একাত্তর', 'বাহাত্তর', 'তিয়াত্তর', 'চুয়াত্তর', 'পঁচাত্তর', 'ছিয়াত্তর', 'সাতাত্তর', 'আটাত্তর', 'উনাশি', 'আশি',
+    'একাশি', 'বিরাশি', 'তিরাশি', 'চুরাশি', 'পঁচাশি', 'ছিয়াশি', 'সাতাশি', 'আটাশি', 'ঊননব্বই', 'নব্বই',
+    'একানব্বই', 'বিরানব্বই', 'তিরানব্বই', 'চুরানব্বই', 'পঁচানব্বই', 'ছিয়ানব্বই', 'সাতানব্বই', 'আটানব্বই', 'নিরানব্বই'];
+
+  const convertGroup = (n: number): string => {
+    if (n === 0) return '';
+    if (n < 100) return ones[n];
+    const h = Math.floor(n / 100);
+    const rest = n % 100;
+    return `${ones[h]} শত ${rest > 0 ? ones[rest] : ''}`.trim();
+  };
+
+  const integerPart = Math.floor(Math.abs(amount));
+  
+  const crore = Math.floor(integerPart / 10000000);
+  let remainder = integerPart % 10000000;
+  
+  const lakh = Math.floor(remainder / 100000);
+  remainder = remainder % 100000;
+  
+  const thousand = Math.floor(remainder / 1000);
+  remainder = remainder % 1000;
+  
+  const hundredAndRest = remainder;
+
+  const parts: string[] = [];
+  if (crore > 0) parts.push(`${convertGroup(crore)} কোটি`);
+  if (lakh > 0) parts.push(`${convertGroup(lakh)} লক্ষ`);
+  if (thousand > 0) parts.push(`${convertGroup(thousand)} হাজার`);
+  if (hundredAndRest > 0) parts.push(convertGroup(hundredAndRest));
+
+  const words = parts.join(' ').trim();
+  return words ? `${words} টাকা মাত্র` : 'শূন্য টাকা মাত্র';
+};
+
+/**
+ * Converts a numeric amount to English words
+ */
+export const amountToEnglishWords = (amount: number): string => {
+  if (isNaN(amount) || amount === 0) return 'Zero Taka only';
+
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const numToWords = (n: number): string => {
+    if (n < 20) return a[n];
+    const digit = n % 10;
+    return `${b[Math.floor(n / 10)]}${digit ? '-' + a[digit] : ''}`;
+  };
+
+  const inWords = (n: number): string => {
+    if (n === 0) return '';
+    let str = '';
+    if (n >= 10000000) {
+      str += `${inWords(Math.floor(n / 10000000))} Crore `;
+      n %= 10000000;
+    }
+    if (n >= 100000) {
+      str += `${inWords(Math.floor(n / 100000))} Lakh `;
+      n %= 100000;
+    }
+    if (n >= 1000) {
+      str += `${inWords(Math.floor(n / 1000))} Thousand `;
+      n %= 1000;
+    }
+    if (n >= 100) {
+      str += `${inWords(Math.floor(n / 100))} Hundred `;
+      n %= 100;
+    }
+    if (n > 0) {
+      str += numToWords(n);
+    }
+    return str.trim();
+  };
+
+  const integerPart = Math.floor(Math.abs(amount));
+  const res = inWords(integerPart);
+  return res ? `${res} Taka Only` : 'Zero Taka Only';
+};
+
+/**
+ * Format number into Bengali digits
+ */
+export const formatBanglaNumber = (num: number | string | undefined | null): string => {
+  return toBengali(num);
+};
+
+/**
+ * Generates an auto-incrementing voucher / receipt number
+ */
+export const generateVoucherNo = (type: 'INCOME' | 'EXPENSE', existingData: any[] | number = 0): string => {
+  const prefix = type === 'INCOME' ? 'MR' : 'DV';
+  const year = new Date().getFullYear();
+  const count = typeof existingData === 'number' ? existingData : (Array.isArray(existingData) ? existingData.length : 0);
+  const serial = String(count + 1).padStart(4, '0');
+  return `${prefix}-${year}-${serial}`;
+};

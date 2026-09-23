@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   Eye,
   LogOut,
-  UserCheck
+  UserCheck,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AdminAuthModal } from './AdminAuthModal';
@@ -50,6 +51,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const menuItems = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, adminOnly: false },
     { id: 'results', label: t('results'), icon: FileSpreadsheet, adminOnly: false },
+    { id: 'finance', label: t('finance'), icon: Wallet, adminOnly: true },
     { id: 'students', label: t('students'), icon: Users, adminOnly: true },
     { id: 'subjects', label: t('subjects'), icon: BookOpen, adminOnly: true },
     { id: 'marks', label: t('marks'), icon: PenTool, adminOnly: true },

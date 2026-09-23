@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Subject } from '../types';
 import { Button } from './ui/Button';
-import { Plus, Trash2, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, FileText, Printer } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { BlankMarksheetView } from './BlankMarksheetView';
 
 export const SubjectManager = () => {
   const { subjects, addSubject, updateSubject, deleteSubject, classes, exams, t, language } = useApp();
-  const [mode, setMode] = useState<'manage' | 'assign'>('manage');
+  const [mode, setMode] = useState<'manage' | 'assign' | 'blank_marksheet'>('manage');
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '');
   const [selectedExamId, setSelectedExamId] = useState<string>(exams[0]?.id || '');
+  const [focusedSubjectId, setFocusedSubjectId] = useState<string>('ALL');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
   
@@ -125,23 +127,36 @@ export const SubjectManager = () => {
           <h2 className="text-2xl font-bold text-gray-800">{t('subjectConfig')}</h2>
           <p className="text-gray-500 text-sm">{t('configSubjectsDesc')}</p>
         </div>
-        <div className="bg-white p-1 rounded-lg shadow-sm border border-gray-100 inline-flex">
+        <div className="bg-white p-1 rounded-lg shadow-sm border border-gray-100 inline-flex flex-wrap gap-1">
             <button 
-                onClick={() => setMode('manage')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${mode === 'manage' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+                onClick={() => { setMode('manage'); setFocusedSubjectId('ALL'); }}
+                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors cursor-pointer ${mode === 'manage' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
             >
-                Manage Subjects
+                {language === 'bn' ? 'বিষয়সমূহ ব্যবস্থাপনা' : 'Manage Subjects'}
             </button>
             <button 
-                onClick={() => setMode('assign')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${mode === 'assign' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+                onClick={() => { setMode('assign'); setFocusedSubjectId('ALL'); }}
+                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors cursor-pointer ${mode === 'assign' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
             >
-                Assign to Exam
+                {language === 'bn' ? 'পরীক্ষায় নির্ধারণ' : 'Assign to Exam'}
+            </button>
+            <button 
+                onClick={() => { setMode('blank_marksheet'); setFocusedSubjectId('ALL'); }}
+                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${mode === 'blank_marksheet' ? 'bg-emerald-600 text-white shadow-xs' : 'hover:bg-emerald-50 text-emerald-700'}`}
+            >
+                <FileText size={15} />
+                {language === 'bn' ? 'নম্বর ফর্দ (Blank Mark Sheet)' : 'Blank Mark Sheet'}
             </button>
         </div>
       </div>
 
-      {mode === 'assign' ? (
+      {mode === 'blank_marksheet' ? (
+        <BlankMarksheetView 
+          initialClass={selectedClass} 
+          initialSubjectId={focusedSubjectId} 
+          onBack={() => setMode('manage')} 
+        />
+      ) : mode === 'assign' ? (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex flex-wrap gap-4 items-center mb-6">
                 <div className="flex gap-2 items-center">
@@ -247,11 +262,22 @@ export const SubjectManager = () => {
                             <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">{t('optional')}</span> : 
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">{t('core')}</span>}
                         </td>
-                        <td className="px-4 py-2 flex gap-2">
-                          <button onClick={() => handleEdit(sub)} className="text-blue-600 hover:text-blue-800 cursor-pointer">
+                        <td className="px-4 py-2 flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              setSelectedClass(sub.classLevel);
+                              setFocusedSubjectId(sub.id);
+                              setMode('blank_marksheet');
+                            }}
+                            className="text-emerald-600 hover:text-emerald-800 p-1 hover:bg-emerald-50 rounded cursor-pointer transition-colors"
+                            title={language === 'bn' ? 'এই বিষয়ের নম্বর ফর্দ প্রিন্ট / ডাউনলোড করুন' : 'Print/Download Marksheet'}
+                          >
+                            <FileText size={16} />
+                          </button>
+                          <button onClick={() => handleEdit(sub)} className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded cursor-pointer transition-colors" title="Edit">
                              <Edit2 size={16} />
                           </button>
-                          <button onClick={() => setSubjectToDelete(sub)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
+                          <button onClick={() => setSubjectToDelete(sub)} className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded cursor-pointer transition-colors" title="Delete">
                             <Trash2 size={16} />
                           </button>
                         </td>

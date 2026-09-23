@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Madrasha Management System</title>
+    <title>Madrasah Management System</title>
+    <meta name="description" content="A comprehensive Madrasah Management System for managing students, exams, marks, subjects, and generating professional result cards and tabulation reports." />
+    <meta property="og:title" content="Madrasah Management System" />
+    <meta property="og:description" content="A comprehensive Madrasah Management System for managing students, exams, marks, subjects, and generating professional result cards and tabulation reports." />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       // Guard against libraries trying to overwrite read-only window.fetch
@@ -183,6 +186,21 @@
           page-break-after: always !important;
           break-after: page !important;
           border-bottom: none !important;
+        }
+
+        /* Support for 2-subject Marksheet A4 layout */
+        .a4-sheet-page {
+          width: 210mm !important;
+          max-width: 210mm !important;
+          min-height: 297mm !important;
+          height: 297mm !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          break-inside: avoid !important;
+          margin: 0 !important;
+          padding: 8mm 6mm !important;
+          box-sizing: border-box !important;
+          background: white !important;
         }
 
         /* Ensure borders and colors print correctly */
