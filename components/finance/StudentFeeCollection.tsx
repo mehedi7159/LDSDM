@@ -6,6 +6,7 @@ import {
   Search, 
   Sparkles, 
   Printer, 
+  Download,
   Layers, 
   UserCheck, 
   Calendar,
@@ -31,6 +32,7 @@ import {
   ArrowUpRight,
   Scale
 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 import { 
   FinanceTransaction, 
   ClassFeeStructure, 
@@ -39,6 +41,7 @@ import {
 } from '../../types';
 import { formatBanglaNumber, generateVoucherNo, amountToBengaliWords } from '../../services/utils';
 import { Button } from '../ui/Button';
+import { DuesPrintModal } from './DuesPrintModal';
 
 // Payment Behavioral Profile Types
 export type PaymentBehaviorType = 'REGULAR' | 'DELAYED' | 'PARTIAL' | 'CHRONIC_DUE' | 'SCHOLARSHIP';
@@ -67,6 +70,8 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   onNavigateTab,
 }) => {
   const isBn = language === 'bn';
+  const { schoolProfile } = useApp();
+  const [isDuesPrintOpen, setIsDuesPrintOpen] = useState(false);
 
   // Active Sub-Tab View
   const [activeSubTab, setActiveSubTab] = useState<
@@ -1194,15 +1199,24 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
               </p>
             </div>
 
-            {/* Print Dues Sheet */}
+            {/* Print & PDF Dues Sheet */}
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => window.print()}
+                onClick={() => setIsDuesPrintOpen(true)}
                 size="sm"
                 variant="secondary"
-                className="text-xs font-bold"
+                className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 text-xs font-bold"
               >
-                <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                <span>{isBn ? 'পিডিএফ ডাউনলোড' : 'Download PDF'}</span>
+              </Button>
+              <Button
+                onClick={() => setIsDuesPrintOpen(true)}
+                size="sm"
+                variant="primary"
+                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
                 <span>{isBn ? 'বকেয়া শিট প্রিন্ট' : 'Print Due Sheet'}</span>
               </Button>
             </div>
@@ -1591,6 +1605,18 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </table>
           </div>
         </div>
+      )}
+
+      {/* Dues Print & PDF Export Modal */}
+      {isDuesPrintOpen && (
+        <DuesPrintModal
+          dueList={filteredDueList}
+          classFilter={dueClassFilter}
+          behaviorFilter={dueBehaviorFilter}
+          schoolProfile={schoolProfile}
+          language={language}
+          onClose={() => setIsDuesPrintOpen(false)}
+        />
       )}
 
     </div>

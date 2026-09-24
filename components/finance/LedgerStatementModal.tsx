@@ -68,41 +68,23 @@ export const LedgerStatementModal: React.FC<LedgerStatementModalProps> = ({
     if (!printContentRef.current || isDownloadingPdf) return;
     setIsDownloadingPdf(true);
 
-    const stage = document.createElement('div');
-    stage.style.position = 'fixed';
-    stage.style.left = '-9999px';
-    stage.style.top = '-9999px';
-    stage.style.width = '794px'; // A4 width
-    stage.style.backgroundColor = '#ffffff';
-    stage.style.zIndex = '-1000';
-    document.body.appendChild(stage);
-
     try {
-      const clone = printContentRef.current.cloneNode(true) as HTMLElement;
-      clone.style.width = '794px';
-      clone.style.margin = '0';
-      clone.style.padding = '24px';
-      clone.style.backgroundColor = '#ffffff';
-      clone.style.boxSizing = 'border-box';
+      const element = printContentRef.current;
+      const originalScrollTop = element.scrollTop;
+      element.scrollTop = 0;
 
-      clone.querySelectorAll('*').forEach((el: any) => {
-        if (el.style) {
-          el.style.boxShadow = 'none';
-          if (el.style.outline) el.style.outline = 'none';
-        }
-        el.classList.remove('shadow-2xl', 'shadow-xl', 'shadow-lg', 'shadow-md', 'shadow-sm', 'shadow');
-      });
-
-      stage.appendChild(clone);
-      await new Promise(resolve => setTimeout(resolve, 80));
-
-      const canvas = await html2canvas(clone, {
+      const canvas = await html2canvas(element, {
         scale: 2.0,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: document.documentElement.offsetWidth,
       });
+
+      element.scrollTop = originalScrollTop;
 
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
       const pdf = new jsPDF({
@@ -135,9 +117,6 @@ export const LedgerStatementModal: React.FC<LedgerStatementModalProps> = ({
       console.error('Statement PDF error, fallback to print:', err);
       window.print();
     } finally {
-      if (document.body.contains(stage)) {
-        document.body.removeChild(stage);
-      }
       setIsDownloadingPdf(false);
     }
   };

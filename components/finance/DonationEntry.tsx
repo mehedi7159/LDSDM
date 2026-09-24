@@ -118,17 +118,17 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Main Form (8 Cols) */}
-      <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+      <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <HeartHandshake className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <HeartHandshake className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-lg font-black text-slate-900">
                 {isBn ? 'দান, সদকা, যাকাত ও অনুদান কাউন্টার' : 'Donations, Sadaqa & Grants Counter'}
               </h2>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 font-medium">
                 {isBn ? 'সাধারণ দান, যাকাত, চামড়া ও দাতা সদস্যদের হাদিয়া এন্ট্রি ও রসিদ' : 'Record donations with instant printable receipt'}
               </p>
             </div>
@@ -138,10 +138,10 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Fund Selector Pills */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              {isBn ? 'দানের তহবিল ও খাত নির্ধারণ করুন *' : 'Select Target Fund *'}
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {isBn ? 'দানের তহবিল ও ফান্ড নির্বাচন করুন *' : 'Select Target Fund *'}
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {(Object.keys(FUND_METAS) as FundType[]).map(fund => {
                 const info = FUND_METAS[fund];
                 const isSelected = fundType === fund;
@@ -150,15 +150,15 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
                     key={fund}
                     type="button"
                     onClick={() => handleFundChange(fund)}
-                    className={`text-left p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                    className={`text-left p-3 rounded-xl border text-sm font-bold transition-all duration-200 ${
                       isSelected 
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-500/20 shadow-2xs' 
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-500/20 shadow-xs scale-[1.01]' 
                         : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span>{isBn ? info.nameBn : info.name}</span>
-                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
                     </div>
                   </button>
                 );
@@ -168,18 +168,18 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
 
           {/* Preset Quick Amount Buttons */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              {isBn ? 'দানের পরিমাণ নির্বাচন / টাইপ করুন (টাকা) *' : 'Donation Amount (BDT) *'}
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {isBn ? 'দানের পরিমাণ নির্বাচন বা টাইপ করুন (টাকা) *' : 'Donation Amount (BDT) *'}
             </label>
-            <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
               {presetAmounts.map(val => (
                 <button
                   key={val}
                   type="button"
                   onClick={() => setAmount(val)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold font-mono transition-all ${
                     amount === val 
-                      ? 'bg-emerald-600 text-white shadow-2xs' 
+                      ? 'bg-emerald-600 text-white shadow-xs' 
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
@@ -189,13 +189,13 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
             </div>
 
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">৳</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-base">৳</span>
               <input
                 type="number"
                 value={amount || ''}
                 onChange={(e) => setAmount(Number(e.target.value))}
                 placeholder="0"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3.5 py-2.5 text-base text-slate-900 font-black font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-3 text-lg text-slate-900 font-black font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 required
               />
             </div>
@@ -204,7 +204,7 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
           {/* Row: Donor Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'দানকারী / দাতার নাম *' : 'Donor Name *'}
               </label>
               <input
@@ -212,13 +212,13 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
                 value={donorName}
                 onChange={(e) => setDonorName(e.target.value)}
                 placeholder={isBn ? 'যেমন: হাজী মো. আব্দুল হাই' : 'e.g. Haji Md. Abdul Hai'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'মোবাইল নম্বর' : 'Phone / Mobile'}
               </label>
               <input
@@ -226,7 +226,7 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
                 value={donorPhone}
                 onChange={(e) => setDonorPhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
           </div>
@@ -234,7 +234,7 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
           {/* Donor Address & Specific Subcategory */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'ঠিকানা / পরিচিতি / দেশ' : 'Address / Organization / Country'}
               </label>
               <input
@@ -242,18 +242,18 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
                 value={donorAddress}
                 onChange={(e) => setDonorAddress(e.target.value)}
                 placeholder={isBn ? 'যেমন: যুক্তরাজ্য প্রবাসী / গ্রাম: মিরপুর' : 'e.g. UK Expatriate / Local'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'দানের নির্দিষ্ট খাত *' : 'Donation Category *'}
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               >
                 <option value="GENERAL_DONATION">{isBn ? 'সাধারণ দান ও হাদিয়া' : 'General Donation'}</option>
                 <option value="ZAKAT_FITRA">{isBn ? 'যাকাত, ফিতরা ও সদকা' : 'Zakat & Fitra'}</option>
@@ -270,13 +270,13 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
           {/* Payment Method, Date, Ref */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'পরিশোধ মাধ্যম *' : 'Payment Method *'}
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               >
                 <option value="CASH">{isBn ? 'নগদ ক্যাশ (Cash)' : 'Cash'}</option>
                 <option value="BKASH">{isBn ? 'বিকাশ (bKash)' : 'bKash'}</option>
@@ -287,20 +287,20 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'তারিখ *' : 'Date *'}
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'চেক / ট্রানজেকশন নং' : 'Reference / TrxID'}
               </label>
               <input
@@ -308,7 +308,7 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
                 value={referenceNo}
                 onChange={(e) => setReferenceNo(e.target.value)}
                 placeholder={isBn ? 'ঐচ্ছিক' : 'Optional'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
           </div>
@@ -316,7 +316,7 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
           {/* Description & Collector */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'মন্তব্য / উদ্দেশ্য' : 'Description / Remarks'}
               </label>
               <input
@@ -324,30 +324,30 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={isBn ? 'যেমন: মরহুম পিতার ইসালে সওয়াবের নিয়তে দান' : 'Remarks'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 {isBn ? 'গ্রহণকারী কর্মকর্তা' : 'Received By'}
               </label>
               <input
                 type="text"
                 value={collectedBy}
                 onChange={(e) => setCollectedBy(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Submit */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
             <Button
               type="submit"
               size="md"
               variant="primary"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 font-bold text-xs"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2.5 font-bold text-sm shadow-sm hover:shadow-md transition-all"
             >
               <Printer className="w-4 h-4 mr-2" />
               {isBn ? 'দান গ্রহণ করুন ও রসিদ দিন' : 'Accept Donation & Print Receipt'}
@@ -358,28 +358,28 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
 
       {/* Right Column (4 Cols): Benefits & Shariah Note */}
       <div className="lg:col-span-4 space-y-4">
-        <div className="bg-gradient-to-br from-emerald-800 to-teal-900 text-white rounded-2xl p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-emerald-100 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300" />
+        <div className="bg-gradient-to-br from-emerald-800 to-teal-950 text-white rounded-2xl p-6 shadow-sm">
+          <h3 className="text-base font-extrabold text-emerald-100 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-amber-300" />
             {isBn ? 'স্বচ্ছ ও বরকতময় হিসাবরক্ষণ' : 'Shariah Fund Management'}
           </h3>
 
-          <p className="mt-3 text-xs text-emerald-100/90 leading-relaxed">
+          <p className="mt-3 text-sm text-emerald-100/90 leading-relaxed font-medium">
             {isBn 
               ? 'মাদ্রাসার যাকাত, লিল্লাহ ও উন্নয়ন ফান্ড সম্পূর্ণ আলাদাভাবে সংরক্ষিত হয়। প্রতিটি দানের জন্য অফিস কপি ও দাতা কপি সহ রসিদ তৈরি হয়।'
               : 'Every donation is tagged with Shariah-compliant fund segregation and audited receipts.'}
           </p>
 
-          <div className="mt-4 pt-3 border-t border-emerald-700/80 space-y-2 text-xs">
-            <div className="flex items-center gap-2">
+          <div className="mt-4 pt-4 border-t border-emerald-700/80 space-y-3 text-sm font-medium">
+            <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{isBn ? 'যাকাত ও ফিতরা ফান্ড পৃথক সংরক্ষণ' : 'Strict Zakat Segregation'}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{isBn ? 'ডিজিটাল ভাউচার ও সিরিয়াল ট্র্যাকিং' : 'Sequential Voucher Generation'}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{isBn ? 'দাতা সদস্যদের স্থায়ী ডাটাবেজ' : 'Permanent Donor Records'}</span>
             </div>
