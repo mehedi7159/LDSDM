@@ -1,12 +1,12 @@
 {
-  "projectId": "amazing-dragon-wx6pd",
-  "appId": "1:169458414411:web:6393abdb232f877148aece",
-  "apiKey": "AIzaSyAMQ0ekzMOEeVtDLjXyhlqDyD0zaF6txjk",
-  "authDomain": "amazing-dragon-wx6pd.firebaseapp.com",
+  "projectId": "gen-lang-client-0692995380",
+  "appId": "1:533040661269:web:567a1ebf33736a0a935f1c",
+  "apiKey": "AIzaSyAkxflqrxnxRvu7QHU6fBAVqAex1cZZXLY",
+  "authDomain": "gen-lang-client-0692995380.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-remixmadrashares-c9cf5740-6efd-4d02-8af4-293ed58abf4b",
-  "storageBucket": "amazing-dragon-wx6pd.firebasestorage.app",
-  "messagingSenderId": "169458414411",
+  "storageBucket": "gen-lang-client-0692995380.firebasestorage.app",
+  "messagingSenderId": "533040661269",
   "measurementId": "",
-  "oAuthClientId": "169458414411-m2onkp3g3hques37kr2ddpugt9l4lure.apps.googleusercontent.com",
+  "oAuthClientId": "533040661269-kol19ak3nj1jaacmtieg839s2bgkrqhb.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

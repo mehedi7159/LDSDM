@@ -67,11 +67,11 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!donorName.trim()) {
-      alert(isBn ? 'দয়া করে দানকারী / দাতার নাম লিখুন!' : 'Please enter donor name!');
+      showToast(isBn ? 'দয়া করে দানকারী / দাতার নাম লিখুন!' : 'Please enter donor name!');
       return;
     }
     if (!amount || amount <= 0) {
-      alert(isBn ? 'দানের পরিমাণ সঠিক নয়!' : 'Please enter a valid amount!');
+      showToast(isBn ? 'দানের পরিমাণ সঠিক নয়!' : 'Please enter a valid amount!');
       return;
     }
 

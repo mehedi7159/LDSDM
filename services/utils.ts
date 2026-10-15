@@ -392,3 +392,74 @@ export const generateVoucherNo = (type: 'INCOME' | 'EXPENSE', existingData: any[
   const serial = String(count + 1).padStart(4, '0');
   return `${prefix}-${year}-${serial}`;
 };
+
+/**
+ * Safely parse any date value (ISO string, number, Firestore Timestamp, Date object)
+ */
+export const parseSafeDate = (val: any): Date | null => {
+  if (!val) return null;
+  try {
+    if (val instanceof Date) {
+      return isNaN(val.getTime()) ? null : val;
+    }
+    if (typeof val === 'object' && typeof val.toDate === 'function') {
+      const d = val.toDate();
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof val === 'object' && typeof val.seconds === 'number') {
+      const d = new Date(val.seconds * 1000);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof val === 'number') {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof val === 'string') {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) return d;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+/**
+ * Safely format date without ever returning "Invalid Date"
+ */
+export const formatSafeDate = (val: any, locale: string | boolean = 'bn-BD'): string => {
+  const resolvedLocale = typeof locale === 'boolean' ? (locale ? 'bn-BD' : 'en-US') : locale;
+  const d = parseSafeDate(val);
+  if (!d) return val && typeof val === 'string' && val.trim() ? val : (resolvedLocale === 'bn-BD' ? 'তারিখ অনুপলব্ধ' : 'N/A');
+  return d.toLocaleDateString(resolvedLocale);
+};
+
+/**
+ * Safely format time without ever returning "Invalid Date"
+ */
+export const formatSafeTime = (val: any, locale: string | boolean = 'bn-BD'): string => {
+  const resolvedLocale = typeof locale === 'boolean' ? (locale ? 'bn-BD' : 'en-US') : locale;
+  const d = parseSafeDate(val);
+  if (!d) return '';
+  return d.toLocaleTimeString(resolvedLocale);
+};
+
+/**
+ * Safely format date and time without ever returning "Invalid Date"
+ */
+export const formatSafeDateTime = (
+  val: any, 
+  locale: string | boolean = 'bn-BD', 
+  options?: Intl.DateTimeFormatOptions
+): string => {
+  const resolvedLocale = typeof locale === 'boolean' ? (locale ? 'bn-BD' : 'en-US') : locale;
+  const d = parseSafeDate(val);
+  if (!d) return val && typeof val === 'string' && val.trim() ? val : (resolvedLocale === 'bn-BD' ? 'তারিখ ও সময় অনুপলব্ধ' : 'N/A');
+  return d.toLocaleString(resolvedLocale, options || {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};

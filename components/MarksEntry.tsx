@@ -2,19 +2,28 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
-import { CheckCircle2, Loader2, Sparkles, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle } from 'lucide-react';
+import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
+import { EmptyState } from './ui/EmptyState';
+
+interface MarksEntryProps {
+  onNavigate?: (tab: string) => void;
+}
 
 interface EditableMark {
-    obtained: number | string;
-    cq: number | string;
-    mcq: number | string;
-    isAbsent: boolean;
+  obtained: number | string;
+  cq: number | string;
+  mcq: number | string;
+  practical: number | string;
+  isAbsent: boolean;
+  absentReason?: string;
 }
 
 interface MarkValidationResult {
   isValid: boolean;
   cqError?: string;
   mcqError?: string;
+  practicalError?: string;
   obtainedError?: string;
 }
 
@@ -26,6 +35,7 @@ const validateStudentMark = (mark: EditableMark | undefined, subject: Subject | 
   let isValid = true;
   let cqError: string | undefined;
   let mcqError: string | undefined;
+  let practicalError: string | undefined;
   let obtainedError: string | undefined;
 
   // Validate CQ
@@ -52,8 +62,20 @@ const validateStudentMark = (mark: EditableMark | undefined, subject: Subject | 
     }
   }
 
-  // Validate Simple Obtained (when subject has no CQ/MCQ breakdown)
-  if (!subject.hasCQ && !subject.hasMCQ && mark.obtained !== '' && mark.obtained !== undefined && mark.obtained !== null) {
+  // Validate Practical
+  if (subject.hasPractical && mark.practical !== '' && mark.practical !== undefined && mark.practical !== null) {
+    const numPractical = parseFloat(String(mark.practical));
+    const maxPractical = subject.practicalMarks ?? 0;
+    if (isNaN(numPractical) || numPractical < 0 || numPractical > maxPractical) {
+      isValid = false;
+      practicalError = numPractical > maxPractical 
+        ? (language === 'bn' ? `সর্বোচ্চ ${formatNumber(maxPractical, language)}` : `Max: ${maxPractical}`)
+        : (language === 'bn' ? 'অবৈধ নম্বর' : 'Invalid');
+    }
+  }
+
+  // Validate Simple Obtained (when subject has no breakdown)
+  if (!subject.hasCQ && !subject.hasMCQ && !subject.hasPractical && mark.obtained !== '' && mark.obtained !== undefined && mark.obtained !== null) {
     const numObtained = parseFloat(String(mark.obtained));
     const maxObtained = subject.fullMarks;
     if (isNaN(numObtained) || numObtained < 0 || numObtained > maxObtained) {
@@ -64,8 +86,8 @@ const validateStudentMark = (mark: EditableMark | undefined, subject: Subject | 
     }
   }
 
-  // Validate Total Sum if CQ/MCQ breakdown exceeds fullMarks
-  if ((subject.hasCQ || subject.hasMCQ) && mark.obtained !== '' && mark.obtained !== undefined && mark.obtained !== null) {
+  // Validate Total Sum if breakdown exceeds fullMarks
+  if ((subject.hasCQ || subject.hasMCQ || subject.hasPractical) && mark.obtained !== '' && mark.obtained !== undefined && mark.obtained !== null) {
     const numObtained = parseFloat(String(mark.obtained));
     if (numObtained > subject.fullMarks) {
       isValid = false;
@@ -73,11 +95,28 @@ const validateStudentMark = (mark: EditableMark | undefined, subject: Subject | 
     }
   }
 
-  return { isValid, cqError, mcqError, obtainedError };
+  return { isValid, cqError, mcqError, practicalError, obtainedError };
 };
 
-export const MarksEntry = () => {
-  const { students, subjects, marks, exams, classes, bulkUpdateMarks, t, language } = useApp();
+export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
+  const { 
+    students, 
+    subjects, 
+    marks, 
+    exams, 
+    classes, 
+    bulkUpdateMarks, 
+    t, 
+    language, 
+    authContext,
+    isSuperAdmin,
+    isAdmin,
+    authUser,
+    adminEmail
+  } = useApp();
+
+  const isOwnerAdmin = isSuperAdmin || (authUser?.email || adminEmail || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedExamId, setSelectedExamId] = useState<string>('');
@@ -89,26 +128,38 @@ export const MarksEntry = () => {
   const pendingUpdatesRef = useRef<Record<string, EditableMark>>({});
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // DataScope Scoping
+  const userScope = authContext?.dataScopes;
+  const isScopedTeacher = !isSuperAdmin && !isAdmin && userScope && (!userScope.allClasses || !userScope.allSubjects);
+
+  const allowedClasses = classes.filter(cls => {
+    if (!isScopedTeacher || !userScope?.classes) return true;
+    return userScope.classes.includes(cls.id) || userScope.classes.includes(cls.name);
+  });
+
   const classSubjectsInThisClass = subjects.filter(s => s.classLevel === selectedClass);
   const subjectsAssignedToThisExam = classSubjectsInThisClass.filter(s => s.examIds && s.examIds.includes(selectedExamId));
   const anySubjectAssignedToThisExam = subjectsAssignedToThisExam.length > 0;
 
   const filteredSubjects = classSubjectsInThisClass
     .filter(s => {
-        if (anySubjectAssignedToThisExam) {
-            return s.examIds && s.examIds.includes(selectedExamId);
-        }
-        return true;
+      if (isScopedTeacher && userScope?.subjects) {
+        if (!userScope.subjects.includes(s.id)) return false;
+      }
+      if (anySubjectAssignedToThisExam) {
+        return s.examIds && s.examIds.includes(selectedExamId);
+      }
+      return true;
     });
-  
+
   // Select first subject default
   useEffect(() => {
     if (filteredSubjects.length > 0) {
-        if (!selectedSubjectId || !filteredSubjects.find(s => s.id === selectedSubjectId)) {
-             setSelectedSubjectId(filteredSubjects[0].id);
-        }
+      if (!selectedSubjectId || !filteredSubjects.find(s => s.id === selectedSubjectId)) {
+        setSelectedSubjectId(filteredSubjects[0].id);
+      }
     } else {
-        setSelectedSubjectId('');
+      setSelectedSubjectId('');
     }
   }, [selectedClass, selectedExamId, subjects, filteredSubjects]);
 
@@ -120,22 +171,21 @@ export const MarksEntry = () => {
   }, [exams]);
 
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+  const currentExam = exams.find(e => e.id === selectedExamId);
+  const isExamLocked = !isOwnerAdmin && (currentExam?.status === 'FINALIZED' || currentExam?.status === 'ARCHIVED');
 
   const enrolledStudents = students
     .filter(s => s.classLevel === selectedClass && s.status === 'Active' && !s.isFormer)
     .filter(s => {
-        if (!currentSubject || !currentSubject.group || currentSubject.group === 'All') return true;
-        return s.group === currentSubject.group;
+      if (!currentSubject || !currentSubject.group || currentSubject.group === 'All') return true;
+      return s.group === currentSubject.group;
     })
     .sort((a, b) => {
-        if (sortBy === 'id') {
-            return (a.studentId || '').localeCompare(b.studentId || '');
-        }
-        return a.name.localeCompare(b.name);
+      if (sortBy === 'id') {
+        return (a.studentId || '').localeCompare(b.studentId || '');
+      }
+      return a.name.localeCompare(b.name);
     });
-
-  // Check if any mark in current table has an error
-  const hasAnyInvalidMarks = (Object.values(localMarks) as EditableMark[]).some(m => !validateStudentMark(m, currentSubject, language).isValid);
 
   // Flush any pending auto-save immediately, skipping any invalid records
   const flushPendingSave = useCallback(() => {
@@ -144,7 +194,7 @@ export const MarksEntry = () => {
       saveTimeoutRef.current = null;
     }
     
-    if (!currentSubject || !selectedExamId) return;
+    if (!currentSubject || !selectedExamId || isExamLocked) return;
     const studentIds = Object.keys(pendingUpdatesRef.current);
     if (studentIds.length === 0) return;
 
@@ -157,7 +207,6 @@ export const MarksEntry = () => {
       
       const validation = validateStudentMark(markData, currentSubject, language);
       if (!validation.isValid) {
-        // Keep in pending, DO NOT auto-save invalid value
         remainingPending[studentId] = markData;
         return;
       }
@@ -165,6 +214,7 @@ export const MarksEntry = () => {
       const obtained = markData.obtained === '' ? 0 : Number(markData.obtained);
       const cq = markData.cq === '' ? undefined : Number(markData.cq);
       const mcq = markData.mcq === '' ? undefined : Number(markData.mcq);
+      const practical = markData.practical === '' ? undefined : Number(markData.practical);
 
       updates.push({
         studentId,
@@ -173,8 +223,12 @@ export const MarksEntry = () => {
         obtained,
         obtainedCQ: cq,
         obtainedMCQ: mcq,
+        obtainedPractical: practical,
         isAbsent: markData.isAbsent,
-        total: currentSubject.fullMarks
+        absentReason: markData.absentReason,
+        total: currentSubject.fullMarks,
+        fullMarks: currentSubject.fullMarks,
+        passMarks: currentSubject.passMarks
       });
     });
 
@@ -188,31 +242,32 @@ export const MarksEntry = () => {
     } else {
       setSaveStatus('saved');
     }
-  }, [currentSubject, selectedExamId, bulkUpdateMarks, language]);
+  }, [currentSubject, selectedExamId, bulkUpdateMarks, language, isExamLocked]);
 
   // Initialize local state when selection changes
   useEffect(() => {
-      // Flush before switching
-      flushPendingSave();
+    flushPendingSave();
 
-      const initialMarks: Record<string, EditableMark> = {};
-      if (currentSubject && selectedExamId) {
-          enrolledStudents.forEach(student => {
-              const existing = marks.find(m => 
-                m.studentId === student.id && 
-                m.subjectId === currentSubject.id && 
-                m.examId === selectedExamId
-              );
-              initialMarks[student.id] = {
-                  obtained: existing ? existing.obtained : '',
-                  cq: existing?.obtainedCQ ?? '',
-                  mcq: existing?.obtainedMCQ ?? '',
-                  isAbsent: existing?.isAbsent ?? false,
-              };
-          });
-      }
-      setLocalMarks(initialMarks);
-      setSaveStatus('saved');
+    const initialMarks: Record<string, EditableMark> = {};
+    if (currentSubject && selectedExamId) {
+      enrolledStudents.forEach(student => {
+        const existing = marks.find(m => 
+          m.studentId === student.id && 
+          m.subjectId === currentSubject.id && 
+          m.examId === selectedExamId
+        );
+        initialMarks[student.id] = {
+          obtained: existing ? existing.obtained : '',
+          cq: existing?.obtainedCQ ?? '',
+          mcq: existing?.obtainedMCQ ?? '',
+          practical: existing?.obtainedPractical ?? '',
+          isAbsent: existing?.isAbsent ?? false,
+          absentReason: existing?.absentReason ?? ''
+        };
+      });
+    }
+    setLocalMarks(initialMarks);
+    setSaveStatus('saved');
   }, [selectedClass, selectedSubjectId, selectedExamId, currentSubject?.id]); 
 
   // Clean up on unmount
@@ -222,369 +277,360 @@ export const MarksEntry = () => {
     };
   }, [flushPendingSave]);
 
-  const handleInputChange = (studentId: string, field: 'obtained' | 'cq' | 'mcq' | 'isAbsent', value: string | boolean) => {
-      setLocalMarks(prev => {
-          const current = prev[studentId] || { obtained: '', cq: '', mcq: '', isAbsent: false };
-          const updated = { ...current, [field]: value };
-          
-          if (field === 'isAbsent' && value === true) {
-              updated.obtained = 0;
-              updated.cq = 0;
-              updated.mcq = 0;
-          }
+  const handleInputChange = (studentId: string, field: 'obtained' | 'cq' | 'mcq' | 'practical' | 'isAbsent' | 'absentReason', value: string | boolean) => {
+    if (isExamLocked) return;
 
-          // Auto-calculate total if CQ/MCQ present
-          if (currentSubject && (currentSubject.hasCQ || currentSubject.hasMCQ) && field !== 'isAbsent') {
-              const parse = (val: string | number | undefined | null) => (val === undefined || val === null || val === '') ? 0 : parseFloat(String(val));
-              
-              if (field === 'cq' || field === 'mcq') {
-                  const cqVal = field === 'cq' ? parse(value as string) : parse(current.cq);
-                  const mcqVal = field === 'mcq' ? parse(value as string) : parse(current.mcq);
-                  updated.obtained = cqVal + mcqVal;
-              }
-          }
-
-          // Track pending update
-          pendingUpdatesRef.current[studentId] = updated;
-
-          const validation = validateStudentMark(updated, currentSubject, language);
-          if (!validation.isValid) {
-            setSaveStatus('error');
-            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-          } else {
-            setSaveStatus('saving');
-            // Schedule auto-save for valid entries
-            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-            const delay = field === 'isAbsent' ? 50 : 300;
-            saveTimeoutRef.current = setTimeout(() => {
-              flushPendingSave();
-            }, delay);
-          }
-
-          return { ...prev, [studentId]: updated };
-      });
-  };
-
-  const handleInputBlur = () => {
-    // Immediately persist on blur for extra guarantee (skips invalid)
-    flushPendingSave();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number, currentField: 'cq' | 'mcq' | 'obtained') => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-
-      const isShift = e.shiftKey;
-      let targetIndex = currentIndex;
-      let targetField = currentField;
-
-      if (!isShift) {
-        // Forward navigation: move to next field in current student or next student
-        if (currentField === 'cq' && currentSubject?.hasMCQ) {
-          targetField = 'mcq';
-        } else {
-          targetIndex = currentIndex + 1;
-          targetField = currentSubject?.hasCQ ? 'cq' : currentSubject?.hasMCQ ? 'mcq' : 'obtained';
-        }
-
-        while (targetIndex < enrolledStudents.length) {
-          const nextStudent = enrolledStudents[targetIndex];
-          const isAbsent = localMarks[nextStudent.id]?.isAbsent;
-          if (!isAbsent) {
-            const el = document.getElementById(`mark-input-${targetField}-${targetIndex}`) as HTMLInputElement | null;
-            if (el && !el.disabled && !el.readOnly) {
-              el.focus();
-              try { el.select(); } catch {}
-              el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              return;
-            }
-          }
-          if (targetField === 'cq' && currentSubject?.hasMCQ) {
-            targetField = 'mcq';
-          } else {
-            targetIndex++;
-            targetField = currentSubject?.hasCQ ? 'cq' : currentSubject?.hasMCQ ? 'mcq' : 'obtained';
-          }
-        }
-      } else {
-        // Backward navigation with Shift + Enter
-        if (currentField === 'mcq' && currentSubject?.hasCQ) {
-          targetField = 'cq';
-        } else {
-          targetIndex = currentIndex - 1;
-          targetField = currentSubject?.hasMCQ ? 'mcq' : currentSubject?.hasCQ ? 'cq' : 'obtained';
-        }
-
-        while (targetIndex >= 0) {
-          const prevStudent = enrolledStudents[targetIndex];
-          const isAbsent = localMarks[prevStudent.id]?.isAbsent;
-          if (!isAbsent) {
-            const el = document.getElementById(`mark-input-${targetField}-${targetIndex}`) as HTMLInputElement | null;
-            if (el && !el.disabled && !el.readOnly) {
-              el.focus();
-              try { el.select(); } catch {}
-              el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              return;
-            }
-          }
-          if (targetField === 'mcq' && currentSubject?.hasCQ) {
-            targetField = 'cq';
-          } else {
-            targetIndex--;
-            targetField = currentSubject?.hasMCQ ? 'mcq' : currentSubject?.hasCQ ? 'cq' : 'obtained';
-          }
-        }
+    setLocalMarks(prev => {
+      const current = prev[studentId] || { obtained: '', cq: '', mcq: '', practical: '', isAbsent: false };
+      const updated = { ...current, [field]: value };
+      
+      if (field === 'isAbsent' && value === true) {
+        updated.obtained = 0;
+        updated.cq = 0;
+        updated.mcq = 0;
+        updated.practical = 0;
       }
-    }
+
+      // Auto-calculate total if breakdown present
+      if (currentSubject && (currentSubject.hasCQ || currentSubject.hasMCQ || currentSubject.hasPractical) && field !== 'isAbsent' && field !== 'absentReason') {
+        const parse = (val: string | number | undefined | null) => (val === undefined || val === null || val === '') ? 0 : parseFloat(String(val));
+        
+        const cqVal = field === 'cq' ? parse(value as string) : parse(current.cq);
+        const mcqVal = field === 'mcq' ? parse(value as string) : parse(current.mcq);
+        const practicalVal = field === 'practical' ? parse(value as string) : parse(current.practical);
+        updated.obtained = cqVal + mcqVal + practicalVal;
+      }
+
+      pendingUpdatesRef.current[studentId] = updated;
+
+      const validation = validateStudentMark(updated, currentSubject, language);
+      if (!validation.isValid) {
+        setSaveStatus('error');
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      } else {
+        setSaveStatus('saving');
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        const delay = field === 'isAbsent' ? 50 : 350;
+        saveTimeoutRef.current = setTimeout(() => {
+          flushPendingSave();
+        }, delay);
+      }
+
+      return {
+        ...prev,
+        [studentId]: updated
+      };
+    });
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header & Status */}
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">{t('marks')}</h2>
-          <p className="text-gray-500 text-sm">{language === 'bn' ? 'নম্বর লিখলেই স্বয়ংক্রিয়ভাবে সেভ হবে। সর্বোচ্চ নম্বরের বেশি লিখলে সতর্কবার্তা দেখাবে।' : 'Marks auto-save as you type. Exceeding marks are highlighted in red.'}</p>
+          <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+            <Sparkles className="text-blue-600" size={24} />
+            {language === 'bn' ? 'নম্বর এন্ট্রি ও মূল্যায়ন' : 'Marks Entry & Evaluation'}
+          </h2>
+          <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+            {language === 'bn' 
+              ? 'শিক্ষক দায়িত্ব অনুযায়ী নম্বর ইনপুট, CQ/MCQ/ব্যবহারিক হিসাব ও স্বয়ংক্রিয় গ্রেড নির্ধারণ' 
+              : 'Fast marks entry with component breakdown, auto-validation, and instant GPA preview.'}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-            {hasAnyInvalidMarks || saveStatus === 'error' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-300 shadow-xs animate-pulse">
-                <AlertTriangle size={14} className="text-red-600" />
-                {language === 'bn' ? 'সর্বোচ্চ ছাড়িয়েছে (অটো-সেভ স্থগিত)' : 'Max limit exceeded (Auto-save paused)'}
-              </span>
-            ) : saveStatus === 'saving' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-xs">
-                <Loader2 size={13} className="animate-spin text-amber-600" />
-                {language === 'bn' ? 'সংরক্ষিত হচ্ছে...' : 'Auto-saving...'}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs transition-all">
-                <CheckCircle2 size={14} className="text-emerald-600" />
-                {language === 'bn' ? 'অটো-সেভ সক্রিয়' : 'Auto-saved'}
-              </span>
+
+        <div className="flex items-center gap-3">
+          {isExamLocked && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-800 text-xs font-bold rounded-xl border border-amber-200">
+              <Lock size={14} />
+              {language === 'bn' ? 'পরীক্ষা চূড়ান্তকৃত (Read-Only)' : 'Finalized (Read-Only)'}
+            </div>
+          )}
+
+          {/* Auto-Save Indicator */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-bold rounded-xl border border-gray-200">
+            {saveStatus === 'saving' && (
+              <>
+                <Loader2 size={13} className="animate-spin text-blue-600" />
+                <span className="text-blue-600">{language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}</span>
+              </>
             )}
+            {saveStatus === 'saved' && (
+              <>
+                <CheckCircle2 size={13} className="text-emerald-600" />
+                <span className="text-emerald-700">{language === 'bn' ? 'সংরক্ষিত' : 'Saved'}</span>
+              </>
+            )}
+            {saveStatus === 'error' && (
+              <>
+                <AlertTriangle size={13} className="text-amber-600" />
+                <span className="text-amber-700">{language === 'bn' ? 'ত্রুটি' : 'Error'}</span>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={flushPendingSave}
+            disabled={isExamLocked}
+            className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+          >
+            <Save size={14} />
+            {language === 'bn' ? 'সেভ করুন' : 'Save'}
+          </button>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">{t('exam')}</label>
-          <select 
-            className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900"
-            value={selectedExamId}
-            onChange={(e) => setSelectedExamId(e.target.value)}
-          >
-            {exams.map(e => <option key={e.id} value={e.id}>{language === 'bn' ? (e.nameBn || e.name) : e.name} ({formatNumber(e.academicYear, language)})</option>)}
-          </select>
+      {/* Control Filters */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-center w-full sm:w-auto">
+          {/* Exam Selector */}
+          <div className="flex flex-col gap-1 w-full">
+            <label className="text-[11px] font-bold text-gray-600">{t('exam')}:</label>
+            <select
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-bold bg-white text-gray-900 w-full"
+              value={selectedExamId}
+              onChange={e => setSelectedExamId(e.target.value)}
+            >
+              {exams.map(e => (
+                <option key={e.id} value={e.id}>{language === 'bn' ? (e.nameBn || e.name) : e.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Class Selector */}
+          <div className="flex flex-col gap-1 w-full">
+            <label className="text-[11px] font-bold text-gray-600">{t('selectClass')}:</label>
+            <select
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-bold bg-white text-gray-900 w-full"
+              value={selectedClass}
+              onChange={e => setSelectedClass(e.target.value)}
+            >
+              {allowedClasses.map(c => (
+                <option key={c.id} value={c.name}>{language === 'bn' ? (c.displayName || c.nameBn || c.name) : c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subject Selector */}
+          <div className="flex flex-col gap-1 w-full">
+            <label className="text-[11px] font-bold text-gray-600">{t('subject')}:</label>
+            <select
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-bold bg-white text-gray-900 w-full sm:min-w-[200px]"
+              value={selectedSubjectId}
+              onChange={e => setSelectedSubjectId(e.target.value)}
+            >
+              {filteredSubjects.map(s => (
+                <option key={s.id} value={s.id}>
+                  {language === 'bn' ? (s.nameBn || s.name) : s.name} (পূর্ণমান: {s.fullMarks})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">{t('class')}</label>
-          <select 
-            className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900"
-            value={selectedClass}
-            onChange={(e) => {
-                setSelectedClass(e.target.value);
+
+        {/* Total Students Counter */}
+        <div className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 self-stretch sm:self-auto text-center sm:text-left">
+          {language === 'bn' ? `শিক্ষার্থী সংখ্যা: ${enrolledStudents.length} জন` : `Enrolled Students: ${enrolledStudents.length}`}
+        </div>
+      </div>
+
+      {/* Marks Table or Friendly Empty State */}
+      {filteredSubjects.length === 0 ? (
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs">
+          <EmptyState
+            icon={BookOpen}
+            title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো বিষয় যোগ করা হয়নি` : `No subjects found in ${selectedClass}`}
+            description={language === 'bn' 
+              ? 'নম্বর এন্ট্রি শুরু করার জন্য প্রথমে এই শ্রেণীর পাঠ্যক্রমে নির্ধারিত বিষয়সমূহ যুক্ত করুন।' 
+              : 'Add curriculum subjects for this class to start recording examination marks.'}
+            actionLabel={language === 'bn' ? 'প্রথম বিষয় যোগ করুন' : 'Add First Subject'}
+            actionIcon={Plus}
+            onAction={() => onNavigate ? onNavigate('subjects') : null}
+            secondaryActionLabel={allowedClasses.length > 1 ? (language === 'bn' ? 'অন্য শ্রেণি নির্বাচন' : 'Change Class') : undefined}
+            onSecondaryAction={() => {
+              const nextClass = allowedClasses.find(c => c.name !== selectedClass);
+              if (nextClass) setSelectedClass(nextClass.name);
             }}
-          >
-            {classes.map(c => <option key={c.id} value={c.name}>{language === 'bn' ? (t(`cls_${c.name.replace(' ', '')}` as any) || c.name) : c.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">{t('subject')}</label>
-          <select 
-            className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900"
-            value={selectedSubjectId}
-            onChange={(e) => setSelectedSubjectId(e.target.value)}
-          >
-            {filteredSubjects.map(s => <option key={s.id} value={s.id}>{language === 'bn' ? (s.nameBn || s.name) : s.name} ({formatNumber(s.fullMarks, language)})</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Sort By</label>
-          <select 
-            className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'name' | 'id')}
-          >
-            <option value="name">Name</option>
-            <option value="id">Student ID</option>
-          </select>
-        </div>
-      </div>
-
-      {currentSubject && enrolledStudents.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 text-left">
-              <tr>
-                <th className="px-3 py-3 text-xs font-semibold text-gray-500 uppercase w-14 text-center">S/N</th>
-                <th className="px-3 py-3 text-xs font-semibold text-gray-500 uppercase w-28 text-center">{t('studentId')}</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right pr-4">{t('name')}</th>
-                {currentSubject.hasCQ && <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-32">{t('cqMarks')} <span className="text-gray-400 font-mono">({currentSubject.cqMarks})</span></th>}
-                {currentSubject.hasMCQ && <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-32">{t('mcqMarks')} <span className="text-gray-400 font-mono">({currentSubject.mcqMarks})</span></th>}
-                <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-32">{t('totalMarks')} <span className="text-gray-400 font-mono">({currentSubject.fullMarks})</span></th>
-                <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-20">{t('absent')}</th>
-                <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase text-center w-20">{t('status')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {enrolledStudents.map((student, index) => {
-                const markData = localMarks[student.id] || { obtained: '', cq: '', mcq: '', isAbsent: false };
-                const validation = validateStudentMark(markData, currentSubject, language);
-
-                // Logic to determine fail status in row visual only
-                let isFail = false;
-                const ob = Number(markData.obtained);
-                const cq = Number(markData.cq);
-                const mcq = Number(markData.mcq);
-                
-                if (currentSubject.hasCQ && cq < (currentSubject.cqPassMarks ?? 0)) isFail = true;
-                if (currentSubject.hasMCQ && mcq < (currentSubject.mcqPassMarks ?? 0)) isFail = true;
-                if (!currentSubject.hasCQ && !currentSubject.hasMCQ && markData.obtained !== '' && ob < currentSubject.passMarks) isFail = true;
-                
-                // If nothing entered, don't show fail/pass
-                const hasEntry = markData.obtained !== '' || markData.cq !== '' || markData.mcq !== '';
-
-                return (
-                  <tr key={student.id} className={`transition-colors hover:bg-blue-50/40 focus-within:bg-blue-50/80 ${!validation.isValid ? 'bg-red-50/30' : ''}`}>
-                    <td className="px-3 py-2.5 font-medium text-gray-500 text-center text-sm">{formatNumber(index + 1, language)}</td>
-                    <td className="px-3 py-2.5 font-medium text-gray-900 text-center font-mono text-sm">{student.studentId ? formatNumber(student.studentId, language) : '-'}</td>
-                    <td className="px-4 py-2.5 text-right pr-4">
-                        <div className="font-bold text-gray-900 font-bangla text-base leading-snug">{language === 'bn' ? (student.nameBn || student.name) : student.name}</div>
-                        <div className="text-[11px] text-gray-400 font-mono">ID: {student.studentId ? formatNumber(student.studentId, language) : '-'}</div>
-                    </td>
-                    
-                    {currentSubject.hasCQ && (
-                        <td className="px-2 py-2.5 text-center align-top">
-                            <div className="flex flex-col items-center">
-                              <input 
-                                  id={`mark-input-cq-${index}`}
-                                  type="number" min="0" max={currentSubject.cqMarks}
-                                  className={`w-24 border rounded px-2.5 py-1.5 outline-none text-center transition-all
-                                      ${validation.cqError 
-                                        ? 'bg-red-50 border-red-500 text-red-700 font-bold ring-2 ring-red-400 focus:ring-red-500' 
-                                        : 'bg-white text-gray-900 border-gray-300 focus:ring-2 focus:ring-blue-500'}
-                                      ${markData.isAbsent ? 'opacity-50' : ''}
-                                  `}
-                                  value={markData.cq ?? ''}
-                                  placeholder="0"
-                                  disabled={markData.isAbsent}
-                                  onChange={(e) => handleInputChange(student.id, 'cq', e.target.value)}
-                                  onBlur={handleInputBlur}
-                                  onKeyDown={(e) => handleKeyDown(e, index, 'cq')}
-                              />
-                              {validation.cqError && (
-                                <span className="text-[10px] text-red-600 font-bold mt-1 bg-red-100/90 px-1.5 py-0.5 rounded shadow-xs whitespace-nowrap animate-bounce">
-                                  ⚠️ {validation.cqError}
-                                </span>
-                              )}
-                            </div>
-                        </td>
-                    )}
-
-                    {currentSubject.hasMCQ && (
-                        <td className="px-2 py-2.5 text-center align-top">
-                            <div className="flex flex-col items-center">
-                              <input 
-                                  id={`mark-input-mcq-${index}`}
-                                  type="number" min="0" max={currentSubject.mcqMarks}
-                                  className={`w-24 border rounded px-2.5 py-1.5 outline-none text-center transition-all
-                                      ${validation.mcqError 
-                                        ? 'bg-red-50 border-red-500 text-red-700 font-bold ring-2 ring-red-400 focus:ring-red-500' 
-                                        : 'bg-white text-gray-900 border-gray-300 focus:ring-2 focus:ring-blue-500'}
-                                      ${markData.isAbsent ? 'opacity-50' : ''}
-                                  `}
-                                  value={markData.mcq ?? ''}
-                                  placeholder="0"
-                                  disabled={markData.isAbsent}
-                                  onChange={(e) => handleInputChange(student.id, 'mcq', e.target.value)}
-                                  onBlur={handleInputBlur}
-                                  onKeyDown={(e) => handleKeyDown(e, index, 'mcq')}
-                              />
-                              {validation.mcqError && (
-                                <span className="text-[10px] text-red-600 font-bold mt-1 bg-red-100/90 px-1.5 py-0.5 rounded shadow-xs whitespace-nowrap animate-bounce">
-                                  ⚠️ {validation.mcqError}
-                                </span>
-                              )}
-                            </div>
-                        </td>
-                    )}
-
-                    <td className="px-2 py-2.5 text-center align-top">
-                      <div className="flex flex-col items-center">
-                        {/* Only editable if NO CQ/MCQ, else read-only sum */}
-                        <input 
-                          id={`mark-input-obtained-${index}`}
-                          type="number" 
-                          min="0"
-                          max={currentSubject.fullMarks}
-                          className={`w-24 border rounded px-2.5 py-1.5 outline-none transition-all text-center
-                              ${currentSubject.hasCQ || currentSubject.hasMCQ ? 'bg-gray-100 font-bold' : 'bg-white'}
-                              ${validation.obtainedError 
-                                ? 'bg-red-50 border-red-500 text-red-700 font-bold ring-2 ring-red-400 focus:ring-red-500' 
-                                : ((isFail || markData.isAbsent) && hasEntry ? 'border-red-300 text-red-700' : 'border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500')}
-                              ${markData.isAbsent ? 'opacity-50' : ''}
-                          `}
-                          value={markData.obtained ?? ''}
-                          placeholder="0"
-                          readOnly={!!(currentSubject.hasCQ || currentSubject.hasMCQ) || markData.isAbsent}
-                          onChange={(e) => handleInputChange(student.id, 'obtained', e.target.value)}
-                          onBlur={handleInputBlur}
-                          onKeyDown={(e) => !currentSubject.hasCQ && !currentSubject.hasMCQ && handleKeyDown(e, index, 'obtained')}
-                        />
-                        {validation.obtainedError && (
-                          <span className="text-[10px] text-red-600 font-bold mt-1 bg-red-100/90 px-1.5 py-0.5 rounded shadow-xs whitespace-nowrap animate-bounce">
-                            ⚠️ {validation.obtainedError}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-2 py-2.5 text-center align-middle">
-                        <input 
-                            type="checkbox"
-                            className="w-5 h-5 cursor-pointer accent-blue-600"
-                            checked={markData.isAbsent}
-                            onChange={(e) => handleInputChange(student.id, 'isAbsent', e.target.checked)}
-                        />
-                    </td>
-                    <td className="px-2 py-2.5 text-center align-middle">
-                        {!validation.isValid ? (
-                            <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-red-100 text-red-700 border border-red-300">
-                                {language === 'bn' ? 'অবৈধ' : 'Invalid'}
-                            </span>
-                        ) : markData.isAbsent ? (
-                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-700">
-                                {t('absent')}
-                            </span>
-                        ) : hasEntry ? (
-                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isFail ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                {isFail ? t('fail') : t('pass')}
-                            </span>
-                        ) : <span className="text-xs text-gray-400">-</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          </div>
-          
-          <div className="bg-gray-50/70 px-6 py-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Sparkles size={14} className="text-indigo-500" />
-              {language === 'bn' 
-                ? 'কীবোর্ডের Enter চেপে পরবর্তী শিক্ষার্থীর নম্বরে যান। প্রতিটি সঠিক নম্বর স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।' 
-                : 'Press Enter to jump to the next student. Valid entries auto-save in real-time.'}
-            </span>
-            <span className="font-mono text-gray-400">
-              Total {enrolledStudents.length} {language === 'bn' ? 'শিক্ষার্থী' : 'students'}
-            </span>
-          </div>
+            badge={language === 'bn' ? 'বিষয় অনুপস্থিত' : 'No Subjects'}
+          />
         </div>
       ) : (
-        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-          <p className="text-gray-500">Select a valid class and subject, or add students/subjects to get started.</p>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50/80 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 font-bold text-gray-700 text-xs w-16">রোল</th>
+                  <th className="px-4 py-3 font-bold text-gray-700 text-xs">শিক্ষার্থীর নাম</th>
+                  
+                  {currentSubject?.hasCQ && (
+                    <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-28">
+                      CQ ({currentSubject.cqMarks})
+                    </th>
+                  )}
+
+                  {currentSubject?.hasMCQ && (
+                    <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-28">
+                      MCQ ({currentSubject.mcqMarks})
+                    </th>
+                  )}
+
+                  {currentSubject?.hasPractical && (
+                    <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-28">
+                      ব্যবহারিক ({currentSubject.practicalMarks})
+                    </th>
+                  )}
+
+                  <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-32">
+                    মোট নম্বর ({currentSubject?.fullMarks || 100})
+                  </th>
+
+                  <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-24">গ্রেড / GPA</th>
+                  <th className="px-4 py-3 font-bold text-gray-700 text-xs text-center w-24">অনুপস্থিত</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {enrolledStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 sm:p-12">
+                      <EmptyState
+                        icon={Users}
+                        title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো শিক্ষার্থী নেই` : `No students enrolled in ${selectedClass}`}
+                        description={language === 'bn' 
+                          ? 'নম্বর ইনপুট করার জন্য প্রথমে এই শ্রেণিতে শিক্ষার্থী তালিকাভুক্ত বা ভর্তি করতে হবে।' 
+                          : 'Enroll students into this class to begin recording exam marks.'}
+                        actionLabel={language === 'bn' ? 'শিক্ষার্থী ভর্তি করুন' : 'Add First Student'}
+                        actionIcon={UserPlus}
+                        onAction={() => onNavigate ? onNavigate('students') : null}
+                        secondaryActionLabel={allowedClasses.length > 1 ? (language === 'bn' ? 'অন্য শ্রেণি দেখুন' : 'Switch Class') : undefined}
+                        onSecondaryAction={() => {
+                          const nextClass = allowedClasses.find(c => c.name !== selectedClass);
+                          if (nextClass) setSelectedClass(nextClass.name);
+                        }}
+                        badge={language === 'bn' ? 'শূন্য শিক্ষার্থী' : 'No Students'}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                enrolledStudents.map((student, idx) => {
+                  const mark = localMarks[student.id] || { obtained: '', cq: '', mcq: '', practical: '', isAbsent: false };
+                  const validation = validateStudentMark(mark, currentSubject, language);
+                  const isAbsent = mark.isAbsent;
+                  
+                  const numObtained = mark.obtained === '' ? 0 : Number(mark.obtained);
+                  const grade = calculateSubjectGrade(numObtained, currentSubject?.fullMarks, undefined, isAbsent, currentSubject?.passMarks);
+                  const gradePoint = calculateSubjectGradePoint(numObtained, currentSubject?.fullMarks, undefined, isAbsent, currentSubject?.passMarks);
+
+                  return (
+                    <tr key={student.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                      <td className="px-4 py-3 font-mono font-bold text-xs text-gray-700">
+                        {student.rollNumber || student.roll || idx + 1}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-gray-900 text-xs font-bangla">{student.name}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{student.studentId || student.id}</div>
+                      </td>
+
+                      {/* CQ Input */}
+                      {currentSubject?.hasCQ && (
+                        <td className="px-3 py-2 text-center">
+                          <input
+                            type="number"
+                            disabled={isAbsent || isExamLocked}
+                            value={mark.cq ?? ''}
+                            onChange={e => handleInputChange(student.id, 'cq', e.target.value)}
+                            className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
+                              validation.cqError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-white text-gray-900 border-gray-200'
+                            } disabled:bg-gray-100 disabled:opacity-50`}
+                            placeholder="0"
+                          />
+                        </td>
+                      )}
+
+                      {/* MCQ Input */}
+                      {currentSubject?.hasMCQ && (
+                        <td className="px-3 py-2 text-center">
+                          <input
+                            type="number"
+                            disabled={isAbsent || isExamLocked}
+                            value={mark.mcq ?? ''}
+                            onChange={e => handleInputChange(student.id, 'mcq', e.target.value)}
+                            className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
+                              validation.mcqError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-white text-gray-900 border-gray-200'
+                            } disabled:bg-gray-100 disabled:opacity-50`}
+                            placeholder="0"
+                          />
+                        </td>
+                      )}
+
+                      {/* Practical Input */}
+                      {currentSubject?.hasPractical && (
+                        <td className="px-3 py-2 text-center">
+                          <input
+                            type="number"
+                            disabled={isAbsent || isExamLocked}
+                            value={mark.practical ?? ''}
+                            onChange={e => handleInputChange(student.id, 'practical', e.target.value)}
+                            className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
+                              validation.practicalError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-white text-gray-900 border-gray-200'
+                            } disabled:bg-gray-100 disabled:opacity-50`}
+                            placeholder="0"
+                          />
+                        </td>
+                      )}
+
+                      {/* Total Obtained */}
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="number"
+                          disabled={isAbsent || isExamLocked || currentSubject?.hasCQ || currentSubject?.hasMCQ || currentSubject?.hasPractical}
+                          value={mark.obtained ?? ''}
+                          onChange={e => handleInputChange(student.id, 'obtained', e.target.value)}
+                          className={`w-24 text-center border rounded-lg p-1.5 text-xs font-black ${
+                            validation.obtainedError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-gray-50 text-blue-900 border-gray-200'
+                          } disabled:opacity-75`}
+                          placeholder="0"
+                        />
+                      </td>
+
+                      {/* Grade / GPA preview */}
+                      <td className="px-3 py-2 text-center">
+                        {isAbsent ? (
+                          <span className="text-[11px] font-bold text-gray-400">ABS</span>
+                        ) : (
+                          <div className="inline-flex items-center gap-1">
+                            <span className={`text-xs font-black px-2 py-0.5 rounded ${
+                              grade === 'F' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {grade}
+                            </span>
+                            <span className="text-[10px] font-mono text-gray-500">
+                              ({gradePoint.toFixed(1)})
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Absent Toggle */}
+                      <td className="px-4 py-2 text-center">
+                        <label className="inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={isExamLocked}
+                            checked={isAbsent}
+                            onChange={e => handleInputChange(student.id, 'isAbsent', e.target.checked)}
+                            className="rounded text-red-600 focus:ring-red-500"
+                          />
+                        </label>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
+      </div>
       )}
     </div>
   );

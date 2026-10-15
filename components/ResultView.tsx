@@ -4,8 +4,11 @@ import html2canvas from 'html2canvas';
 import { useApp } from '../context/AppContext';
 import { calculateGrade, calculateTotalGPA, formatNumber, getAutoRemark, getConsolidatedMark } from '../services/utils';
 import { Student, Exam } from '../types';
-import { Download, FileText, FileSpreadsheet, User, Users, Loader2, ChevronDown } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, User, Users, Loader2, ChevronDown, ShieldCheck, QrCode, MessageSquare } from 'lucide-react';
 import { Button } from './ui/Button';
+import { ResultVerificationQR } from './ResultVerificationQR';
+import { VerifiedResultModal } from './VerifiedResultModal';
+import { ResultSmsNotificationModal } from './ResultSmsNotificationModal';
 
 // Declare html2pdf for TypeScript
 declare const html2pdf: any;
@@ -86,6 +89,7 @@ interface ResultViewProps {
 export const TermResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
   const { schoolProfile, students, subjects, marks, remarks, language, t, exams } = useApp();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const primaryColor = 'border-[#008080]';
   const bgColor = 'bg-[#f4f9f4]';
@@ -296,29 +300,54 @@ export const TermResultCard: React.FC<ResultViewProps> = ({ student, exam }) => 
         </div>
       </div>
 
-      {/* Footer Signatures */}
-      {(schoolProfile.showGuardianSignature !== false || schoolProfile.showHeadmasterSignature !== false) && (
-        <div className="grid grid-cols-2 gap-12 mt-auto pt-12 text-center relative z-10">
+      {/* Footer Signatures & QR Verification */}
+      <div className="mt-auto pt-8 relative z-10">
+        <div className="flex items-end justify-between gap-4">
           <div className="flex flex-col items-start">
             {schoolProfile.showGuardianSignature !== false && (
-              <div className="w-48 border-t border-black pt-2 text-left">
-                <p className="font-medium text-gray-900">{t('guardianSignature')}</p>
+              <div className="w-36 sm:w-44 border-t border-black pt-1.5 text-left">
+                <p className="font-medium text-xs text-gray-900">{t('guardianSignature')}</p>
               </div>
             )}
           </div>
+
+          <div className="flex items-center justify-center">
+            <ResultVerificationQR
+              student={student}
+              exam={exam}
+              schoolProfile={schoolProfile}
+              language={language}
+              size={50}
+              onOpenVerification={() => setShowVerifyModal(true)}
+            />
+          </div>
+
           <div className="flex flex-col items-end">
             {schoolProfile.showHeadmasterSignature !== false && (
               <>
-                <div className="h-12 flex items-end justify-center mb-2">
-                  {schoolProfile.signatureUrl && <img src={schoolProfile.signatureUrl} alt="Signature" className="h-12 object-contain" referrerPolicy="no-referrer" />}
+                <div className="h-10 flex items-end justify-center mb-1">
+                  {schoolProfile.signatureUrl && <img src={schoolProfile.signatureUrl} alt="Signature" className="h-9 object-contain" referrerPolicy="no-referrer" />}
                 </div>
-                <div className="w-48 border-t border-black pt-2 text-right">
-                  <p className="font-medium text-gray-900">{language === 'bn' ? (schoolProfile.headMasterNameBn || schoolProfile.headMasterName) : schoolProfile.headMasterName}</p>
+                <div className="w-36 sm:w-44 border-t border-black pt-1.5 text-right">
+                  <p className="font-medium text-xs text-gray-900">{language === 'bn' ? (schoolProfile.headMasterNameBn || schoolProfile.headMasterName) : schoolProfile.headMasterName}</p>
                 </div>
               </>
             )}
           </div>
         </div>
+      </div>
+
+      {showVerifyModal && (
+        <VerifiedResultModal
+          student={student}
+          exam={exam}
+          schoolProfile={schoolProfile}
+          subjects={subjects}
+          marks={marks}
+          exams={exams}
+          language={language}
+          onClose={() => setShowVerifyModal(false)}
+        />
       )}
       </div>
     </div>
@@ -328,6 +357,7 @@ export const TermResultCard: React.FC<ResultViewProps> = ({ student, exam }) => 
 export const BWTermResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
   const { schoolProfile, students, subjects, marks, remarks, language, t, exams } = useApp();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Filter subjects
   const classSubjectsInThisClass = subjects.filter(s => s.classLevel === student.classLevel);
@@ -549,34 +579,59 @@ export const BWTermResultCard: React.FC<ResultViewProps> = ({ student, exam }) =
            </div>
         </div>
 
-        {/* Signatures */}
-        <div className="flex justify-between items-end mt-auto text-xs pb-1 select-none">
+        {/* Signatures & Verification */}
+        <div className="flex justify-between items-end mt-auto text-xs pb-1 select-none gap-2">
            {schoolProfile.showGuardianSignature !== false ? (
-             <div className="w-40 text-center flex flex-col items-center">
-               <div className="h-9 w-full" />
+             <div className="w-32 text-center flex flex-col items-center">
+               <div className="h-8 w-full" />
                <div className="w-full border-t-[1.5px] border-black pt-1 font-bold" style={{ borderTop: '1.5px solid #000000' }}>{t('guardian')}</div>
              </div>
-           ) : <div className="w-40"></div>}
+           ) : <div className="w-32"></div>}
            {schoolProfile.showClassTeacherSignature !== false ? (
-             <div className="w-36 text-center flex flex-col items-center">
-               <div className="h-9 w-full" />
+             <div className="w-32 text-center flex flex-col items-center">
+               <div className="h-8 w-full" />
                <div className="w-full border-t-[1.5px] border-black pt-1 font-bold" style={{ borderTop: '1.5px solid #000000' }}>{t('classTeacher')}</div>
              </div>
-           ) : <div className="w-36"></div>}
+           ) : <div className="w-32"></div>}
+           
+           <div className="flex items-center justify-center px-1">
+             <ResultVerificationQR
+               student={student}
+               exam={exam}
+               schoolProfile={schoolProfile}
+               language={language}
+               size={46}
+               onOpenVerification={() => setShowVerifyModal(true)}
+             />
+           </div>
+
            {schoolProfile.showHeadmasterSignature !== false ? (
-             <div className="w-48 text-center flex flex-col items-center">
-               <div className="h-9 flex items-center justify-center relative w-full">
+             <div className="w-40 text-center flex flex-col items-center">
+               <div className="h-8 flex items-center justify-center relative w-full">
                  {schoolProfile.signatureUrl && (
-                   <img src={schoolProfile.signatureUrl} className="h-8 object-contain" alt="Signature" referrerPolicy="no-referrer" />
+                   <img src={schoolProfile.signatureUrl} className="h-7 object-contain" alt="Signature" referrerPolicy="no-referrer" />
                  )}
                </div>
                <div className="w-full border-t-[1.5px] border-black pt-1" style={{ borderTop: '1.5px solid #000000' }}>
-                 <div className="font-bold">{language === 'bn' ? (schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'প্রধান শিক্ষক') : (schoolProfile.headMasterName || 'Headmaster')}</div>
-                 <div className="text-[10px] text-gray-700 uppercase font-semibold">{t('headMaster')}</div>
+                 <div className="font-bold text-[11px]">{language === 'bn' ? (schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'প্রধান শিক্ষক') : (schoolProfile.headMasterName || 'Headmaster')}</div>
+                 <div className="text-[9px] text-gray-700 uppercase font-semibold">{t('headMaster')}</div>
                </div>
              </div>
-           ) : <div className="w-48"></div>}
+           ) : <div className="w-40"></div>}
         </div>
+
+        {showVerifyModal && (
+          <VerifiedResultModal
+            student={student}
+            exam={exam}
+            schoolProfile={schoolProfile}
+            subjects={subjects}
+            marks={marks}
+            exams={exams}
+            language={language}
+            onClose={() => setShowVerifyModal(false)}
+          />
+        )}
 
       </div>
     </div>
@@ -586,6 +641,7 @@ export const BWTermResultCard: React.FC<ResultViewProps> = ({ student, exam }) =
 export const PremiumDakhilResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
   const { schoolProfile, students, subjects, marks, remarks, language, t, exams } = useApp();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Filter subjects
   const classSubjectsInThisClass = subjects.filter(s => s.classLevel === student.classLevel);
@@ -1072,6 +1128,18 @@ export const PremiumDakhilResultCard: React.FC<ResultViewProps> = ({ student, ex
                     </div>
                   </div>
                 </div>
+
+                {/* QR Verification Seal */}
+                <div className="pl-1 flex items-center justify-center">
+                  <ResultVerificationQR
+                    student={student}
+                    exam={exam}
+                    schoolProfile={schoolProfile}
+                    language={language}
+                    size={44}
+                    onOpenVerification={() => setShowVerifyModal(true)}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -1122,6 +1190,19 @@ export const PremiumDakhilResultCard: React.FC<ResultViewProps> = ({ student, ex
           </div>
         </div>
 
+        {showVerifyModal && (
+          <VerifiedResultModal
+            student={student}
+            exam={exam}
+            schoolProfile={schoolProfile}
+            subjects={subjects}
+            marks={marks}
+            exams={exams}
+            language={language}
+            onClose={() => setShowVerifyModal(false)}
+          />
+        )}
+
       </div>
     </div>
   );
@@ -1130,6 +1211,7 @@ export const PremiumDakhilResultCard: React.FC<ResultViewProps> = ({ student, ex
 export const PremiumColoredResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
   const { schoolProfile, students, subjects, marks, remarks, language, t, exams } = useApp();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Filter subjects
   const classSubjectsInThisClass = subjects.filter(s => s.classLevel === student.classLevel);
@@ -1488,38 +1570,50 @@ export const PremiumColoredResultCard: React.FC<ResultViewProps> = ({ student, e
         </div>
 
         {/* Clear Signatures with official dotted line labels and Headmaster seal area */}
-        <div className="flex justify-between mt-6 items-end text-[11px] pb-1 relative z-10 select-none">
+        <div className="flex justify-between mt-6 items-end text-[11px] pb-1 relative z-10 select-none gap-2">
           {/* Guardian Signature */}
-          <div className="w-48 text-center flex flex-col items-center">
+          <div className="w-40 text-center flex flex-col items-center">
             {schoolProfile.showGuardianSignature !== false ? (
               <>
-                <div className="h-12" />
+                <div className="h-10" />
                 <div className="w-11/12 border-t border-[#1e3a8a]/40 pb-1" />
                 <span className="font-extrabold text-indigo-950 uppercase">{t('guardian') || 'Guardian Signature'}</span>
                 <span className="text-[9.5px] text-gray-500 font-bold font-bangla leading-none">অভিভাবকের স্বাক্ষর</span>
               </>
-            ) : <div className="w-48" />}
+            ) : <div className="w-40" />}
           </div>
 
           {/* Class Teacher Signature */}
-          <div className="w-40 text-center flex flex-col items-center">
+          <div className="w-36 text-center flex flex-col items-center">
             {schoolProfile.showClassTeacherSignature !== false ? (
               <>
-                <div className="h-12" />
+                <div className="h-10" />
                 <div className="w-11/12 border-t border-[#1e3a8a]/40 pb-1" />
                 <span className="font-extrabold text-indigo-950 uppercase">{t('classTeacher') || 'Class Teacher'}</span>
                 <span className="text-[9.5px] text-gray-500 font-bold font-bangla leading-none">শ্রেণী শিক্ষকের স্বাক্ষর</span>
               </>
-            ) : <div className="w-40" />}
+            ) : <div className="w-36" />}
+          </div>
+
+          {/* QR Verification Seal */}
+          <div className="flex items-center justify-center px-1">
+            <ResultVerificationQR
+              student={student}
+              exam={exam}
+              schoolProfile={schoolProfile}
+              language={language}
+              size={48}
+              onOpenVerification={() => setShowVerifyModal(true)}
+            />
           </div>
 
           {/* Headmaster Signature */}
-          <div className="w-56 text-center flex flex-col items-center flex-grow-0 shrink-0">
+          <div className="w-48 text-center flex flex-col items-center flex-grow-0 shrink-0">
             {schoolProfile.showHeadmasterSignature !== false ? (
               <div className="relative flex flex-col items-center w-full">
-                <div className="h-12 flex items-center justify-center relative w-full">
+                <div className="h-10 flex items-center justify-center relative w-full">
                   {schoolProfile.signatureUrl && (
-                    <img src={schoolProfile.signatureUrl} className="absolute bottom-0.5 h-10 object-contain animate-fade-in shadow-sm" alt="Signature" referrerPolicy="no-referrer" />
+                    <img src={schoolProfile.signatureUrl} className="absolute bottom-0.5 h-9 object-contain animate-fade-in shadow-sm" alt="Signature" referrerPolicy="no-referrer" />
                   )}
                 </div>
                 
@@ -1531,9 +1625,22 @@ export const PremiumColoredResultCard: React.FC<ResultViewProps> = ({ student, e
                   {language === 'bn' ? 'সুপার' : 'Super'}
                 </span>
               </div>
-            ) : <div className="w-56" />}
+            ) : <div className="w-48" />}
           </div>
         </div>
+
+        {showVerifyModal && (
+          <VerifiedResultModal
+            student={student}
+            exam={exam}
+            schoolProfile={schoolProfile}
+            subjects={subjects}
+            marks={marks}
+            exams={exams}
+            language={language}
+            onClose={() => setShowVerifyModal(false)}
+          />
+        )}
 
       </div>
     </div>
@@ -1543,6 +1650,7 @@ export const PremiumColoredResultCard: React.FC<ResultViewProps> = ({ student, e
 export const PremiumRoyalResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
   const { schoolProfile, students, subjects, marks, remarks, language, t, exams } = useApp();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Filter subjects
   const classSubjectsInThisClass = subjects.filter(s => s.classLevel === student.classLevel);
@@ -1961,39 +2069,51 @@ export const PremiumRoyalResultCard: React.FC<ResultViewProps> = ({ student, exa
         </div>
 
         {/* FULL SYMMETRICAL CLEAN SIGNATURE SECTION (Perfect alignment across page footer) */}
-        <div className="flex justify-between mt-auto items-end text-[10.5px] pb-1 border-t border-gray-100 pt-3 relative z-10 select-none">
+        <div className="flex justify-between mt-auto items-end text-[10.5px] pb-1 border-t border-gray-100 pt-3 relative z-10 select-none gap-2">
           
           {/* Guardian Signature block */}
-          <div className="w-44 text-center flex flex-col items-center">
+          <div className="w-36 text-center flex flex-col items-center">
             {schoolProfile.showGuardianSignature !== false ? (
               <>
-                <div className="h-10" />
+                <div className="h-9" />
                 <div className="w-11/12 border-t border-stone-300 pb-0.5 mt-1" />
                 <span className="font-extrabold text-gray-800 uppercase">{t('guardian') || 'Guardian'}</span>
                 <span className="text-[8.5px] text-gray-500 font-bold font-bangla leading-none">অভিভাবকের স্বাক্ষর</span>
               </>
-            ) : <div className="w-44" />}
+            ) : <div className="w-36" />}
           </div>
 
           {/* Class Teacher Signature block */}
-          <div className="w-44 text-center flex flex-col items-center">
+          <div className="w-36 text-center flex flex-col items-center">
             {schoolProfile.showClassTeacherSignature !== false ? (
               <>
-                <div className="h-10" />
+                <div className="h-9" />
                 <div className="w-11/12 border-t border-stone-300 pb-0.5 mt-1" />
                 <span className="font-extrabold text-gray-800 uppercase">{t('classTeacher') || 'Class Teacher'}</span>
                 <span className="text-[8.5px] text-gray-500 font-bold font-bangla leading-none">শ্রেণী শিক্ষকের স্বাক্ষর</span>
               </>
-            ) : <div className="w-44" />}
+            ) : <div className="w-36" />}
+          </div>
+
+          {/* QR Verification Seal */}
+          <div className="flex items-center justify-center px-1">
+            <ResultVerificationQR
+              student={student}
+              exam={exam}
+              schoolProfile={schoolProfile}
+              language={language}
+              size={48}
+              onOpenVerification={() => setShowVerifyModal(true)}
+            />
           </div>
 
           {/* Symmetrical Headmaster / Super Signature block */}
-          <div className="w-56 text-center flex flex-col items-center">
+          <div className="w-48 text-center flex flex-col items-center">
             {schoolProfile.showHeadmasterSignature !== false ? (
               <div className="flex flex-col items-center w-full">
-                <div className="h-10 flex items-center justify-center relative w-full select-none">
+                <div className="h-9 flex items-center justify-center relative w-full select-none">
                   {schoolProfile.signatureUrl && (
-                    <img src={schoolProfile.signatureUrl} className="absolute bottom-0 h-9 object-contain animate-fade-in" alt="Signature Seal" referrerPolicy="no-referrer" />
+                    <img src={schoolProfile.signatureUrl} className="absolute bottom-0 h-8 object-contain animate-fade-in" alt="Signature Seal" referrerPolicy="no-referrer" />
                   )}
                 </div>
                 
@@ -2005,10 +2125,23 @@ export const PremiumRoyalResultCard: React.FC<ResultViewProps> = ({ student, exa
                   {language === 'bn' ? 'অধ্যক্ষ / সুপার' : 'PRINCIPAL / HEADMASTER'}
                 </span>
               </div>
-            ) : <div className="w-56" />}
+            ) : <div className="w-48" />}
           </div>
 
         </div>
+
+        {showVerifyModal && (
+          <VerifiedResultModal
+            student={student}
+            exam={exam}
+            schoolProfile={schoolProfile}
+            subjects={subjects}
+            marks={marks}
+            exams={exams}
+            language={language}
+            onClose={() => setShowVerifyModal(false)}
+          />
+        )}
 
       </div>
     </div>
@@ -2018,6 +2151,7 @@ export const PremiumRoyalResultCard: React.FC<ResultViewProps> = ({ student, exa
 export const MonthlyResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
   const { schoolProfile, students, subjects, marks, remarks, language, t, exams } = useApp();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const primaryColor = 'border-blue-600';
 
@@ -2147,17 +2281,29 @@ export const MonthlyResultCard: React.FC<ResultViewProps> = ({ student, exam }) 
           {failCount > 0 && <span className="font-bold text-red-600">{t('failedSubject')}: {formatNumber(failCount, language)}</span>}
         </div>
         {(schoolProfile.showGuardianSignature !== false || schoolProfile.showHeadmasterSignature !== false) && (
-          <div className="grid grid-cols-2 gap-12 text-center items-end mt-4">
-            <div className="flex flex-col items-center">
+          <div className="flex justify-between items-end mt-4 gap-2">
+            <div className="flex flex-col items-center w-28">
                 {schoolProfile.showGuardianSignature !== false && (
-                  <div className="w-full border-t border-gray-800 pt-1 font-bold">{t('guardianSignature')}</div>
+                  <div className="w-full border-t border-gray-800 pt-1 font-bold text-center">{t('guardianSignature')}</div>
                 )}
             </div>
-            <div className="flex flex-col items-center">
+
+            <div className="flex items-center justify-center">
+              <ResultVerificationQR
+                student={student}
+                exam={exam}
+                schoolProfile={schoolProfile}
+                language={language}
+                size={40}
+                onOpenVerification={() => setShowVerifyModal(true)}
+              />
+            </div>
+
+            <div className="flex flex-col items-center w-36">
                {schoolProfile.showHeadmasterSignature !== false && (
                  <>
                    {schoolProfile.signatureUrl && <img src={schoolProfile.signatureUrl} alt="Signature" className="h-6 object-contain mb-1" referrerPolicy="no-referrer" />}
-                   <div className="w-full border-t border-gray-800 pt-1 font-bold truncate">
+                   <div className="w-full border-t border-gray-800 pt-1 font-bold truncate text-center">
                      {language === 'bn' ? (schoolProfile.headMasterNameBn || schoolProfile.headMasterName) : schoolProfile.headMasterName}
                    </div>
                  </>
@@ -2166,6 +2312,19 @@ export const MonthlyResultCard: React.FC<ResultViewProps> = ({ student, exam }) 
           </div>
         )}
       </div>
+
+      {showVerifyModal && (
+        <VerifiedResultModal
+          student={student}
+          exam={exam}
+          schoolProfile={schoolProfile}
+          subjects={subjects}
+          marks={marks}
+          exams={exams}
+          language={language}
+          onClose={() => setShowVerifyModal(false)}
+        />
+      )}
     </div>
   );
 };
@@ -2174,6 +2333,7 @@ export const MonthlyResultCard: React.FC<ResultViewProps> = ({ student, exam }) 
 export const ResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
   const { schoolProfile, students, subjects, marks, remarks, language, t, exams } = useApp();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Filter subjects for this student's class and exam
   const classSubjectsInThisClass = subjects.filter(s => s.classLevel === student.classLevel);
@@ -2423,25 +2583,37 @@ export const ResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
 
       {/* Footer */}
       {(schoolProfile.showGuardianSignature !== false || schoolProfile.showHeadmasterSignature !== false) && (
-        <div className={`grid grid-cols-2 gap-8 mt-12 text-center relative z-10 items-end ${isCompact ? 'mt-6' : 'mt-12'}`}>
+        <div className={`flex justify-between items-end mt-12 text-center relative z-10 gap-4 ${isCompact ? 'mt-6' : 'mt-12'}`}>
           <div className="flex flex-col items-center">
                <div className="h-[85px] mb-1 flex flex-col items-center justify-end">
                   <div className="h-12" /> {/* Spacer to match Headmaster's signature image */}
                   {schoolProfile.showGuardianSignature !== false && (
-                    <div className="w-40 border-t border-gray-400 pt-1">
-                        <p className="font-bold text-gray-800">{t('guardianSignature')}</p>
+                    <div className="w-36 border-t border-gray-400 pt-1">
+                        <p className="font-bold text-gray-800 text-xs">{t('guardianSignature')}</p>
                         <p className="text-[10px]">&nbsp;</p> {/* Spacer to match Headmaster's title */}
                     </div>
                   )}
                </div>
           </div>
+
+          <div className="flex items-center justify-center mb-2">
+            <ResultVerificationQR
+              student={student}
+              exam={exam}
+              schoolProfile={schoolProfile}
+              language={language}
+              size={52}
+              onOpenVerification={() => setShowVerifyModal(true)}
+            />
+          </div>
+
           <div className="flex flex-col items-center">
                <div className="h-[85px] mb-1 flex flex-col items-center justify-end">
                     {schoolProfile.showHeadmasterSignature !== false && (
                       <>
                         {schoolProfile.signatureUrl ? <img src={schoolProfile.signatureUrl} alt="Signature" className="h-12 object-contain mb-1" referrerPolicy="no-referrer" /> : <div className="h-12" />}
                         <div className="w-40 border-t border-gray-400 pt-1">
-                          <p className="font-bold text-gray-800 truncate max-w-[160px]">{language === 'bn' ? (schoolProfile.headMasterNameBn || schoolProfile.headMasterName) : schoolProfile.headMasterName}</p>
+                          <p className="font-bold text-gray-800 truncate max-w-[160px] text-xs">{language === 'bn' ? (schoolProfile.headMasterNameBn || schoolProfile.headMasterName) : schoolProfile.headMasterName}</p>
                           <p className="text-[10px] text-gray-500 font-semibold uppercase">{t('headMaster')}</p>
                         </div>
                       </>
@@ -2449,6 +2621,19 @@ export const ResultCard: React.FC<ResultViewProps> = ({ student, exam }) => {
                </div> 
           </div>
         </div>
+      )}
+
+      {showVerifyModal && (
+        <VerifiedResultModal
+          student={student}
+          exam={exam}
+          schoolProfile={schoolProfile}
+          subjects={subjects}
+          marks={marks}
+          exams={exams}
+          language={language}
+          onClose={() => setShowVerifyModal(false)}
+        />
       )}
     </div>
   );
@@ -2464,6 +2649,8 @@ export const ResultGenerator = () => {
     const [generationProgress, setGenerationProgress] = useState<string>('');
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [isBatchDownloading, setIsBatchDownloading] = useState(false);
+    const [showPreviewVerifyModal, setShowPreviewVerifyModal] = useState(false);
+    const [showSmsModal, setShowSmsModal] = useState(false);
 
     // Filter students
     const classStudents = students
@@ -2841,6 +3028,17 @@ export const ResultGenerator = () => {
                     </Button>
                 )}
                 {mode === 'individual' && selectedStudentId && (
+                    <Button 
+                        onClick={() => setShowPreviewVerifyModal(true)} 
+                        variant="secondary"
+                        className="bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 flex items-center gap-1.5"
+                        title={language === 'bn' ? 'ডিজিটাল কিউআর কোড ফলাফল যাচাই সনদ প্রিভিউ' : 'Preview Digital QR Verification Record'}
+                    >
+                        <ShieldCheck size={16} className="text-emerald-600" />
+                        <span>{language === 'bn' ? 'QR যাচাই সনদ' : 'Verify QR Record'}</span>
+                    </Button>
+                )}
+                {mode === 'individual' && selectedStudentId && (
                     <Button onClick={handleDownloadIndividualPDF} disabled={isGenerating}>
                         {isGenerating ? (
                             <Loader2 size={16} className="mr-2 animate-spin"/>
@@ -2862,6 +3060,17 @@ export const ResultGenerator = () => {
                     </Button>
                 )}
                 
+                {selectedExam && (
+                    <Button
+                        onClick={() => setShowSmsModal(true)}
+                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                        title={language === 'bn' ? 'অভিভাবকদের মোবাইল নম্বরে ফলাফলের স্বয়ংক্রিয় এসএমএস পাঠান' : 'Send automated Result SMS to parents'}
+                    >
+                        <MessageSquare size={16} />
+                        <span>{language === 'bn' ? 'ফলাফল এসএমএস' : 'Result SMS'}</span>
+                    </Button>
+                )}
+
                 <div className="relative">
                     <Button 
                         variant="secondary" 
@@ -2891,7 +3100,7 @@ export const ResultGenerator = () => {
             </div>
 
             {selectedExam && displayedStudents.length > 0 ? (
-                <div className="print-container">
+                <div className="print-container overflow-x-auto max-w-full pb-6 print:overflow-visible">
                     {(() => {
                         const isCompact = (selectedExam.category === 'Monthly' || selectedExam.category === 'Model');
                         const chunkSize = isCompact ? 2 : 1;
@@ -2967,6 +3176,29 @@ export const ResultGenerator = () => {
                         {mode === 'individual' && !selectedStudentId ? 'Please select a student to view result.' : t('noData')}
                     </p>
                 </div>
+            )}
+
+            {showPreviewVerifyModal && selectedExam && displayedStudents.length > 0 && (
+                <VerifiedResultModal
+                    student={displayedStudents[0]}
+                    exam={selectedExam}
+                    schoolProfile={schoolProfile}
+                    subjects={subjects}
+                    marks={marks}
+                    exams={exams}
+                    language={language}
+                    onClose={() => setShowPreviewVerifyModal(false)}
+                />
+            )}
+
+            {showSmsModal && selectedExam && (
+                <ResultSmsNotificationModal
+                    isOpen={showSmsModal}
+                    onClose={() => setShowSmsModal(false)}
+                    exam={selectedExam}
+                    classLevel={selectedClass}
+                    selectedStudent={mode === 'individual' && selectedStudentId ? classStudents.find(s => s.id === selectedStudentId) : null}
+                />
             )}
         </div>
     );

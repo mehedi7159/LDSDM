@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Users, 
@@ -9,31 +9,43 @@ import {
   Award, 
   AlertCircle, 
   Calendar, 
-  Sparkles,
-  CheckCircle2,
-  XCircle,
-  BarChart3,
-  PieChart as PieIcon,
-  Filter,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  Search,
-  Layers,
-  Clock,
-  ChevronRight,
-  HelpCircle,
-  FileText,
-  AlertTriangle,
-  X,
-  ExternalLink,
-  ShieldAlert,
-  ListChecks,
-  Activity,
-  Check,
-  ChevronDown,
-  UserCheck
+  Sparkles, 
+  CheckCircle2, 
+  XCircle, 
+  BarChart3, 
+  PieChart as PieIcon, 
+  Filter, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Minus, 
+  Search, 
+  Layers, 
+  Clock, 
+  ChevronRight, 
+  HelpCircle, 
+  FileText, 
+  AlertTriangle, 
+  X, 
+  ExternalLink, 
+  ShieldAlert, 
+  ListChecks, 
+  Activity, 
+  Check, 
+  ChevronDown, 
+  UserCheck,
+  PenTool,
+  FileSpreadsheet,
+  Wallet,
+  Settings as SettingsIcon,
+  CreditCard,
+  CheckCheck,
+  Clock4,
+  RefreshCw,
+  Building2,
+  ShieldCheck,
+  Megaphone
 } from 'lucide-react';
+import { NoticeBoardAlertBanner } from './NoticeBoard';
 import { 
   BarChart, 
   Bar, 
@@ -45,194 +57,1029 @@ import {
   ResponsiveContainer, 
   PieChart, 
   Pie, 
-  Cell, 
-  LineChart, 
-  Line 
+  Cell 
 } from 'recharts';
 import { calculateTotalGPA } from '../services/utils';
 import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
+import { DashboardDailyOverview } from './DashboardDailyOverview';
 
+// =========================================================================
+// TYPES FOR MEMOIZED SUB-COMPONENTS
+// =========================================================================
+interface StudentMetrics {
+  total: number;
+  active: number;
+  inactive: number;
+  male: number;
+  female: number;
+}
+
+interface ExamMetrics {
+  total: number;
+  active: number;
+  scheduled: number;
+  finalized: number;
+}
+
+interface EvaluationMetrics {
+  totalExpected: number;
+  totalEntered: number;
+  totalPending: number;
+  progressPercent: number;
+}
+
+interface AcademicHealthMetrics {
+  passRate: number;
+  overallAverageGpa: number;
+  aPlusCount: number;
+}
+
+interface FinanceMetrics {
+  totalIncome: number;
+  totalExpense: number;
+  netBalance: number;
+}
+
+interface StructureMetrics {
+  classesCount: number;
+  subjectsCount: number;
+  teachersCount: number;
+}
+
+interface ExamMatrixItem {
+  examId: string;
+  examName: string;
+  examNameBn?: string;
+  category: string;
+  status: string;
+  isFinalized: boolean;
+  expectedMarks: number;
+  enteredMarks: number;
+  pendingMarks: number;
+  progress: number;
+  classes: Array<{
+    className: string;
+    studentCount: number;
+    subjectCount: number;
+    expectedMarks: number;
+    enteredMarks: number;
+    pendingMarks: number;
+    progress: number;
+    isCompleted: boolean;
+  }>;
+}
+
+interface ClassSummaryCardItem {
+  id: string;
+  name: string;
+  nameBn?: string;
+  studentCount: number;
+  evaluatedCount: number;
+  passRate: number;
+  averageGpa: number;
+}
+
+// Convert English digits to Bengali numerals helper
+const toBanglaDigits = (num: number | string | undefined | null, language: string) => {
+  if (num === undefined || num === null || num === '') return '';
+  const str = String(num);
+  if (language !== 'bn') return str;
+  const banglaNums: Record<string, string> = {
+    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯',
+    '.': '.'
+  };
+  return str.split('').map(char => banglaNums[char] || char).join('');
+};
+
+// =========================================================================
+// 1. MEMOIZED DASHBOARD HEADER
+// =========================================================================
+interface DashboardHeaderProps {
+  selectedAcademicYear: string;
+  onSelectAcademicYear: (year: string) => void;
+  academicYears: Array<{ id: string; name: string; isCurrent: boolean }>;
+  schoolProfileYear?: string;
+  selectedExamId: string;
+  onSelectExamId: (examId: string) => void;
+  yearExams: Array<{ id: string; name: string; nameBn?: string }>;
+  onOpenRecoveryModal: () => void;
+  language: string;
+  t: (key: any) => string;
+}
+
+const DashboardHeader = memo<DashboardHeaderProps>(({
+  selectedAcademicYear,
+  onSelectAcademicYear,
+  academicYears,
+  schoolProfileYear,
+  selectedExamId,
+  onSelectExamId,
+  yearExams,
+  onOpenRecoveryModal,
+  language,
+  t
+}) => {
+  return (
+    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm transition-all">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100 flex items-center gap-1.5">
+              <Sparkles size={12} className="text-indigo-600" />
+              <span>{language === 'bn' ? 'ড্যাশবোর্ড ও ওভারভিউ' : 'Dashboard Overview'}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>{language === 'bn' ? `সেশন: ${toBanglaDigits(selectedAcademicYear, language)}` : `Session: ${selectedAcademicYear}`}</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
+                {language === 'bn' ? 'প্রশাসনিক ড্যাশবোর্ড ও সার্বিক পরিসংখ্যান' : 'Administrative Dashboard'}
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">
+                {language === 'bn' 
+                  ? 'এক নজরে মোট শিক্ষার্থী, চলমান পরীক্ষা, খাতা মূল্যায়ন ও প্রাতিষ্ঠানিক খতিয়ান।'
+                  : 'Consolidated overview for student enrolment, active exams, pending grading, and institutional records.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Controls Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+          {/* Academic Year Dropdown */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs hover:bg-slate-100/80 transition-colors flex-1 sm:flex-initial">
+            <Calendar className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+            <span className="font-semibold text-slate-600 shrink-0">
+              {language === 'bn' ? 'সেশন:' : 'Year:'}
+            </span>
+            <select
+              id="dashboard-year-selector"
+              value={selectedAcademicYear}
+              onChange={(e) => onSelectAcademicYear(e.target.value)}
+              aria-label="Academic Year"
+              className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer pr-1 text-xs w-full sm:w-auto"
+            >
+              <option value="ALL">{language === 'bn' ? 'সকল সেশন' : 'All Years'}</option>
+              {academicYears.length > 0 ? (
+                academicYears.map(y => (
+                  <option key={y.id} value={y.name}>
+                    {toBanglaDigits(y.name, language)} {y.isCurrent ? (language === 'bn' ? '(চলমান)' : '(Current)') : ''}
+                  </option>
+                ))
+              ) : (
+                <option value={schoolProfileYear || '2026'}>{toBanglaDigits(schoolProfileYear || '2026', language)}</option>
+              )}
+            </select>
+          </div>
+
+          {/* Exam Filter Dropdown */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs hover:bg-slate-100/80 transition-colors flex-1 sm:flex-initial">
+            <Layers className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+            <span className="font-semibold text-slate-600 shrink-0">
+              {language === 'bn' ? 'পরীক্ষা:' : 'Exam:'}
+            </span>
+            <select
+              id="dashboard-exam-selector"
+              value={selectedExamId}
+              onChange={(e) => onSelectExamId(e.target.value)}
+              aria-label={t('exam')}
+              className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer pr-1 max-w-[130px] sm:max-w-[150px] truncate text-xs w-full sm:w-auto"
+            >
+              <option value="All">{language === 'bn' ? 'সকল পরীক্ষা' : 'All Exams'}</option>
+              {yearExams.map(e => (
+                <option key={e.id} value={e.id}>{language === 'bn' ? (e.nameBn || e.name) : e.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Emergency Backup Button */}
+          <button
+            id="dashboard-recovery-btn"
+            type="button"
+            onClick={onOpenRecoveryModal}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+            title="ক্লাউড ব্যাকআপ ও লোকাল ডাটা রিকভারি"
+          >
+            <ShieldAlert className="h-3.5 w-3.5" />
+            <span>{language === 'bn' ? 'ব্যাকআপ' : 'Backup'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+DashboardHeader.displayName = 'DashboardHeader';
+
+// =========================================================================
+// 2. MEMOIZED KPI GRID (6 CONSOLIDATED TILES)
+// =========================================================================
+interface KpiGridProps {
+  studentMetrics: StudentMetrics;
+  examMetrics: ExamMetrics;
+  evaluationMetrics: EvaluationMetrics;
+  academicHealth: AcademicHealthMetrics;
+  financeMetrics: FinanceMetrics;
+  structureMetrics: StructureMetrics;
+  selectedAcademicYear: string;
+  onNavigate: (tab: string) => void;
+  language: string;
+}
+
+const KpiGrid = memo<KpiGridProps>(({
+  studentMetrics,
+  examMetrics,
+  evaluationMetrics,
+  academicHealth,
+  financeMetrics,
+  structureMetrics,
+  selectedAcademicYear,
+  onNavigate,
+  language
+}) => {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+      
+      {/* KPI 1: Enrolled Students */}
+      <div 
+        onClick={() => onNavigate('students')}
+        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer flex flex-col justify-between group"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <Users size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600">
+              {toBanglaDigits(selectedAcademicYear, language)}
+            </span>
+          </div>
+
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+            {language === 'bn' ? 'মোট শিক্ষার্থী' : 'Enrolled Students'}
+          </span>
+
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1">
+            {toBanglaDigits(studentMetrics.total, language)}
+          </div>
+
+          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
+            <span>{language === 'bn' ? 'সক্রিয়:' : 'Act:'} <strong className="text-emerald-600">{toBanglaDigits(studentMetrics.active, language)}</strong></span>
+            <span className="truncate">{language === 'bn' ? 'ছাত্র:' : 'M:'} <strong>{toBanglaDigits(studentMetrics.male, language)}</strong> | {language === 'bn' ? 'ছাত্রী:' : 'F:'} <strong>{toBanglaDigits(studentMetrics.female, language)}</strong></span>
+          </div>
+        </div>
+
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-blue-600 group-hover:text-blue-700">
+          <span>{language === 'bn' ? 'শিক্ষার্থী তালিকা' : 'View Directory'}</span>
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+
+      {/* KPI 2: Active Exams & Terms */}
+      <div 
+        onClick={() => onNavigate('exam_settings')}
+        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer flex flex-col justify-between group"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <Layers size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700">
+              {examMetrics.active > 0 ? (language === 'bn' ? `${toBanglaDigits(examMetrics.active, language)} চলমান` : `${examMetrics.active} Active`) : (language === 'bn' ? 'টার্ম' : 'Terms')}
+            </span>
+          </div>
+
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+            {language === 'bn' ? 'টার্ম ও পরীক্ষা' : 'Active Exams & Terms'}
+          </span>
+
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1">
+            {toBanglaDigits(examMetrics.total, language)}
+          </div>
+
+          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
+            <span>{language === 'bn' ? 'সম্পন্ন:' : 'Done:'} <strong className="text-emerald-600">{toBanglaDigits(examMetrics.finalized, language)}</strong></span>
+            <span>{language === 'bn' ? 'আসন্ন:' : 'Upc:'} <strong className="text-blue-600">{toBanglaDigits(examMetrics.scheduled, language)}</strong></span>
+          </div>
+        </div>
+
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-indigo-600 group-hover:text-indigo-700">
+          <span>{language === 'bn' ? 'পরীক্ষা ব্যবস্থাপনা' : 'Manage Exams'}</span>
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+
+      {/* KPI 3: Pending Results & Marks Pipeline */}
+      <div 
+        onClick={() => onNavigate('marks')}
+        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all cursor-pointer flex flex-col justify-between group"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors ${
+              evaluationMetrics.totalPending > 0 
+                ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white' 
+                : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'
+            }`}>
+              <Clock4 size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <span className={`rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold ${
+              evaluationMetrics.totalPending > 0
+                ? 'bg-amber-50 text-amber-700'
+                : 'bg-emerald-50 text-emerald-700'
+            }`}>
+              {evaluationMetrics.totalPending > 0 ? (language === 'bn' ? `${toBanglaDigits(evaluationMetrics.totalPending, language)} বাকি` : `${evaluationMetrics.totalPending} Left`) : (language === 'bn' ? '১০০% সম্পন্ন' : '100% Done')}
+            </span>
+          </div>
+
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+            {language === 'bn' ? 'বাকি মূল্যায়ন ও নম্বর' : 'Evaluation Pipeline'}
+          </span>
+
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1 flex items-baseline gap-1.5">
+            <span>{toBanglaDigits(evaluationMetrics.totalPending, language)}</span>
+            <span className="text-xs font-normal text-slate-400">/ {toBanglaDigits(evaluationMetrics.totalExpected, language)}</span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+            <div 
+              className={`h-full transition-all duration-500 rounded-full ${
+                evaluationMetrics.progressPercent >= 90 ? 'bg-emerald-500' :
+                evaluationMetrics.progressPercent >= 50 ? 'bg-indigo-500' : 'bg-amber-500'
+              }`}
+              style={{ width: `${Math.min(100, Math.max(0, evaluationMetrics.progressPercent))}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-amber-600 group-hover:text-amber-700">
+          <span>{language === 'bn' ? 'নম্বর এন্ট্রি করুন' : 'Enter Marks'}</span>
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+
+      {/* KPI 4: Academic Pass Rate */}
+      <div 
+        onClick={() => onNavigate('results')}
+        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer flex flex-col justify-between group"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+              <Award size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700">
+              {toBanglaDigits(academicHealth.passRate, language)}%
+            </span>
+          </div>
+
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+            {language === 'bn' ? 'পাসের হার ও ফলাফল' : 'Academic Health'}
+          </span>
+
+          <div className="text-xl sm:text-3xl font-bold text-emerald-600 mt-1">
+            {toBanglaDigits(academicHealth.passRate, language)}%
+          </div>
+
+          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
+            <span>{language === 'bn' ? 'গড় GPA:' : 'Avg:'} <strong className="text-slate-800">{toBanglaDigits(academicHealth.overallAverageGpa.toFixed(2), language)}</strong></span>
+            <span>{language === 'bn' ? 'A+ অর্জন:' : 'A+:'} <strong className="text-indigo-600">{toBanglaDigits(academicHealth.aPlusCount, language)}</strong></span>
+          </div>
+        </div>
+
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-emerald-600 group-hover:text-emerald-700">
+          <span>{language === 'bn' ? 'মার্কশিট জেনারেটর' : 'View Results'}</span>
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+
+      {/* KPI 5: Finance & Fee Snapshot */}
+      <div 
+        onClick={() => onNavigate('finance')}
+        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all cursor-pointer flex flex-col justify-between group"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-teal-50 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+              <Wallet size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-teal-50 text-teal-700">
+              {language === 'bn' ? 'আদায়' : 'Revenue'}
+            </span>
+          </div>
+
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+            {language === 'bn' ? 'ফি আদায় ও তহবিল' : 'Financial Revenue'}
+          </span>
+
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1 truncate">
+            ৳{toBanglaDigits(financeMetrics.totalIncome.toLocaleString(), language)}
+          </div>
+
+          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
+            <span className="truncate">{language === 'bn' ? 'ব্যয়:' : 'Exp:'} <strong>৳{toBanglaDigits(financeMetrics.totalExpense.toLocaleString(), language)}</strong></span>
+            <span className="text-teal-700 font-bold truncate">৳{toBanglaDigits(financeMetrics.netBalance.toLocaleString(), language)}</span>
+          </div>
+        </div>
+
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-teal-600 group-hover:text-teal-700">
+          <span>{language === 'bn' ? 'হিসাব খতিয়ান' : 'Finance Ledger'}</span>
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+
+      {/* KPI 6: Classes & Faculty Structure */}
+      <div 
+        onClick={() => onNavigate('subjects')}
+        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-200 transition-all cursor-pointer flex flex-col justify-between group"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+              <BookOpen size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-purple-50 text-purple-700">
+              {toBanglaDigits(structureMetrics.classesCount, language)} {language === 'bn' ? 'শ্রেণি' : 'Classes'}
+            </span>
+          </div>
+
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+            {language === 'bn' ? 'শ্রেণি ও বিষয় কাঠামো' : 'Classes & Subjects'}
+          </span>
+
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1">
+            {toBanglaDigits(structureMetrics.classesCount, language)}
+          </div>
+
+          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
+            <span>{language === 'bn' ? 'বিষয়:' : 'Sub:'} <strong className="text-purple-600">{toBanglaDigits(structureMetrics.subjectsCount, language)}</strong></span>
+            <span>{language === 'bn' ? 'শিক্ষক:' : 'Fac:'} <strong className="text-slate-700">{toBanglaDigits(structureMetrics.teachersCount, language)}</strong></span>
+          </div>
+        </div>
+
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-purple-600 group-hover:text-purple-700">
+          <span>{language === 'bn' ? 'বিষয় বণ্টন' : 'Curriculum'}</span>
+          <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+
+    </div>
+  );
+});
+KpiGrid.displayName = 'KpiGrid';
+
+// =========================================================================
+// 3. MEMOIZED QUICK LAUNCHPAD COMPONENT
+// =========================================================================
+interface QuickLaunchpadProps {
+  onNavigate: (tab: string) => void;
+  language: string;
+}
+
+const QuickLaunchpad = memo<QuickLaunchpadProps>(({ onNavigate, language }) => {
+  const actions = [
+    { id: 'students', labelBn: 'শিক্ষার্থী ভর্তি', labelEn: 'Student Roster', icon: Users, bg: 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
+    { id: 'promotion', labelBn: 'শ্রেণি প্রমোশন', labelEn: 'Class Advance', icon: GraduationCap, bg: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' },
+    { id: 'marks', labelBn: 'নম্বর এন্ট্রি', labelEn: 'Marks Entry', icon: PenTool, bg: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
+    { id: 'results', labelBn: 'ফলাফল কার্ড', labelEn: 'Report Cards', icon: FileSpreadsheet, bg: 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
+    { id: 'attendance', labelBn: 'দৈনিক হাজিরা', labelEn: 'Attendance', icon: UserCheck, bg: 'bg-amber-50 text-amber-600 hover:bg-amber-100' },
+    { id: 'notice_board', labelBn: 'নোটিশ বোর্ড', labelEn: 'Notice Board', icon: Megaphone, bg: 'bg-rose-50 text-rose-600 hover:bg-rose-100' },
+    { id: 'finance', labelBn: 'ফি আদায়', labelEn: 'Fee Collection', icon: Wallet, bg: 'bg-teal-50 text-teal-600 hover:bg-teal-100' },
+    { id: 'subjects', labelBn: 'বিষয় বণ্টন', labelEn: 'Subject Setup', icon: BookOpen, bg: 'bg-sky-50 text-sky-600 hover:bg-sky-100' },
+    { id: 'settings', labelBn: 'সিস্টেম সেটিংস', labelEn: 'Settings', icon: SettingsIcon, bg: 'bg-slate-100 text-slate-700 hover:bg-slate-200' }
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Sparkles size={16} className="text-indigo-600" />
+          <h2 className="text-sm font-bold text-slate-800">
+            {language === 'bn' ? 'দ্রুত কাজের শর্টকাট' : 'Quick Launchpad'}
+          </h2>
+        </div>
+        <span className="text-xs text-slate-400 hidden sm:inline">
+          {language === 'bn' ? 'সরাসরি যেকোনো মডিউলে প্রবেশ করুন' : 'Instant Module Routing'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 sm:gap-3">
+        {actions.map((act) => {
+          const Icon = act.icon;
+          return (
+            <button
+              key={act.id}
+              onClick={() => onNavigate(act.id)}
+              className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/60 text-slate-700 border border-slate-200/70 hover:border-indigo-200 transition-all cursor-pointer group text-center active:scale-95"
+            >
+              <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${act.bg} flex items-center justify-center mb-1.5 sm:mb-2 transition-transform group-hover:scale-105 shrink-0`}>
+                <Icon size={17} className="sm:w-[18px] sm:h-[18px]" />
+              </div>
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-800 block truncate max-w-full">
+                {language === 'bn' ? act.labelBn : act.labelEn}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+QuickLaunchpad.displayName = 'QuickLaunchpad';
+
+// =========================================================================
+// 4. MEMOIZED EVALUATION PIPELINE COMPONENT
+// =========================================================================
+interface EvaluationPipelineProps {
+  matrix: ExamMatrixItem[];
+  progressPercent: number;
+  selectedAcademicYear: string;
+  onSelectExamAndNavigate: (examId: string, tab: string) => void;
+  language: string;
+}
+
+const EvaluationPipeline = memo<EvaluationPipelineProps>(({
+  matrix,
+  progressPercent,
+  selectedAcademicYear,
+  onSelectExamAndNavigate,
+  language
+}) => {
+  if (matrix.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shrink-0">
+            <ListChecks size={18} />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">
+              {language === 'bn' ? 'টার্ম ও পরীক্ষার মূল্যায়ন পাইপলাইন' : 'Marks Evaluation & Result Pipeline'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {language === 'bn' ? 'কোন শ্রেণির পরীক্ষার কত শতাংশ খাতা মূল্যায়ন ও নম্বর এন্ট্রি সম্পন্ন হয়েছে' : 'Real-time grading completion matrix per class and exam'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-medium text-slate-500">
+            {language === 'bn' ? 'সেশন অগ্রগতি:' : 'Session Progress:'}
+          </span>
+          <span className="rounded-full px-2.5 py-0.5 font-bold text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+            {toBanglaDigits(progressPercent, language)}%
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {matrix.map((matrixExam) => (
+          <div 
+            key={matrixExam.examId}
+            className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 hover:border-slate-300 transition-all space-y-3"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="text-xs font-bold text-slate-800 truncate">
+                  {language === 'bn' ? matrixExam.examNameBn || matrixExam.examName : matrixExam.examName}
+                </h3>
+                <span className="text-[11px] text-slate-400 block">
+                  {matrixExam.category} • {toBanglaDigits(selectedAcademicYear, language)}
+                </span>
+              </div>
+
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                matrixExam.isFinalized 
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : matrixExam.progress >= 100
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {matrixExam.isFinalized 
+                  ? (language === 'bn' ? 'ফাইনাল' : 'Final')
+                  : matrixExam.progress >= 100
+                  ? (language === 'bn' ? 'সম্পন্ন' : 'Ready')
+                  : (language === 'bn' ? `${toBanglaDigits(matrixExam.pendingMarks, language)} বাকি` : `${matrixExam.pendingMarks} Left`)}
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div>
+              <div className="flex items-center justify-between text-[11px] mb-1 font-medium">
+                <span className="text-slate-500">{language === 'bn' ? 'অগ্রগতি' : 'Progress'}</span>
+                <span className="text-slate-700 font-bold">{toBanglaDigits(matrixExam.progress, language)}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    matrixExam.progress >= 100 ? 'bg-emerald-500' :
+                    matrixExam.progress >= 60 ? 'bg-indigo-500' : 'bg-amber-500'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, matrixExam.progress))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Classes breakdown list */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-200 text-xs">
+              {matrixExam.classes.slice(0, 4).map((clsItem, cIdx) => (
+                <div key={cIdx} className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-700 font-medium truncate max-w-[120px]">
+                    {clsItem.className}
+                  </span>
+                  <div>
+                    {clsItem.isCompleted ? (
+                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                        <Check size={11} /> {language === 'bn' ? 'সম্পন্ন' : 'Done'}
+                      </span>
+                    ) : clsItem.expectedMarks === 0 ? (
+                      <span className="text-slate-400">—</span>
+                    ) : (
+                      <span className="text-amber-700 font-medium">
+                        {toBanglaDigits(clsItem.pendingMarks, language)} {language === 'bn' ? 'বাকি' : 'left'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                onClick={() => onSelectExamAndNavigate(matrixExam.examId, 'marks')}
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold text-center transition cursor-pointer"
+              >
+                {language === 'bn' ? 'নম্বর এন্ট্রি' : 'Enter Marks'}
+              </button>
+              <button
+                onClick={() => onSelectExamAndNavigate(matrixExam.examId, 'results')}
+                className="py-1.5 px-2.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold text-center transition cursor-pointer"
+              >
+                {language === 'bn' ? 'রেজাল্ট' : 'Results'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+EvaluationPipeline.displayName = 'EvaluationPipeline';
+
+// =========================================================================
+// 5. MEMOIZED CLASS SUMMARY GRID COMPONENT
+// =========================================================================
+interface ClassGridProps {
+  classCards: ClassSummaryCardItem[];
+  language: string;
+}
+
+const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
+  return (
+    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-200 shrink-0">
+            <GraduationCap size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">
+              {language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী ও পারফরম্যান্স খতিয়ান' : 'Class Enrolment & Performance Grid'}
+            </h3>
+            <p className="text-xs text-slate-500">
+              {language === 'bn' ? 'প্রতিটি ক্লাসের বর্তমান ছাত্র-ছাত্রী সংখ্যা, পাসের হার ও গড় জিপিএ' : 'Live student count, pass percentage, and average GPA per class'}
+            </p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200">
+          {toBanglaDigits(classCards.length, language)} {language === 'bn' ? 'শ্রেণি' : 'Classes'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+        {classCards.map(clsCard => (
+          <div 
+            key={clsCard.id}
+            className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300 transition-all space-y-2.5"
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800">
+                {clsCard.name}
+              </h4>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                {toBanglaDigits(clsCard.studentCount, language)} {language === 'bn' ? 'জন' : 'students'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+              <div className="bg-white p-2 rounded-lg border border-slate-100">
+                <span className="text-slate-400 block text-[10px] font-medium">{language === 'bn' ? 'পাস' : 'Pass'}</span>
+                <span className="font-bold text-emerald-700 text-xs">{toBanglaDigits(clsCard.passRate, language)}%</span>
+              </div>
+              <div className="bg-white p-2 rounded-lg border border-slate-100">
+                <span className="text-slate-400 block text-[10px] font-medium">{language === 'bn' ? 'গড় GPA' : 'Avg GPA'}</span>
+                <span className="font-bold text-indigo-700 text-xs">{toBanglaDigits(clsCard.averageGpa.toFixed(2), language)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+ClassGrid.displayName = 'ClassGrid';
+
+// =========================================================================
+// 6. MAIN DASHBOARD ORCHESTRATOR COMPONENT
+// =========================================================================
 export const Dashboard = () => {
-  const { students, subjects, marks, exams, remarks, classes, t, language, seedDemoMadrashaData } = useApp();
-  const [selectedExamId, setSelectedExamId] = useState<string>('');
+  const { 
+    students = [], 
+    subjects = [], 
+    marks = [], 
+    exams = [], 
+    classes = [], 
+    academicYears = [],
+    schoolProfile,
+    transactions = [],
+    teachers = [],
+    t, 
+    language = 'bn', 
+    setIsRecoveryModalOpen,
+    setActiveTab
+  } = useApp();
+
+  // Academic Year State
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>(() => {
+    const currentYearObj = (academicYears || []).find(y => y.isCurrent || y.status === 'ACTIVE');
+    return currentYearObj?.name || schoolProfile?.academicYear || new Date().getFullYear().toString();
+  });
+
+  const [selectedExamId, setSelectedExamId] = useState<string>('All');
   const [selectedClass, setSelectedClass] = useState<string>('All');
   const [activeSectionTab, setActiveSectionTab] = useState<'overview' | 'student' | 'subjects' | 'merit'>('overview');
   const [meritSearchQuery, setMeritSearchQuery] = useState<string>('');
-  const [showAtRiskModal, setShowAtRiskModal] = useState<boolean>(false);
-  const [atRiskFilter, setAtRiskFilter] = useState<'all' | 'multi' | 'single'>('all');
-  const [selectedStudentForTrajectory, setSelectedStudentForTrajectory] = useState<string | null>(null);
 
+  // Default exam selector sync
   useEffect(() => {
-    if (exams.length > 0 && !selectedExamId) {
-      setSelectedExamId(exams[0].id);
-    }
-  }, [exams]);
-
-  // Convert English digits to Bengali numerals if language is Bengali
-  const toBanglaDigits = (num: number | string | undefined | null) => {
-    if (num === undefined || num === null || num === '') return '';
-    const str = String(num);
-    if (language !== 'bn') return str;
-    const banglaNums: Record<string, string> = {
-      '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
-      '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯',
-      '.': '.'
-    };
-    return str.split('').map(char => banglaNums[char] || char).join('');
-  };
-
-  const getClassNameDisplay = (classLevel: string) => {
-    const sClass = classes.find(c => c.name === classLevel);
-    if (language === 'bn') {
-      if (sClass?.nameBn) return sClass.nameBn;
-      const key = `cls_${classLevel.replace(/\s+/g, '')}`;
-      return t(key as any) || classLevel;
-    }
-    return sClass?.name || classLevel;
-  };
-
-  // Compute all metrics and chart datasets reactively
-  const {
-    totalStudentsCount,
-    activeStudentsCount,
-    totalSubjectsCount,
-    marksCount,
-    statusData,
-    classAverages,
-    groupAverages,
-    attendanceData,
-    gradeData,
-    chartData,
-    topStudents,
-    passRate,
-    overallAverageGpa,
-    aPlusCount,
-    topPerformingClass,
-    strugglingClass,
-    totalAppearedCount,
-    totalEvaluatedCount,
-    atRiskStudents,
-    criticalFailCount,
-    singleFailCount,
-    subjectSummaryList,
-    lowestSubjects,
-    highestSubjects,
-    gradeTiers
-  } = useMemo(() => {
-    let passed = 0;
-    let failed = 0;
-    const classAvgs: Record<string, { totalGpa: number, count: number }> = {};
-    const groupAvgs: Record<string, { totalGpa: number, count: number }> = {};
-    const attData: Record<string, { present: number, absent: number }> = {};
-    const gradeCounts: Record<string, number> = { 'A+': 0, 'A': 0, 'A-': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
-    const classParticipation: Record<string, { total: number, appeared: number }> = {};
-    const groupParticipation: Record<string, { total: number, appeared: number }> = {};
-    const studentPerformanceList: Array<{ 
-      id: string; 
-      name: string; 
-      nameBn?: string; 
-      roll?: string; 
-      studentId: string; 
-      gpa: number; 
-      grade: string; 
-      isFail: boolean; 
-      group?: string; 
-      classLevel: string;
-      totalMarks: number; 
-      failCount: number 
-    }> = [];
-
-    const runningStudents = students.filter(s => !s.isFormer && s.status !== 'Former');
-    const filteredStudents = selectedClass === 'All' 
-      ? runningStudents 
-      : runningStudents.filter(s => s.classLevel === selectedClass);
-
-    const activeFilteredStudents = filteredStudents.filter(s => s.status === 'Active');
-
-    const filteredSubjectsCount = selectedClass === 'All' 
-      ? subjects.length 
-      : subjects.filter(s => s.classLevel === selectedClass).length;
-
-    const filteredMarksCount = marks.filter(m => {
-      if (selectedExamId && selectedExamId !== 'All' && m.examId !== selectedExamId) return false;
-      const student = students.find(s => s.id === m.studentId);
-      if (!student) return false;
-      if (selectedClass !== 'All' && student.classLevel !== selectedClass) return false;
-      return true;
-    }).length;
-
-    // Initialize participation maps
-    students.forEach(student => {
-      if (student.status !== 'Active' || student.isFormer) return;
-      if (selectedClass !== 'All' && student.classLevel !== selectedClass) return;
-
-      if (selectedClass === 'All') {
-        if (!classParticipation[student.classLevel]) {
-          classParticipation[student.classLevel] = { total: 0, appeared: 0 };
-        }
-        classParticipation[student.classLevel].total++;
+    if (exams.length > 0 && (!selectedExamId || selectedExamId === 'All')) {
+      const yearExams = (exams || []).filter(e => 
+        selectedAcademicYear === 'ALL' || 
+        !e.academicYear || 
+        e.academicYear === selectedAcademicYear
+      );
+      if (yearExams.length > 0) {
+        setSelectedExamId(yearExams[0].id);
       } else {
-        const groupKey = student.group || 'General';
-        if (!groupParticipation[groupKey]) {
-          groupParticipation[groupKey] = { total: 0, appeared: 0 };
-        }
-        groupParticipation[groupKey].total++;
+        setSelectedExamId(exams[0]?.id || 'All');
       }
+    }
+  }, [exams, selectedAcademicYear]);
+
+  // =========================================================================
+  // GRANULAR, TARGETED MEMOIZED METRICS COMPUTATIONS
+  // =========================================================================
+
+  // 1. Student Metrics (Only re-computes when students or academic year change!)
+  const studentMetrics = useMemo<StudentMetrics>(() => {
+    const yearStudents = (students || []).filter(s => {
+      if (!s) return false;
+      if (selectedAcademicYear === 'ALL') return true;
+      if (!s.academicYear) return true;
+      return s.academicYear === selectedAcademicYear;
     });
 
-    if (selectedExamId) {
-      students.forEach(student => {
-        if (student.status !== 'Active' || student.isFormer) return;
-        if (selectedClass !== 'All' && student.classLevel !== selectedClass) return;
+    const active = yearStudents.filter(s => s.status === 'Active' && !s.isFormer).length;
+    const inactive = yearStudents.filter(s => s.status !== 'Active' || s.isFormer).length;
 
-        const hasMarks = selectedExamId === 'All'
-          ? marks.some(m => m.studentId === student.id)
-          : marks.some(m => m.studentId === student.id && m.examId === selectedExamId);
-        if (!hasMarks) return;
+    const male = yearStudents.filter(s => 
+      (s.gender || '').toLowerCase() === 'male' || 
+      (s.gender || '').toLowerCase() === 'ছেলে' || 
+      (s.gender || '').toLowerCase() === 'm'
+    ).length;
 
-        if (selectedClass === 'All') {
-          if (classParticipation[student.classLevel]) {
-            classParticipation[student.classLevel].appeared++;
-          }
-        } else {
-          const groupKey = student.group || 'General';
-          if (groupParticipation[groupKey]) {
-            groupParticipation[groupKey].appeared++;
-          }
-        }
+    const female = yearStudents.filter(s => 
+      (s.gender || '').toLowerCase() === 'female' || 
+      (s.gender || '').toLowerCase() === 'মেয়ে' || 
+      (s.gender || '').toLowerCase() === 'f'
+    ).length;
 
-        const classSubjectsInThisClass = subjects.filter(s => s.classLevel === student.classLevel);
-        const subjectsAssignedToThisExam = selectedExamId === 'All'
-          ? classSubjectsInThisClass
-          : classSubjectsInThisClass.filter(s => s.examIds && s.examIds.includes(selectedExamId));
-        const anySubjectAssignedToThisExam = subjectsAssignedToThisExam.length > 0;
+    return { total: yearStudents.length, active, inactive, male, female };
+  }, [students, selectedAcademicYear]);
 
-        const classStudents = students.filter(s => s.classLevel === student.classLevel && s.status === 'Active' && !student.isFormer);
-        const classStudentIds = classStudents.map(s => s.id);
-        const enteredSubjectIds = new Set(
-          marks
-            .filter(m => (selectedExamId === 'All' || m.examId === selectedExamId) && classStudentIds.includes(m.studentId))
-            .map(m => m.subjectId)
-        );
+  // 2. Exam Metrics (Only re-computes when exams or academic year change!)
+  const { yearExams, examMetrics } = useMemo(() => {
+    const filtered = (exams || []).filter(e => {
+      if (!e) return false;
+      if (selectedAcademicYear === 'ALL') return true;
+      if (!e.academicYear) return true;
+      return e.academicYear === selectedAcademicYear;
+    });
 
-        const classSubjects = classSubjectsInThisClass.filter(s => {
-          const matchesGroup = !s.group || s.group === 'All' || s.group === student.group;
-          if (!matchesGroup) return false;
+    const active = filtered.filter(e => 
+      e.status === 'IN_PROGRESS' || 
+      e.status === 'MARKS_ENTRY' || 
+      (!e.isFinalized && e.status !== 'ARCHIVED' && e.status !== 'FINALIZED')
+    ).length;
 
-          const isAssigned = selectedExamId === 'All' ? true : (anySubjectAssignedToThisExam ? (s.examIds && s.examIds.includes(selectedExamId)) : true);
-          if (!isAssigned) return false;
+    const scheduled = filtered.filter(e => 
+      e.status === 'SCHEDULED' || (!e.status && !e.isFinalized)
+    ).length;
 
-          if (enteredSubjectIds.size > 0) {
-            return enteredSubjectIds.has(s.id);
-          }
+    const finalized = filtered.filter(e => 
+      e.isFinalized || e.status === 'FINALIZED' || e.status === 'COMPLETED'
+    ).length;
+
+    return {
+      yearExams: filtered,
+      examMetrics: { total: filtered.length, active, scheduled, finalized }
+    };
+  }, [exams, selectedAcademicYear]);
+
+  // 3. Evaluation Pipeline Matrix (Computes only when marks, exams, classes, or students change)
+  const { evaluationMetrics, examEvaluationMatrix } = useMemo(() => {
+    const activeStudents = (students || []).filter(s => 
+      s &&
+      s.status === 'Active' && 
+      !s.isFormer && 
+      (selectedAcademicYear === 'ALL' || !s.academicYear || s.academicYear === selectedAcademicYear)
+    );
+
+    let expMarksTotal = 0;
+    let entMarksTotal = 0;
+
+    const matrix = (yearExams || []).map(exam => {
+      const relevantClassNames = (exam.classIds && exam.classIds.length > 0)
+        ? (classes || []).filter(c => c && (exam.classIds!.includes(c.id) || exam.classIds!.includes(c.name))).map(c => c.name)
+        : (classes || []).map(c => c.name);
+
+      const classBreakdown = relevantClassNames.map(clsName => {
+        const clsStudents = activeStudents.filter(s => s && s.classLevel === clsName);
+        const clsSubjects = (subjects || []).filter(s => {
+          if (!s || s.classLevel !== clsName) return false;
+          if (s.examIds && s.examIds.length > 0 && !s.examIds.includes(exam.id)) return false;
           return true;
         });
 
-        if (classSubjects.length === 0) return;
+        const expectedForClass = clsStudents.length * clsSubjects.length;
+        const studentIds = new Set(clsStudents.map(s => s.id));
+        const subjectIds = new Set(clsSubjects.map(s => s.id));
 
-        const effectiveExamForGpa = selectedExamId === 'All' ? (exams[0]?.id || '') : selectedExamId;
-        const stats = calculateTotalGPA(classSubjects, marks, student.id, effectiveExamForGpa, student.group, exams);
+        const enteredForClass = (marks || []).filter(m => 
+          m &&
+          m.examId === exam.id && 
+          studentIds.has(m.studentId) && 
+          subjectIds.has(m.subjectId) &&
+          (m.obtained !== undefined || m.isAbsent)
+        ).length;
+
+        const pendingForClass = Math.max(0, expectedForClass - enteredForClass);
+        const progressPct = expectedForClass > 0 ? Math.round((enteredForClass / expectedForClass) * 100) : 100;
+
+        expMarksTotal += expectedForClass;
+        entMarksTotal += enteredForClass;
+
+        return {
+          className: clsName,
+          studentCount: clsStudents.length,
+          subjectCount: clsSubjects.length,
+          expectedMarks: expectedForClass,
+          enteredMarks: enteredForClass,
+          pendingMarks: pendingForClass,
+          progress: progressPct,
+          isCompleted: expectedForClass > 0 && enteredForClass >= expectedForClass
+        };
+      });
+
+      const examExpected = classBreakdown.reduce((sum, c) => sum + c.expectedMarks, 0);
+      const examEntered = classBreakdown.reduce((sum, c) => sum + c.enteredMarks, 0);
+      const examPending = Math.max(0, examExpected - examEntered);
+      const examProgress = examExpected > 0 ? Math.round((examEntered / examExpected) * 100) : 100;
+
+      return {
+        examId: exam.id,
+        examName: exam.name,
+        examNameBn: exam.nameBn,
+        category: exam.category || 'Term',
+        status: exam.status || (exam.isFinalized ? 'FINALIZED' : 'SCHEDULED'),
+        isFinalized: !!exam.isFinalized,
+        expectedMarks: examExpected,
+        enteredMarks: examEntered,
+        pendingMarks: examPending,
+        progress: examProgress,
+        classes: classBreakdown
+      };
+    });
+
+    const pendingTotal = Math.max(0, expMarksTotal - entMarksTotal);
+    const progressPercent = expMarksTotal > 0 ? Math.round((entMarksTotal / expMarksTotal) * 100) : (entMarksTotal > 0 ? 100 : 0);
+
+    return {
+      evaluationMetrics: {
+        totalExpected: expMarksTotal,
+        totalEntered: entMarksTotal,
+        totalPending: pendingTotal,
+        progressPercent
+      },
+      examEvaluationMatrix: matrix
+    };
+  }, [yearExams, classes, subjects, marks, students, selectedAcademicYear]);
+
+  // 4. Finance Metrics (Only re-computes when transactions or academic year change!)
+  const financeMetrics = useMemo<FinanceMetrics>(() => {
+    const yearTransactions = (transactions || []).filter(tx => {
+      if (selectedAcademicYear === 'ALL') return true;
+      if (tx.academicYear) return tx.academicYear === selectedAcademicYear;
+      if (tx.date) return tx.date.startsWith(selectedAcademicYear);
+      return true;
+    });
+
+    const inc = yearTransactions
+      .filter(tx => tx.type === 'INCOME' || tx.type === 'INFLOW' || tx.category === 'FEE' || !tx.type)
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+
+    const exp = yearTransactions
+      .filter(tx => tx.type === 'EXPENSE' || tx.type === 'OUTFLOW')
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+
+    return { totalIncome: inc, totalExpense: exp, netBalance: inc - exp };
+  }, [transactions, selectedAcademicYear]);
+
+  // 5. Structure Metrics
+  const structureMetrics = useMemo<StructureMetrics>(() => {
+    return {
+      classesCount: classes.length,
+      subjectsCount: subjects.length,
+      teachersCount: teachers.length || 0
+    };
+  }, [classes, subjects, teachers]);
+
+  // 6. Academic Performance & Results Analysis
+  const {
+    academicHealth,
+    classCards,
+    topStudents,
+    atRiskStudents,
+    gradeTiers,
+    statusData
+  } = useMemo(() => {
+    const activeStudents = (students || []).filter(s => 
+      s &&
+      s.status === 'Active' && 
+      !s.isFormer && 
+      (selectedAcademicYear === 'ALL' || !s.academicYear || s.academicYear === selectedAcademicYear)
+    );
+
+    const effectiveTargetStudents = selectedClass === 'All'
+      ? activeStudents
+      : activeStudents.filter(s => s && s.classLevel === selectedClass);
+
+    const effectiveExamId = selectedExamId === 'All' 
+      ? (yearExams[0]?.id || '') 
+      : selectedExamId;
+
+    let passed = 0;
+    let failed = 0;
+    const gradeCounts: Record<string, number> = { 'A+': 0, 'A': 0, 'A-': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
+    const performers: Array<any> = [];
+
+    if (effectiveExamId) {
+      effectiveTargetStudents.forEach(student => {
+        if (!student) return;
+        const hasMarks = selectedExamId === 'All'
+          ? (marks || []).some(m => m && m.studentId === student.id)
+          : (marks || []).some(m => m && m.studentId === student.id && m.examId === effectiveExamId);
+
+        if (!hasMarks) return;
+
+        const classSubjectsInThisClass = (subjects || []).filter(s => s && s.classLevel === student.classLevel);
+        const subjectsAssignedToThisExam = selectedExamId === 'All'
+          ? classSubjectsInThisClass
+          : classSubjectsInThisClass.filter(s => s.examIds && s.examIds.includes(effectiveExamId));
+        
+        const anySubjectAssigned = subjectsAssignedToThisExam.length > 0;
+        const validSubjects = classSubjectsInThisClass.filter(s => {
+          const matchesGroup = !s.group || s.group === 'All' || s.group === student.group;
+          if (!matchesGroup) return false;
+          if (anySubjectAssigned) return s.examIds && s.examIds.includes(effectiveExamId);
+          return true;
+        });
+
+        if (validSubjects.length === 0) return;
+
+        const stats = calculateTotalGPA(validSubjects, marks, student.id, effectiveExamId, student.group, exams);
         
         if (stats.isFail) {
           failed++;
@@ -244,232 +1091,72 @@ export const Dashboard = () => {
           gradeCounts[stats.grade]++;
         }
 
-        studentPerformanceList.push({
+        performers.push({
           id: student.id,
           name: student.name,
           nameBn: student.nameBn,
           roll: student.roll,
-          studentId: student.studentId,
+          studentId: student.studentId || '',
           gpa: stats.gpa,
           grade: stats.grade,
           isFail: stats.isFail,
           group: student.group,
           classLevel: student.classLevel,
           totalMarks: stats.totalMarks,
-          failCount: stats.failCount,
+          failCount: stats.failCount
         });
-
-        if (!classAvgs[student.classLevel]) {
-          classAvgs[student.classLevel] = { totalGpa: 0, count: 0 };
-        }
-        classAvgs[student.classLevel].totalGpa += stats.gpa;
-        classAvgs[student.classLevel].count++;
-
-        const groupKey = student.group || 'General';
-        if (!groupAvgs[groupKey]) {
-          groupAvgs[groupKey] = { totalGpa: 0, count: 0 };
-        }
-        groupAvgs[groupKey].totalGpa += stats.gpa;
-        groupAvgs[groupKey].count++;
-
-        const remark = remarks.find(r => r.studentId === student.id && (selectedExamId === 'All' || r.examId === selectedExamId));
-        if (remark && (remark.totalPresent || remark.totalAbsent)) {
-          if (selectedClass === 'All') {
-            if (!attData[student.classLevel]) {
-              attData[student.classLevel] = { present: 0, absent: 0 };
-            }
-            attData[student.classLevel].present += (remark.totalPresent || 0);
-            attData[student.classLevel].absent += (remark.totalAbsent || 0);
-          } else {
-            const key = groupKey;
-            if (!attData[key]) {
-              attData[key] = { present: 0, absent: 0 };
-            }
-            attData[key].present += (remark.totalPresent || 0);
-            attData[key].absent += (remark.totalAbsent || 0);
-          }
-        }
       });
     }
-
-    const sortedClassNames = [...classes]
-      .sort((a, b) => a.order - b.order)
-      .map(c => c.name);
 
     const totalEvaluated = passed + failed;
-    const sData = [
-      { 
-        name: language === 'bn' ? 'উত্তীর্ণ' : 'Passed', 
-        value: passed,
-        total: totalEvaluated,
-        percentage: totalEvaluated > 0 ? Number(((passed / totalEvaluated) * 100).toFixed(1)) : 0,
-        type: 'passed'
-      },
-      { 
-        name: language === 'bn' ? 'অকৃতকার্য' : 'Failed', 
-        value: failed,
-        total: totalEvaluated,
-        percentage: totalEvaluated > 0 ? Number(((failed / totalEvaluated) * 100).toFixed(1)) : 0,
-        type: 'failed'
-      },
-    ].filter(d => d.value > 0);
-
-    const calculatedPassRate = totalEvaluated > 0 ? Math.round((passed / totalEvaluated) * 1000) / 10 : 0;
-
-    const cAvgs = sortedClassNames
-      .filter(name => classAvgs[name] !== undefined)
-      .map(name => {
-        const count = classAvgs[name].count;
-        const avgGpa = count > 0 ? Number((classAvgs[name].totalGpa / count).toFixed(2)) : 0;
-        return {
-          rawName: name,
-          name: getClassNameDisplay(name),
-          average: avgGpa,
-          count,
-          percentageEquivalent: Number(((avgGpa / 5.0) * 100).toFixed(1))
-        };
-      });
-
-    let topClassItem = cAvgs.length > 0 ? [...cAvgs].sort((a, b) => b.average - a.average)[0] : null;
-    let strugglingClassItem = cAvgs.length > 1 ? [...cAvgs].sort((a, b) => a.average - b.average)[0] : null;
-
-    const totalGpaSum = studentPerformanceList.reduce((sum, s) => sum + s.gpa, 0);
-    const overallAvgGpa = studentPerformanceList.length > 0 
-      ? Number((totalGpaSum / studentPerformanceList.length).toFixed(2)) 
+    const passRate = totalEvaluated > 0 ? Number(((passed / totalEvaluated) * 100).toFixed(1)) : 0;
+    const overallAverageGpa = totalEvaluated > 0 
+      ? Number((performers.reduce((sum, s) => sum + s.gpa, 0) / totalEvaluated).toFixed(2)) 
       : 0;
+    const aPlusCount = gradeCounts['A+'] || 0;
 
-    const gAvgs = ['General', 'Science']
-      .filter(g => groupAvgs[g] !== undefined)
-      .map(g => {
-        const count = groupAvgs[g].count;
-        const avgGpa = count > 0 ? Number((groupAvgs[g].totalGpa / count).toFixed(2)) : 0;
-        return {
-          name: language === 'bn' ? (t(g.toLowerCase() as any) || g) : g,
-          average: avgGpa,
-          count,
-          percentageEquivalent: Number(((avgGpa / 5.0) * 100).toFixed(1))
-        };
-      });
+    // Build Class Summary Cards
+    const cards = (classes || []).map(cls => {
+      const clsStudents = activeStudents.filter(s => s && s.classLevel === cls.name);
+      const clsPerf = performers.filter(s => s && s.classLevel === cls.name);
+      const clsEvaluated = clsPerf.length;
+      const clsPassed = clsPerf.filter(s => !s.isFail).length;
+      const clsPassRate = clsEvaluated > 0 ? Math.round((clsPassed / clsEvaluated) * 100) : 0;
+      const clsAvgGpa = clsEvaluated > 0 
+        ? Number((clsPerf.reduce((sum, s) => sum + s.gpa, 0) / clsEvaluated).toFixed(2)) 
+        : 0;
 
-    let aData = [];
-    if (selectedClass === 'All') {
-      aData = sortedClassNames
-        .filter(name => attData[name] !== undefined)
-        .map(name => {
-          const pres = attData[name].present;
-          const abs = attData[name].absent;
-          const totalDays = pres + abs;
-          return {
-            name: getClassNameDisplay(name),
-            Present: pres,
-            Absent: abs,
-            totalDays,
-            presentPercent: totalDays > 0 ? Number(((pres / totalDays) * 100).toFixed(1)) : 0,
-            absentPercent: totalDays > 0 ? Number(((abs / totalDays) * 100).toFixed(1)) : 0
-          };
-        });
-    } else {
-      aData = ['General', 'Science']
-        .filter(g => attData[g] !== undefined)
-        .map(g => {
-          const pres = attData[g].present;
-          const abs = attData[g].absent;
-          const totalDays = pres + abs;
-          return {
-            name: language === 'bn' ? (t(g.toLowerCase() as any) || g) : g,
-            Present: pres,
-            Absent: abs,
-            totalDays,
-            presentPercent: totalDays > 0 ? Number(((pres / totalDays) * 100).toFixed(1)) : 0,
-            absentPercent: totalDays > 0 ? Number(((abs / totalDays) * 100).toFixed(1)) : 0
-          };
-        });
-    }
+      return {
+        id: cls.id,
+        name: cls.name,
+        nameBn: cls.nameBn,
+        studentCount: clsStudents.length,
+        evaluatedCount: clsEvaluated,
+        passRate: clsPassRate,
+        averageGpa: clsAvgGpa
+      };
+    });
 
-    const totalGraded = Object.values(gradeCounts).reduce((a, b) => a + b, 0);
-    const gradePointLabels: Record<string, string> = {
-      'A+': '5.00', 'A': '4.00', 'A-': '3.50', 'B': '3.00', 'C': '2.00', 'D': '1.00', 'F': '0.00'
-    };
-    const gData = ['A+', 'A', 'A-', 'B', 'C', 'D', 'F']
-      .map(grade => {
-        const count = gradeCounts[grade] || 0;
-        return {
-          grade,
-          point: gradePointLabels[grade] || '0.00',
-          students: count,
-          percentage: totalGraded > 0 ? Number(((count / totalGraded) * 100).toFixed(1)) : 0,
-          totalGraded
-        };
-      })
-      .filter(d => d.students > 0);
+    // Sorted top performers
+    const sortedPerformers = [...performers].sort((a, b) => {
+      if (a.isFail && !b.isFail) return 1;
+      if (!a.isFail && b.isFail) return -1;
+      if (b.gpa !== a.gpa) return b.gpa - a.gpa;
+      return b.totalMarks - a.totalMarks;
+    });
 
-    let pData = [];
-    let totAppeared = 0;
-    if (selectedClass === 'All') {
-      pData = sortedClassNames
-        .filter(name => classParticipation[name] !== undefined)
-        .map(name => {
-          const tot = classParticipation[name].total;
-          const app = classParticipation[name].appeared;
-          const abs = Math.max(0, tot - app);
-          totAppeared += app;
-          return {
-            name: getClassNameDisplay(name),
-            Total: tot,
-            Appeared: app,
-            Absent: abs,
-            appearedPercent: tot > 0 ? Number(((app / tot) * 100).toFixed(1)) : 0,
-            absentPercent: tot > 0 ? Number(((abs / tot) * 100).toFixed(1)) : 0
-          };
-        });
-    } else {
-      pData = ['General', 'Science']
-        .filter(g => groupParticipation[g] !== undefined)
-        .map(g => {
-          const tot = groupParticipation[g].total;
-          const app = groupParticipation[g].appeared;
-          const abs = Math.max(0, tot - app);
-          totAppeared += app;
-          return {
-            name: language === 'bn' ? (t(g.toLowerCase() as any) || g) : g,
-            Total: tot,
-            Appeared: app,
-            Absent: abs,
-            appearedPercent: tot > 0 ? Number(((app / tot) * 100).toFixed(1)) : 0,
-            absentPercent: tot > 0 ? Number(((abs / tot) * 100).toFixed(1)) : 0
-          };
-        });
-    }
-
-    const sortedPerformers = studentPerformanceList
-      .sort((a, b) => {
-        if (a.isFail && !b.isFail) return 1;
-        if (!a.isFail && b.isFail) return -1;
-        if (a.isFail && b.isFail) {
-          if (a.failCount !== b.failCount) return a.failCount - b.failCount;
-          if (b.totalMarks !== a.totalMarks) return b.totalMarks - a.totalMarks;
-          const rollA = parseInt(a.roll || '999', 10);
-          const rollB = parseInt(b.roll || '999', 10);
-          return rollA - rollB;
-        }
-        if (b.gpa !== a.gpa) return b.gpa - a.gpa;
-        if (b.totalMarks !== a.totalMarks) return b.totalMarks - a.totalMarks;
-        const rollA = parseInt(a.roll || '999', 10);
-        const rollB = parseInt(b.roll || '999', 10);
-        return rollA - rollB;
-      });
-
-    // Compute detailed at-risk students for actionable decision making
-    const atRiskList = sortedPerformers
-      .filter(s => s.isFail || s.failCount > 0)
+    // At-Risk students
+    const atRisk = sortedPerformers
+      .filter(s => s && (s.isFail || s.failCount > 0))
       .map(s => {
-        const studentMarks = marks.filter(m => 
+        const studentMarks = (marks || []).filter(m => 
+          m &&
           m.studentId === s.id && 
-          (selectedExamId === 'All' || m.examId === selectedExamId)
+          (selectedExamId === 'All' || m.examId === effectiveExamId)
         );
         const failedSubjectDetails: Array<{ name: string; marks: number; fullMarks: number }> = [];
         studentMarks.forEach(m => {
-          const subj = subjects.find(sub => sub.id === m.subjectId);
+          const subj = (subjects || []).find(sub => sub && sub.id === m.subjectId);
           if (subj) {
             const passMark = subj.passMarks ?? 33;
             if ((m.obtained ?? 0) < passMark || m.isAbsent) {
@@ -481,265 +1168,122 @@ export const Dashboard = () => {
             }
           }
         });
-        return {
-          ...s,
-          student: s,
-          failedSubjectNames: failedSubjectDetails
-        };
-      })
-      .sort((a, b) => b.failCount - a.failCount);
-
-    const critFailCount = atRiskList.filter(s => s.failCount >= 2).length;
-    const singleFailCount = atRiskList.filter(s => s.failCount === 1).length;
-
-    // Compute subject pass rates for actionable curriculum insights
-    const relevantSubjects = selectedClass === 'All' 
-      ? subjects 
-      : subjects.filter(s => s.classLevel === selectedClass);
-
-    const subList = relevantSubjects.map(subj => {
-      const subjMarks = marks.filter(m => {
-        if (m.subjectId !== subj.id) return false;
-        if (selectedExamId !== 'All' && selectedExamId && m.examId !== selectedExamId) return false;
-        const student = students.find(s => s.id === m.studentId);
-        if (!student || student.status !== 'Active' || student.isFormer) return false;
-        if (selectedClass !== 'All' && student.classLevel !== selectedClass) return false;
-        return true;
+        return { ...s, failedSubjectNames: failedSubjectDetails };
       });
 
-      const totalAppeared = subjMarks.length;
-      if (totalAppeared === 0) {
-        return {
-          id: subj.id,
-          name: language === 'bn' ? (subj.nameBn || subj.name) : subj.name,
-          classLevel: subj.classLevel,
-          totalAppeared: 0,
-          passCount: 0,
-          failCount: 0,
-          passRate: 0,
-          avgMarks: 0,
-          fullMarks: subj.fullMarks || 100
-        };
-      }
+    const tiers = [
+      { name: 'A+ (৫.০০)', count: gradeCounts['A+'] || 0, fill: '#10b981' },
+      { name: 'A (৪.০০)', count: gradeCounts['A'] || 0, fill: '#3b82f6' },
+      { name: 'A- (৩.৫০)', count: gradeCounts['A-'] || 0, fill: '#6366f1' },
+      { name: 'B (৩.০০)', count: gradeCounts['B'] || 0, fill: '#eab308' },
+      { name: 'C (২.০০)', count: gradeCounts['C'] || 0, fill: '#f97316' },
+      { name: 'D (১.০০)', count: gradeCounts['D'] || 0, fill: '#fb7185' },
+      { name: 'F (ফেল)', count: gradeCounts['F'] || 0, fill: '#ef4444' }
+    ];
 
-      const passMark = subj.passMarks ?? 33;
-      let passed = 0;
-      let totalScore = 0;
-
-      subjMarks.forEach(m => {
-        const score = m.obtained ?? 0;
-        totalScore += score;
-        if (score >= passMark && !m.isAbsent) {
-          passed++;
-        }
-      });
-
-      const avgScore = Number((totalScore / totalAppeared).toFixed(1));
-      const passPercentage = Number(((passed / totalAppeared) * 100).toFixed(1));
-
-      return {
-        id: subj.id,
-        name: language === 'bn' ? (subj.nameBn || subj.name) : subj.name,
-        classLevel: subj.classLevel,
-        totalAppeared,
-        passCount: passed,
-        failCount: totalAppeared - passed,
-        passRate: passPercentage,
-        avgMarks: avgScore,
-        fullMarks: subj.fullMarks || 100
-      };
-    }).filter(s => s.totalAppeared > 0);
-
-    const sortedByPassRate = [...subList].sort((a, b) => a.passRate - b.passRate);
-    const lowestSubjects = sortedByPassRate.slice(0, 2);
-    const highestSubjects = [...subList].sort((a, b) => b.passRate - a.passRate).slice(0, 3);
-
-    // Compute macro grade quality tiers for simple executive review
-    const topCount = (gradeCounts['A+'] || 0) + (gradeCounts['A'] || 0);
-    const midCount = (gradeCounts['A-'] || 0) + (gradeCounts['B'] || 0);
-    const lowCount = (gradeCounts['C'] || 0) + (gradeCounts['D'] || 0);
-    const failCount = gradeCounts['F'] || 0;
-
-    const gradeTiers = {
-      top: {
-        count: topCount,
-        percent: totalEvaluated > 0 ? Math.round((topCount / totalEvaluated) * 100) : 0
-      },
-      mid: {
-        count: midCount,
-        percent: totalEvaluated > 0 ? Math.round((midCount / totalEvaluated) * 100) : 0
-      },
-      low: {
-        count: lowCount,
-        percent: totalEvaluated > 0 ? Math.round((lowCount / totalEvaluated) * 100) : 0
-      },
-      fail: {
-        count: failCount,
-        percent: totalEvaluated > 0 ? Math.round((failCount / totalEvaluated) * 100) : 0
-      }
-    };
+    const statusChart = [
+      { name: language === 'bn' ? 'পাস' : 'Passed', value: passed, fill: '#10b981' },
+      { name: language === 'bn' ? 'ফেল' : 'Failed', value: failed, fill: '#ef4444' }
+    ];
 
     return {
-      totalStudentsCount: filteredStudents.length,
-      activeStudentsCount: activeFilteredStudents.length,
-      totalSubjectsCount: filteredSubjectsCount,
-      marksCount: filteredMarksCount,
-      statusData: sData,
-      classAverages: cAvgs,
-      groupAverages: gAvgs,
-      attendanceData: aData,
-      gradeData: gData,
-      chartData: pData,
+      academicHealth: { passRate, overallAverageGpa, aPlusCount },
+      classCards: cards,
       topStudents: sortedPerformers,
-      passRate: calculatedPassRate,
-      overallAverageGpa: overallAvgGpa,
-      aPlusCount: gradeCounts['A+'] || 0,
-      topPerformingClass: topClassItem,
-      strugglingClass: strugglingClassItem,
-      totalAppearedCount: totAppeared,
-      totalEvaluatedCount: totalEvaluated,
-      atRiskStudents: atRiskList,
-      criticalFailCount: critFailCount,
-      singleFailCount: singleFailCount,
-      subjectSummaryList: subList,
-      lowestSubjects,
-      highestSubjects,
-      gradeTiers
+      atRiskStudents: atRisk,
+      gradeTiers: tiers,
+      statusData: statusChart
     };
-  }, [students, subjects, marks, remarks, classes, selectedExamId, selectedClass, language, t, exams]);
+  }, [students, marks, subjects, classes, exams, yearExams, selectedAcademicYear, selectedExamId, selectedClass, language]);
 
-  // Filter top performers based on search query
+  // Filtered top performers for search query
   const filteredTopStudents = useMemo(() => {
-    if (!meritSearchQuery.trim()) return topStudents.slice(0, 10);
+    if (!meritSearchQuery.trim()) return (topStudents || []).slice(0, 10);
     const q = meritSearchQuery.toLowerCase().trim();
-    return topStudents.filter(s => 
-      s.name.toLowerCase().includes(q) || 
-      (s.nameBn && s.nameBn.includes(q)) || 
-      s.studentId.toLowerCase().includes(q) ||
-      (s.roll && s.roll.toLowerCase().includes(q))
+    return (topStudents || []).filter(s => 
+      s && (
+        (s.name && s.name.toLowerCase().includes(q)) || 
+        (s.nameBn && s.nameBn.includes(q)) || 
+        (s.studentId && String(s.studentId).toLowerCase().includes(q)) ||
+        (s.roll != null && String(s.roll).toLowerCase().includes(q))
+      )
     ).slice(0, 15);
   }, [topStudents, meritSearchQuery]);
 
-  const selectedExamObj = exams.find(e => e.id === selectedExamId);
-
   return (
-    <div id="madrasha-executive-dashboard" className="space-y-6">
+    <div id="madrasha-executive-dashboard" className="space-y-6 pb-12">
       
-      {/* 1. Sleek Command Header & Global Filtering Ribbon */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-5 transition-all">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100">
-              <GraduationCap className="h-6 w-6" />
-            </span>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {language === 'bn' ? 'অ্যাকাডেমিক ড্যাশবোর্ড ও কর্মক্ষমতা বিশ্লেষণ' : 'Academic Dashboard & Performance Analysis'}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 font-normal">
-                {language === 'bn' 
-                  ? 'মাদ্রাসার ফলাফল সূচক, শিক্ষার্থী ট্র্যাকিং, বিষয়ভিত্তিক শক্তি-দুর্বলতা এবং মেধা তালিকা।'
-                  : 'Institutional health metrics, student trajectory, subject diagnosis, and merit standings.'}
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* 0. Top Live Notice Board Marquee & Emergency Notification Alert */}
+      <NoticeBoardAlertBanner onOpenNoticeBoard={() => setActiveTab('notice_board')} />
 
-        {/* Action Controls: Exam Selector + Class Selector + Quick Demo Data */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Exam Filter Dropdown */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs">
-            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span className="font-bold text-slate-500">{t('exam')}:</span>
-            <select
-              id="dashboard-exam-selector"
-              value={selectedExamId}
-              onChange={(e) => setSelectedExamId(e.target.value)}
-              aria-label={t('exam')}
-              className="bg-transparent text-slate-900 font-bold focus:outline-none cursor-pointer pr-1"
-            >
-              <option value="All">{language === 'bn' ? 'সকল পরীক্ষা' : 'All Exams'}</option>
-              {exams.map(e => (
-                <option key={e.id} value={e.id}>{language === 'bn' ? (e.nameBn || e.name) : e.name}</option>
-              ))}
-            </select>
-          </div>
+      {/* ধাপ ১ বাস্তবায়ন: প্রতিদিনের সামগ্রিক অবস্থা এক নজরে (Overview, আজকের উপস্থিতি, আজকের আয়–ব্যয়, শিক্ষার্থী ও জনবল, বকেয়া ফি, আসন্ন পরীক্ষা ও নোটিশ, সাম্প্রতিক কার্যক্রম) */}
+      <DashboardDailyOverview 
+        onNavigate={setActiveTab}
+        selectedAcademicYear={selectedAcademicYear}
+        onSelectAcademicYear={setSelectedAcademicYear}
+        academicYears={academicYears}
+        selectedExamId={selectedExamId}
+        onSelectExamId={setSelectedExamId}
+        yearExams={yearExams}
+        onOpenRecoveryModal={() => setIsRecoveryModalOpen(true)}
+      />
 
-          {/* Class Filter Dropdown */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs">
-            <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span className="font-bold text-slate-500">{language === 'bn' ? 'শ্রেণী:' : 'Class:'}</span>
-            <select
-              id="dashboard-class-filter"
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              aria-label={language === 'bn' ? 'শ্রেণী' : 'Class'}
-              className="bg-transparent text-slate-900 font-bold focus:outline-none cursor-pointer pr-1"
-            >
-              <option value="All">{language === 'bn' ? 'সকল শ্রেণী' : 'All Classes'}</option>
-              {classes.map(c => (
-                <option key={c.id} value={c.name}>{language === 'bn' ? (c.nameBn || c.name) : c.name}</option>
-              ))}
-            </select>
-          </div>
+      {/* 3. Memoized Quick Launchpad */}
+      <QuickLaunchpad 
+        onNavigate={setActiveTab}
+        language={language}
+      />
 
-          {/* Seed Demo Data Button when empty */}
-          {marks.length === 0 && (
-            <button
-              id="dashboard-seed-demo-btn"
-              type="button"
-              onClick={() => seedDemoMadrashaData()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-2xs cursor-pointer active:scale-95"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{language === 'bn' ? 'নমুনা ডেটা লোড করুন' : 'Load Demo Data'}</span>
-            </button>
-          )}
-        </div>
-      </div>
+      {/* 4. Memoized Evaluation Pipeline */}
+      <EvaluationPipeline 
+        matrix={examEvaluationMatrix}
+        progressPercent={evaluationMetrics.progressPercent}
+        selectedAcademicYear={selectedAcademicYear}
+        onSelectExamAndNavigate={(examId, tab) => {
+          setSelectedExamId(examId);
+          setActiveTab(tab);
+        }}
+        language={language}
+      />
 
-      {/* 2. Executive Quick Focus Switcher (Optimal, Minimal Tab Navigation) */}
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 pb-3 overflow-x-auto">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl text-xs font-bold text-slate-600">
+      {/* 5. Navigation Switcher */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 overflow-x-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600">
           <button
-            id="tab-btn-overview"
             onClick={() => setActiveSectionTab('overview')}
-            className={`px-4 py-2 rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSectionTab === 'overview' 
-                ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' 
+                ? 'bg-white text-indigo-600 shadow-xs' 
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {language === 'bn' ? 'সার্বিক ড্যাশবোর্ড' : 'Executive Overview'}
+            {language === 'bn' ? 'সার্বিক ওভারভিউ' : 'Overview'}
           </button>
           <button
-            id="tab-btn-student"
             onClick={() => setActiveSectionTab('student')}
-            className={`px-4 py-2 rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSectionTab === 'student' 
-                ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' 
+                ? 'bg-white text-indigo-600 shadow-xs' 
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {language === 'bn' ? 'শিক্ষার্থীর অগ্রগতি' : 'Student Trajectory'}
+            {language === 'bn' ? 'শিক্ষার্থীর ট্র্যাকিং' : 'Student Trajectory'}
           </button>
           <button
-            id="tab-btn-subjects"
             onClick={() => setActiveSectionTab('subjects')}
-            className={`px-4 py-2 rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSectionTab === 'subjects' 
-                ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' 
+                ? 'bg-white text-indigo-600 shadow-xs' 
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {language === 'bn' ? 'বিষয়ভিত্তিক ডায়াগনোসিস' : 'Subject Analytics'}
+            {language === 'bn' ? 'বিষয়ভিত্তিক বিশ্লেষণ' : 'Subject Analytics'}
           </button>
           <button
-            id="tab-btn-merit"
             onClick={() => setActiveSectionTab('merit')}
-            className={`px-4 py-2 rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSectionTab === 'merit' 
-                ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' 
+                ? 'bg-white text-indigo-600 shadow-xs' 
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -747,847 +1291,262 @@ export const Dashboard = () => {
           </button>
         </div>
 
-        {/* Live Filter Info Badge */}
         <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium shrink-0">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>{language === 'bn' ? 'নির্বাচিত ফিল্টার:' : 'Active View:'}</span>
-          <span className="font-bold text-slate-800">
-            {selectedExamObj ? (language === 'bn' ? selectedExamObj.nameBn || selectedExamObj.name : selectedExamObj.name) : (language === 'bn' ? 'সকল পরীক্ষা' : 'All Exams')}
-          </span>
-          <span className="text-slate-300">•</span>
-          <span className="font-bold text-indigo-700">{getClassNameDisplay(selectedClass)}</span>
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span>{language === 'bn' ? 'নির্বাচিত সেশন:' : 'Session:'}</span>
+          <span className="text-slate-800 font-bold">{toBanglaDigits(selectedAcademicYear, language)}</span>
         </div>
       </div>
 
-      {/* 3. Executive KPI Metric Ribbon (4 Key Usable Metric Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* KPI 1: Enrolled & Appeared Students */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-blue-500" />
-              {language === 'bn' ? 'শিক্ষার্থী ও অংশগ্রহণ' : 'Students & Appeared'}
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-              {language === 'bn' ? 'অ্যাক্টিভ' : 'Active'}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-              {toBanglaDigits(totalEvaluatedCount)}
-              <span className="text-xs font-normal text-slate-400 ml-1">/ {toBanglaDigits(totalStudentsCount)}</span>
-            </div>
-            <span className="text-xs font-bold text-blue-700 font-mono">
-              {totalStudentsCount > 0 ? toBanglaDigits(Math.round((totalEvaluatedCount / totalStudentsCount) * 100)) : 0}%
-            </span>
-          </div>
-          <div className="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1.5">
-            <span>{language === 'bn' ? 'মোট মূল্যায়িত শিক্ষার্থী:' : 'Evaluated in exam:'}</span>
-            <span className="font-bold text-slate-800">{toBanglaDigits(totalEvaluatedCount)} {language === 'bn' ? 'জন' : ''}</span>
-          </div>
-        </div>
+      {/* 6. TAB CONTENT SECTIONS */}
+      {activeSectionTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Class Grid */}
+          <ClassGrid classCards={classCards} language={language} />
 
-        {/* KPI 2: Pass Rate & Academic Health */}
-        <div className={`p-5 rounded-2xl border shadow-2xs space-y-2 transition-all ${
-          passRate >= 80 ? 'bg-emerald-50/30 border-emerald-200/80' :
-          passRate >= 60 ? 'bg-amber-50/30 border-amber-200/80' :
-          'bg-rose-50/30 border-rose-200/80'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-              passRate >= 80 ? 'text-emerald-700' : passRate >= 60 ? 'text-amber-700' : 'text-rose-700'
-            }`}>
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              {language === 'bn' ? 'প্রতিষ্ঠানের পাসের হার' : 'Madrasha Pass Rate'}
-            </span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-              passRate >= 85 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-              passRate >= 70 ? 'bg-amber-100 text-amber-800 border-amber-200' :
-              'bg-rose-100 text-rose-800 border-rose-200'
-            }`}>
-              {passRate >= 85 ? (language === 'bn' ? 'উৎকৃষ্ট' : 'Excellent') :
-               passRate >= 70 ? (language === 'bn' ? 'সন্তোষজনক' : 'Good') :
-               (language === 'bn' ? 'সতর্কতা' : 'Needs Care')}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-slate-900">
-              {toBanglaDigits(passRate)}%
-            </div>
-            <div className="text-xs font-semibold text-slate-500">
-              {statusData.find(d => d.type === 'failed')?.value ? (
-                <span className="text-rose-600 font-bold">
-                  {toBanglaDigits(statusData.find(d => d.type === 'failed')!.value)} {language === 'bn' ? 'জন ফেল' : 'fails'}
-                </span>
-              ) : (
-                <span className="text-emerald-700 font-bold">{language === 'bn' ? 'শতভাগ পাস' : '100% Pass'}</span>
-              )}
-            </div>
-          </div>
-          <div className="text-[11px] text-slate-600 flex items-center justify-between border-t border-slate-200/60 pt-1.5">
-            <span>{language === 'bn' ? 'পাসকৃত শিক্ষার্থী:' : 'Total Passed:'}</span>
-            <span className="font-bold text-emerald-800 font-mono">
-              {toBanglaDigits(statusData.find(d => d.type === 'passed')?.value || 0)} {language === 'bn' ? 'জন' : ''}
-            </span>
-          </div>
-        </div>
-
-        {/* KPI 3: Average Institution GPA */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />
-              {language === 'bn' ? 'গড় প্রাতিষ্ঠানিক জিপিএ' : 'Overall Average GPA'}
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-              {language === 'bn' ? 'স্কেল ৫.০০' : 'Scale 5.0'}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <div className="text-2xl sm:text-3xl font-black text-indigo-700 font-mono tracking-tight">
-              {toBanglaDigits(overallAverageGpa.toFixed(2))}
-              <span className="text-xs font-normal text-slate-400 ml-1">/ ৫.০০</span>
-            </div>
-            <span className="text-xs font-bold text-slate-600 font-mono">
-              {toBanglaDigits(Math.round((overallAverageGpa / 5.0) * 100))}%
-            </span>
-          </div>
-          <div className="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1.5 truncate">
-            <span>{language === 'bn' ? 'শীর্ষ শ্রেণী:' : 'Top Class:'}</span>
-            <span className="font-bold text-slate-800 truncate ml-1">
-              {topPerformingClass ? `${topPerformingClass.name} (${toBanglaDigits(topPerformingClass.average)})` : '—'}
-            </span>
-          </div>
-        </div>
-
-        {/* KPI 4: Academic Excellence (A+ Achievers) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Award className="h-3.5 w-3.5 text-amber-500" />
-              {language === 'bn' ? 'জিপিএ ৫.০০ (A+) অর্জন' : 'GPA 5.0 (A+) Achievers'}
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-              {language === 'bn' ? 'কৃতিত্ব' : 'Excellence'}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-              {toBanglaDigits(aPlusCount)}
-              <span className="text-xs font-normal text-slate-400 ml-1">{language === 'bn' ? 'জন' : 'students'}</span>
-            </div>
-            <span className="text-xs font-bold text-amber-700 font-mono">
-              {totalEvaluatedCount > 0 ? toBanglaDigits(Math.round((aPlusCount / totalEvaluatedCount) * 100)) : 0}%
-            </span>
-          </div>
-          <div className="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1.5">
-            <span>{language === 'bn' ? 'মোট পাঠ্য বিষয়:' : 'Total Subjects:'}</span>
-            <span className="font-bold text-slate-800">{toBanglaDigits(totalSubjectsCount)} {language === 'bn' ? 'টি' : ''}</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* When no marks exist */}
-      {statusData.length === 0 && (
-        <div className="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200/80 shadow-xs text-center max-w-xl mx-auto space-y-4 my-6">
-          <div className="mx-auto h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
-            <AlertCircle size={28} />
-          </div>
-          <h3 className="text-lg font-bold text-slate-800">
-            {language === 'bn' ? 'ফলাফল তথ্য প্রয়োজন' : 'No Results Recorded Yet'}
-          </h3>
-          <p className="text-slate-500 text-xs sm:text-sm leading-relaxed max-w-md mx-auto">
-            {language === 'bn'
-              ? 'বর্তমান ফিল্টারের অধীনে কোনো পরীক্ষার নম্বর অ্যান্ট্রি করা হয়নি। নিচে ক্লিক করে ডেমো ডেটা লোড করুন যাতে পূর্ণাঙ্গ অ্যানালাইসিস দেখতে পারেন।'
-              : 'No marks found for this evaluation filter. Click below to load demo madrasha records.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => seedDemoMadrashaData()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-sm cursor-pointer"
-          >
-            <Sparkles size={16} />
-            {language === 'bn' ? 'নমুনা ডেটা লোড করে বিশ্লেষণ দেখুন' : 'Load Sample Data'}
-          </button>
-        </div>
-      )}
-
-      {/* 4. Actionable Executive Decision Center (সিদ্ধান্ত গ্রহণ ও আশু পদক্ষেপ প্যানেল) */}
-      {statusData.length > 0 && activeSectionTab === 'overview' && (
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-md border border-slate-800 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3.5">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                  <ShieldAlert className="h-4 w-4 text-amber-400" />
-                </span>
-                <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                  {language === 'bn' ? 'কার্যকর সিদ্ধান্ত ও তাৎক্ষণিক পদক্ষেপ প্যানেল' : 'Executive Action & Decision Insights'}
-                </h2>
-              </div>
-              <p className="text-xs text-slate-300">
-                {language === 'bn' 
-                  ? 'প্রাতিষ্ঠানিক ফলাফল বিশ্লেষণ করে আশু করণীয় এবং দুর্বলতা নিরসনে সুপারিশ' 
-                  : 'Actionable intervention points generated from evaluation data'}
-              </p>
-            </div>
+          {/* Dual Visual Analytics Cards: Grade Tiers & Pass/Fail Ratio */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {atRiskStudents.length > 0 && (
-              <button
-                id="btn-view-at-risk-modal"
-                type="button"
-                onClick={() => setShowAtRiskModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer self-start sm:self-auto shrink-0"
-              >
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <span>
-                  {language === 'bn' 
-                    ? `ঝুঁকিপূর্ণ ${toBanglaDigits(atRiskStudents.length)} শিক্ষার্থীর তালিকা দেখুন` 
-                    : `View ${atRiskStudents.length} At-Risk Students`}
-                </span>
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            {/* Action 1: At-Risk Students */}
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 hover:bg-white/10 transition">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  {language === 'bn' ? 'ঝুঁকিপূর্ণ শিক্ষার্থী ও স্পেশাল কেয়ার' : 'At-Risk Student Alerts'}
-                </span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${atRiskStudents.length > 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'}`}>
-                  {atRiskStudents.length > 0 ? `${toBanglaDigits(atRiskStudents.length)} ${language === 'bn' ? 'জন' : ''}` : (language === 'bn' ? 'ঝুঁকিমুক্ত' : 'Zero Fails')}
-                </span>
+            {/* Grade Tier Chart Card */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-200 shrink-0">
+                    <BarChart3 size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      {language === 'bn' ? 'গ্রেডভিত্তিক ফলাফল বিন্যাস' : 'Grade Distribution'}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      {language === 'bn' ? 'A+ থেকে F পর্যন্ত গ্রেড পরিসংখ্যান' : 'Student counts across grade tiers'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-slate-200 leading-relaxed">
-                {atRiskStudents.length > 0 ? (
-                  language === 'bn' ? (
-                    <>
-                      মোট <strong>{toBanglaDigits(atRiskStudents.length)} জন</strong> শিক্ষার্থী অকৃতকার্য। এর মধ্যে <strong>{toBanglaDigits(criticalFailCount)} জন</strong> একাধিক বিষয়ে এবং <strong>{toBanglaDigits(singleFailCount)} জন</strong> ১টি বিষয়ে ফেল করেছে।
-                    </>
-                  ) : (
-                    <>
-                      <strong>{atRiskStudents.length} students</strong> fell below pass marks. <strong>{criticalFailCount} students</strong> failed in multiple subjects.
-                    </>
-                  )
-                ) : (
-                  language === 'bn' 
-                    ? 'মাশাআল্লাহ! বর্তমান পরীক্ষায় কোনো শিক্ষার্থী অকৃতকার্য হয়নি। সার্বিক ফলাফল অত্যন্ত সন্তোষজনক।'
-                    : 'All evaluated students have passed successfully in this examination.'
-                )}
-              </p>
-              <div className="text-[11px] text-amber-300/90 font-medium pt-1 border-t border-white/10 flex items-center gap-1">
-                <Sparkles className="h-3 w-3 shrink-0" />
-                <span>
-                  {atRiskStudents.length > 0
-                    ? (language === 'bn' ? 'পদক্ষেপ: দুর্বল শিক্ষার্থীদের তালিকা অনুযায়ী স্পেশাল কোচিং ও অভিভাবক বৈঠক আহ্বান।' : 'Action: Arrange remedial coaching & guardian meeting.')
-                    : (language === 'bn' ? 'পদক্ষেপ: ধারাবাহিক মান রক্ষায় নিয়মিত ক্লাস টেস্ট অব্যাহত রাখুন।' : 'Action: Maintain current teaching standard.')}
-                </span>
+
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={gradeTiers} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} />
+                    <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
+                    <Tooltip 
+                      formatter={(val: any) => [`${toBanglaDigits(val, language)} জন`, 'শিক্ষার্থী']}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 'bold' }}
+                    />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                      {gradeTiers.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Action 2: Challenging Subjects */}
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 hover:bg-white/10 transition">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                  <BookOpen className="h-3.5 w-3.5" />
-                  {language === 'bn' ? 'চ্যালেঞ্জিং বিষয় ও বিশেষ রিভিশন' : 'Curriculum Bottlenecks'}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  {language === 'bn' ? 'ফোকাস এরিয়া' : 'Focus Area'}
-                </span>
-              </div>
-              <div className="text-xs text-slate-200 leading-relaxed space-y-1">
-                {lowestSubjects.length > 0 ? (
-                  lowestSubjects.map((sub, idx) => (
-                    <div key={sub.id} className="flex items-center justify-between text-xs">
-                      <span className="truncate">{idx + 1}. {sub.name}</span>
-                      <span className="font-mono font-bold text-amber-300 shrink-0 ml-2">
-                        {toBanglaDigits(sub.passRate)}% {language === 'bn' ? 'পাস' : 'Pass'} (গড় {toBanglaDigits(sub.avgMarks)})
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <span>{language === 'bn' ? 'সকল বিষয়ে সন্তোষজনক ফলাফল পরিলক্ষিত হয়েছে।' : 'Healthy scores across subjects.'}</span>
-                )}
-              </div>
-              <div className="text-[11px] text-amber-300/90 font-medium pt-1 border-t border-white/10 flex items-center gap-1">
-                <Sparkles className="h-3 w-3 shrink-0" />
-                <span>
-                  {language === 'bn'
-                    ? 'পদক্ষেপ: দুর্বল বিষয়ের শিক্ষকদের সাথে জরুরি পর্যালোচনা ও অতিরিক্ত ক্লাস টেস্ট।'
-                    : 'Action: Schedule subject revisions with responsible teachers.'}
+            {/* Pass vs Fail Ratio Card */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shrink-0">
+                    <PieIcon size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      {language === 'bn' ? 'পাস বনাম ফেল অনুপাত' : 'Pass vs Fail Ratio'}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      {language === 'bn' ? 'সার্বিক প্রাতিষ্ঠানিক পাসের অনুপাত' : 'Overall institutional pass rate'}
+                    </span>
+                  </div>
+                </div>
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {toBanglaDigits(academicHealth.passRate, language)}% {language === 'bn' ? 'পাস' : 'Pass'}
                 </span>
               </div>
-            </div>
 
-            {/* Action 3: Class Academic Benchmark Target */}
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 hover:bg-white/10 transition">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  {language === 'bn' ? 'শ্রেণীভিত্তিক অগ্রগতি ও তদারকি' : 'Cohort Gap & Target'}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                  {language === 'bn' ? 'মানদণ্ড' : 'Target'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-200 leading-relaxed">
-                {topPerformingClass && strugglingClass && topPerformingClass.name !== strugglingClass.name ? (
-                  language === 'bn' ? (
-                    <>
-                      <strong>{topPerformingClass.name}</strong> সর্বোচ্চ GPA ({toBanglaDigits(topPerformingClass.average)}) পেয়ে শীর্ষে; কিন্তু <strong>{strugglingClass.name}</strong>-এর গড় GPA ({toBanglaDigits(strugglingClass.average)}) অপেক্ষাকৃত কম।
-                    </>
-                  ) : (
-                    <>
-                      <strong>{topPerformingClass.name}</strong> leads with GPA {topPerformingClass.average}; <strong>{strugglingClass.name}</strong> (GPA {strugglingClass.average}) requires academic guidance.
-                    </>
-                  )
-                ) : (
-                  language === 'bn' 
-                    ? 'সকল শ্রেণীর পারফরম্যান্সে সমতা রয়েছে। সার্বিক প্রাতিষ্ঠানিক মান ইতিবাচক।'
-                    : 'Consistent academic benchmark across cohorts.'
-                )}
-              </p>
-              <div className="text-[11px] text-indigo-300 font-medium pt-1 border-t border-white/10 flex items-center gap-1">
-                <Sparkles className="h-3 w-3 shrink-0" />
-                <span>
-                  {language === 'bn'
-                    ? 'পদক্ষেপ: পিছিয়ে থাকা শ্রেণীর শিক্ষার্থীদের জন্য আলাদা ক্লাসরুম মনিটরিং।'
-                    : 'Action: Increase classroom observation in lagging cohorts.'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Core Optimized Analytics (2x2 Compact Grid - Easy to Understand & Decision-Oriented) */}
-      {activeSectionTab === 'overview' && statusData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          
-          {/* Card 1: Pass/Fail Health & Rate (Optimal & Compact) */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <PieIcon className="h-4 w-4 text-emerald-600" />
-                  {language === 'bn' ? 'ফলাফল সাফল্য ও পাসের অনুপাত' : 'Pass vs. Fail Performance Health'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'bn' ? 'উত্তীর্ণ ও অকৃতকার্য শিক্ষার্থীর আনুপাতিক চিত্র' : 'Pass rate and academic risk breakdown'}
-                </p>
-              </div>
-              <span className={`text-xs font-black px-2.5 py-1 rounded-full font-mono ${
-                passRate >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-              }`}>
-                {toBanglaDigits(passRate)}% {language === 'bn' ? 'পাস' : 'Pass'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 items-center gap-4">
-              {/* Compact Donut */}
-              <div className="h-36 w-full flex items-center justify-center relative">
+              <div className="h-52 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={statusData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={38}
-                      outerRadius={56}
+                      innerRadius={50}
+                      outerRadius={75}
                       paddingAngle={4}
                       dataKey="value"
                     >
                       {statusData.map((entry, index) => (
-                        <Cell 
-                          key={`status-cell-${index}`} 
-                          fill={entry.type === 'passed' ? '#10b981' : '#f43f5e'} 
-                        />
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
                     <Tooltip 
-                      formatter={(value: any, name: any, item: any) => [
-                        `${toBanglaDigits(value)} ${language === 'bn' ? 'জন' : 'students'} (${toBanglaDigits(item.payload.percent)}%)`,
-                        item.payload.name
-                      ]}
+                      formatter={(val: any) => [`${toBanglaDigits(val, language)} জন`, '']}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 'bold' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                {/* Center Badge */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-lg font-black text-slate-900 font-mono leading-none">
-                    {toBanglaDigits(passRate)}%
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                    {language === 'bn' ? 'পাস রেট' : 'Pass Rate'}
-                  </span>
-                </div>
               </div>
 
-              {/* Side Progress Meters */}
-              <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100 space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-emerald-800 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      {language === 'bn' ? 'কৃতকার্য শিক্ষার্থী' : 'Passed Students'}
-                    </span>
-                    <span className="font-mono font-black text-emerald-900">
-                      {toBanglaDigits(statusData.find(d => d.type === 'passed')?.value || 0)} {language === 'bn' ? 'জন' : ''} ({toBanglaDigits(statusData.find(d => d.type === 'passed')?.percent || 0)}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-emerald-100 h-1.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${statusData.find(d => d.type === 'passed')?.percent || 0}%` }}
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-center">
+                <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                  <span className="text-[11px] font-semibold text-emerald-700 block">{language === 'bn' ? 'পাসকৃত' : 'Passed'}</span>
+                  <span className="text-base font-bold text-emerald-950">
+                    {toBanglaDigits(statusData.find(d => d.name === 'Passed' || d.name === 'পাস')?.value || 0, language)} {language === 'bn' ? 'জন' : ''}
+                  </span>
                 </div>
-
-                <div className="p-3 rounded-xl bg-rose-50/50 border border-rose-100 space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-rose-800 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-rose-500" />
-                      {language === 'bn' ? 'অকৃতকার্য শিক্ষার্থী' : 'At-Risk / Failed'}
-                    </span>
-                    <span className="font-mono font-black text-rose-900">
-                      {toBanglaDigits(statusData.find(d => d.type === 'failed')?.value || 0)} {language === 'bn' ? 'জন' : ''} ({toBanglaDigits(statusData.find(d => d.type === 'failed')?.percent || 0)}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-rose-100 h-1.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-rose-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${statusData.find(d => d.type === 'failed')?.percent || 0}%` }}
-                    />
-                  </div>
+                <div className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-100">
+                  <span className="text-[11px] font-semibold text-rose-700 block">{language === 'bn' ? 'ফেল' : 'Failed'}</span>
+                  <span className="text-base font-bold text-rose-950">
+                    {toBanglaDigits(statusData.find(d => d.name === 'Failed' || d.name === 'ফেল')?.value || 0, language)} {language === 'bn' ? 'জন' : ''}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs text-slate-600 flex items-center justify-between">
-              <span>
-                {language === 'bn'
-                  ? `মোট মূল্যায়িত ${toBanglaDigits(totalEvaluatedCount)} জনের মধ্যে ${toBanglaDigits(statusData.find(d => d.type === 'passed')?.value || 0)} জন সফলভাবে পাস করেছে।`
-                  : `Out of ${totalEvaluatedCount} evaluated, ${statusData.find(d => d.type === 'passed')?.value || 0} students achieved pass mark.`}
-              </span>
-              {atRiskStudents.length > 0 && (
+          </div>
+
+          {/* Top 5 Honor Roll & At-Risk Quick Panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Top 5 Merit Performers */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shrink-0">
+                    <Award size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      {language === 'bn' ? 'শীর্ষ মেধা তালিকা (টপ ৫)' : 'Top 5 Honor Roll'}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      {language === 'bn' ? 'সর্বোচ্চ জিপিএ ও মোট নম্বরের ভিত্তিতে' : 'Highest GPA and marks achievers'}
+                    </span>
+                  </div>
+                </div>
                 <button
-                  type="button"
-                  onClick={() => setShowAtRiskModal(true)}
-                  className="text-xs font-bold text-rose-600 hover:text-rose-800 cursor-pointer ml-2 shrink-0"
+                  onClick={() => setActiveSectionTab('merit')}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
                 >
-                  {language === 'bn' ? 'ফেল তালিকা →' : 'Fail list →'}
+                  <span>{language === 'bn' ? 'সম্পূর্ণ তালিকা' : 'View All'}</span>
+                  <ChevronRight size={13} />
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* Card 2: Grade Quality & Tiers (Simplified, Scannable & Actionable) */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Award className="h-4 w-4 text-amber-500" />
-                  {language === 'bn' ? 'মেধা মান ও গ্রেড কোয়ালিটি' : 'Grade Quality & Tiers'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'bn' ? 'উচ্চ মেধা, স্ট্যান্ডার্ড ও উন্নয়নমুখী মেধার অনুপাত' : 'Distribution across achievement tiers'}
-                </p>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-mono">
-                {toBanglaDigits(aPlusCount)} {language === 'bn' ? 'জন A+' : 'A+ Students'}
-              </span>
-            </div>
-
-            {/* 4 Macro Tiers for Immediate Understanding */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100 space-y-1">
-                <div className="text-[11px] font-bold text-emerald-800 truncate">
-                  {language === 'bn' ? 'উচ্চ মেধা (A+, A)' : 'Top (A+, A)'}
-                </div>
-                <div className="text-lg font-black text-emerald-900 font-mono">
-                  {toBanglaDigits(gradeTiers.top.count)} <span className="text-xs font-normal text-emerald-700">({toBanglaDigits(gradeTiers.top.percent)}%)</span>
-                </div>
-                <div className="w-full bg-emerald-100 h-1 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${gradeTiers.top.percent}%` }} />
-                </div>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-blue-50/60 border border-blue-100 space-y-1">
-                <div className="text-[11px] font-bold text-blue-800 truncate">
-                  {language === 'bn' ? 'স্ট্যান্ডার্ড (A-, B)' : 'Mid (A-, B)'}
-                </div>
-                <div className="text-lg font-black text-blue-900 font-mono">
-                  {toBanglaDigits(gradeTiers.mid.count)} <span className="text-xs font-normal text-blue-700">({toBanglaDigits(gradeTiers.mid.percent)}%)</span>
-                </div>
-                <div className="w-full bg-blue-100 h-1 rounded-full overflow-hidden">
-                  <div className="bg-blue-500 h-full rounded-full" style={{ width: `${gradeTiers.mid.percent}%` }} />
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-100 space-y-1">
-                <div className="text-[11px] font-bold text-amber-800 truncate">
-                  {language === 'bn' ? 'উন্নয়নমুখী (C, D)' : 'Low (C, D)'}
-                </div>
-                <div className="text-lg font-black text-amber-900 font-mono">
-                  {toBanglaDigits(gradeTiers.low.count)} <span className="text-xs font-normal text-amber-700">({toBanglaDigits(gradeTiers.low.percent)}%)</span>
-                </div>
-                <div className="w-full bg-amber-100 h-1 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: `${gradeTiers.low.percent}%` }} />
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-rose-50/60 border border-rose-100 space-y-1">
-                <div className="text-[11px] font-bold text-rose-800 truncate">
-                  {language === 'bn' ? 'অকৃতকার্য (F)' : 'Fail (F)'}
-                </div>
-                <div className="text-lg font-black text-rose-900 font-mono">
-                  {toBanglaDigits(gradeTiers.fail.count)} <span className="text-xs font-normal text-rose-700">({toBanglaDigits(gradeTiers.fail.percent)}%)</span>
-                </div>
-                <div className="w-full bg-rose-100 h-1 rounded-full overflow-hidden">
-                  <div className="bg-rose-500 h-full rounded-full" style={{ width: `${gradeTiers.fail.percent}%` }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Granular Micro Bar Chart */}
-            <div className="h-28 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={gradeData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f8fafc" />
-                  <XAxis dataKey="grade" fontSize={10} tickLine={false} axisLine={false} stroke="#64748b" />
-                  <YAxis fontSize={10} tickLine={false} axisLine={false} stroke="#64748b" tickFormatter={(v) => toBanglaDigits(v)} />
-                  <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    formatter={(value: any, name: any, item: any) => [
-                      `${toBanglaDigits(value)} ${language === 'bn' ? 'জন' : 'students'} (${toBanglaDigits(item.payload.percentage)}%)`,
-                      `Grade ${item.payload.grade}`
-                    ]}
-                  />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={24}>
-                    {gradeData.map((entry, index) => {
-                      let color = '#3b82f6';
-                      if (entry.grade === 'A+') color = '#10b981';
-                      else if (entry.grade === 'A') color = '#059669';
-                      else if (entry.grade === 'A-') color = '#0284c7';
-                      else if (entry.grade === 'B') color = '#6366f1';
-                      else if (entry.grade === 'C') color = '#f59e0b';
-                      else if (entry.grade === 'D') color = '#ea580c';
-                      else if (entry.grade === 'F') color = '#ef4444';
-                      return <Cell key={`mini-grade-${index}`} fill={color} />;
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Card 3: Class Academic Benchmark (Optimal Height & Focused) */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-indigo-600" />
-                  {language === 'bn' ? 'শ্রেণীভিত্তিক তুলনামূলক পারফরম্যান্স' : 'Class Academic Benchmarking'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'bn' ? 'শ্রেণীসমূহের গড় জিপিএ (GPA) তুলনা' : 'Average GPA across classes (Scale 5.0)'}
-                </p>
-              </div>
-              {topPerformingClass && (
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-                  {language === 'bn' ? 'শীর্ষ:' : 'Top:'} {topPerformingClass.name}
-                </span>
-              )}
-            </div>
-
-            <div className="h-36 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={selectedClass === 'All' ? classAverages : groupAverages} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} stroke="#64748b" />
-                  <YAxis domain={[0, 5]} fontSize={10} tickLine={false} axisLine={false} stroke="#64748b" tickFormatter={(v) => toBanglaDigits(v)} />
-                  <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    formatter={(val: any, name: any, item: any) => [
-                      `GPA ${toBanglaDigits(val)} (${toBanglaDigits(item.payload.percentageEquivalent)}%) - ${toBanglaDigits(item.payload.count)} ${language === 'bn' ? 'জন' : 'students'}`,
-                      item.payload.name
-                    ]}
-                  />
-                  <Bar dataKey="average" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={26}>
-                    {(selectedClass === 'All' ? classAverages : groupAverages).map((entry, index) => {
-                      const isTop = topPerformingClass && entry.name === topPerformingClass.name;
-                      return <Cell key={`bar-ca-${index}`} fill={isTop ? '#4338ca' : '#818cf8'} />;
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Strategic Comparison Callout */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-indigo-600 flex items-center gap-1">
-                  <ArrowUpRight className="h-3 w-3" />
-                  {language === 'bn' ? 'শীর্ষ শ্রেণী' : 'Top Cohort'}
-                </span>
-                <div className="font-extrabold text-indigo-950 truncate">
-                  {topPerformingClass ? `${topPerformingClass.name} (GPA ${toBanglaDigits(topPerformingClass.average)})` : '—'}
-                </div>
-              </div>
-
-              <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
-                  <ArrowDownRight className="h-3 w-3 text-amber-500" />
-                  {language === 'bn' ? 'উন্নয়নমুখী শ্রেণী' : 'Needs Support'}
-                </span>
-                <div className="font-extrabold text-slate-800 truncate">
-                  {strugglingClass ? `${strugglingClass.name} (GPA ${toBanglaDigits(strugglingClass.average)})` : '—'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 4: Subject Performance & Pass Rates (Clean, High-Utility List) */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-indigo-600" />
-                  {language === 'bn' ? 'বিষয়ভিত্তিক সাফল্য ও পাসের হার' : 'Subject Pass Rates & Marks'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'bn' ? 'কোন বিষয়ে পাসের হার কেমন ও গড় নম্বর' : 'Subject-wise pass percentage & average scores'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveSectionTab('subjects')}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-1"
-              >
-                <span>{language === 'bn' ? 'পূর্ণাঙ্গ বিশ্লেষণ' : 'Full view'}</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {subjectSummaryList.length > 0 ? (
-                subjectSummaryList.slice(0, 5).map((subj) => {
-                  const isHigh = subj.passRate >= 80;
-                  const isLow = subj.passRate < 60;
-                  return (
-                    <div key={subj.id} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="font-bold text-slate-900 truncate">
-                          {subj.name}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            {language === 'bn' ? 'গড়:' : 'Avg:'} <strong className="font-mono text-slate-800">{toBanglaDigits(subj.avgMarks)}</strong>/{toBanglaDigits(subj.fullMarks)}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md font-mono ${
-                            isHigh ? 'bg-emerald-100 text-emerald-800' :
-                            isLow ? 'bg-rose-100 text-rose-800' :
-                            'bg-amber-100 text-amber-800'
-                          }`}>
-                            {toBanglaDigits(subj.passRate)}% {language === 'bn' ? 'পাস' : 'Pass'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="w-full bg-slate-200/80 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isHigh ? 'bg-emerald-500' : isLow ? 'bg-rose-500' : 'bg-amber-500'
-                          }`}
-                          style={{ width: `${subj.passRate}%` }}
-                        />
+              <div className="space-y-2">
+                {topStudents.slice(0, 5).map((st, idx) => (
+                  <div 
+                    key={st.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/70 hover:bg-slate-100/70 transition-all text-xs"
+                  >
+                    <div className="flex items-center gap-3 truncate">
+                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs ${
+                        idx === 0 ? 'bg-amber-400 text-amber-950' :
+                        idx === 1 ? 'bg-slate-300 text-slate-900' :
+                        idx === 2 ? 'bg-amber-600/30 text-amber-900' :
+                        'bg-slate-200 text-slate-700'
+                      }`}>
+                        {toBanglaDigits(idx + 1, language)}
+                      </span>
+                      <div className="truncate">
+                        <span className="font-bold text-slate-900 block truncate">
+                          {language === 'bn' ? st.nameBn || st.name : st.name}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {st.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(st.roll || '-', language)}
+                        </span>
                       </div>
                     </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-6 text-xs text-slate-400">
-                  {language === 'bn' ? 'কোনো বিষয় পাওয়া যায়নি' : 'No subjects available'}
-                </div>
-              )}
-            </div>
 
-            <div className="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
-              <span>{language === 'bn' ? 'মোট মূল্যায়িত বিষয়:' : 'Evaluated subjects:'} <strong>{toBanglaDigits(subjectSummaryList.length)} {language === 'bn' ? 'টি' : ''}</strong></span>
-              <button
-                type="button"
-                onClick={() => setActiveSectionTab('subjects')}
-                className="font-bold text-indigo-600 hover:underline cursor-pointer"
-              >
-                {language === 'bn' ? 'দুর্বল ও সবল বিষয় দেখুন →' : 'View subject diagnosis →'}
-              </button>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* 6. Top 5 Merit Roll Snapshot (In Overview) with Direct Link to Full Merit */}
-      {activeSectionTab === 'overview' && topStudents.length > 0 && (
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                <Award className="text-amber-500 h-4 w-4" />
-                {language === 'bn' ? 'শীর্ষ ৫ মেধা তালিকা (Top 5 Merit Snapshot)' : 'Top 5 Merit Performers'}
-              </h3>
-              <p className="text-xs text-slate-500">
-                {language === 'bn' ? 'সর্বোচ্চ জিপিএ ও মোট প্রাপ্ত নম্বরের ভিত্তিতে শীর্ষ ৫ শিক্ষার্থী' : 'Students with highest GPA & composite scores'}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setActiveSectionTab('merit')}
-              className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer self-start sm:self-auto"
-            >
-              <span>{language === 'bn' ? 'সম্পূর্ণ মেধা তালিকা দেখুন' : 'View Full Merit Roll'}</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="overflow-x-auto border border-slate-100 rounded-xl">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100 uppercase tracking-wider">
-                  <th className="py-2.5 px-3">{language === 'bn' ? 'স্থান' : 'Rank'}</th>
-                  <th className="py-2.5 px-3">{language === 'bn' ? 'রোল' : 'Roll'}</th>
-                  <th className="py-2.5 px-3">{language === 'bn' ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
-                  <th className="py-2.5 px-3">{language === 'bn' ? 'শ্রেণী' : 'Class'}</th>
-                  <th className="py-2.5 px-3 text-right">{language === 'bn' ? 'মোট নম্বর' : 'Total Marks'}</th>
-                  <th className="py-2.5 px-3 text-right">{language === 'bn' ? 'জিপিএ (GPA)' : 'GPA'}</th>
-                  <th className="py-2.5 px-3 text-center">{language === 'bn' ? 'গ্রেড' : 'Grade'}</th>
-                  <th className="py-2.5 px-3 text-center">{language === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {topStudents.slice(0, 5).map((performer, index) => (
-                  <tr key={performer.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-2.5 px-3 font-bold">
-                      <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-black ${
-                        index === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                        index === 1 ? 'bg-slate-100 text-slate-800 border border-slate-300' :
-                        index === 2 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
-                        'bg-slate-50 text-slate-600'
-                      }`}>
-                        {toBanglaDigits(index + 1)}
+                    <div className="text-right shrink-0">
+                      <span className="font-bold text-indigo-700 block">
+                        GPA {toBanglaDigits(st.gpa.toFixed(2), language)}
                       </span>
-                    </td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                      {performer.roll ? toBanglaDigits(performer.roll) : '—'}
-                    </td>
-                    <td className="py-2.5 px-3 font-bold text-slate-900">
-                      {language === 'bn' ? (performer.nameBn || performer.name) : performer.name}
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-700">
-                      {getClassNameDisplay(performer.classLevel)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">
-                      {toBanglaDigits(performer.totalMarks)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-black text-indigo-700">
-                      {toBanglaDigits(performer.gpa.toFixed(2))}
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {performer.grade}
+                      <span className="text-[11px] text-slate-400">
+                        {toBanglaDigits(st.totalMarks, language)} {language === 'bn' ? 'নম্বর' : 'marks'}
                       </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedStudentForTrajectory(performer.id);
-                          setActiveSectionTab('student');
-                        }}
-                        className="text-indigo-600 hover:text-indigo-800 font-bold text-xs cursor-pointer hover:underline"
-                      >
-                        {language === 'bn' ? 'প্রগ্রেস →' : 'Progress →'}
-                      </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+
+            {/* At-Risk Students Panel */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200 shrink-0">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      {language === 'bn' ? 'বিশেষ যত্ন প্রয়োজন (ঝুঁকিপূর্ণ)' : 'At-Risk Students'}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      {language === 'bn' ? 'এক বা একাধিক বিষয়ে অকৃতকার্য শিক্ষার্থী' : 'Students failing in 1 or more subjects'}
+                    </span>
+                  </div>
+                </div>
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                  {toBanglaDigits(atRiskStudents.length, language)} {language === 'bn' ? 'জন' : 'Students'}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {atRiskStudents.slice(0, 5).map((st) => (
+                  <div 
+                    key={st.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-rose-50/40 border border-rose-200/60 hover:bg-rose-50/70 transition-all text-xs"
+                  >
+                    <div className="truncate pr-2">
+                      <span className="font-bold text-slate-900 block truncate">
+                        {language === 'bn' ? st.nameBn || st.name : st.name}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {st.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(st.roll || '-', language)}
+                      </span>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="rounded-full px-2.5 py-0.5 bg-rose-100 text-rose-800 font-bold text-xs">
+                        {toBanglaDigits(st.failCount, language)} {language === 'bn' ? 'বিষয়ে ফেল' : 'fails'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {atRiskStudents.length === 0 && (
+                  <div className="text-center py-8 text-emerald-600 text-xs font-semibold flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={16} />
+                    <span>{language === 'bn' ? 'আলহামদুলিল্লাহ! কোনো শিক্ষার্থী ঝুঁকিপূর্ণ তালিকায় নেই।' : 'No at-risk students recorded.'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
+
         </div>
       )}
 
-      {/* 7. Deep-Dive Navigation Cards (In Overview) */}
-      {activeSectionTab === 'overview' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div 
-            onClick={() => setActiveSectionTab('student')}
-            className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/80 to-indigo-100/40 border border-indigo-200/80 hover:border-indigo-300 transition-all cursor-pointer space-y-2 group shadow-2xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="p-2 rounded-xl bg-white text-indigo-700 shadow-2xs group-hover:scale-105 transition-transform">
-                <Users className="h-5 w-5" />
-              </span>
-              <span className="text-xs font-bold text-indigo-700 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                <span>{language === 'bn' ? 'অ্যানালাইসিস ওপেন করুন' : 'Open Analytics'}</span>
-                <ChevronRight className="h-4 w-4" />
-              </span>
-            </div>
-            <h4 className="text-sm font-bold text-indigo-950">
-              {language === 'bn' ? 'শিক্ষার্থী পারফরম্যান্স ও ট্রাজেক্টরি কার্ড' : 'Student Performance & Trajectory'}
-            </h4>
-            <p className="text-xs text-indigo-900/70 leading-relaxed">
-              {language === 'bn'
-                ? 'নির্দিষ্ট শিক্ষার্থীর সকল পরীক্ষার ফলাফল, উন্নতি/অবনতি সূচক এবং বিষয়ভিত্তিক দুর্বলতা বা সবলতার বিস্তারিত বিশ্লেষণ।'
-                : 'Deep-dive into individual student exams, upward/downward trends, and subject diagnosis.'}
-            </p>
-          </div>
-
-          <div 
-            onClick={() => setActiveSectionTab('subjects')}
-            className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/70 border border-slate-200/80 hover:border-slate-300 transition-all cursor-pointer space-y-2 group shadow-2xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="p-2 rounded-xl bg-white text-slate-700 shadow-2xs group-hover:scale-105 transition-transform">
-                <BookOpen className="h-5 w-5" />
-              </span>
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                <span>{language === 'bn' ? 'বিষয় তালিকা দেখুন' : 'View Subjects'}</span>
-                <ChevronRight className="h-4 w-4" />
-              </span>
-            </div>
-            <h4 className="text-sm font-bold text-slate-900">
-              {language === 'bn' ? 'বিষয়ভিত্তিক অ্যানালাইসিস ও শিক্ষণ ঘাটতি' : 'Subject Diagnostics & Learning Gaps'}
-            </h4>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              {language === 'bn'
-                ? 'মাদ্রাসার সকল বিষয়ের বিস্তারিত পাস হার, ধারাবাহিক দুর্বল বিষয় এবং গ্রেড বণ্টন পরীক্ষা করে প্রয়োজনীয় পদক্ষেপ নিন।'
-                : 'Examine pass percentage, recurring subject bottlenecks, and score distributions across subjects.'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Student Performance & Progress Analysis Card (Core User Request Component) */}
-      {(activeSectionTab === 'all' || activeSectionTab === 'student') && (
-        <div className="w-full">
+      {/* TAB B: STUDENT TRAJECTORY */}
+      {activeSectionTab === 'student' && (
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <StudentPerformanceCard 
-            initialClass={selectedClass} 
-            initialStudentId={selectedStudentForTrajectory || undefined}
+            initialStudentId={topStudents[0]?.id}
+            studentId={topStudents[0]?.id}
+            initialClass={selectedClass !== 'All' ? selectedClass : undefined}
           />
         </div>
       )}
 
-      {/* 6. Subject Performance Analytics Presentation (Repeatedly Strong vs Repeatedly Weak Subjects) */}
-      {(activeSectionTab === 'all' || activeSectionTab === 'subjects') && (
-        <div className="w-full">
-          <SubjectPerformanceAnalytics
+      {/* TAB C: SUBJECT ANALYTICS */}
+      {activeSectionTab === 'subjects' && (
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <SubjectPerformanceAnalytics 
             subjects={subjects}
             students={students}
             marks={marks}
@@ -1597,251 +1556,107 @@ export const Dashboard = () => {
             selectedClass={selectedClass}
             language={language}
             t={t}
-            toBanglaDigits={toBanglaDigits}
-            getClassNameDisplay={getClassNameDisplay}
+            toBanglaDigits={(num) => toBanglaDigits(num, language)}
+            getClassNameDisplay={(classLevel) => {
+              if (language === 'bn') {
+                const key = `cls_${classLevel.replace(/\s+/g, '')}`;
+                return t ? (t(key as any) || classLevel) : classLevel;
+              }
+              return classLevel;
+            }}
           />
         </div>
       )}
 
-      {/* 7. Top Performing Students Table / Merit Roll Card */}
-      {(activeSectionTab === 'all' || activeSectionTab === 'merit') && topStudents.length > 0 && (
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
+      {/* TAB D: MERIT LIST */}
+      {activeSectionTab === 'merit' && (
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Award className="text-amber-500 h-5 w-5" />
-                {selectedClass === 'All' 
-                  ? (language === 'bn' ? 'মাদ্রাসার পূর্ণাঙ্গ মেধা তালিকা (Full Merit Roll)' : 'Top Performing Students (Madrashah Merit Roll)')
-                  : (language === 'bn' ? `${getClassNameDisplay(selectedClass)} এর মেধা তালিকা` : `Top Students - ${getClassNameDisplay(selectedClass)}`)}
+              <h3 className="text-sm font-bold text-slate-800">
+                {language === 'bn' ? 'প্রাতিষ্ঠানিক পূর্ণাঙ্গ মেধা তালিকা' : 'Institutional Merit Standings'}
               </h3>
               <p className="text-xs text-slate-500">
-                {language === 'bn' ? 'পরীক্ষায় প্রাপ্ত সর্বোচ্চ জিপিএ ও নম্বরের ভিত্তিতে মেধা ক্রমানুসার' : 'Merit ranking based on highest GPA and total marks'}
+                {language === 'bn' ? 'জিপিএ, মোট নম্বর ও রোল অনুযায়ী মেধা ক্রম' : 'Official merit ranking by GPA, Total Marks, and Roll'}
               </p>
             </div>
 
-            {/* Quick Merit Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
               <input
                 type="text"
-                placeholder={language === 'bn' ? 'মেধাতালিকায় খুঁজুন...' : 'Search rank list...'}
                 value={meritSearchQuery}
                 onChange={(e) => setMeritSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48 sm:w-56"
+                placeholder={language === 'bn' ? 'নাম বা আইডি দিয়ে খুঁজুন...' : 'Search student...'}
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-slate-100 rounded-xl">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100 uppercase tracking-wider">
-                  <th className="py-3 px-3.5">{language === 'bn' ? 'স্থান' : 'Rank'}</th>
-                  <th className="py-3 px-3.5">{language === 'bn' ? 'রোল' : 'Roll'}</th>
-                  <th className="py-3 px-3.5">{language === 'bn' ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
-                  <th className="py-3 px-3.5">{language === 'bn' ? 'আইডি' : 'Student ID'}</th>
-                  {selectedClass === 'All' && <th className="py-3 px-3.5">{language === 'bn' ? 'শ্রেণী' : 'Class'}</th>}
-                  <th className="py-3 px-3.5 text-right">{language === 'bn' ? 'মোট নম্বর' : 'Total Marks'}</th>
-                  <th className="py-3 px-3.5 text-right">{language === 'bn' ? 'জিপিএ (GPA)' : 'GPA'}</th>
-                  <th className="py-3 px-3.5 text-center">{language === 'bn' ? 'গ্রেড' : 'Grade'}</th>
-                  <th className="py-3 px-3.5 text-center">{language === 'bn' ? 'বিশ্লেষণ' : 'Analysis'}</th>
+                <tr className="bg-slate-50 text-slate-500 uppercase text-[11px] font-semibold border-b border-slate-200">
+                  <th className="p-3 text-center w-12">{language === 'bn' ? 'র‌্যাংক' : 'Rank'}</th>
+                  <th className="p-3">{language === 'bn' ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
+                  <th className="p-3 text-center">{language === 'bn' ? 'শ্রেণি' : 'Class'}</th>
+                  <th className="p-3 text-center">{language === 'bn' ? 'রোল' : 'Roll'}</th>
+                  <th className="p-3 text-center">{language === 'bn' ? 'প্রাপ্ত নম্বর' : 'Total'}</th>
+                  <th className="p-3 text-center">{language === 'bn' ? 'জিপিএ' : 'GPA'}</th>
+                  <th className="p-3 text-center">{language === 'bn' ? 'গ্রেড' : 'Grade'}</th>
+                  <th className="p-3 text-center">{language === 'bn' ? 'অবস্থা' : 'Status'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {filteredTopStudents.map((performer, index) => (
-                  <tr key={performer.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-3.5 font-bold">
-                      <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-black ${
-                        index === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                        index === 1 ? 'bg-slate-100 text-slate-800 border border-slate-300' :
-                        index === 2 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
-                        'bg-slate-50 text-slate-600'
+                {filteredTopStudents.map((st, idx) => (
+                  <tr key={st.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-3 text-center font-bold">
+                      <span className={`inline-block w-6 h-6 rounded-md leading-6 text-center ${
+                        idx === 0 ? 'bg-amber-400 text-amber-950 font-bold' :
+                        idx === 1 ? 'bg-slate-300 text-slate-900 font-bold' :
+                        idx === 2 ? 'bg-amber-600/30 text-amber-900 font-bold' :
+                        'text-slate-600'
                       }`}>
-                        {toBanglaDigits(index + 1)}
+                        {toBanglaDigits(idx + 1, language)}
                       </span>
                     </td>
-                    <td className="py-3 px-3.5 font-mono font-bold text-slate-900">
-                      {performer.roll ? toBanglaDigits(performer.roll) : '—'}
+                    <td className="p-3">
+                      <span className="font-bold text-slate-900 block">
+                        {language === 'bn' ? st.nameBn || st.name : st.name}
+                      </span>
+                      <span className="text-[11px] text-slate-400">{st.studentId}</span>
                     </td>
-                    <td className="py-3 px-3.5 font-bold text-slate-900">
-                      {language === 'bn' ? (performer.nameBn || performer.name) : performer.name}
+                    <td className="p-3 text-center font-semibold">{st.classLevel}</td>
+                    <td className="p-3 text-center">{toBanglaDigits(st.roll || '-', language)}</td>
+                    <td className="p-3 text-center font-bold">{toBanglaDigits(st.totalMarks, language)}</td>
+                    <td className="p-3 text-center font-bold text-indigo-700">
+                      {toBanglaDigits(st.gpa.toFixed(2), language)}
                     </td>
-                    <td className="py-3 px-3.5 font-mono text-slate-500 text-[11px]">
-                      {toBanglaDigits(performer.studentId || performer.id || '—')}
-                    </td>
-                    {selectedClass === 'All' && (
-                      <td className="py-3 px-3.5 text-slate-700">
-                        {getClassNameDisplay(performer.classLevel)}
-                      </td>
-                    )}
-                    <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-800">
-                      {toBanglaDigits(performer.totalMarks)}
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-mono font-black text-indigo-700">
-                      {toBanglaDigits(performer.gpa.toFixed(2))}
-                    </td>
-                    <td className="py-3 px-3.5 text-center">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                        performer.grade === 'A+' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        performer.grade === 'A' || performer.grade === 'A-' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                        performer.grade === 'F' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200'
+                    <td className="p-3 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                        st.grade === 'A+' ? 'bg-emerald-100 text-emerald-800' :
+                        st.grade === 'A' ? 'bg-blue-100 text-blue-800' :
+                        st.grade === 'F' ? 'bg-rose-100 text-rose-800' :
+                        'bg-slate-100 text-slate-800'
                       }`}>
-                        {performer.grade}
+                        {st.grade}
                       </span>
                     </td>
-                    <td className="py-3 px-3.5 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedStudentForTrajectory(performer.id);
-                          setActiveSectionTab('student');
-                        }}
-                        className="text-indigo-600 hover:text-indigo-800 font-bold text-xs cursor-pointer hover:underline"
-                      >
-                        {language === 'bn' ? 'প্রগ্রেস কার্ড →' : 'View Card →'}
-                      </button>
+                    <td className="p-3 text-center">
+                      {st.isFail ? (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          {language === 'bn' ? 'ফেল' : 'Fail'}
+                        </span>
+                      ) : (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {language === 'bn' ? 'উত্তীর্ণ' : 'Passed'}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* 8. At-Risk Students Action Modal (তাৎক্ষণিক দুর্বল শিক্ষার্থী তালিকা ও অ্যাকশন প্ল্যান) */}
-      {showAtRiskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-rose-900 to-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-400/30">
-                  <AlertCircle className="h-5 w-5" />
-                </span>
-                <div>
-                  <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-2">
-                    {language === 'bn' ? 'ঝুঁকিপূর্ণ শিক্ষার্থীদের তালিকা ও আশু করণীয়' : 'At-Risk & Struggling Students Intervention List'}
-                  </h3>
-                  <p className="text-xs text-rose-200/80">
-                    {language === 'bn' 
-                      ? `বর্তমান মূল্যায়নে অকৃতকার্য মোট ${toBanglaDigits(atRiskStudents.length)} জন শিক্ষার্থী` 
-                      : `${atRiskStudents.length} students who did not meet pass requirements`}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAtRiskModal(false)}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Modal Body: List of Students */}
-            <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
-              {atRiskStudents.length === 0 ? (
-                <div className="text-center py-10 text-slate-500 text-sm">
-                  {language === 'bn' ? 'কোনো অকৃতকার্য শিক্ষার্থী নেই। মাশাআল্লাহ!' : 'No at-risk students found.'}
-                </div>
-              ) : (
-                atRiskStudents.map((s: any) => {
-                  const studentObj = s.student || s;
-                  const sId = s.id || studentObj.id;
-                  const sName = language === 'bn' 
-                    ? (studentObj.nameBn || studentObj.name || s.nameBn || s.name || '') 
-                    : (studentObj.name || s.name || '');
-                  const sRoll = studentObj.roll || s.roll || '—';
-                  const sClass = studentObj.classLevel || s.classLevel || '';
-                  const sTotalMarks = s.totalMarks ?? studentObj.totalMarks ?? 0;
-                  const sFailCount = s.failCount ?? studentObj.failCount ?? 0;
-
-                  return (
-                    <div 
-                      key={sId}
-                      className="p-3.5 rounded-xl border border-rose-100 bg-rose-50/40 hover:bg-rose-50/70 transition space-y-2"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                            <span>{sName}</span>
-                            <span className="text-xs font-mono font-normal px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600">
-                              {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(sRoll)}
-                            </span>
-                          </div>
-                          <div className="text-xs text-slate-500 mt-0.5">
-                            {language === 'bn' ? 'শ্রেণী:' : 'Class:'} <strong className="text-slate-700">{getClassNameDisplay(sClass)}</strong> • {language === 'bn' ? 'মোট প্রাপ্ত নম্বর:' : 'Total Marks:'} <strong className="font-mono text-slate-800">{toBanglaDigits(sTotalMarks)}</strong>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 self-start sm:self-auto">
-                          <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                            {toBanglaDigits(sFailCount)} {language === 'bn' ? 'বিষয়ে ফেল' : 'failed subjects'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowAtRiskModal(false);
-                              setSelectedStudentForTrajectory(sId);
-                              setActiveSectionTab('student');
-                            }}
-                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1"
-                          >
-                            <span>{language === 'bn' ? 'পূর্ণাঙ্গ অ্যানালাইসিস' : 'Analytics'}</span>
-                            <ArrowUpRight className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Failed Subjects Pills */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rose-200/50 text-xs">
-                        <span className="text-[11px] font-bold text-rose-800">
-                          {language === 'bn' ? 'ফেলকৃত বিষয়সমূহ:' : 'Failed in:'}
-                        </span>
-                        {(s.failedSubjectNames || []).map((subj: any, idx: number) => {
-                          const isObj = typeof subj === 'object' && subj !== null;
-                          const name = isObj ? subj.name : subj;
-                          const marksVal = isObj ? subj.marks : null;
-                          const fullMarksVal = isObj ? subj.fullMarks : null;
-
-                          return (
-                            <span 
-                              key={idx}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-rose-200 text-rose-700 text-[11px] font-semibold"
-                            >
-                              <span>{name}</span>
-                              {marksVal !== null && fullMarksVal !== null && (
-                                <span className="font-mono font-bold text-rose-900">
-                                  ({toBanglaDigits(marksVal)}/{toBanglaDigits(fullMarksVal)})
-                                </span>
-                              )}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Modal Footer: Guidance */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <span className="text-slate-600 text-center sm:text-left">
-                {language === 'bn'
-                  ? 'উপদেশ: ফেলকৃত বিষয়ের শিক্ষকদের সাথে বিষয়ভিত্তিক রিভিশন ও অভিভাবকের সাথে কাউন্সিলিং নিশ্চিত করুন।'
-                  : 'Intervention: Assign subject-specific remedial sessions & arrange guardian consultation.'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowAtRiskModal(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold transition cursor-pointer"
-              >
-                {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
-              </button>
-            </div>
           </div>
         </div>
       )}

@@ -56,11 +56,11 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!payeeName.trim()) {
-      alert(isBn ? 'দয়া করে সরবরাহকারী / মিস্ত্রি / প্রাপকের নাম লিখুন!' : 'Please enter payee/contractor name!');
+      showToast(isBn ? 'দয়া করে সরবরাহকারী / মিস্ত্রি / প্রাপকের নাম লিখুন!' : 'Please enter payee/contractor name!');
       return;
     }
     if (!amount || amount <= 0) {
-      alert(isBn ? 'খরচের পরিমাণ সঠিক নয়!' : 'Please enter a valid amount!');
+      showToast(isBn ? 'খরচের পরিমাণ সঠিক নয়!' : 'Please enter a valid amount!');
       return;
     }
 

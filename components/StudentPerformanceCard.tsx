@@ -41,29 +41,42 @@ import { Student, Exam, Subject, MarkRecord } from '../types';
 interface StudentPerformanceCardProps {
   initialClass?: string;
   initialStudentId?: string;
+  studentId?: string;
 }
 
 export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({ 
   initialClass = 'All',
-  initialStudentId 
+  initialStudentId,
+  studentId
 }) => {
-  const { students, subjects, marks, exams, remarks, classes, language, t } = useApp();
+  const { 
+    students = [], 
+    subjects = [], 
+    marks = [], 
+    exams = [], 
+    remarks = [], 
+    classes = [], 
+    language = 'bn', 
+    t 
+  } = useApp();
 
+  const effectiveInitialStudentId = initialStudentId || studentId || '';
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>(initialClass);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudentId || '');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(effectiveInitialStudentId);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'overview' | 'exams' | 'subjects'>('overview');
 
-  // Sync if initialStudentId changes
+  // Sync if initialStudentId or studentId changes
   useEffect(() => {
-    if (initialStudentId) {
-      setSelectedStudentId(initialStudentId);
-      const studentObj = students.find(s => s.id === initialStudentId);
+    const targetId = initialStudentId || studentId;
+    if (targetId) {
+      setSelectedStudentId(targetId);
+      const studentObj = (students || []).find(s => s.id === targetId);
       if (studentObj && studentObj.classLevel) {
         setSelectedClassFilter(studentObj.classLevel);
       }
     }
-  }, [initialStudentId, students]);
+  }, [initialStudentId, studentId, students]);
 
   // Convert English digits to Bengali numerals if language is Bengali
   const toBanglaDigits = (num: number | string | undefined | null) => {
@@ -97,9 +110,9 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
 
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
-      const nameMatches = s.name.toLowerCase().includes(q) || (s.nameBn && s.nameBn.includes(q));
-      const idMatches = s.studentId.toLowerCase().includes(q);
-      const rollMatches = s.roll && s.roll.toLowerCase().includes(q);
+      const nameMatches = (s.name && s.name.toLowerCase().includes(q)) || (s.nameBn && s.nameBn.includes(q));
+      const idMatches = s.studentId && String(s.studentId).toLowerCase().includes(q);
+      const rollMatches = s.roll != null && String(s.roll).toLowerCase().includes(q);
       return nameMatches || idMatches || rollMatches;
     }).sort((a, b) => {
       const rollA = parseInt(a.roll || '999', 10);

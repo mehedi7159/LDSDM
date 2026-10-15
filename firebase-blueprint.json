@@ -56,11 +56,38 @@
         "obtainedMarks": { "type": "number", "description": "Obtained mark" }
       }
     },
+    "Remark": {
+      "collection": "remarks",
+      "fields": {
+        "id": { "type": "string", "description": "Remark record ID" },
+        "studentId": { "type": "string", "description": "Student ID" },
+        "examId": { "type": "string", "description": "Exam ID" },
+        "remark": { "type": "string", "description": "Teacher remark text" }
+      }
+    },
     "SchoolClass": {
       "collection": "classes",
       "fields": {
         "id": { "type": "string", "description": "Class ID" },
         "name": { "type": "string", "description": "Class name" }
+      }
+    },
+    "FinanceTransaction": {
+      "collection": "transactions",
+      "fields": {
+        "id": { "type": "string", "description": "Transaction ID" },
+        "type": { "type": "string", "description": "Income or Expense" },
+        "category": { "type": "string", "description": "Transaction category" },
+        "amount": { "type": "number", "description": "Transaction amount" },
+        "date": { "type": "string", "description": "Date ISO string" }
+      }
+    },
+    "ClassFeeStructure": {
+      "collection": "feeStructures",
+      "fields": {
+        "id": { "type": "string", "description": "Fee Structure ID" },
+        "className": { "type": "string", "description": "Class name" },
+        "monthlyFee": { "type": "number", "description": "Monthly fee amount" }
       }
     },
     "TrashItem": {

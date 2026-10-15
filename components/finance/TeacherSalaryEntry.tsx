@@ -70,11 +70,11 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffName.trim()) {
-      alert(isBn ? 'দয়া করে উস্তাদ বা স্টাফের নাম লিখুন!' : 'Please enter staff name!');
+      showToast(isBn ? 'দয়া করে উস্তাদ বা স্টাফের নাম লিখুন!' : 'Please enter staff name!');
       return;
     }
     if (netPayable <= 0) {
-      alert(isBn ? 'বেতনের পরিমাণ সঠিক নয়!' : 'Net salary must be greater than 0!');
+      showToast(isBn ? 'বেতনের পরিমাণ সঠিক নয়!' : 'Net salary must be greater than 0!');
       return;
     }
 

@@ -16,7 +16,8 @@ export type FinanceTab =
   | 'development' 
   | 'general-entry' 
   | 'ledger' 
-  | 'fee-settings';
+  | 'fee-settings'
+  | 'reports';
 
 export type FinanceFilterCategory = 
   | 'ALL' 

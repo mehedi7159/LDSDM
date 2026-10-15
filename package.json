@@ -6,15 +6,28 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "node server.ts",
     "preview": "vite preview",
-    "lint": "tsc"
+    "lint": "tsc",
+    "test:rules": "tsx scripts/test-firestore-rules-eval.ts",
+    "test:adapter": "tsx scripts/test-data-adapter.mjs",
+    "test:recovery": "tsx scripts/test-local-recovery.ts",
+    "test:rbac": "tsx scripts/test-rbac.ts",
+    "test:exam": "tsx scripts/test-exam-backup-restore.ts",
+    "test:student": "tsx scripts/test-student-foundation.ts",
+    "test:academic": "tsx scripts/test-academic-foundation.ts",
+    "test:academic-assignments": "tsx scripts/test-academic-assignments.ts",
+    "test:exam-marks": "tsx scripts/test-exam-marks-foundation.ts",
+    "test:promotion": "tsx scripts/test-class-promotion.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
     "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.563.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.7.0"
@@ -22,7 +35,9 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "tsx": "^4.23.15",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

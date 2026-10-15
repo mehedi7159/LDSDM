@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useApp } from '../context/AppContext';
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -33,17 +34,17 @@ import { calculateGrade } from '../services/utils';
 import { Language } from '../services/translations';
 
 interface SubjectPerformanceAnalyticsProps {
-  subjects: Subject[];
-  students: Student[];
-  marks: MarkRecord[];
-  exams: Exam[];
-  classes: SchoolClass[];
-  selectedExamId: string;
-  selectedClass: string;
-  language: Language;
-  t: (key: any) => string;
-  toBanglaDigits: (num: number | string) => string;
-  getClassNameDisplay: (classLevel: string) => string;
+  subjects?: Subject[];
+  students?: Student[];
+  marks?: MarkRecord[];
+  exams?: Exam[];
+  classes?: SchoolClass[];
+  selectedExamId?: string;
+  selectedClass?: string;
+  language?: Language;
+  t?: (key: any) => string;
+  toBanglaDigits?: (num: number | string) => string;
+  getClassNameDisplay?: (classLevel: string) => string;
 }
 
 export interface SubjectStat {
@@ -76,18 +77,50 @@ export interface SubjectStat {
 }
 
 export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsProps> = ({
-  subjects,
-  students,
-  marks,
-  exams,
-  classes,
-  selectedExamId,
-  selectedClass,
-  language,
-  t,
-  toBanglaDigits,
-  getClassNameDisplay
+  subjects: propSubjects,
+  students: propStudents,
+  marks: propMarks,
+  exams: propExams,
+  classes: propClasses,
+  selectedExamId: propSelectedExamId,
+  selectedClass: propSelectedClass,
+  language: propLanguage,
+  t: propT,
+  toBanglaDigits: propToBanglaDigits,
+  getClassNameDisplay: propGetClassNameDisplay
 }) => {
+  const context = useApp();
+
+  const subjects = propSubjects ?? context.subjects ?? [];
+  const students = propStudents ?? context.students ?? [];
+  const marks = propMarks ?? context.marks ?? [];
+  const exams = propExams ?? context.exams ?? [];
+  const classes = propClasses ?? context.classes ?? [];
+  const language = propLanguage ?? context.language ?? 'bn';
+  const t = propT ?? context.t;
+
+  const toBanglaDigits = propToBanglaDigits ?? ((num: number | string) => {
+    if (num === undefined || num === null || num === '') return '';
+    const str = String(num);
+    if (language !== 'bn') return str;
+    const banglaNums: Record<string, string> = {
+      '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+      '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯',
+      '.': '.'
+    };
+    return str.split('').map(char => banglaNums[char] || char).join('');
+  });
+
+  const getClassNameDisplay = propGetClassNameDisplay ?? ((classLevel: string) => {
+    if (language === 'bn') {
+      const key = `cls_${classLevel.replace(/\s+/g, '')}`;
+      return t ? (t(key as any) || classLevel) : classLevel;
+    }
+    return classLevel;
+  });
+
+  const selectedExamId = propSelectedExamId ?? (exams.length > 0 ? exams[0].id : 'ALL');
+  const selectedClass = propSelectedClass ?? 'All';
   // Local Controls
   const [examScope, setExamScope] = useState<string>('current'); // 'current' or 'all'
   const [viewMode, setViewMode] = useState<'aggregated' | 'byClass'>('aggregated');
@@ -108,11 +141,11 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
     totalEvaluationsCount
   } = useMemo(() => {
     // 1. Filter marks based on selected scope
-    const runningStudents = students.filter(s => !s.isFormer && s.status !== 'Former');
+    const runningStudents = (students || []).filter(s => s && !s.isFormer && s.status !== 'Former');
     const studentMap = new Map<string, Student>(runningStudents.map(s => [s.id, s]));
 
     // Subject map for fast lookup
-    const subjectMap = new Map<string, Subject>(subjects.map(s => [s.id, s]));
+    const subjectMap = new Map<string, Subject>((subjects || []).map(s => [s.id, s]));
 
     interface MarkDetail {
       studentId: string;
@@ -128,7 +161,8 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
 
     const markDetails: MarkDetail[] = [];
 
-    marks.forEach(m => {
+    (marks || []).forEach(m => {
+      if (!m) return;
       // Exam filter
       if (effectiveExamId !== 'ALL' && m.examId !== effectiveExamId) return;
 
@@ -240,25 +274,25 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
     let globalCount = 0;
 
     Object.values(groups).forEach(grp => {
-      const evals = grp.evaluations;
+      const evals = grp.evaluations || [];
       const totalAppeared = evals.length;
 
       // Skip subjects with zero student marks recorded yet
       if (totalAppeared === 0) return;
 
-      const totalFailed = evals.filter(e => e.isFail).length;
+      const totalFailed = (evals || []).filter(e => e.isFail).length;
       const totalPassed = totalAppeared - totalFailed;
       const passRate = (totalPassed / totalAppeared) * 100;
       const failRate = (totalFailed / totalAppeared) * 100;
 
-      const sumPercent = evals.reduce((sum, e) => sum + e.percentage, 0);
+      const sumPercent = (evals || []).reduce((sum, e) => sum + e.percentage, 0);
       const avgScorePercent = sumPercent / totalAppeared;
       const highestScorePercent = Math.max(...evals.map(e => e.percentage), 0);
 
-      const aPlusCount = evals.filter(e => e.isAPlus).length;
+      const aPlusCount = (evals || []).filter(e => e.isAPlus).length;
       const aPlusRate = (aPlusCount / totalAppeared) * 100;
 
-      const aGradeCount = evals.filter(e => e.isAGrade).length;
+      const aGradeCount = (evals || []).filter(e => e.isAGrade).length;
 
       // Composite Performance Score: High passRate + high average score + high A+ rate
       // Range ~0 to 100
@@ -344,13 +378,13 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
       return a.avgScorePercent - b.avgScorePercent;
     });
 
-    const topPerforming = sortedByHigh.filter(s => s.status === 'EXCELLENT').slice(0, 4);
+    const topPerforming = (sortedByHigh || []).filter(s => s && s.status === 'EXCELLENT').slice(0, 4);
     // If not enough strictly excellent, fallback to top 3 overall
-    const topPerformingFinal = topPerforming.length > 0 ? topPerforming : sortedByHigh.slice(0, 3);
+    const topPerformingFinal = topPerforming.length > 0 ? topPerforming : (sortedByHigh || []).slice(0, 3);
 
     // Weakest: must have some failures or lowest average score
-    const weakest = sortedByWeak.filter(s => s.failRate > 0 || s.avgScorePercent < 55).slice(0, 4);
-    const weakestFinal = weakest.length > 0 ? weakest : sortedByWeak.slice(0, 3);
+    const weakest = (sortedByWeak || []).filter(s => s && (s.failRate > 0 || s.avgScorePercent < 55)).slice(0, 4);
+    const weakestFinal = weakest.length > 0 ? weakest : (sortedByWeak || []).slice(0, 3);
 
     const overallPass = globalCount > 0 ? (globalPassed / globalCount) * 100 : 0;
     const overallAvg = globalCount > 0 ? globalTotalScore / globalCount : 0;
@@ -367,7 +401,8 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
 
   // Filtered list for the table and chart
   const displayedSubjects = useMemo(() => {
-    return aggregatedSubjects.filter(sub => {
+    return (aggregatedSubjects || []).filter(sub => {
+      if (!sub) return false;
       // Category filter
       if (filterCategory === 'strong' && sub.status !== 'EXCELLENT') return false;
       if (filterCategory === 'weak' && sub.status !== 'NEEDS_ATTENTION') return false;
@@ -375,7 +410,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = sub.name.toLowerCase().includes(q);
+        const matchesName = sub.name ? sub.name.toLowerCase().includes(q) : false;
         const matchesNameBn = sub.nameBn?.toLowerCase().includes(q) || false;
         const matchesCode = sub.code?.toLowerCase().includes(q) || false;
         if (!matchesName && !matchesNameBn && !matchesCode) return false;
@@ -518,7 +553,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
             {language === 'bn' ? 'বিশ্লেষিত বিষয়' : 'Subjects Analyzed'}
           </span>
           <span className="text-xl font-black font-mono text-slate-800 mt-0.5 block">
-            {toBanglaDigits(aggregatedSubjects.length)}
+            {toBanglaDigits((aggregatedSubjects || []).length)}
           </span>
         </div>
         <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl">
@@ -527,7 +562,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
             {language === 'bn' ? 'ধারাবাহিক শীর্ষ বিষয়' : 'Consistently Strong'}
           </span>
           <span className="text-xl font-black font-mono text-emerald-800 mt-0.5 block">
-            {toBanglaDigits(aggregatedSubjects.filter(s => s.status === 'EXCELLENT').length)}
+            {toBanglaDigits((aggregatedSubjects || []).filter(s => s && s.status === 'EXCELLENT').length)}
           </span>
         </div>
         <div className="p-3.5 bg-rose-50/60 border border-rose-100 rounded-xl">
@@ -536,7 +571,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
             {language === 'bn' ? 'অধিক দুর্বলতাযুক্ত বিষয়' : 'Needs Attention'}
           </span>
           <span className="text-xl font-black font-mono text-rose-800 mt-0.5 block">
-            {toBanglaDigits(aggregatedSubjects.filter(s => s.status === 'NEEDS_ATTENTION').length)}
+            {toBanglaDigits((aggregatedSubjects || []).filter(s => s && s.status === 'NEEDS_ATTENTION').length)}
           </span>
         </div>
         <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl">

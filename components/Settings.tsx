@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/Button';
 import { 
@@ -24,8 +24,16 @@ import {
 import { Exam, SchoolClass } from '../types';
 import { CloudSyncWidget } from './CloudSyncWidget';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { ExamRestoreModal } from './ExamRestoreModal';
+import { exportExamBackup } from '../services/examBackupService';
+import { logAuditEvent } from '../services/auditLog';
+import { DataSecurityBackupCenter } from './DataSecurityBackupCenter';
 
-export const Settings = () => {
+interface SettingsProps {
+  initialTab?: 'info' | 'subjects_exam' | 'backup';
+}
+
+export const Settings: React.FC<SettingsProps> = ({ initialTab = 'info' }) => {
   const { 
     schoolProfile, 
     updateSchoolProfile, 
@@ -50,13 +58,24 @@ export const Settings = () => {
     trashBin, 
     restoreFromTrash, 
     emptyTrash, 
+    authUser,
+    authClaims,
+    isSuperAdmin,
     t, 
     language 
   } = useApp();
 
   const [formData, setFormData] = useState(schoolProfile);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'info' | 'subjects_exam' | 'backup'>('info');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'info' | 'subjects_exam' | 'backup'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveSettingsTab(initialTab);
+    }
+  }, [initialTab]);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isExamRestoreModalOpen, setIsExamRestoreModalOpen] = useState(false);
+  const [restoreBannerInfo, setRestoreBannerInfo] = useState<string | null>(null);
 
   // Confirmation dialog states
   const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
@@ -276,67 +295,66 @@ export const Settings = () => {
     }
   };
 
-  const handleExamMarksBackup = () => {
-    let examToBackup = null;
-    let examMarks = marks;
-    let examRemarks = remarks;
-
-    if (selectedExamBackupId !== 'all') {
-      examToBackup = exams.find(e => e.id === selectedExamBackupId);
-      examMarks = marks.filter(m => m.examId === selectedExamBackupId);
-      examRemarks = remarks.filter(r => r.examId === selectedExamBackupId);
-    }
-
-    const data = {
-      exam: examToBackup,
-      examId: selectedExamBackupId,
-      marks: examMarks,
-      remarks: examRemarks,
-      exportDate: new Date().toISOString()
-    };
-
-    const fileName = selectedExamBackupId === 'all' 
-      ? `madrasha_all_marks_${new Date().toISOString().split('T')[0]}.json`
-      : `madrasha_exam_${examToBackup?.name.replace(/[^a-zA-Z0-9]/g, '_')}_marks.json`;
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExamMarksBackup = (customExamId?: string) => {
+    const examIdToUse = customExamId || selectedExamBackupId;
+    exportExamBackup({
+      examId: examIdToUse,
+      exams,
+      marks,
+      remarks,
+      students,
+      subjects,
+      classes,
+      schoolProfile
+    });
   };
 
-  const handleExamMarksRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const content = JSON.parse(event.target?.result as string);
-          const restoredMarks = content.marks || (Array.isArray(content) ? content : []);
-          const restoredRemarks = content.remarks || [];
+  const handleExamMarksRestoreSuccess = (result: any) => {
+    if (!result) return;
+    
+    // 1. Update React App Context State
+    setMarks(result.updatedMarks);
+    setRemarks(result.updatedRemarks);
+    setExams(result.updatedExams);
+    if (result.updatedSubjects && result.updatedSubjects.length > subjects.length) {
+      setSubjects(result.updatedSubjects);
+    }
 
-          if (confirm(language === 'bn' 
-            ? `পরীক্ষার নম্বর রিস্টোর করতে চান (${restoredMarks.length} টি রেকর্ড)?` 
-            : `Restore exam marks (${restoredMarks.length} records)?`)) {
-            const targetExamIds = new Set(restoredMarks.map((m: any) => m.examId));
-            const newMarksList = [...marks.filter(m => !targetExamIds.has(m.examId)), ...restoredMarks];
-            const newRemarksList = [...remarks.filter(r => !targetExamIds.has(r.examId)), ...restoredRemarks];
+    // 2. Persist to LocalStorage
+    localStorage.setItem('marks', JSON.stringify(result.updatedMarks));
+    localStorage.setItem('remarks', JSON.stringify(result.updatedRemarks));
+    localStorage.setItem('exams', JSON.stringify(result.updatedExams));
+    if (result.updatedSubjects) {
+      localStorage.setItem('subjects', JSON.stringify(result.updatedSubjects));
+    }
 
-            setMarks(newMarksList);
-            setRemarks(newRemarksList);
-            localStorage.setItem('marks', JSON.stringify(newMarksList));
-            localStorage.setItem('remarks', JSON.stringify(newRemarksList));
-            alert(language === 'bn' ? 'নম্বর সফলভাবে রিস্টোর হয়েছে!' : 'Exam marks restored successfully!');
-          }
-        } catch {
-          alert(language === 'bn' ? 'ভুল বা ক্ষতিগ্রস্ত ফাইল।' : 'Invalid file.');
+    // 3. Set visual notification banner
+    const bannerText = language === 'bn' 
+      ? `"${result.stats.targetExamName}" পরীক্ষার ${result.stats.restoredMarksCount} টি নম্বর সফলভাবে রিস্টোর হয়েছে!`
+      : `Restored ${result.stats.restoredMarksCount} marks for exam "${result.stats.targetExamName}"!`;
+    setRestoreBannerInfo(bannerText);
+    setTimeout(() => setRestoreBannerInfo(null), 8000);
+
+    // 4. Record audit event
+    if (authUser) {
+      logAuditEvent({
+        action: 'EXAM_MARKS_RESTORED',
+        actorUid: authUser.uid,
+        actorEmail: authUser.email || '',
+        actorRole: isSuperAdmin ? 'superadmin' : (authClaims?.role || 'admin'),
+        institutionId: 'main_store',
+        targetType: 'settings',
+        targetId: result.stats.targetExamId,
+        targetName: result.stats.targetExamName,
+        metadata: {
+          actionType: 'EXAM_MARKS_RESTORE',
+          restoredMarksCount: result.stats.restoredMarksCount,
+          insertedMarksCount: result.stats.insertedMarksCount,
+          replacedMarksCount: result.stats.replacedMarksCount,
+          restoredRemarksCount: result.stats.restoredRemarksCount,
+          examCreated: result.stats.examCreated
         }
-      };
-      reader.readAsText(file);
+      }).catch(err => console.warn('Audit log notice:', err));
     }
   };
 
@@ -658,61 +676,184 @@ export const Settings = () => {
               </label>
             </div>
 
-            {/* Dropdown Selectors */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('resultCardTemplate')}</label>
-                <select 
-                  value={formData.resultCardTemplate || 'Classic'} 
-                  onChange={(e) => setFormData({...formData, resultCardTemplate: e.target.value as any})}
-                  className="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none"
-                >
-                  <option value="Classic">{t('classic')}</option>
-                  <option value="Monthly">{t('monthly')}</option>
-                  <option value="Term">{t('term')}</option>
-                  <option value="BW_Term">{t('bw_term')}</option>
-                  <option value="Premium_Dakhil">{t('premium_dakhil')}</option>
-                  <option value="Premium_Colored">{t('premium_colored')}</option>
-                  <option value="Premium_Royal">{t('premium_royal')}</option>
-                </select>
+            {/* Dynamic Bangla Font & Typography Suite Card */}
+            <div className="pt-4 border-t border-slate-100 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Sparkles size={16} className="text-indigo-600" />
+                    <span>{language === 'bn' ? 'বাংলা ফন্ট ও টাইপোগ্রাফি কনফিগারেশন' : 'Bangla Typography & Font Suite'}</span>
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {language === 'bn' 
+                      ? 'পুরো সফটওয়্যার এবং রেজাল্ট শিটের জন্য আপনার পছন্দের বাংলা ফন্ট ও সংখ্যা নির্বাচন করুন (১, ১০, ১০০ ইত্যাদি সকল সংখ্যা তাৎক্ষণিক প্রিভিউ সহ)।' 
+                      : 'Choose your preferred Bengali font & numeral rendering dynamically without hardcoded CSS.'}
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('banglaFont')}</label>
-                <select 
-                  value={formData.banglaFont || 'Hind Siliguri'} 
-                  onChange={(e) => setFormData({...formData, banglaFont: e.target.value})}
-                  className="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none"
-                >
-                  <option value="Hind Siliguri">Hind Siliguri (হিন্দ শিলিগুড়ি)</option>
-                  <option value="Noto Sans Bengali">Noto Sans Bengali (নোতো সান্স বাংলা)</option>
-                  <option value="Noto Serif Bengali">Noto Serif Bengali (নোতো শেরিফ বাংলা)</option>
-                  <option value="Baloo Da 2">Baloo Da 2 (বালু দা ২)</option>
-                  <option value="Mina">Mina (মিনা)</option>
-                  <option value="Atma">Atma (আত্মা)</option>
-                  <option value="Galada">Galada (গলাদা)</option>
-                  <option value="Alkatra">Alkatra (আলকাতরা)</option>
-                  <option value="Kalpurush">Kalpurush (কালপুরুষ)</option>
-                </select>
+              {/* Dynamic Interactive Font Selector Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                {[
+                  { id: 'Noto Sans Bengali', nameBn: 'নোতো সান্স বাংলা', tag: 'সেরা ও স্পষ্ট', desc: 'সর্বাধিক স্পষ্ট বাংলা ফন্ট। ১, ১০, ১০০ সহ সকল সংখ্যা অত্যন্ত পরিষ্কার।' },
+                  { id: 'Anek Bangla', nameBn: 'অনেক বাংলা', tag: 'বড় ও বোল্ড সংখ্যা', desc: 'আধুনিক জ্যামিতিক নকশা ও চমৎকার বাংলা সংখ্যা রেন্ডারিং।' },
+                  { id: 'Hind Siliguri', nameBn: 'হিন্দ শিলিগুড়ি', tag: 'জনপ্রিয় ক্লাসিক', desc: 'প্রচলিত স্ট্যান্ডার্ড বাংলা ওয়েব ফন্ট।' },
+                  { id: 'Kalpurush', nameBn: 'কালপুরুষ', tag: 'অফিসিয়াল ডকুমেন্টস', desc: 'চিরচেনা ক্লাসিক সনদ ও নোটিশ উপযোগী ফন্ট।' },
+                  { id: 'Tiro Bangla', nameBn: 'তিরো বাংলা', tag: 'ফরমাল ও মার্জিত', desc: 'প্রকাশনা ও প্রথাগত প্রাতিষ্ঠানিক ফন্ট।' },
+                  { id: 'Noto Serif Bengali', nameBn: 'নোতো শেরিফ', tag: 'ঐতিহ্যবাহী শেরিফ', desc: 'বই ও সার্টিফিকেট উপযোগী মার্জিত শেরিফ ফন্ট।' },
+                  { id: 'Baloo Da 2', nameBn: 'বালু দা ২', tag: 'গোলাকার ও আকর্ষণীয়', desc: 'মডার্ন কার্ভড ও ফ্রেন্ডলি ডিজাইন।' },
+                  { id: 'Mina', nameBn: 'মিনা', tag: 'মিনিমালিস্ট', desc: 'সরল ও হালকা গঠনের বাংলা ফন্ট।' },
+                  { id: 'Atma', nameBn: 'আত্মা', tag: 'হস্তাক্ষর', desc: 'হাতে লেখার মতো ক্যাজুয়াল স্টাইল।' },
+                ].map((f) => {
+                  const isSelected = (formData.banglaFont || 'Noto Sans Bengali') === f.id;
+                  return (
+                    <div
+                      key={f.id}
+                      onClick={() => {
+                        setFormData({ ...formData, banglaFont: f.id, banglaNumberFont: f.id });
+                        // Dynamically update CSS root variables immediately for instant preview
+                        document.documentElement.style.setProperty('--bangla-font', `'${f.id}', 'Noto Sans Bengali', sans-serif`);
+                        document.documentElement.style.setProperty('--bangla-num-font', `'${f.id}', 'Noto Sans Bengali', sans-serif`);
+                        document.body.style.fontFamily = `'${f.id}', 'Noto Sans Bengali', sans-serif`;
+                      }}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+                        isSelected 
+                          ? 'bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/20 shadow-sm' 
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/70'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span 
+                            className="font-bold text-sm text-slate-900"
+                            style={{ fontFamily: `'${f.id}', sans-serif` }}
+                          >
+                            {f.nameBn}
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                            isSelected 
+                              ? 'bg-indigo-600 text-white' 
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {f.tag}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 leading-relaxed mb-2.5">
+                          {f.desc}
+                        </p>
+                      </div>
+
+                      {/* Mini Live Preview in this font */}
+                      <div 
+                        className="p-2 rounded-xl bg-white border border-slate-100 text-xs text-slate-800 flex items-center justify-between font-medium"
+                        style={{ fontFamily: `'${f.id}', sans-serif` }}
+                      >
+                        <span className="truncate">ক খ গ ঘ ঙ</span>
+                        <span className="font-bold text-indigo-700">১, ১০, ১০০, ১০০০</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('banglaNumberFont')}</label>
-                <select 
-                  value={formData.banglaNumberFont || 'Hind Siliguri'} 
-                  onChange={(e) => setFormData({...formData, banglaNumberFont: e.target.value})}
-                  className="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none"
+              {/* Live Interactive Typography Sandbox / Preview Box */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-2">
+                  <span className="font-bold text-indigo-300 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-indigo-400" />
+                    <span>{language === 'bn' ? 'লাইভ ফন্ট ও সংখ্যা প্রিভিউ স্যান্ডবক্স' : 'Live Font & Numeral Preview'}</span>
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-emerald-300 font-mono text-[11px] border border-white/10">
+                    {formData.banglaFont || 'Noto Sans Bengali'}
+                  </span>
+                </div>
+
+                <div 
+                  className="space-y-1.5 pt-1"
+                  style={{ fontFamily: `'${formData.banglaFont || 'Noto Sans Bengali'}', sans-serif` }}
                 >
-                  <option value="Hind Siliguri">Hind Siliguri (হিন্দ শিলিগুড়ি)</option>
-                  <option value="Noto Sans Bengali">Noto Sans Bengali (নোতো সান্স বাংলা)</option>
-                  <option value="Noto Serif Bengali">Noto Serif Bengali (নোতো শেরিফ বাংলা)</option>
-                  <option value="Baloo Da 2">Baloo Da 2 (বালু দা ২)</option>
-                  <option value="Mina">Mina (মিনা)</option>
-                  <option value="Atma">Atma (আত্মা)</option>
-                  <option value="Galada">Galada (গলাদা)</option>
-                  <option value="Alkatra">Alkatra (আলকাতরা)</option>
-                  <option value="Kalpurush">Kalpurush (কালপুরুষ)</option>
-                </select>
+                  <p className="text-base sm:text-lg font-bold text-slate-100">
+                    বিসমিল্লাহির রাহমানির রাহিম — {schoolProfile.nameBn || schoolProfile.name}
+                  </p>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    মাদরাসা ম্যানেজমেন্ট সিস্টেম: শিক্ষার্থীর রোল নম্বর, নম্বর এন্ট্রি, মাসিক বেতন ও স্বয়ংক্রিয় পরীক্ষার ফলাফল প্রস্তুতকরণ।
+                  </p>
+                  <div className="p-2.5 rounded-xl bg-white/10 border border-white/10 flex flex-wrap items-center gap-3 text-xs sm:text-sm font-bold text-amber-300">
+                    <span>বাংলা সংখ্যামালা: ১, ২, ৩, ৪, ৫, ৬, ৭, ৮, ৯, ১০, ৫০, ১০০, ৫০০, ১০০০</span>
+                    <span className="text-emerald-300">| জিপিএ: ৫.০০ (A+)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Dropdown Customization */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('resultCardTemplate')}</label>
+                  <select 
+                    value={formData.resultCardTemplate || 'Classic'} 
+                    onChange={(e) => setFormData({...formData, resultCardTemplate: e.target.value as any})}
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none"
+                  >
+                    <option value="Classic">{t('classic')}</option>
+                    <option value="Monthly">{t('monthly')}</option>
+                    <option value="Term">{t('term')}</option>
+                    <option value="BW_Term">{t('bw_term')}</option>
+                    <option value="Premium_Dakhil">{t('premium_dakhil')}</option>
+                    <option value="Premium_Colored">{t('premium_colored')}</option>
+                    <option value="Premium_Royal">{t('premium_royal')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('banglaFont')}</label>
+                  <select 
+                    value={formData.banglaFont || 'Noto Sans Bengali'} 
+                    onChange={(e) => {
+                      const newFont = e.target.value;
+                      setFormData({...formData, banglaFont: newFont});
+                      document.documentElement.style.setProperty('--bangla-font', `'${newFont}', 'Noto Sans Bengali', sans-serif`);
+                      document.body.style.fontFamily = `'${newFont}', 'Noto Sans Bengali', sans-serif`;
+                    }}
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none"
+                  >
+                    <option value="Noto Sans Bengali">Noto Sans Bengali (নোতো সান্স বাংলা - ডিফল্ট ও সর্বাধিক স্পষ্ট)</option>
+                    <option value="Anek Bangla">Anek Bangla (অনেক বাংলা - বড় ও স্পষ্ট সংখ্যা)</option>
+                    <option value="Hind Siliguri">Hind Siliguri (হিন্দ শিলিগুড়ি)</option>
+                    <option value="Kalpurush">Kalpurush (কালপুরুষ)</option>
+                    <option value="Tiro Bangla">Tiro Bangla (তিরো বাংলা)</option>
+                    <option value="Noto Serif Bengali">Noto Serif Bengali (নোতো শেরিফ বাংলা)</option>
+                    <option value="Baloo Da 2">Baloo Da 2 (বালু দা ২)</option>
+                    <option value="Mina">Mina (মিনা)</option>
+                    <option value="Atma">Atma (আত্মা)</option>
+                    <option value="Galada">Galada (গলাদা)</option>
+                    <option value="Alkatra">Alkatra (আলকাতরা)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('banglaNumberFont')}</label>
+                  <select 
+                    value={formData.banglaNumberFont || 'Noto Sans Bengali'} 
+                    onChange={(e) => {
+                      const newNumFont = e.target.value;
+                      setFormData({...formData, banglaNumberFont: newNumFont});
+                      document.documentElement.style.setProperty('--bangla-num-font', `'${newNumFont}', 'Noto Sans Bengali', sans-serif`);
+                    }}
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none"
+                  >
+                    <option value="Noto Sans Bengali">Noto Sans Bengali (নোতো সান্স বাংলা - ১, ১০, ১০০ স্পষ্ট)</option>
+                    <option value="Anek Bangla">Anek Bangla (অনেক বাংলা - স্পষ্ট জ্যামিতিক সংখ্যা)</option>
+                    <option value="Hind Siliguri">Hind Siliguri (হিন্দ শিলিগুড়ি)</option>
+                    <option value="Kalpurush">Kalpurush (কালপুরুষ)</option>
+                    <option value="Tiro Bangla">Tiro Bangla (তিরো বাংলা)</option>
+                    <option value="Noto Serif Bengali">Noto Serif Bengali (নোতো শেরিফ বাংলা)</option>
+                    <option value="Baloo Da 2">Baloo Da 2 (বালু দা ২)</option>
+                    <option value="Mina">Mina (মিনা)</option>
+                    <option value="Atma">Atma (আত্মা)</option>
+                    <option value="Galada">Galada (গলাদা)</option>
+                    <option value="Alkatra">Alkatra (আলকাতরা)</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -804,6 +945,14 @@ export const Settings = () => {
                         </div>
 
                         <div className="flex items-center gap-1.5">
+                          <button 
+                            type="button"
+                            onClick={() => handleExamMarksBackup(exam.id)}
+                            title={language === 'bn' ? `${exam.name}-এর নম্বর ব্যাকআপ নিন` : `Download backup of ${exam.name}`}
+                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-all cursor-pointer"
+                          >
+                            <Download size={15}/>
+                          </button>
                           <button 
                             onClick={() => setExpandedContributionsExamId(expandedContributionsExamId === exam.id ? null : exam.id)} 
                             className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl transition-all"
@@ -995,10 +1144,10 @@ export const Settings = () => {
       {activeSettingsTab === 'backup' && (
         <div className="space-y-7">
           
-          {/* 1. Cloud Live Auto-Sync Widget (Pixel Perfect from Screenshot) */}
-          <CloudSyncWidget />
+          {/* Complete Multi-Store Data Security Hub */}
+          <DataSecurityBackupCenter />
 
-          {/* 2. Recycle Bin & Trash */}
+          {/* Recycle Bin & Trash */}
           <div className="bg-white rounded-3xl p-6 sm:p-7 border border-amber-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-amber-100 pb-3.5">
               <div className="flex items-center gap-3">
@@ -1110,17 +1259,22 @@ export const Settings = () => {
                 </div>
               </div>
 
-              {/* Exam Marks Backup */}
-              <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-3 col-span-1 sm:col-span-2">
+              {/* Exam Marks Backup & Restore Hub */}
+              <div className="p-4 rounded-2xl border border-purple-200/80 bg-purple-50/40 space-y-3 col-span-1 sm:col-span-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">{t('examMarksBackup')}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-slate-900 text-sm">{t('examMarksBackup')}</h4>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-purple-200/80 text-purple-900 rounded-md">
+                        Enhanced
+                      </span>
+                    </div>
                     <p className="text-xs text-slate-500 mt-0.5">{t('examMarksBackupDesc')}</p>
                   </div>
                   <select 
                     value={selectedExamBackupId} 
                     onChange={e => setSelectedExamBackupId(e.target.value)}
-                    className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white text-slate-900 font-medium"
+                    className="border border-purple-200 rounded-xl px-3 py-1.5 text-xs bg-white text-slate-900 font-medium shadow-2xs"
                   >
                     <option value="all">{t('allExams')}</option>
                     {exams.map(ex => (
@@ -1128,16 +1282,29 @@ export const Settings = () => {
                     ))}
                   </select>
                 </div>
+
+                {restoreBannerInfo && (
+                  <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <span>{restoreBannerInfo}</span>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-1">
-                  <button onClick={handleExamMarksBackup} className="flex-1 py-2.5 px-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
+                  <button 
+                    type="button"
+                    onClick={() => handleExamMarksBackup()} 
+                    className="flex-1 py-2.5 px-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  >
                     <Download size={14} /> {language === 'bn' ? 'নম্বর এক্সপোর্ট' : 'Export Marks'}
                   </button>
-                  <div className="relative flex-1">
-                    <input type="file" accept=".json" onChange={handleExamMarksRestore} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                    <button className="w-full py-2.5 px-3 bg-white hover:bg-slate-50 text-purple-700 font-bold text-xs rounded-xl border border-purple-200 flex items-center justify-center gap-1.5 pointer-events-none">
-                      <Upload size={14} /> {language === 'bn' ? 'নম্বর ইম্পোর্ট' : 'Import Marks'}
-                    </button>
-                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setIsExamRestoreModalOpen(true)} 
+                    className="flex-1 py-2.5 px-3 bg-white hover:bg-purple-50 text-purple-700 font-bold text-xs rounded-xl border border-purple-300 shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Upload size={14} /> {language === 'bn' ? 'নম্বর রিস্টোর হাব' : 'Restore Marks Hub'}
+                  </button>
                 </div>
               </div>
 
@@ -1146,6 +1313,20 @@ export const Settings = () => {
 
         </div>
       )}
+
+      {/* Enhanced Exam Restore Modal */}
+      <ExamRestoreModal
+        isOpen={isExamRestoreModalOpen}
+        onClose={() => setIsExamRestoreModalOpen(false)}
+        exams={exams}
+        marks={marks}
+        remarks={remarks}
+        subjects={subjects}
+        classes={classes}
+        language={language}
+        onRestoreSuccess={handleExamMarksRestoreSuccess}
+        t={t}
+      />
 
       {/* Delete Exam Confirmation Dialog */}
       <ConfirmDialog

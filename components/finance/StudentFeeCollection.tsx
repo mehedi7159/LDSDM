@@ -528,11 +528,11 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentId) {
-      alert(isBn ? 'দয়া করে একজন ছাত্র নির্বাচন করুন!' : 'Please select a student!');
+      showToast(isBn ? 'দয়া করে একজন ছাত্র নির্বাচন করুন!' : 'Please select a student!');
       return;
     }
     if (computedTotal.net <= 0) {
-      alert(isBn ? 'মোট ফি এর পরিমাণ ০ এর বেশি হতে হবে!' : 'Total fee must be greater than 0!');
+      showToast(isBn ? 'মোট ফি এর পরিমাণ ০ এর বেশি হতে হবে!' : 'Total fee must be greater than 0!');
       return;
     }
 

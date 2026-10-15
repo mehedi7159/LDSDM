@@ -92,11 +92,11 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!payerOrPayee.trim()) {
-      alert(isBn ? (txType === 'INCOME' ? 'দয়া করে দানকারী/দাতার নাম দিন!' : 'দয়া করে প্রাপক/দোকানের নাম দিন!') : 'Please enter person/vendor name!');
+      showToast(isBn ? (txType === 'INCOME' ? 'দয়া করে দানকারী/দাতার নাম দিন!' : 'দয়া করে প্রাপক/দোকানের নাম দিন!') : 'Please enter person/vendor name!');
       return;
     }
     if (!amount || amount <= 0) {
-      alert(isBn ? 'টাকার পরিমাণ সঠিক নয়!' : 'Please enter a valid amount!');
+      showToast(isBn ? 'টাকার পরিমাণ সঠিক নয়!' : 'Please enter a valid amount!');
       return;
     }
 

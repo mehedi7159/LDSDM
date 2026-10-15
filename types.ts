@@ -20,6 +20,7 @@ export interface SchoolProfile {
   resultCardTemplate?: 'Classic' | 'Monthly' | 'Term' | 'BW_Term' | 'Premium_Dakhil' | 'Premium_Colored' | 'Premium_Royal';
   banglaFont?: string;
   banglaNumberFont?: string;
+  gradingSystem?: GradingSystem[];
 }
 
 export interface SchoolClass {
@@ -27,49 +28,25 @@ export interface SchoolClass {
   name: string;
   nameBn?: string;
   order: number;
+  institutionId?: string;
+  academicYearId?: string;
+  displayName?: string;
+  level?: number;
+  status?: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
-export interface Student {
-  id: string; // Internal GUID
-  studentId: string; // Manual Student ID (String)
-  roll?: string; // Roll number
-  name: string;
-  nameBn?: string;
-  fatherName?: string;
-  fatherNameBn?: string;
-  motherName?: string;
-  motherNameBn?: string;
-  classLevel: string; // Changed from enum to string (matches SchoolClass.name or id)
-  group?: 'Science' | 'General' | 'Humanities' | 'Commerce' | '';
-  status: 'Active' | 'Inactive' | 'Former';
-  isFormer?: boolean;
-  leavingDate?: string;
-  leavingReason?: string;
-}
+// Re-export Academic & Student Domain Models & Types
+export * from './types/academic';
+export * from './types/student';
+export * from './types/promotion';
+export * from './types/notice';
+import type { ExamStatus, MarkStatus } from './types/academic';
 
-export interface Subject {
-  id: string;
-  name: string;
-  nameBn?: string;
-  code?: string;
-  classLevel: string; // Changed from enum to string
-  examIds?: string[]; // Array of exam IDs this subject is assigned to
-  group?: 'Science' | 'General' | 'Humanities' | 'Commerce' | 'All'; // For class 9 and 10
-  fullMarks: number;
-  passMarks: number;
-  isOptional: boolean;
-  order: number;
-  // CQ (Creative Question / Theory)
-  hasCQ?: boolean;
-  cqMarks?: number;
-  cqPassMarks?: number;
-  // MCQ (Multiple Choice Question)
-  hasMCQ?: boolean;
-  mcqMarks?: number;
-  mcqPassMarks?: number;
-}
-
-export type ExamCategory = 'Term' | 'Model' | 'Monthly';
+export type ExamCategory = 'Term' | 'Model' | 'Monthly' | 'ClassTest' | 'Final' | 'Other' | string;
 
 export interface ExamContribution {
   examId: string;
@@ -78,24 +55,54 @@ export interface ExamContribution {
 
 export interface Exam {
   id: string;
+  institutionId?: string;
+  academicYearId?: string;
+  academicYear: string; // Snapshot / legacy compatibility
   name: string;
   nameBn?: string;
-  academicYear: string;
+  type?: string;
   category: ExamCategory;
+  classIds?: string[];
+  sectionIds?: string[];
+  startDate?: string;
+  endDate?: string;
+  status?: ExamStatus;
+  description?: string;
   contributions?: ExamContribution[];
   enableContributions?: boolean;
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  finalizedAt?: string;
+  finalizedBy?: string;
 }
 
 export interface MarkRecord {
   id: string;
+  institutionId?: string;
   studentId: string;
   subjectId: string;
   examId: string;
+  academicYearId?: string;
+  classId?: string;
+  sectionId?: string;
   obtained: number; // Total obtained (calculated)
   obtainedCQ?: number;
   obtainedMCQ?: number;
-  isAbsent?: boolean;
+  obtainedPractical?: number;
   total: number; // Snapshot of full marks at time of entry
+  fullMarks?: number;
+  passMarks?: number;
+  isAbsent?: boolean;
+  absentReason?: string;
+  grade?: string;
+  gradePoint?: number;
+  status?: MarkStatus;
+  enteredBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface RemarkRecord {
@@ -227,3 +234,252 @@ export interface ClassFeeStructure {
   boardingFee: number;
   bookFee: number;
 }
+
+// ==================== SAAS MULTI-TENANT DOMAIN MODEL ====================
+
+export type InstitutionType = 'SCHOOL' | 'MADRASAH';
+
+export type InstitutionStatus = 'ACTIVE' | 'TRIAL' | 'SUSPENDED' | 'INACTIVE';
+
+export type CommonModuleKey =
+  | 'STUDENTS'
+  | 'GUARDIANS'
+  | 'STAFF'
+  | 'CLASSES'
+  | 'SUBJECTS'
+  | 'ATTENDANCE'
+  | 'EXAMS'
+  | 'RESULTS'
+  | 'FEES'
+  | 'FINANCE'
+  | 'REPORTS'
+  | 'SETTINGS';
+
+export type MadrasahModuleKey =
+  | 'ZAKAT'
+  | 'DONATIONS'
+  | 'ORPHAN_AID'
+  | 'BOOK_BANK'
+  | 'MAHFIL'
+  | 'BOARDING';
+
+export type SchoolModuleKey =
+  | 'TRANSPORT'
+  | 'ACTIVITIES'
+  | 'HOUSE_SYSTEM'
+  | 'CLUBS';
+
+export type ModuleKey = CommonModuleKey | MadrasahModuleKey | SchoolModuleKey;
+
+export type ThemePreset = 'SCHOOL' | 'MADRASAH' | 'CUSTOM';
+
+export interface InstitutionTypography {
+  fontSans?: string;
+  fontBangla?: string;
+  fontBanglaNumber?: string;
+}
+
+export interface InstitutionThemeConfig {
+  preset: ThemePreset;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  signatureUrl?: string;
+  watermarkUrl?: string;
+  typography?: InstitutionTypography;
+  sidebarStyle?: 'CLASSIC' | 'MODERN' | 'COMPACT' | 'MINIMAL';
+  dashboardStyle?: 'CARDS' | 'METRICS' | 'MINIMAL';
+  reportCardBranding?: {
+    showWatermark?: boolean;
+    watermarkUrl?: string;
+    showLogo?: boolean;
+    showHeadmasterSignature?: boolean;
+    showGuardianSignature?: boolean;
+    showClassTeacherSignature?: boolean;
+    defaultTemplate?: 'Classic' | 'Monthly' | 'Term' | 'BW_Term' | 'Premium_Dakhil' | 'Premium_Colored' | 'Premium_Royal';
+  };
+}
+
+export interface InstitutionContact {
+  phone: string;
+  alternatePhone?: string;
+  email: string;
+  website?: string;
+  facebookPage?: string;
+  emergencyContact?: string;
+  principalOrHeadName?: string;
+  principalOrHeadNameBn?: string;
+}
+
+export interface InstitutionAddress {
+  street: string;
+  streetBn?: string;
+  postOffice?: string;
+  postOfficeBn?: string;
+  upazilaThana?: string;
+  upazilaThanaBn?: string;
+  district?: string;
+  districtBn?: string;
+  division?: string;
+  country?: string;
+  postalCode?: string;
+}
+
+export interface AcademicSettings {
+  currentAcademicYear: string;
+  academicYears: string[];
+  gradingSystem: GradingSystem[];
+  passPercentage?: number;
+  allowFractions?: boolean;
+  continuousAssessmentCQMCQ?: boolean;
+  dakhilFourthSubjectRules?: boolean;
+}
+
+export interface FundCategoryDefinition {
+  fundKey: string;
+  name: string;
+  nameBn: string;
+  description?: string;
+  isReligiousOrRestrictedFund?: boolean;
+}
+
+export interface IncomeCategoryDefinition {
+  key: string;
+  name: string;
+  nameBn: string;
+  fundType: string;
+  isRecurringFee?: boolean;
+}
+
+export interface ExpenseCategoryDefinition {
+  key: string;
+  name: string;
+  nameBn: string;
+  fundType: string;
+}
+
+export interface InstitutionFinanceConfig {
+  institutionType: InstitutionType;
+  currency: string;
+  currencySymbol: string;
+  receiptPrefix: string;
+  voucherPrefix: string;
+  enabledFunds: FundCategoryDefinition[];
+  incomeCategories: IncomeCategoryDefinition[];
+  expenseCategories: ExpenseCategoryDefinition[];
+}
+
+export interface Institution {
+  id: string; // Document ID / UUID (e.g. inst_abc123)
+  tenantCode: string; // Unique URL slug or identifier
+  name: string;
+  nameBn?: string;
+  institutionType: InstitutionType;
+  status: InstitutionStatus;
+  logo?: string;
+  address: InstitutionAddress;
+  contact: InstitutionContact;
+  academicSettings: AcademicSettings;
+  themeSettings: InstitutionThemeConfig;
+  enabledModules: ModuleKey[];
+  financeConfig?: InstitutionFinanceConfig;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+// ==================== SAAS MULTI-TENANT AUTH & RBAC TYPES ====================
+
+export type SaaSRole =
+  | 'superadmin'
+  | 'institution_admin'
+  | 'staff'
+  | 'teacher'
+  | 'accountant'
+  | 'viewer';
+
+export interface SaaSUserClaims {
+  institutionId?: string;
+  role: SaaSRole | 'admin';
+  permissions?: string[];
+  isSuperAdmin?: boolean;
+}
+
+// ==================== SAAS TERMINOLOGY & DEPENDENCY TYPES ====================
+
+export type TermKey =
+  | 'institution'
+  | 'student'
+  | 'students'
+  | 'teacher'
+  | 'teachers'
+  | 'principal'
+  | 'guardian'
+  | 'guardians'
+  | 'class'
+  | 'classes'
+  | 'subject'
+  | 'subjects'
+  | 'exam'
+  | 'exams'
+  | 'result'
+  | 'results'
+  | 'reportCard'
+  | 'tuitionFee'
+  | 'admissionFee'
+  | 'examFee'
+  | 'salary'
+  | 'donation'
+  | 'zakat'
+  | 'boarding'
+  | 'mahfil'
+  | 'bookBank'
+  | 'transport'
+  | 'house'
+  | 'club'
+  | 'voucher'
+  | 'moneyReceipt';
+
+export interface LocalizedTerm {
+  en: string;
+  bn: string;
+}
+
+export type TerminologyDictionary = Record<TermKey, LocalizedTerm>;
+
+export interface ModuleDependencyRule {
+  module: ModuleKey;
+  requiredModules: ModuleKey[];
+  description: string;
+}
+
+export interface TrashItem {
+  id: string;
+  type: 'student' | 'subject' | 'exam' | 'class' | 'transaction';
+  data: any;
+  deletedAt: string;
+}
+
+export type UserRole = 'super_admin' | 'principal' | 'teacher' | 'accountant' | 'staff' | 'guardian';
+
+export interface AppUser {
+  id: string;
+  name: string;
+  nameBn?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  role: UserRole;
+  assignedClasses?: string[];
+  assignedSubjects?: string[];
+  studentId?: string; // Linked student for Guardian
+  studentRoll?: string;
+  studentClass?: string;
+  designation?: string;
+  status: 'active' | 'pending' | 'blocked';
+  createdAt: string;
+  lastLogin?: string;
+}
+
