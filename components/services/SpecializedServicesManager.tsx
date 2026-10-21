@@ -154,319 +154,79 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
   const [books, setBooks] = useState<BookItem[]>(() => {
     const saved = localStorage.getItem('madrasah_books_catalog');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(b => !b?.id?.startsWith('book-'));
+        }
+      } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'book-1',
-        accessionNo: 'ACC-1001',
-        title: 'Sahih al-Bukhari (Vol 1)',
-        titleBn: 'সহীহুল বুখারী (১ম খণ্ড)',
-        author: 'ইমাম বুখারী (রহ.)',
-        publisher: 'দারুস সালাম',
-        category: 'hadith',
-        almirah: 'আলমিরা-০১',
-        shelf: 'র্যাক-৩',
-        totalCopies: 6,
-        availableCopies: 4,
-        price: 850,
-        condition: 'good',
-        entryDate: '2025-01-15'
-      },
-      {
-        id: 'book-2',
-        accessionNo: 'ACC-1002',
-        title: 'Al-Hidayah (Vol 1 & 2)',
-        titleBn: 'আল-হিদায়া (১ম ও ২য় খণ্ড)',
-        author: 'ইমাম আল-মারগীনানী (রহ.)',
-        publisher: 'মাকতাবাতুল বুশরা',
-        category: 'fiqh',
-        almirah: 'আলমিরা-০২',
-        shelf: 'র্যাক-১',
-        totalCopies: 5,
-        availableCopies: 3,
-        price: 950,
-        condition: 'new',
-        entryDate: '2025-02-10'
-      },
-      {
-        id: 'book-3',
-        accessionNo: 'ACC-1003',
-        title: 'Tafsir Maariful Quran (Complete Set)',
-        titleBn: 'তাফসীরে মাআরিফুল কুরআন (৮ খণ্ড)',
-        author: 'মুফতী শফী (রহ.)',
-        publisher: 'ইসলামিক ফাউন্ডেশন',
-        category: 'tafsir',
-        almirah: 'আলমিরা-০৩',
-        shelf: 'র্যাক-২',
-        totalCopies: 8,
-        availableCopies: 7,
-        price: 3200,
-        condition: 'good',
-        entryDate: '2025-01-20'
-      },
-      {
-        id: 'book-4',
-        accessionNo: 'ACC-1004',
-        title: 'Riyadus Salihin',
-        titleBn: 'রিয়াযুস সালিহীন',
-        author: 'ইমাম আন-নববী (রহ.)',
-        publisher: 'মাকতাবাতুত তাওহীদ',
-        category: 'hadith',
-        almirah: 'আলমিরা-০২',
-        shelf: 'র্যাক-৪',
-        totalCopies: 7,
-        availableCopies: 6,
-        price: 600,
-        condition: 'good',
-        entryDate: '2025-02-01'
-      },
-      {
-        id: 'book-5',
-        accessionNo: 'ACC-1005',
-        title: 'Noorani Qaida & Para Amma',
-        titleBn: 'নূরানী কায়দা ও আমপারা সংকলন',
-        author: 'মুহম্মদ শাহজাহান',
-        publisher: 'নূরানী প্রকাশনী',
-        category: 'quran',
-        almirah: 'আলমিরা-০১',
-        shelf: 'র্যাক-১',
-        totalCopies: 25,
-        availableCopies: 22,
-        price: 80,
-        condition: 'new',
-        entryDate: '2025-01-05'
-      },
-      {
-        id: 'book-6',
-        accessionNo: 'ACC-1006',
-        title: 'Arabic Grammar & Composition',
-        titleBn: 'এসো আরবি শিখি ও তাসরীক',
-        author: 'মাওলানা আবু তাহের মিসবাহ',
-        publisher: 'দারুল কলম',
-        category: 'arabic',
-        almirah: 'আলমিরা-০৪',
-        shelf: 'র্যাক-২',
-        totalCopies: 12,
-        availableCopies: 10,
-        price: 240,
-        condition: 'good',
-        entryDate: '2025-02-15'
-      }
-    ];
+    return [];
   });
 
   const [bookIssues, setBookIssues] = useState<BookIssueRecord[]>(() => {
     const saved = localStorage.getItem('madrasah_book_issues');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(i => !i?.id?.startsWith('issue-'));
+        }
+      } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'issue-1',
-        bookId: 'book-1',
-        bookTitle: 'সহীহুল বুখারী (১ম খণ্ড)',
-        accessionNo: 'ACC-1001',
-        borrowerType: 'student',
-        borrowerId: 'STD-1',
-        borrowerName: 'আব্দুর রহমান',
-        borrowerRoll: 101,
-        borrowerClass: 'দাহম (১০ম শ্রেণি)',
-        borrowerPhone: '01712345678',
-        issueDate: '2025-05-01',
-        dueDate: '2025-05-15',
-        status: 'issued',
-        fineAmount: 0
-      },
-      {
-        id: 'issue-2',
-        bookId: 'book-2',
-        bookTitle: 'আল-হিদায়া (১ম ও ২য় খণ্ড)',
-        accessionNo: 'ACC-1002',
-        borrowerType: 'student',
-        borrowerId: 'STD-2',
-        borrowerName: 'মোহাম্মদ আবদুল্লাহ',
-        borrowerRoll: 102,
-        borrowerClass: 'দাহম (১০ম শ্রেণি)',
-        borrowerPhone: '01812345679',
-        issueDate: '2025-04-10',
-        dueDate: '2025-04-24',
-        status: 'overdue',
-        fineAmount: 45,
-        notes: 'দেরিতে ফেরতের জন্য জরিমানা ধার্য'
-      }
-    ];
+    return [];
   });
 
   const [vehicles, setVehicles] = useState<TransportVehicle[]>(() => {
     const saved = localStorage.getItem('madrasah_transport_vehicles');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(v => !v?.id?.startsWith('veh-'));
+        }
+      } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'veh-1',
-        vehicleNo: 'ঢাকা মেট্রো-চ-১২-৩৪৫৬',
-        vehicleType: 'minibus',
-        driverName: 'মো. রফিকুল ইসলাম',
-        driverPhone: '01711223344',
-        helperName: 'মো. সুজন মিয়া',
-        helperPhone: '01711223355',
-        capacity: 28,
-        routeName: 'রুট ০১: উত্তরা - আবদুল্লাহপুর - ক্যাম্পাস',
-        stoppages: ['হাউজবিল্ডিং', 'আজমপুর', 'জসীমউদ্দীন', 'বিমানবন্দর', 'মাদরাসা মেইন গেট'],
-        departureTime: '০৭:১৫ সকাল',
-        returnTime: '০২:৩০ দুপুর',
-        monthlyFee: 1500,
-        status: 'active'
-      },
-      {
-        id: 'veh-2',
-        vehicleNo: 'ঢাকা মেট্রো-ভ-০৫-৯৮৭৬',
-        vehicleType: 'microbus',
-        driverName: 'কফিল উদ্দিন আহমেদ',
-        driverPhone: '01822334455',
-        helperName: 'মো. কাওসার',
-        helperPhone: '01822334466',
-        capacity: 14,
-        routeName: 'রুট ০২: মিরপুর - কাজীপাড়া - ক্যাম্পাস',
-        stoppages: ['মিরপুর ১০', 'কাজীপাড়া', 'শেওড়াপাড়া', 'আগারগাঁও', 'মাদরাসা মেইন গেট'],
-        departureTime: '০৭:০০ সকাল',
-        returnTime: '০২:৪০ দুপুর',
-        monthlyFee: 1600,
-        status: 'active'
-      }
-    ];
+    return [];
   });
 
   const [transportRoster, setTransportRoster] = useState<StudentTransportRoster[]>(() => {
     const saved = localStorage.getItem('madrasah_transport_roster');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(r => !r?.id?.startsWith('tr-'));
+        }
+      } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'tr-1',
-        studentId: 'STD-1',
-        studentName: 'আব্দুর রহমান',
-        studentRoll: 101,
-        studentClass: 'দাহম',
-        vehicleId: 'veh-1',
-        stoppage: 'হাউজবিল্ডিং',
-        pickupTime: '০৭:২০ সকাল',
-        guardianPhone: '01712345678',
-        feeStatus: 'paid'
-      },
-      {
-        id: 'tr-2',
-        studentId: 'STD-2',
-        studentName: 'মোহাম্মদ আবদুল্লাহ',
-        studentRoll: 102,
-        studentClass: 'দাহম',
-        vehicleId: 'veh-1',
-        stoppage: 'আজমপুর',
-        pickupTime: '০৭:২৫ সকাল',
-        guardianPhone: '01812345679',
-        feeStatus: 'due'
-      }
-    ];
+    return [];
   });
 
   const [events, setEvents] = useState<MahfilEvent[]>(() => {
     const saved = localStorage.getItem('madrasah_mahfil_events');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(e => !e?.id?.startsWith('evt-'));
+        }
+      } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'evt-1',
-        title: 'Annual Seerat-un-Nabi (PBUH) Mahfil & Prize Distribution',
-        titleBn: 'বার্ষিক সীরাতুন্নবী (সা.) মাহফিল ও পুরস্কার বিতরণী সমাবেশ',
-        category: 'seerat',
-        eventDate: '2025-11-28',
-        venue: 'মাদরাসা জামে মসজিদ ও উন্মুক্ত ময়দান',
-        chairperson: 'মুহতামিম মাওলানা আব্দুল হান্নান সাহেব',
-        chiefGuest: 'আল্লামা মুফতী মাহমুদুল হাসান (ঢাকা)',
-        speakers: [
-          { name: 'আল্লামা মুফতী মাহমুদুল হাসান', topic: 'সীরাতের আলোকে আদর্শ সমাজ বিনির্মাণ', time: 'বাদ মাগরিব', honorarium: 15000 },
-          { name: 'মাওলানা কামরুল ইসলাম নোমানী', topic: 'সন্তানের ইসলামী লালন-পালন ও পিতা-মাতার কর্তব্য', time: 'বাদ আসর', honorarium: 8000 }
-        ],
-        budget: 180000,
-        totalCollection: 215000,
-        totalExpense: 145000,
-        volunteers: [
-          { name: 'হাফেজ বেলাল হোসেন', duty: 'তোবারক ও মেহমান আপ্যায়ন', phone: '01710001111' },
-          { name: 'মাওলানা সাইফুল ইসলাম', duty: 'শৃঙ্খলা ও নিরাপত্তা ব্যবস্থা', phone: '01710002222' },
-          { name: 'কারী আশরাফ আলী', duty: 'মাইক ও স্টেজ ডেকোরেশন', phone: '01710003333' }
-        ],
-        status: 'planned'
-      },
-      {
-        id: 'evt-2',
-        title: 'Annual Dastarbandi Conference (Hifz Completion Graduation)',
-        titleBn: 'বার্ষিক খতমে কুরআন ও হিফজ সমাপনী দস্তারবন্দী মহাসম্মেলন',
-        category: 'dastarbandi',
-        eventDate: '2025-03-12',
-        venue: 'মাদরাসা কেন্দ্রীয় অডিটোরিয়াম',
-        chairperson: 'মুহতামিম মাওলানা আব্দুল হান্নান সাহেব',
-        chiefGuest: 'শায়খুল হাদীস আল্লামা আব্দুল কুদ্দুস সাহেব',
-        speakers: [
-          { name: 'শায়খুল হাদীস আল্লামা আব্দুল কুদ্দুস', topic: 'হাফেজে কুরআনের সম্মান ও পিতা-মাতার মর্যাদা', time: 'রাত ৮:৩০', honorarium: 12000 }
-        ],
-        budget: 95000,
-        totalCollection: 120000,
-        totalExpense: 92000,
-        volunteers: [
-          { name: 'হাফেজ মামুনুর রশীদ', duty: 'পাগড়ি ও সম্মাননা স্মারক প্রস্তুত', phone: '01810004444' }
-        ],
-        status: 'completed'
-      }
-    ];
+    return [];
   });
 
   const [clubs, setClubs] = useState<CoCurricularClub[]>(() => {
     const saved = localStorage.getItem('madrasah_cocurricular_clubs');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(c => !c?.id?.startsWith('club-'));
+        }
+      } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'club-1',
-        name: 'Hifzul Quran & Qiraat Forum',
-        nameBn: 'হিফজুল কুরআন ও হুসনুল কিরাত ফোরাম',
-        category: 'quran_qiraat',
-        convener: 'কারী আশরাফ আলী সাহেব',
-        convenerPhone: '01710003333',
-        membersCount: 45,
-        meetingDay: 'প্রতি বৃহস্পতিবার আসর পর',
-        activitiesCount: 8,
-        description: 'সহীহ তালিম, তাজবীদ চর্চা এবং জাতীয় ও বিভাগীয় কিরাত প্রতিযোগিতার প্রস্তুতি।'
-      },
-      {
-        id: 'club-2',
-        name: 'Arabic & Bengali Literary Society',
-        nameBn: 'আরবি ও বাংলা সাহিত্য ও দেয়ালিকা সংসদ',
-        category: 'literature',
-        convener: 'মাওলানা তাহের বিল্লাহ',
-        convenerPhone: '01715556666',
-        membersCount: 38,
-        meetingDay: 'প্রতি শনিবার মাগরিব পর',
-        activitiesCount: 6,
-        description: 'ত্রৈমাসিক সাময়িকী, দেয়ালিকা প্রকাশনা ও আরবি মুক্ত কথন দক্ষতা বৃদ্ধি।'
-      },
-      {
-        id: 'club-3',
-        name: 'Debate, Public Speaking & Dawah Forum',
-        nameBn: 'বিতর্ক, উপস্থিত বক্তৃতা ও ইসলামী দাওয়াহ ফোরাম',
-        category: 'debate',
-        convener: 'মাওলানা কামরুল ইসলাম',
-        convenerPhone: '01718889999',
-        membersCount: 32,
-        meetingDay: 'প্রতি মঙ্গলবার যোহর পর',
-        activitiesCount: 5,
-        description: 'যুক্তিভিত্তিক বক্তৃতা, সমকালীন বিষয় নিয়ে গঠনমূলক বিতর্ক ও দাওয়াহ কর্মশালা।'
-      }
-    ];
+    return [];
   });
 
   // LocalStorage sync effects
@@ -551,8 +311,8 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
     titleBn: '',
     category: 'mahfil' as MahfilEvent['category'],
     eventDate: new Date().toISOString().split('T')[0],
-    venue: 'মাদরাসা প্রাঙ্গণ',
-    chairperson: 'মুহতামিম সাহেব',
+    venue: 'মাদরাসা অডিটোরিয়াম / প্রাঙ্গণ',
+    chairperson: 'অধ্যক্ষ মহোদয়',
     chiefGuest: '',
     budget: 100000,
     speakerName: '',
@@ -798,8 +558,8 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
       titleBn: '',
       category: 'mahfil',
       eventDate: new Date().toISOString().split('T')[0],
-      venue: 'মাদরাসা প্রাঙ্গণ',
-      chairperson: 'মুহতামিম সাহেব',
+      venue: 'মাদরাসা অডিটোরিয়াম / প্রাঙ্গণ',
+      chairperson: 'অধ্যক্ষ মহোদয়',
       chiefGuest: '',
       budget: 100000,
       speakerName: '',
@@ -1478,15 +1238,15 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
                 <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
                   <div>
                     <span className="text-slate-400 block text-2xs">{language === 'bn' ? 'মোট বাজেট:' : 'Budget:'}</span>
-                    <span className="font-bold text-slate-800 text-sm">৳{formatNumber(evt.budget)}</span>
+                    <span className="font-bold text-slate-800 text-sm">৳{formatNumber(evt.budget, language)}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-2xs">{language === 'bn' ? 'চাঁদা কালেকশন:' : 'Collection:'}</span>
-                    <span className="font-bold text-emerald-700 text-sm">৳{formatNumber(evt.totalCollection)}</span>
+                    <span className="font-bold text-emerald-700 text-sm">৳{formatNumber(evt.totalCollection, language)}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-2xs">{language === 'bn' ? 'মোট ব্যয়:' : 'Expenses:'}</span>
-                    <span className="font-bold text-slate-800 text-sm">৳{formatNumber(evt.totalExpense)}</span>
+                    <span className="font-bold text-slate-800 text-sm">৳{formatNumber(evt.totalExpense, language)}</span>
                   </div>
                 </div>
 
@@ -2088,7 +1848,7 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
                     type="text"
                     value={newEvent.chairperson}
                     onChange={e => setNewEvent({ ...newEvent, chairperson: e.target.value })}
-                    placeholder="মুহতামিম সাহেব"
+                    placeholder="অধ্যক্ষ মহোদয় / সভাপতি"
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   />
                 </div>

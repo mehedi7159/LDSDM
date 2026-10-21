@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleAdminBootstrapApi } from './server/adminApi.js';
+import { handleAiAdvisorApi } from './server/aiAssistantApi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -93,6 +94,11 @@ const server = http.createServer((req, res) => {
   // API routing
   if (urlPath.startsWith('/api/admin/bootstrap-owner')) {
     handleAdminBootstrapApi(req, res);
+    return;
+  }
+
+  if (urlPath.startsWith('/api/ai/advisor')) {
+    handleAiAdvisorApi(req, res);
     return;
   }
 

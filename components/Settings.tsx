@@ -28,6 +28,8 @@ import { ExamRestoreModal } from './ExamRestoreModal';
 import { exportExamBackup } from '../services/examBackupService';
 import { logAuditEvent } from '../services/auditLog';
 import { DataSecurityBackupCenter } from './DataSecurityBackupCenter';
+import { useTheme } from '../context/ThemeContext';
+import { StickyActionFooter } from './ui/StickyActionFooter';
 
 interface SettingsProps {
   initialTab?: 'info' | 'subjects_exam' | 'backup';
@@ -64,6 +66,8 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = 'info' }) => {
     t, 
     language 
   } = useApp();
+
+  const { showSuccess } = useTheme();
 
   const [formData, setFormData] = useState(schoolProfile);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'info' | 'subjects_exam' | 'backup'>(initialTab);
@@ -123,10 +127,14 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = 'info' }) => {
     setFormData(prev => ({ ...prev, [field]: '' }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     updateSchoolProfile(formData);
     setSaveSuccess(true);
+    showSuccess(
+      language === 'bn' ? 'মাদ্রাসার তথ্য ও সেটিংস সফলভাবে সংরক্ষিত হয়েছে!' : 'Settings saved successfully!',
+      language === 'bn' ? 'সংরক্ষিত' : 'Saved'
+    );
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
@@ -859,15 +867,11 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = 'info' }) => {
           </div>
 
           {/* Sticky/Bottom Save Action Bar */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              type="submit"
-              className="py-3.5 px-8 bg-[#5438dc] hover:bg-[#472fc4] text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 active:scale-[0.99] cursor-pointer"
-            >
-              <Save size={18} />
-              <span>{t('saveConfig')}</span>
-            </button>
-          </div>
+          <StickyActionFooter
+            onSave={() => handleSave()}
+            saveLabel={t('saveConfig')}
+            statusMessage={saveSuccess ? (language === 'bn' ? 'সফলভাবে সংরক্ষিত হয়েছে' : 'Settings saved successfully') : undefined}
+          />
         </form>
       )}
 

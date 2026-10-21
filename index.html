@@ -11,11 +11,31 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="alternate icon" href="/favicon.ico" />
-    <title>Madrasah Management System</title>
-    <meta name="description" content="A comprehensive Madrasah Management System for managing students, exams, marks, subjects, and generating professional result cards and tabulation reports." />
-    <meta property="og:title" content="Madrasah Management System" />
-    <meta property="og:description" content="A comprehensive Madrasah Management System for managing students, exams, marks, subjects, and generating professional result cards and tabulation reports." />
+    <title>LDSDM System · Madrasah Management Platform</title>
+    <meta name="description" content="LDSDM System - Modern SaaS Madrasah Management Platform for managing students, attendance, exams, marks, subjects, and financial operations." />
+    <meta property="og:title" content="LDSDM System · Madrasah Management Platform" />
+    <meta property="og:description" content="LDSDM System - Modern SaaS Madrasah Management Platform for managing students, attendance, exams, marks, subjects, and financial operations." />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
+              inter: ['Inter', 'sans-serif'],
+              hind: ['Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
+              mono: ['Noto Sans Bengali', 'monospace']
+            },
+            boxShadow: {
+              'soft': '0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.02)',
+              'card': '0 1px 3px rgba(0,0,0,0.05), 0 12px 24px -4px rgba(0,0,0,0.04)',
+              'elevated': '0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.06)'
+            }
+          }
+        }
+      };
+    </script>
     <script>
       // Filter transient Firestore offline / reconnect log notices from registering as runtime errors
       (function() {
@@ -36,8 +56,56 @@
       @import url('https://fonts.googleapis.com/css2?family=Alkatra:wght@400;500;600;700&family=Anek+Bangla:wght@300;400;500;600;700;800&family=Atma:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700;800&family=Galada&family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Mina:wght@400;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700;800;900&family=Noto+Serif+Bengali:wght@300;400;500;600;700;800;900&family=Tiro+Bangla:ital@0;1&display=swap');
       
       :root {
-        --bangla-font: 'Noto Sans Bengali', 'Anek Bangla', 'Hind Siliguri', sans-serif;
+        --color-brand: #4f46e5;
+        --color-brand-hover: #4338ca;
+        --color-brand-light: #eef2ff;
+        --color-brand-ring: #6366f1;
+        --bangla-font: 'Hind Siliguri', 'Noto Sans Bengali', 'Anek Bangla', sans-serif;
         --bangla-num-font: 'Noto Sans Bengali', 'Anek Bangla', sans-serif;
+      }
+
+      [data-theme="indigo"] {
+        --color-brand: #4f46e5;
+        --color-brand-hover: #4338ca;
+        --color-brand-light: #eef2ff;
+        --color-brand-ring: #6366f1;
+      }
+
+      [data-theme="blue"] {
+        --color-brand: #2563eb;
+        --color-brand-hover: #1d4ed8;
+        --color-brand-light: #eff6ff;
+        --color-brand-ring: #3b82f6;
+      }
+
+      [data-theme="emerald"] {
+        --color-brand: #059669;
+        --color-brand-hover: #047857;
+        --color-brand-light: #ecfdf5;
+        --color-brand-ring: #10b981;
+      }
+
+      [data-theme="amber"] {
+        --color-brand: #d97706;
+        --color-brand-hover: #b45309;
+        --color-brand-light: #fffbeb;
+        --color-brand-ring: #f59e0b;
+      }
+
+      [data-theme="teal"] {
+        --color-brand: #0d9488;
+        --color-brand-hover: #0f766e;
+        --color-brand-light: #f0fdfa;
+        --color-brand-ring: #14b8a6;
+      }
+
+      html.dark {
+        color-scheme: dark;
+      }
+
+      html.dark body {
+        background-color: #0b0f19 !important;
+        color: #f1f5f9 !important;
       }
       
       @font-face {

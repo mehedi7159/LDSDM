@@ -336,7 +336,7 @@ export const VoucherPrintModal: React.FC<VoucherPrintModalProps> = ({
                 </div>
                 <div>
                   <div className="border-t border-slate-600 w-36 mx-auto pt-1">
-                    {isBn ? 'মুহতামিম / অধ্যক্ষ' : 'Principal / Superintendent'}
+                    {isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : 'Principal / Superintendent'}
                   </div>
                 </div>
               </div>

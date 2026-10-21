@@ -44,7 +44,7 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
   const [referenceNo, setReferenceNo] = useState<string>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState<string>('');
-  const [collectedBy, setCollectedBy] = useState<string>('মুহতামিম / হিসাবরক্ষক');
+  const [collectedBy, setCollectedBy] = useState<string>('অধ্যক্ষ / হিসাবরক্ষক');
 
   // Quick Preset Amounts
   const presetAmounts = [500, 1000, 2000, 5000, 10000, 25000, 50000];
@@ -77,14 +77,14 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
 
     const nextVoucher = generateVoucherNo('INCOME', transactions);
     const categoryLabels: Record<string, string> = {
-      GENERAL_DONATION: 'সাধারণ দান ও হাদিয়া',
-      ZAKAT_FITRA: 'যাকাত, ফিতরা ও সদকা',
-      BUILDING_CONSTRUCTION: 'মসজিদ ও ভবন নির্মাণ অনুদান',
+      GENERAL_DONATION: 'সাধারণ দান ও অনুদান',
+      ZAKAT_FITRA: 'ছাত্রকল্যাণ, যাকাত ও সদকা ফান্ড',
+      BUILDING_CONSTRUCTION: 'ক্যাম্পাস ও ভবন নির্মাণ অনুদান',
       MONTHLY_DONOR: 'আজীবন / দাতা সদস্য মাসিক অনুদান',
       QURBANI_LEATHER: 'কোরবানির চামড়া বাবদ দান',
-      ORPHAN_SPONSOR: 'এতিম ও লিল্লাহ বোর্ডিং দান',
-      MAHFIL_COLLECTION: 'বার্ষিক মাহফিল ও জলসা ফান্ড',
-      MISC_INCOME: 'বিবিধ হাদিয়া',
+      ORPHAN_SPONSOR: 'ছাত্রকল্যাণ ও এতিম তহবিল দান',
+      MAHFIL_COLLECTION: 'বার্ষিক ক্রীড়া, সাংস্কৃতিক ও সিরাত মাহফিল ফান্ড',
+      MISC_INCOME: 'বিবিধ অনুদান',
     };
 
     const newTx: Omit<FinanceTransaction, 'id' | 'createdAt'> = {
@@ -255,13 +255,13 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
                 onChange={(e) => setCategory(e.target.value as any)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               >
-                <option value="GENERAL_DONATION">{isBn ? 'সাধারণ দান ও হাদিয়া' : 'General Donation'}</option>
-                <option value="ZAKAT_FITRA">{isBn ? 'যাকাত, ফিতরা ও সদকা' : 'Zakat & Fitra'}</option>
-                <option value="BUILDING_CONSTRUCTION">{isBn ? 'মসজিদ ও ভবন নির্মাণ অনুদান' : 'Building Construction'}</option>
+                <option value="GENERAL_DONATION">{isBn ? 'সাধারণ দান ও অনুদান' : 'General Donation'}</option>
+                <option value="ZAKAT_FITRA">{isBn ? 'ছাত্রকল্যাণ, যাকাত ও সদকা' : 'Student Welfare & Zakat'}</option>
+                <option value="BUILDING_CONSTRUCTION">{isBn ? 'ক্যাম্পাস ও ভবন নির্মাণ অনুদান' : 'Campus Construction'}</option>
                 <option value="MONTHLY_DONOR">{isBn ? 'আজীবন / দাতা সদস্য মাসিক অনুদান' : 'Monthly Donor'}</option>
                 <option value="QURBANI_LEATHER">{isBn ? 'কোরবানির চামড়া বাবদ দান' : 'Qurbani Skin'}</option>
-                <option value="ORPHAN_SPONSOR">{isBn ? 'লিল্লাহ ও এতিম প্রতিপালন দান' : 'Orphan Sponsor'}</option>
-                <option value="MAHFIL_COLLECTION">{isBn ? 'বার্ষিক মাহফিল ও জলসা ফান্ড' : 'Mahfil Collection'}</option>
+                <option value="ORPHAN_SPONSOR">{isBn ? 'ছাত্রকল্যাণ ও এতিম তহবিল দান' : 'Student Welfare Sponsor'}</option>
+                <option value="MAHFIL_COLLECTION">{isBn ? 'বার্ষিক ক্রীড়া, সাংস্কৃতিক ও সিরাত মাহফিল' : 'Annual Sports & Seerat Event'}</option>
                 <option value="MISC_INCOME">{isBn ? 'অন্যান্য অনুদান' : 'Other Donation'}</option>
               </select>
             </div>
@@ -366,8 +366,8 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
 
           <p className="mt-3 text-sm text-emerald-100/90 leading-relaxed font-medium">
             {isBn 
-              ? 'মাদ্রাসার যাকাত, লিল্লাহ ও উন্নয়ন ফান্ড সম্পূর্ণ আলাদাভাবে সংরক্ষিত হয়। প্রতিটি দানের জন্য অফিস কপি ও দাতা কপি সহ রসিদ তৈরি হয়।'
-              : 'Every donation is tagged with Shariah-compliant fund segregation and audited receipts.'}
+              ? 'মাদ্রাসার সাধারণ, ছাত্রকল্যাণ ও উন্নয়ন ফান্ড সম্পূর্ণ আলাদাভাবে সংরক্ষিত হয়। প্রতিটি দানের জন্য অফিস কপি ও দাতা কপি সহ রসিদ তৈরি হয়।'
+              : 'Every donation is tagged with dedicated fund segregation and audited receipts.'}
           </p>
 
           <div className="mt-4 pt-4 border-t border-emerald-700/80 space-y-3 text-sm font-medium">

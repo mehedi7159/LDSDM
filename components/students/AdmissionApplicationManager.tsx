@@ -49,53 +49,20 @@ export const AdmissionApplicationManager: React.FC<{
   const { classes, addStudent, language } = useApp();
   const isBn = language === 'bn';
 
-  // Stored applications with initial mock data
+  // Stored applications
   const [applications, setApplications] = useState<AdmissionApplication[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(a => !a?.id?.startsWith('app-'));
+        }
+      }
     } catch (e) {
       console.error('Failed to parse saved applications:', e);
     }
-
-    const currentYear = new Date().getFullYear();
-    return [
-      {
-        id: 'app-01',
-        applicationNo: `ADM-${currentYear}-001`,
-        applicantName: 'Abdullah Al Mahmud',
-        applicantNameBn: 'আব্দুল্লাহ আল মাহমুদ',
-        gender: 'male',
-        dateOfBirth: '2016-04-12',
-        desiredClass: classes[0]?.name || '১ম শ্রেণি',
-        fatherName: 'Md. Rafiqul Islam',
-        fatherNameBn: 'মোঃ রফিকুল ইসলাম',
-        motherName: 'Mahmuda Begum',
-        guardianPhone: '01711223344',
-        previousSchool: 'দারুল কুরআন নূরানী মাদ্রাসা',
-        address: 'গ্রাম: চরপাড়া, থানা: সদর, জেলা: ময়মনসিংহ',
-        appliedDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
-        status: 'PENDING',
-        notes: 'হিফজ বিভাগে পড়ার বিশেষ আগ্রহ রয়েছে।'
-      },
-      {
-        id: 'app-02',
-        applicationNo: `ADM-${currentYear}-002`,
-        applicantName: 'Muhammad Salman',
-        applicantNameBn: 'মুহাম্মদ সালমান',
-        gender: 'male',
-        dateOfBirth: '2015-08-20',
-        desiredClass: classes[1]?.name || '২য় শ্রেণি',
-        fatherName: 'Abul Kashem',
-        fatherNameBn: 'আবুল কাশেম',
-        motherName: 'Salma Khatun',
-        guardianPhone: '01819556677',
-        previousSchool: 'ইত্তেহাদুল মাদারিস নূরানী মক্তব',
-        address: 'পূর্ব বাজার, জামিয়া রোড, ঢাকা',
-        appliedDate: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
-        status: 'PENDING'
-      }
-    ];
+    return [];
   });
 
   const [searchTerm, setSearchTerm] = useState('');

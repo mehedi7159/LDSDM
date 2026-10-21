@@ -62,24 +62,24 @@ export const FUND_METAS: Record<FundType, FundMeta> = {
     iconBg: 'bg-amber-600'
   },
   ORPHAN_AID: { 
-    name: 'Lillah & Orphan Aid', 
-    nameBn: 'লিল্লাহ ও এতিম তহবিল', 
+    name: 'Student Welfare & Stipend', 
+    nameBn: 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল', 
     color: 'text-purple-700', 
     bg: 'bg-purple-50/60', 
     border: 'border-purple-200/80',
     iconBg: 'bg-purple-600'
   },
   BOOK_BANK: { 
-    name: 'Book & Library Fund', 
-    nameBn: 'কিতাব ও লাইব্রেরি তহবিল', 
+    name: 'Library & Textbook Fund', 
+    nameBn: 'লাইব্রেরি ও পাঠ্যবই তহবিল', 
     color: 'text-indigo-700', 
     bg: 'bg-indigo-50/60', 
     border: 'border-indigo-200/80',
     iconBg: 'bg-indigo-600'
   },
   MAHFIL: { 
-    name: 'Mahfil & Events Fund', 
-    nameBn: 'মাহফিল ও অনুষ্ঠান তহবিল', 
+    name: 'Sports & Cultural Fund', 
+    nameBn: 'বার্ষিক ক্রীড়া ও সাংস্কৃতিক তহবিল', 
     color: 'text-rose-700', 
     bg: 'bg-rose-50/60', 
     border: 'border-rose-200/80',

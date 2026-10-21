@@ -356,7 +356,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                       <ChevronRight size={18} className="text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                      মুহতামিম, শিক্ষক, হিসাবরক্ষক ও কর্মীদের জন্য ক্লাসরুম ম্যানেজমেন্ট, মার্কস এন্ট্রি, হাজিরা ও প্রাতিষ্ঠানিক পোর্টাল।
+                      অধ্যক্ষ, শিক্ষক, হিসাবরক্ষক ও কর্মীদের জন্য ক্লাসরুম ম্যানেজমেন্ট, মার্কস এন্ট্রি, হাজিরা ও প্রাতিষ্ঠানিক পোর্টাল।
                     </p>
                   </div>
                 </div>
@@ -616,7 +616,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                     >
                       <option value="সহকারী শিক্ষক (Teacher)">👨‍🏫 সহকারী শিক্ষক (Teacher)</option>
                       <option value="হিসাবরক্ষক / ক্যাশিয়ার (Accountant)">💼 হিসাবরক্ষক / ক্যাশিয়ার (Accountant)</option>
-                      <option value="মুহতামিম / অধ্যক্ষ (Principal)">🎓 মুহতামিম / অধ্যক্ষ (Principal)</option>
+                      <option value="অধ্যক্ষ / সুপারিনটেনডেন্ট (Principal / Superintendent)">🎓 অধ্যক্ষ / সুপারিনটেনডেন্ট (Principal / Superintendent)</option>
                       <option value="অফিস সহকারী (Office Staff)">🏢 অফিস সহকারী (Office Staff)</option>
                       <option value="অভিভাবক (Guardian)">👨‍👩‍👧 অভিভাবক (Guardian)</option>
                     </select>

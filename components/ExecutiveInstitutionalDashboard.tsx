@@ -233,7 +233,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
 
             <p className="text-xs sm:text-sm text-indigo-100/80 font-medium max-w-2xl">
               {language === 'bn'
-                ? `মুহতামিম ও অধ্যক্ষের নিয়ন্ত্রণ প্যানেল • ${formattedToday} • শিক্ষাবর্ষ: ${schoolProfile?.academicYear || '২০২৬'}`
+                ? `অধ্যক্ষ ও প্রশাসনের নিয়ন্ত্রণ প্যানেল • ${formattedToday} • শিক্ষাবর্ষ: ${schoolProfile?.academicYear || '২০২৬'}`
                 : `Principal & Administrative Dashboard • ${formattedToday} • Academic Session: ${schoolProfile?.academicYear || '2026'}`}
             </p>
           </div>

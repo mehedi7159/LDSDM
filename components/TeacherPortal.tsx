@@ -18,17 +18,35 @@ import {
   ShieldCheck,
   Phone,
   MessageCircle,
-  UserCheck
+  UserCheck,
+  DollarSign,
+  Copy,
+  Send
 } from 'lucide-react';
 import { MarksEntry } from './MarksEntry';
 import { AttendanceEntry } from './AttendanceEntry';
 import { ResultGenerator } from './ResultView';
 import { formatBanglaNumber, formatNumber } from '../services/utils';
+import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage } from '../services/studentDuesService';
 
 export const TeacherPortal: React.FC = () => {
-  const { currentUser, schoolProfile, students, classes, subjects, exams, marks, logoutUser, language } = useApp();
+  const { 
+    currentUser, 
+    schoolProfile, 
+    students, 
+    classes, 
+    subjects, 
+    exams, 
+    marks, 
+    feeStructures = [], 
+    transactions = [], 
+    logoutUser, 
+    language 
+  } = useApp();
   const [activeTab, setActiveTab] = useState<'attendance' | 'students' | 'marks' | 'results'>('attendance');
   const [studentSearch, setStudentSearch] = useState('');
+  const [duesFilter, setDuesFilter] = useState<'ALL' | 'DUE' | 'PAID'>('ALL');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedStudentClass, setSelectedStudentClass] = useState<string>(() => {
     if (currentUser?.assignedClasses && currentUser.assignedClasses.length > 0) {
       return currentUser.assignedClasses[0];
@@ -59,6 +77,19 @@ export const TeacherPortal: React.FC = () => {
     });
     return list.sort((a, b) => (Number(a.roll) || 0) - (Number(b.roll) || 0));
   }, [students, selectedStudentClass, studentSearch]);
+
+  // Compute fee dues summary for the selected class ("oi class a kar koto taka baki ase ta jana jabe")
+  const classDuesSummary = useMemo(() => {
+    return calculateClassDuesSummary(classStudents, feeStructures, transactions);
+  }, [classStudents, feeStructures, transactions]);
+
+  const filteredStudentsWithDues = useMemo(() => {
+    return classDuesSummary.profiles.filter(p => {
+      if (duesFilter === 'DUE' && p.dueThisMonth <= 0) return false;
+      if (duesFilter === 'PAID' && p.dueThisMonth > 0) return false;
+      return true;
+    });
+  }, [classDuesSummary, duesFilter]);
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-24 md:pb-6">
@@ -198,68 +229,178 @@ export const TeacherPortal: React.FC = () => {
               </div>
             </div>
 
+            {/* Class Dues Summary Cards ("oi class a kar koto taka baki ase ta jana jabe") */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                <span className="text-[11px] text-slate-400 font-semibold block">মোট শিক্ষার্থী</span>
+                <span className="text-base font-black text-slate-800">{formatNumber(classDuesSummary.totalStudents, language)} জন</span>
+              </div>
+              <div className="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-200/80 shadow-xs">
+                <span className="text-[11px] text-rose-500 font-bold block">মোট বকেয়া ফি</span>
+                <span className="text-base font-black text-rose-600">৳{formatNumber(classDuesSummary.totalDue, language)}</span>
+              </div>
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                <span className="text-[11px] text-slate-400 font-semibold block">বকেয়া রয়েছে</span>
+                <span className="text-base font-black text-rose-600">{formatNumber(classDuesSummary.dueStudentsCount, language)} জন</span>
+              </div>
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                <span className="text-[11px] text-slate-400 font-semibold block">পরিশোধিত</span>
+                <span className="text-base font-black text-emerald-600">{formatNumber(classDuesSummary.paidStudentsCount, language)} জন</span>
+              </div>
+            </div>
+
+            {/* Dues Filter Chips */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDuesFilter('ALL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  duesFilter === 'ALL'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                সকল ছাত্র ({formatNumber(classDuesSummary.totalStudents, language)})
+              </button>
+              <button
+                onClick={() => setDuesFilter('DUE')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  duesFilter === 'DUE'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-white text-rose-600 border border-slate-200 hover:bg-rose-50'
+                }`}
+              >
+                শুধু বকেয়া ({formatNumber(classDuesSummary.dueStudentsCount, language)})
+              </button>
+              <button
+                onClick={() => setDuesFilter('PAID')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  duesFilter === 'PAID'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white text-emerald-600 border border-slate-200 hover:bg-emerald-50'
+                }`}
+              >
+                পরিশোধিত ({formatNumber(classDuesSummary.paidStudentsCount, language)})
+              </button>
+            </div>
+
             {/* Student Directory Cards */}
-            {classStudents.length === 0 ? (
+            {filteredStudentsWithDues.length === 0 ? (
               <div className="bg-white p-8 rounded-2xl border border-dashed border-slate-200 text-center text-xs text-slate-400">
                 এই শ্রেণিতে কোনো শিক্ষার্থী পাওয়া যায়নি।
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {classStudents.map(student => (
-                  <div
-                    key={student.id}
-                    className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 font-bold flex items-center justify-center text-xs border border-emerald-100">
-                            {formatNumber(student.roll || '—', language)}
+                {filteredStudentsWithDues.map(profile => {
+                  const student = profile.student;
+                  const hasDue = profile.dueThisMonth > 0;
+                  return (
+                    <div
+                      key={student.id}
+                      className={`bg-white rounded-2xl p-4 border ${
+                        hasDue ? 'border-rose-200/90 hover:border-rose-300' : 'border-slate-200/90'
+                      } shadow-xs hover:shadow-md transition-all flex flex-col justify-between`}
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 font-bold flex items-center justify-center text-xs border border-emerald-100">
+                              {formatNumber(student.roll || '—', language)}
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                                {student.nameBn || student.name}
+                              </h3>
+                              <p className="text-[11px] text-slate-400">
+                                আইডি: {student.studentId || student.id.slice(0, 6)} • রোল: {formatNumber(student.roll || '—', language)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-slate-900 leading-tight">
-                              {student.nameBn || student.name}
-                            </h3>
-                            <p className="text-[11px] text-slate-400">
-                              আইডি: {student.studentId || student.id.slice(0, 6)} • রোল: {formatNumber(student.roll || '—', language)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600 space-y-1">
-                        {student.fatherName && (
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-slate-400">পিতার নাম:</span>
-                            <span className="font-medium text-slate-700">{student.fatherNameBn || student.fatherName}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400">অভিভাবকের ফোন:</span>
-                          <span className="font-bold text-slate-800">
-                            {student.guardianPhone || 'নম্বর যুক্ত নেই'}
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                            hasDue
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {hasDue ? `বকেয়া: ৳${formatNumber(profile.dueThisMonth, language)}` : 'পরিশোধিত'}
                           </span>
                         </div>
+
+                        {/* Fee summary row */}
+                        <div className="mt-3 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[11px] flex items-center justify-between">
+                          <span className="text-slate-500">ধার্য: ৳{formatNumber(profile.monthlyExpected, language)}</span>
+                          <span className="text-emerald-700 font-semibold">আদায়: ৳{formatNumber(profile.paidThisMonth, language)}</span>
+                          <span className={hasDue ? 'text-rose-600 font-bold' : 'text-slate-400'}>
+                            বকেয়া: ৳{formatNumber(profile.dueThisMonth, language)}
+                          </span>
+                        </div>
+
+                        <div className="mt-2.5 text-xs text-slate-600 space-y-1">
+                          {student.fatherName && (
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400">পিতার নাম:</span>
+                              <span className="font-medium text-slate-700">{student.fatherNameBn || student.fatherName}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">অভিভাবকের ফোন:</span>
+                            <span className="font-bold text-slate-800">
+                              {student.guardianPhone || 'নম্বর যুক্ত নেই'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
+                        {student.guardianPhone ? (
+                          <>
+                            <a
+                              href={`tel:${student.guardianPhone}`}
+                              className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                            >
+                              <Phone size={13} />
+                              <span>কল করুন</span>
+                            </a>
+
+                            {hasDue && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const text = getDueReminderMessage(
+                                    student.nameBn || student.name,
+                                    student.classLevel,
+                                    profile.dueThisMonth,
+                                    schoolProfile.nameBn || schoolProfile.name
+                                  );
+                                  navigator.clipboard.writeText(text);
+                                  setCopiedId(student.id);
+                                  setTimeout(() => setCopiedId(null), 2500);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 flex items-center gap-1 cursor-pointer transition-all"
+                                title="বকেয়া তাগাদা মেসেজ কপি করুন"
+                              >
+                                {copiedId === student.id ? (
+                                  <>
+                                    <Check size={12} className="text-emerald-600" />
+                                    <span>কপি হয়েছে</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={12} />
+                                    <span>তাগাদা SMS</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex-1 py-1.5 px-3 rounded-xl bg-slate-100 text-slate-400 font-semibold text-xs text-center">
+                            নম্বর নেই
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
-                      {student.guardianPhone ? (
-                        <a
-                          href={`tel:${student.guardianPhone}`}
-                          className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                        >
-                          <Phone size={13} />
-                          <span>কল করুন</span>
-                        </a>
-                      ) : (
-                        <div className="flex-1 py-1.5 px-3 rounded-xl bg-slate-100 text-slate-400 font-semibold text-xs text-center">
-                          নম্বর নেই
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

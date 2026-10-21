@@ -373,7 +373,7 @@ export class LegacyDataAdapter implements IDataAdapter {
           phone: '',
           email: '',
           academicYear: '২০২৬',
-          headMasterName: 'মুহতামিম সাহেব'
+          headMasterName: 'অধ্যক্ষ সাহেব'
         };
       },
       getGradingSystem: async () => {
@@ -626,7 +626,7 @@ export class FutureTenantDataAdapter implements IDataAdapter {
         phone: '',
         email: '',
         academicYear: '২০২৬',
-        headMasterName: 'মুহতামিম সাহেব'
+        headMasterName: 'অধ্যক্ষ সাহেব'
       }),
       getGradingSystem: async () => DEFAULT_GRADING_SYSTEM,
       getTenantMetadata: async () => ({

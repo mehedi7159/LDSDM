@@ -260,7 +260,7 @@ export const TransferCertificateModal: React.FC<TransferCertificateModalProps> =
                       <img src={schoolProfile.signatureUrl} alt="Signature" className="h-8 max-w-full object-contain pb-1" />
                     )}
                   </div>
-                  <p className="text-emerald-950">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'মুহতামিম / অধ্যক্ষ'}</p>
+                  <p className="text-emerald-950">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'অধ্যক্ষ / সুপারিনটেনডেন্ট'}</p>
                   <p className="text-[10px] text-slate-500">প্রতিষ্ঠানের প্রধান ও সিলমোহর</p>
                 </div>
               </div>

@@ -49,20 +49,24 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BKASH' | 'NAGAD' | 'BANK_TRANSFER'>('CASH');
   const [referenceNo, setReferenceNo] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [approvedBy, setApprovedBy] = useState<string>('মুহতামিম সাহেব');
+  const [approvedBy, setApprovedBy] = useState<string>('অধ্যক্ষ / সুপারিনটেনডেন্ট');
 
-  // Common designations in Madrasah
+  // Common designations in Alia Madrasah & School
   const commonDesignations = [
-    'মুহতামিম (Principal)',
-    'শায়খুল হাদিস (Head of Hadith)',
-    'নায়েবে মুহতামিম (Vice Principal)',
-    'সিনিয়র মুদাররিস (Senior Teacher)',
-    'মুদাররিস / শিক্ষক (Teacher)',
-    'হাফেজ / ক্বারী সাহেব (Hifz Teacher)',
-    'নাজেরা শিক্ষক (Nazera Teacher)',
+    'অধ্যক্ষ (Principal)',
+    'উপাধ্যক্ষ (Vice Principal)',
+    'সুপারিনটেনডেন্ট / সুপার (Superintendent)',
+    'সহকারী সুপারিনটেনডেন্ট (Assistant Super)',
+    'প্রভাষক (Lecturer - Arabic/English/Bangla)',
+    'সহকারী মৌলভী (Assistant Moulvi)',
+    'সহকারী শিক্ষক (Assistant Teacher - General)',
+    'সহকারী শিক্ষক (বিজ্ঞান ও গণিত)',
+    'সহকারী শিক্ষক (ইংরেজি)',
+    'আইসিটি শিক্ষক (ICT Teacher)',
+    'ক্বারী / ক্বেরাত শিক্ষক (Qari)',
     'হিসাবরক্ষক (Accountant)',
-    'বাবুর্চি / খাদের (Staff / Cook)',
-    'অফিস সহকারী (Office Assistant)'
+    'অফিস সহকারী ও কম্পিউটার অপারেটর (Office Assistant)',
+    'এমএলএসএস / অফিস সহায়ক (Support Staff)'
   ];
 
   const netPayable = Math.max(0, (Number(basicSalary) || 0) + (Number(allowance) || 0) - (Number(deduction) || 0));

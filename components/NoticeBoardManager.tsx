@@ -46,7 +46,7 @@ export const NoticeBoardManager: React.FC = () => {
   const [target, setTarget] = useState<NoticeTarget>('all');
   const [targetClass, setTargetClass] = useState<string>('');
   const [isPinned, setIsPinned] = useState(false);
-  const [authorName, setAuthorName] = useState(authUser?.displayName || 'মুহতামিম কার্যালয়');
+  const [authorName, setAuthorName] = useState(authUser?.displayName || 'অধ্যক্ষ / প্রশাসন কার্যালয়');
 
   const openCompose = (noticeToEdit?: NoticeItem) => {
     if (noticeToEdit) {
@@ -58,7 +58,7 @@ export const NoticeBoardManager: React.FC = () => {
       setTarget(noticeToEdit.target);
       setTargetClass(noticeToEdit.targetClass || '');
       setIsPinned(Boolean(noticeToEdit.isPinned));
-      setAuthorName(noticeToEdit.authorName || 'মুহতামিম কার্যালয়');
+      setAuthorName(noticeToEdit.authorName || 'অধ্যক্ষ / প্রশাসন কার্যালয়');
     } else {
       setEditingNotice(null);
       setTitle('');
@@ -68,7 +68,7 @@ export const NoticeBoardManager: React.FC = () => {
       setTarget('all');
       setTargetClass('');
       setIsPinned(false);
-      setAuthorName(authUser?.displayName || 'মুহতামিম কার্যালয়');
+      setAuthorName(authUser?.displayName || 'অধ্যক্ষ / প্রশাসন কার্যালয়');
     }
     setIsComposeModalOpen(true);
   };
@@ -431,7 +431,7 @@ export const NoticeBoardManager: React.FC = () => {
                     {schoolProfile.signatureUrl ? (
                       <img src={schoolProfile.signatureUrl} alt="Signature" className="h-6 mx-auto object-contain" />
                     ) : (
-                      <span className="font-bold text-xs text-slate-800">{noticeToPrint.authorName || 'মুহতামিম'}</span>
+                      <span className="font-bold text-xs text-slate-800">{noticeToPrint.authorName || 'অধ্যক্ষ'}</span>
                     )}
                   </div>
                   <span className="text-[10px] text-slate-500 mt-1 block">স্বাক্ষর ও প্রাতিষ্ঠানিক সিল</span>
@@ -567,7 +567,7 @@ export const NoticeBoardManager: React.FC = () => {
                 <div className="flex-1 mr-4">
                   <input
                     type="text"
-                    placeholder="ঘোষণাকারীর নাম (যেমন: মুহতামিম)"
+                    placeholder="ঘোষণাকারীর নাম (যেমন: অধ্যক্ষ / সুপারিনটেনডেন্ট)"
                     value={authorName}
                     onChange={(e) => setAuthorName(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 font-medium"

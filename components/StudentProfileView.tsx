@@ -596,11 +596,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               </button>
             </form>
 
-            {/* Quick Demo Student Selector */}
+            {/* Registered Student Quick Selector */}
             {students.length > 0 && (
               <div className="pt-4 border-t border-slate-800/80 space-y-2.5">
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="font-semibold">{language === 'bn' ? 'দ্রুত ডেমো শিক্ষার্থী নির্বাচন:' : 'Quick Demo Students:'}</span>
+                  <span className="font-semibold">{language === 'bn' ? 'নিবন্ধিত শিক্ষার্থী (দ্রুত নির্বাচন):' : 'Registered Students (Quick Select):'}</span>
                   <span className="text-[10px] text-indigo-400">({students.length} {language === 'bn' ? 'জন শিক্ষার্থী' : 'students'})</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
@@ -1639,7 +1639,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
               {/* ID Card Footer */}
               <div className="bg-slate-100 p-2.5 text-center border-t border-slate-200 text-[10px] text-slate-500">
-                {language === 'bn' ? 'অধ্যক্ষ / মুহতামিমের স্বাক্ষর' : 'Head of Institution Signature'}
+                {language === 'bn' ? 'অধ্যক্ষ / সুপারিনটেনডেন্টের স্বাক্ষর' : 'Head of Institution Signature'}
               </div>
 
             </div>
@@ -1752,7 +1752,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             {language === 'bn' ? 'শ্রেণি শিক্ষকের স্বাক্ষর' : 'Class Teacher Signature'}
           </div>
           <div className="border-t border-gray-400 pt-1 text-center w-36">
-            {language === 'bn' ? 'অধ্যক্ষ / মুহতামিম' : 'Head of Institution'}
+            {language === 'bn' ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : 'Head of Institution'}
           </div>
         </div>
 

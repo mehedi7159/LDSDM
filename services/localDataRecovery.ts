@@ -144,7 +144,7 @@ export function readLocalRecoverySnapshot(): LocalRecoverySnapshot {
     phone: '',
     email: '',
     academicYear: '২০২৬',
-    headMasterName: 'মুহতামিম সাহেব'
+    headMasterName: 'অধ্যক্ষ সাহেব'
   };
 
   const schoolProfile = safeParse<SchoolProfile>('schoolProfile', defaultProfile);

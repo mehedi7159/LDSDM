@@ -111,9 +111,9 @@ export function runInstitutionConfigValidation(): {
   );
   addResult(
     'MADRASAH Config',
-    'Terminology resolves Madrasah Muhtamim & Ustadh',
-    getTerm(madrasahConfig, 'principal', 'bn').includes('মুহতামিম') &&
-    getTerm(madrasahConfig, 'teacher', 'bn').includes('উস্তাদ')
+    'Terminology resolves Alia Madrasah Principal & Teacher',
+    (getTerm(madrasahConfig, 'principal', 'bn').includes('অধ্যক্ষ') || getTerm(madrasahConfig, 'principal', 'bn').includes('সুপারিনটেনডেন্ট')) &&
+    getTerm(madrasahConfig, 'teacher', 'bn').includes('শিক্ষক')
   );
 
   // 3. MODULE DEPENDENCIES SUITE
@@ -142,7 +142,7 @@ export function runInstitutionConfigValidation(): {
   addResult(
     'Backward Compatibility',
     'Fallback without config defaults to Madrasah Terminology',
-    getTerm(undefined, 'teacher', 'bn').includes('উস্তাদ')
+    getTerm(undefined, 'teacher', 'bn').includes('শিক্ষক')
   );
   addResult(
     'Backward Compatibility',

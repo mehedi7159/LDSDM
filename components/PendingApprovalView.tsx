@@ -121,8 +121,17 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({ onLogo
           {/* Action Buttons */}
           <div className="pt-2 flex flex-col gap-2">
             <button
+              onClick={() => {
+                window.location.reload();
+              }}
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+            >
+              <CheckCircle2 size={15} />
+              <span>{language === 'bn' ? 'অনুমোদন হয়ে থাকলে প্রবেশ করুন (Refresh)' : 'Check Approval Status'}</span>
+            </button>
+            <button
               onClick={onLogout}
-              className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <LogOut size={15} />
               <span>{language === 'bn' ? 'লগআউট করে ফিরে যান' : 'Sign Out & Return'}</span>

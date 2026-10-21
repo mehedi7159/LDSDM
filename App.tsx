@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { ToastContainer } from './components/ui/ToastContainer';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { StudentManager } from './components/StudentManager';
@@ -17,6 +19,8 @@ import { StaffManager } from './components/staff/StaffManager';
 import { ReportsSettingsManager } from './components/settings/ReportsSettingsManager';
 import { PortalsServicesManager } from './components/portals/PortalsServicesManager';
 import { SpecializedServicesManager } from './components/services/SpecializedServicesManager';
+import { InstitutionalOperationsManager } from './components/operations/InstitutionalOperationsManager';
+import { MasterPrincipalAiAdvisor } from './components/ai/MasterPrincipalAiAdvisor';
 import { AccessRestrictedView } from './components/AccessRestrictedView';
 import { Button } from './components/ui/Button';
 import { Download, Loader2 } from 'lucide-react';
@@ -194,7 +198,14 @@ const AppContent = () => {
       case 'transport_fleet':
       case 'mahfil_events':
       case 'activities_clubs':
+      case 'fixed_assets':
+      case 'store_inventory':
+      case 'house_system':
+      case 'fuzala_alumni':
+      case 'health_medical':
         return true;
+      case 'ai_principal_advisor':
+        return isOwnerAdmin || isSuperAdmin || isAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
       default:
         return true;
     }
@@ -613,6 +624,20 @@ const AppContent = () => {
         return <SpecializedServicesManager initialSubTab="mahfil_events" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'activities_clubs':
         return <SpecializedServicesManager initialSubTab="activities_clubs" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'fixed_assets':
+        return <InstitutionalOperationsManager initialSubTab="fixed_assets" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'store_inventory':
+        return <InstitutionalOperationsManager initialSubTab="store_inventory" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'house_system':
+        return <InstitutionalOperationsManager initialSubTab="house_system" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'fuzala_alumni':
+        return <InstitutionalOperationsManager initialSubTab="fuzala_alumni" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'health_medical':
+        return <InstitutionalOperationsManager initialSubTab="health_medical" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'ai_principal_advisor':
+        return (isOwnerAdmin || isSuperAdmin || isAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal')
+          ? <MasterPrincipalAiAdvisor onNavigateTab={(tab) => setActiveTab(tab)} />
+          : <AccessRestrictedView moduleName={language === 'bn' ? 'মাস্টার প্রিন্সিপাল এআই' : 'Master AI Principal'} onGoToResults={() => setActiveTab('dashboard')} />;
       default: return <Dashboard />;
     }
   };
@@ -745,7 +770,10 @@ const AppContent = () => {
 const App = () => {
   return (
     <AppProvider>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+        <ToastContainer />
+      </ThemeProvider>
     </AppProvider>
   );
 };

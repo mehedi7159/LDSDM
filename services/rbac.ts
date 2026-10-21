@@ -31,8 +31,8 @@ export const DEFAULT_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
   {
     templateKey: 'principal',
     defaultName: 'principal',
-    displayNameBn: 'মুহতামিম / অধ্যক্ষ',
-    displayNameEn: 'Principal / Head',
+    displayNameBn: 'অধ্যক্ষ / সুপারিনটেনডেন্ট',
+    displayNameEn: 'Principal / Superintendent',
     description: 'একাডেমিক কার্যক্রম, পরীক্ষার ফলাফল ও প্রাতিষ্ঠানিক রিপোর্ট তদারকি।',
     permissions: [
       'students.view', 'students.edit',
@@ -53,8 +53,8 @@ export const DEFAULT_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
   {
     templateKey: 'teacher',
     defaultName: 'teacher',
-    displayNameBn: 'সহকারী শিক্ষক / উস্তাদ',
-    displayNameEn: 'Teacher / Instructor',
+    displayNameBn: 'সহকারী শিক্ষক / শিক্ষিকা',
+    displayNameEn: 'Assistant Teacher / Faculty',
     description: 'বরাদ্দকৃত ক্লাসের হাজিরা গ্রহণ, নম্বর প্রদান ও মূল্যায়ন পরিচালনা।',
     permissions: [
       'students.view',

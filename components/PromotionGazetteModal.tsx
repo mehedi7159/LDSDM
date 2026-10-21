@@ -255,7 +255,7 @@ export const PromotionGazetteModal: React.FC<PromotionGazetteModalProps> = ({ re
               <div className="border-t border-slate-400 pt-1.5 font-semibold text-slate-800">
                 {language === 'bn' && schoolProfile.headMasterNameBn ? schoolProfile.headMasterNameBn : schoolProfile.headMasterName}
               </div>
-              <span className="text-xs text-slate-500">{language === 'bn' ? 'মুহতামিম / অধ্যক্ষ' : 'Principal / Superintendent'}</span>
+              <span className="text-xs text-slate-500">{language === 'bn' ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : 'Principal / Superintendent'}</span>
             </div>
           </div>
 

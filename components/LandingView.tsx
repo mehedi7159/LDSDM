@@ -279,7 +279,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   </h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
                     {language === 'bn'
-                      ? 'মুহতামিম, শিক্ষক, হিসাবরক্ষক ও অফিস স্টাফদের জন্য ক্লাসরুম ম্যানেজমেন্ট ও নিয়ন্ত্রণ ড্যাশবোর্ড।'
+                      ? 'অধ্যক্ষ, শিক্ষক, হিসাবরক্ষক ও অফিস স্টাফদের জন্য ক্লাসরুম ম্যানেজমেন্ট ও নিয়ন্ত্রণ ড্যাশবোর্ড।'
                       : 'Authorized portal for Principal, Teachers, Accountant, and Office Staff to manage students and marks.'}
                   </p>
                 </div>

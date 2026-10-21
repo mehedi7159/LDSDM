@@ -156,8 +156,8 @@ export const LandingPortal: React.FC<LandingPortalProps> = ({ onOpenResultSearch
 
               {/* Role Badges */}
               <div className="flex flex-wrap gap-2 pt-1">
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold">মুহতামিম / অ্যাডমিন</span>
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold">মুয়াল্লিম (শিক্ষক)</span>
+                <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold">অধ্যক্ষ / অ্যাডমিন</span>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold">শিক্ষক / শিক্ষিকা</span>
                 <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold">হিসাবরক্ষক</span>
                 <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 text-[11px] font-bold">অভিভাবক</span>
               </div>

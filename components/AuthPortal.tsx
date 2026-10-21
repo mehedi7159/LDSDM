@@ -142,26 +142,6 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onBackToLanding, onSucce
     }
   };
 
-  // Quick Demo Account Auto-Fill
-  const handleQuickDemoFill = (role: UserRole) => {
-    setErrorMsg(null);
-    if (role === 'super_admin') {
-      setLoginIdentifier('mehedihasansagor26@gmail.com');
-      setLoginPassword('admin');
-    } else if (role === 'teacher') {
-      setLoginIdentifier('01811223344');
-      setLoginPassword('123');
-    } else if (role === 'accountant') {
-      setLoginIdentifier('01911223344');
-      setLoginPassword('123');
-    } else if (role === 'staff') {
-      setLoginIdentifier('01611223344');
-      setLoginPassword('123');
-    } else if (role === 'guardian') {
-      setLoginIdentifier('01711223344');
-      setLoginPassword('123');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white">
@@ -423,42 +403,6 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onBackToLanding, onSucce
             </form>
           )}
 
-          {/* Quick Demo Credentials Switcher */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">
-              এক ক্লিকে ডেমো রোল টেস্ট করুন:
-            </span>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('super_admin')}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold hover:bg-black transition-colors cursor-pointer"
-              >
-                সুপার অ্যাডমিন
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('teacher')}
-                className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-              >
-                শিক্ষক
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('accountant')}
-                className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold hover:bg-blue-100 transition-colors cursor-pointer"
-              >
-                হিসাবরক্ষক
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('guardian')}
-                className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 transition-colors cursor-pointer"
-              >
-                অভিভাবক
-              </button>
-            </div>
-          </div>
         </div>
       </main>
 

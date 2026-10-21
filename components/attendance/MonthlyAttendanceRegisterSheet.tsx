@@ -434,7 +434,7 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
         {/* Ledger Footer */}
         <div className="p-3 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-2">
           <span>
-            {isBn ? 'স্বাক্ষর: শ্রেণি শিক্ষক ____________________   অধ্যক্ষ / মুহতামিম ____________________' : 'Signatures: Class Teacher & Principal'}
+            {isBn ? 'স্বাক্ষর: শ্রেণি শিক্ষক ____________________   অধ্যক্ষ / সুপারিনটেনডেন্ট ____________________' : 'Signatures: Class Teacher & Principal'}
           </span>
           <span className="font-mono text-slate-400">
             Official Monthly Register • v4.0

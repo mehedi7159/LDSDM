@@ -63,6 +63,7 @@ import { calculateTotalGPA } from '../services/utils';
 import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
+import { CountUpNumber } from './ui/StatCard';
 
 // =========================================================================
 // TYPES FOR MEMOIZED SUB-COMPONENTS
@@ -311,33 +312,33 @@ const KpiGrid = memo<KpiGridProps>(({
       {/* KPI 1: Enrolled Students */}
       <div 
         onClick={() => onNavigate('students')}
-        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer flex flex-col justify-between group"
+        className="bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
       >
         <div>
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <Users size={18} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600">
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
               {toBanglaDigits(selectedAcademicYear, language)}
             </span>
           </div>
 
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
             {language === 'bn' ? 'মোট শিক্ষার্থী' : 'Enrolled Students'}
           </span>
 
-          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1">
-            {toBanglaDigits(studentMetrics.total, language)}
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 dark:text-white mt-1 tabular-nums font-mono">
+            <CountUpNumber target={studentMetrics.total} />
           </div>
 
-          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
-            <span>{language === 'bn' ? 'সক্রিয়:' : 'Act:'} <strong className="text-emerald-600">{toBanglaDigits(studentMetrics.active, language)}</strong></span>
+          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800 gap-1 tabular-nums font-mono">
+            <span>{language === 'bn' ? 'সক্রিয়:' : 'Act:'} <strong className="text-emerald-600 dark:text-emerald-400">{toBanglaDigits(studentMetrics.active, language)}</strong></span>
             <span className="truncate">{language === 'bn' ? 'ছাত্র:' : 'M:'} <strong>{toBanglaDigits(studentMetrics.male, language)}</strong> | {language === 'bn' ? 'ছাত্রী:' : 'F:'} <strong>{toBanglaDigits(studentMetrics.female, language)}</strong></span>
           </div>
         </div>
 
-        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-blue-600 group-hover:text-blue-700">
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">
           <span>{language === 'bn' ? 'শিক্ষার্থী তালিকা' : 'View Directory'}</span>
           <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </div>
@@ -346,33 +347,33 @@ const KpiGrid = memo<KpiGridProps>(({
       {/* KPI 2: Active Exams & Terms */}
       <div 
         onClick={() => onNavigate('exam_settings')}
-        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer flex flex-col justify-between group"
+        className="bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
       >
         <div>
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
               <Layers size={18} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700">
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
               {examMetrics.active > 0 ? (language === 'bn' ? `${toBanglaDigits(examMetrics.active, language)} চলমান` : `${examMetrics.active} Active`) : (language === 'bn' ? 'টার্ম' : 'Terms')}
             </span>
           </div>
 
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
             {language === 'bn' ? 'টার্ম ও পরীক্ষা' : 'Active Exams & Terms'}
           </span>
 
-          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1">
-            {toBanglaDigits(examMetrics.total, language)}
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 dark:text-white mt-1 tabular-nums font-mono">
+            <CountUpNumber target={examMetrics.total} />
           </div>
 
-          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
-            <span>{language === 'bn' ? 'সম্পন্ন:' : 'Done:'} <strong className="text-emerald-600">{toBanglaDigits(examMetrics.finalized, language)}</strong></span>
-            <span>{language === 'bn' ? 'আসন্ন:' : 'Upc:'} <strong className="text-blue-600">{toBanglaDigits(examMetrics.scheduled, language)}</strong></span>
+          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800 gap-1 tabular-nums font-mono">
+            <span>{language === 'bn' ? 'সম্পন্ন:' : 'Done:'} <strong className="text-emerald-600 dark:text-emerald-400">{toBanglaDigits(examMetrics.finalized, language)}</strong></span>
+            <span>{language === 'bn' ? 'আসন্ন:' : 'Upc:'} <strong className="text-blue-600 dark:text-blue-400">{toBanglaDigits(examMetrics.scheduled, language)}</strong></span>
           </div>
         </div>
 
-        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-indigo-600 group-hover:text-indigo-700">
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
           <span>{language === 'bn' ? 'পরীক্ষা ব্যবস্থাপনা' : 'Manage Exams'}</span>
           <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </div>
@@ -381,37 +382,37 @@ const KpiGrid = memo<KpiGridProps>(({
       {/* KPI 3: Pending Results & Marks Pipeline */}
       <div 
         onClick={() => onNavigate('marks')}
-        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all cursor-pointer flex flex-col justify-between group"
+        className="bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-amber-200 dark:hover:border-amber-800 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
       >
         <div>
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors ${
               evaluationMetrics.totalPending > 0 
-                ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white' 
-                : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'
+                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 group-hover:bg-amber-600 group-hover:text-white' 
+                : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white'
             }`}>
               <Clock4 size={18} className="sm:w-5 sm:h-5" />
             </div>
             <span className={`rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold ${
               evaluationMetrics.totalPending > 0
-                ? 'bg-amber-50 text-amber-700'
-                : 'bg-emerald-50 text-emerald-700'
+                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
             }`}>
               {evaluationMetrics.totalPending > 0 ? (language === 'bn' ? `${toBanglaDigits(evaluationMetrics.totalPending, language)} বাকি` : `${evaluationMetrics.totalPending} Left`) : (language === 'bn' ? '১০০% সম্পন্ন' : '100% Done')}
             </span>
           </div>
 
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
             {language === 'bn' ? 'বাকি মূল্যায়ন ও নম্বর' : 'Evaluation Pipeline'}
           </span>
 
-          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1 flex items-baseline gap-1.5">
-            <span>{toBanglaDigits(evaluationMetrics.totalPending, language)}</span>
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 dark:text-white mt-1 flex items-baseline gap-1.5 tabular-nums font-mono">
+            <CountUpNumber target={evaluationMetrics.totalPending} />
             <span className="text-xs font-normal text-slate-400">/ {toBanglaDigits(evaluationMetrics.totalExpected, language)}</span>
           </div>
 
           {/* Progress Bar */}
-          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+          <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-3">
             <div 
               className={`h-full transition-all duration-500 rounded-full ${
                 evaluationMetrics.progressPercent >= 90 ? 'bg-emerald-500' :
@@ -422,7 +423,7 @@ const KpiGrid = memo<KpiGridProps>(({
           </div>
         </div>
 
-        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-amber-600 group-hover:text-amber-700">
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-amber-600 dark:text-amber-400 group-hover:text-amber-700 dark:group-hover:text-amber-300">
           <span>{language === 'bn' ? 'নম্বর এন্ট্রি করুন' : 'Enter Marks'}</span>
           <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </div>
@@ -431,33 +432,33 @@ const KpiGrid = memo<KpiGridProps>(({
       {/* KPI 4: Academic Pass Rate */}
       <div 
         onClick={() => onNavigate('results')}
-        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer flex flex-col justify-between group"
+        className="bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
       >
         <div>
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
               <Award size={18} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700">
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
               {toBanglaDigits(academicHealth.passRate, language)}%
             </span>
           </div>
 
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
             {language === 'bn' ? 'পাসের হার ও ফলাফল' : 'Academic Health'}
           </span>
 
-          <div className="text-xl sm:text-3xl font-bold text-emerald-600 mt-1">
-            {toBanglaDigits(academicHealth.passRate, language)}%
+          <div className="text-xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums font-mono">
+            <CountUpNumber target={academicHealth.passRate} suffix="%" />
           </div>
 
-          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
-            <span>{language === 'bn' ? 'গড় GPA:' : 'Avg:'} <strong className="text-slate-800">{toBanglaDigits(academicHealth.overallAverageGpa.toFixed(2), language)}</strong></span>
-            <span>{language === 'bn' ? 'A+ অর্জন:' : 'A+:'} <strong className="text-indigo-600">{toBanglaDigits(academicHealth.aPlusCount, language)}</strong></span>
+          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800 gap-1 tabular-nums font-mono">
+            <span>{language === 'bn' ? 'গড় GPA:' : 'Avg:'} <strong className="text-slate-800 dark:text-slate-200">{toBanglaDigits(academicHealth.overallAverageGpa.toFixed(2), language)}</strong></span>
+            <span>{language === 'bn' ? 'A+ অর্জন:' : 'A+:'} <strong className="text-indigo-600 dark:text-indigo-400">{toBanglaDigits(academicHealth.aPlusCount, language)}</strong></span>
           </div>
         </div>
 
-        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-emerald-600 group-hover:text-emerald-700">
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
           <span>{language === 'bn' ? 'মার্কশিট জেনারেটর' : 'View Results'}</span>
           <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </div>
@@ -466,34 +467,34 @@ const KpiGrid = memo<KpiGridProps>(({
       {/* KPI 5: Finance & Fee Snapshot */}
       <div 
         onClick={() => onNavigate('finance')}
-        className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all cursor-pointer flex flex-col justify-between group"
+        className="bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-teal-200 dark:hover:border-teal-800 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
       >
         <div>
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-teal-50 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 group-hover:bg-teal-600 group-hover:text-white transition-colors">
               <Wallet size={18} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-teal-50 text-teal-700">
+            <span className="rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300">
               {language === 'bn' ? 'আদায়' : 'Revenue'}
             </span>
           </div>
 
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">
-            {language === 'bn' ? 'ফি আদায় ও তহবিল' : 'Financial Revenue'}
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+            {language === 'bn' ? 'মাসিক জমা ও তহবিল' : 'Income & Net Cash'}
           </span>
 
-          <div className="text-xl sm:text-3xl font-bold text-slate-800 mt-1 truncate">
-            ৳{toBanglaDigits(financeMetrics.totalIncome.toLocaleString(), language)}
+          <div className="text-xl sm:text-3xl font-bold text-slate-800 dark:text-white mt-1 tabular-nums font-mono">
+            ৳<CountUpNumber target={financeMetrics.totalIncome} />
           </div>
 
-          <div className="text-[10px] sm:text-xs text-slate-500 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 gap-1">
-            <span className="truncate">{language === 'bn' ? 'ব্যয়:' : 'Exp:'} <strong>৳{toBanglaDigits(financeMetrics.totalExpense.toLocaleString(), language)}</strong></span>
-            <span className="text-teal-700 font-bold truncate">৳{toBanglaDigits(financeMetrics.netBalance.toLocaleString(), language)}</span>
+          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2 flex flex-col xs:flex-row xs:items-center justify-between pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800 gap-1 tabular-nums font-mono">
+            <span>{language === 'bn' ? 'খরচ:' : 'Exp:'} <strong className="text-rose-600 dark:text-rose-400">৳{toBanglaDigits(financeMetrics.totalExpense.toLocaleString(), language)}</strong></span>
+            <span>{language === 'bn' ? 'ব্যালেন্স:' : 'Net:'} <strong className={financeMetrics.netBalance >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>৳{toBanglaDigits(financeMetrics.netBalance.toLocaleString(), language)}</strong></span>
           </div>
         </div>
 
-        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-teal-600 group-hover:text-teal-700">
-          <span>{language === 'bn' ? 'হিসাব খতিয়ান' : 'Finance Ledger'}</span>
+        <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-teal-600 dark:text-teal-400 group-hover:text-teal-700 dark:group-hover:text-teal-300">
+          <span>{language === 'bn' ? 'আর্থিক বিবরণী' : 'Financials'}</span>
           <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
@@ -815,6 +816,10 @@ export const Dashboard = () => {
     schoolProfile,
     transactions = [],
     teachers = [],
+    currentUser,
+    isOwnerAdmin,
+    isSuperAdmin,
+    currentMember,
     t, 
     language = 'bn', 
     setIsRecoveryModalOpen,
@@ -831,6 +836,9 @@ export const Dashboard = () => {
   const [selectedClass, setSelectedClass] = useState<string>('All');
   const [activeSectionTab, setActiveSectionTab] = useState<'overview' | 'student' | 'subjects' | 'merit'>('overview');
   const [meritSearchQuery, setMeritSearchQuery] = useState<string>('');
+  const [dashboardMode, setDashboardMode] = useState<string>(() => {
+    return localStorage.getItem('ai_dashboard_mode') || 'standard';
+  });
 
   // Default exam selector sync
   useEffect(() => {
@@ -1215,6 +1223,130 @@ export const Dashboard = () => {
       
       {/* 0. Top Live Notice Board Marquee & Emergency Notification Alert */}
       <NoticeBoardAlertBanner onOpenNoticeBoard={() => setActiveTab('notice_board')} />
+
+      {/* 🌟 AI Master Principal Executive Briefing & Action Hub (Alluring, Smart, SaaS-level card) */}
+      {(isOwnerAdmin || isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || currentUser?.email === 'mehedihasansagor26@gmail.com') && (
+        <div className="bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-900/60 rounded-3xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(79,70,229,0.06)] relative overflow-hidden transition-all group hover:border-indigo-400">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-amber-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-amber-500 animate-pulse" />
+                  <span>{language === 'bn' ? 'মাস্টার এআই প্রিন্সিপাল • দৈনিক প্রাতিষ্ঠানিক কমান্ড' : 'Master AI Principal • Executive Intelligence'}</span>
+                </span>
+                <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                  <span>{language === 'bn' ? 'সিস্টেম সক্রিয় ও নজরদারিতে' : 'Live & Active'}</span>
+                </span>
+              </div>
+
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{language === 'bn' ? 'আসসালামু আলাইকুম, প্রাতিষ্ঠানিক কমান্ড হাব প্রস্তুত' : 'Executive Command & AI Intelligence Hub'}</span>
+              </h3>
+
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                {language === 'bn'
+                  ? 'আপনার মাদ্রাসার শিক্ষার্থী হাজিরা, শিক্ষক রুটিন, বকেয়া ফি ও পরীক্ষার অগ্রগতি সার্বক্ষণিক প্রস্তুত রয়েছে। এক ক্লিকে অফিশিয়াল নোটিশ ড্রাফট করুন অথবা মুখে নির্দেশ দিয়ে কাজ বাস্তবায়ন করুন।'
+                  : 'Automated conflict-free scheduling, 1-click official notice drafting, and fee recovery SMS campaigns ready for executive approval.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                onClick={() => setActiveTab('ai_principal_advisor')}
+                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-indigo-600 dark:to-indigo-700 text-white font-bold text-xs shadow-lg hover:shadow-indigo-500/25 flex items-center gap-2 cursor-pointer transition active:scale-95 group-hover:from-indigo-950 group-hover:to-slate-900"
+              >
+                <Sparkles size={14} className="text-amber-400" />
+                <span>{language === 'bn' ? 'এআই মাস্টারে প্রবেশ করুন' : 'Open AI Master'}</span>
+                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Action Pills */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 mt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+            <button
+              onClick={() => setActiveTab('ai_principal_advisor')}
+              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
+            >
+              <span className="font-semibold truncate">🌙 {language === 'bn' ? 'রমজানের ছুটির নোটিশ' : 'Ramadan Notice'}</span>
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold ml-1">১-ক্লিক</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ai_principal_advisor')}
+              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
+            >
+              <span className="font-semibold truncate">🗓️ {language === 'bn' ? 'সংঘাতহীন ক্লাস রুটিন' : 'Class Timetable'}</span>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold ml-1">স্টুডিও</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ai_principal_advisor')}
+              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
+            >
+              <span className="font-semibold truncate">💳 {language === 'bn' ? 'বকেয়া ফি তাগাদা বার্তা' : 'Fee Recovery SMS'}</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-1">বাল্ক</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ai_principal_advisor')}
+              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
+            >
+              <span className="font-semibold truncate">🎙️ {language === 'bn' ? 'ভয়েস কমান্ডে নির্দেশ' : 'Voice Command'}</span>
+              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold ml-1">লাইভ</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Situational AI Mode Banner */}
+      {dashboardMode !== 'standard' && (
+        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in ${
+          dashboardMode === 'exam' ? 'bg-amber-500/10 border-amber-300 text-amber-950' :
+          dashboardMode === 'fee_collection' ? 'bg-emerald-500/10 border-emerald-300 text-emerald-950' :
+          dashboardMode === 'attendance_crisis' ? 'bg-rose-500/10 border-rose-300 text-rose-950' :
+          'bg-indigo-500/10 border-indigo-300 text-indigo-950'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            <Sparkles size={18} className={
+              dashboardMode === 'exam' ? 'text-amber-600' :
+              dashboardMode === 'fee_collection' ? 'text-emerald-600' :
+              dashboardMode === 'attendance_crisis' ? 'text-rose-600' : 'text-indigo-600'
+            } />
+            <div>
+              <strong className="block text-sm font-black">
+                {language === 'bn' ? 'এআই পরিস্থিতি মোড সক্রিয়:' : 'AI Situational Mode Active:'} {' '}
+                {dashboardMode === 'exam' && (language === 'bn' ? 'পরীক্ষা ও ফলাফল প্রস্তুতি' : 'Exam & Results Focus')}
+                {dashboardMode === 'fee_collection' && (language === 'bn' ? 'ফি আদায় ও আর্থিক অডিট' : 'Fee Recovery & Cashflow Focus')}
+                {dashboardMode === 'attendance_crisis' && (language === 'bn' ? 'হাজিরা সংকট ও জরুরি অ্যালার্ট' : 'Attendance & Crisis Monitoring')}
+                {dashboardMode === 'admission' && (language === 'bn' ? 'নতুন ভর্তি সেশন' : 'Admission Season')}
+              </strong>
+              <span className="text-[11px] opacity-80">
+                {language === 'bn' ? 'বর্তমান প্রাতিষ্ঠানিক প্রয়োজন অনুসারে ড্যাশবোর্ডের মেট্রিক্স এবং অগ্রাধিকার পুনর্সজ্জিত করা হয়েছে।' : 'Metrics and priorities are reordered based on real-time institutional needs.'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setActiveTab('ai_principal_advisor')}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition cursor-pointer"
+            >
+              {language === 'bn' ? 'এআই কনসোল' : 'AI Console'}
+            </button>
+            <button
+              onClick={() => {
+                localStorage.setItem('ai_dashboard_mode', 'standard');
+                setDashboardMode('standard');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition cursor-pointer"
+            >
+              {language === 'bn' ? 'স্বাভাবিক মোডে ফিরুন' : 'Reset to Standard'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ধাপ ১ বাস্তবায়ন: প্রতিদিনের সামগ্রিক অবস্থা এক নজরে (Overview, আজকের উপস্থিতি, আজকের আয়–ব্যয়, শিক্ষার্থী ও জনবল, বকেয়া ফি, আসন্ন পরীক্ষা ও নোটিশ, সাম্প্রতিক কার্যক্রম) */}
       <DashboardDailyOverview 

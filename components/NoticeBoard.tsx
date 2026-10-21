@@ -33,6 +33,7 @@ import {
   Radio
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { EmptyState } from './ui/EmptyState';
 
 // =========================================================================
 // HELPER: Category & Priority Badges and Styles
@@ -207,8 +208,8 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
       isActive: true,
       showMarquee: true,
       showAlertBanner: true,
-      authorName: authUser?.displayName || (isBn ? 'মুহতামিম কার্যালয়' : 'Principal Office'),
-      authorRole: isBn ? 'মুহতামিম / প্রশাসন' : 'Principal / Admin'
+      authorName: authUser?.displayName || (isBn ? 'অধ্যক্ষ কার্যালয়' : 'Principal Office'),
+      authorRole: isBn ? 'অধ্যক্ষ / প্রশাসন' : 'Principal / Admin'
     });
 
     setQuickTitle('');
@@ -523,7 +524,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
               <div className="pt-2 flex flex-wrap justify-between items-center text-xs text-slate-500 border-t border-slate-100">
                 <div>
                   <span>{isBn ? 'কর্তৃপক্ষ: ' : 'Issued By: '}</span>
-                  <strong className="text-slate-800">{selectedNoticeForModal.authorName || (isBn ? 'মুহতামিম' : 'Principal')}</strong>
+                  <strong className="text-slate-800">{selectedNoticeForModal.authorName || (isBn ? 'অধ্যক্ষ' : 'Principal')}</strong>
                   {selectedNoticeForModal.authorRole && (
                     <span className="text-slate-400"> ({selectedNoticeForModal.authorRole})</span>
                   )}
@@ -742,8 +743,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
   const [formIsPinned, setFormIsPinned] = useState(false);
   const [formShowMarquee, setFormShowMarquee] = useState(true);
   const [formShowAlertBanner, setFormShowAlertBanner] = useState(true);
-  const [formAuthorName, setFormAuthorName] = useState(authUser?.displayName || (isBn ? 'মুহতামিম কার্যালয়' : 'Principal Office'));
-  const [formAuthorRole, setFormAuthorRole] = useState(isBn ? 'অধ্যক্ষ / মুহতামিম' : 'Principal');
+  const [formAuthorName, setFormAuthorName] = useState(authUser?.displayName || (isBn ? 'অধ্যক্ষ কার্যালয়' : 'Principal Office'));
+  const [formAuthorRole, setFormAuthorRole] = useState(isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : 'Principal');
 
   const openCompose = (noticeToEdit?: NoticeItem) => {
     if (noticeToEdit) {
@@ -757,7 +758,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
       setFormIsPinned(Boolean(noticeToEdit.isPinned));
       setFormShowMarquee(noticeToEdit.showMarquee !== false);
       setFormShowAlertBanner(noticeToEdit.showAlertBanner !== false);
-      setFormAuthorName(noticeToEdit.authorName || (isBn ? 'মুহতামিম কার্যালয়' : 'Principal Office'));
+      setFormAuthorName(noticeToEdit.authorName || (isBn ? 'অধ্যক্ষ কার্যালয়' : 'Principal Office'));
       setFormAuthorRole(noticeToEdit.authorRole || (isBn ? 'অধ্যক্ষ' : 'Principal'));
     } else {
       setEditingNotice(null);
@@ -770,8 +771,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
       setFormIsPinned(false);
       setFormShowMarquee(true);
       setFormShowAlertBanner(true);
-      setFormAuthorName(authUser?.displayName || (isBn ? 'মুহতামিম কার্যালয়' : 'Principal Office'));
-      setFormAuthorRole(isBn ? 'অধ্যক্ষ / মুহতামিম' : 'Principal');
+      setFormAuthorName(authUser?.displayName || (isBn ? 'অধ্যক্ষ কার্যালয়' : 'Principal Office'));
+      setFormAuthorRole(isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : 'Principal');
     }
     setIsComposeModalOpen(true);
   };
@@ -1020,17 +1021,16 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
 
       {/* 5. NOTICES CARDS GRID */}
       {filteredNotices.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-200 space-y-3">
-          <BookOpen size={36} className="mx-auto text-slate-300" />
-          <h4 className="text-sm font-bold text-slate-700">
-            {isBn ? 'কোনো নোটিশ পাওয়া যায়নি' : 'No notices match your filter'}
-          </h4>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            {isBn 
-              ? 'নতুন নোটিশ পোস্ট করতে উপরের বোতামটি ব্যবহার করুন।' 
-              : 'Post a new notice using the button above.'}
-          </p>
-        </div>
+        <EmptyState
+          icon={Megaphone}
+          title={isBn ? 'কোনো নোটিশ পাওয়া যায়নি' : 'No notices match your filter'}
+          description={isBn 
+            ? 'এই ফিল্টারে বর্তমানে কোনো বিজ্ঞপ্তি নেই। নতুন বিজ্ঞপ্তি প্রকাশ করতে নিচের বোতামটি ব্যবহার করুন।' 
+            : 'There are no announcements currently matching this category.'}
+          actionLabel={canManage ? (isBn ? 'নতুন নোটিশ প্রকাশ করুন' : 'Post New Notice') : undefined}
+          onAction={canManage ? () => openCompose() : undefined}
+          actionIcon={Plus}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredNotices.map((notice) => {

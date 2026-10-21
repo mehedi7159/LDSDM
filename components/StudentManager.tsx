@@ -43,6 +43,8 @@ import { TransferCertificateModal, TcRecord } from './students/TransferCertifica
 import { AdmissionApplicationManager, AdmissionApplication } from './students/AdmissionApplicationManager';
 import { ClassSectionMatrixView } from './students/ClassSectionMatrixView';
 import { GuardianDirectoryView } from './students/GuardianDirectoryView';
+import { EmptyState } from './ui/EmptyState';
+import { useTheme } from '../context/ThemeContext';
 
 export type StudentSubTab = 
   | 'list'          // ১. শিক্ষার্থী তালিকা
@@ -90,6 +92,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const canDelete = isOwner || hasPermission('students.delete');
   const canArchive = isOwner || hasPermission('students.archive') || canEdit;
   const canPromote = isOwner || canEdit;
+  const canAdd = canCreate;
 
   // Class Promotion Modal state
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(initialOpenPromotion);
@@ -1128,8 +1131,15 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <tbody className="divide-y divide-gray-100">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                    {activeTab === 'former' ? t('noFormerStudents') : activeTab === 'inactive' ? (language === 'bn' ? 'কোনো অনিয়মিত শিক্ষার্থী নেই।' : 'No inactive students found.') : t('noData')}
+                  <td colSpan={8} className="px-4 py-8">
+                    <EmptyState
+                      icon={Users}
+                      title={activeTab === 'former' ? t('noFormerStudents') : activeTab === 'inactive' ? (language === 'bn' ? 'কোনো অনিয়মিত শিক্ষার্থী নেই' : 'No inactive students found') : (language === 'bn' ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found')}
+                      description={language === 'bn' ? 'বর্তমান ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী পাওয়া যায়নি।' : 'No student records match the current search or filter.'}
+                      actionLabel={canAdd ? (language === 'bn' ? 'নতুন শিক্ষার্থী ভর্তি' : 'New Admission') : undefined}
+                      onAction={canAdd ? () => setSubTab('admission') : undefined}
+                      actionIcon={UserPlus}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -1286,9 +1296,15 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         {/* Mobile Cards View (< md) */}
         <div className="md:hidden divide-y divide-gray-100">
           {filteredStudents.length === 0 ? (
-            <div className="px-6 py-12 text-center text-gray-400">
-              <Users size={36} className="mx-auto mb-2 opacity-30 text-indigo-500" />
-              <p className="text-sm font-medium">{t('noStudentsFound')}</p>
+            <div className="p-4">
+              <EmptyState
+                icon={Users}
+                title={activeTab === 'former' ? t('noFormerStudents') : activeTab === 'inactive' ? (language === 'bn' ? 'কোনো অনিয়মিত শিক্ষার্থী নেই' : 'No inactive students found') : (language === 'bn' ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found')}
+                description={language === 'bn' ? 'বর্তমান ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী পাওয়া যায়নি।' : 'No student records match the current search or filter.'}
+                actionLabel={canAdd ? (language === 'bn' ? 'নতুন শিক্ষার্থী ভর্তি' : 'New Admission') : undefined}
+                onAction={canAdd ? () => setSubTab('admission') : undefined}
+                actionIcon={UserPlus}
+              />
             </div>
           ) : (
             filteredStudents.map((student) => (
@@ -1878,7 +1894,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 </div>
               )}
 
-              <div className="pt-4 border-t border-gray-100 flex justify-end gap-2">
+              {/* Sticky action footer inside student modal - Save button always visible */}
+              <div className="sticky bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 -mx-6 -mb-6 p-4 rounded-b-3xl flex flex-wrap items-center justify-end gap-2.5 z-10 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
                 <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>{t('cancel')}</Button>
                 {!editingId && (
                   <Button 

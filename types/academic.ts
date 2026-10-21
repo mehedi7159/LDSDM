@@ -6,7 +6,7 @@
 
 export type AcademicYearStatus = 'UPCOMING' | 'ACTIVE' | 'CLOSED';
 export type AcademicEntityStatus = 'ACTIVE' | 'INACTIVE';
-export type TeacherStatus = 'ACTIVE' | 'INACTIVE';
+export type TeacherStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING';
 export type ExamStatus = 'DRAFT' | 'SCHEDULED' | 'MARKS_ENTRY' | 'FINALIZED' | 'ARCHIVED';
 export type MarkStatus = 'DRAFT' | 'SUBMITTED' | 'LOCKED' | 'FINALIZED';
 export type SubjectCategory = 'General' | 'Science' | 'Commerce' | 'Humanities' | 'Islamic' | 'Language' | 'Vocational' | 'Other';
@@ -107,6 +107,7 @@ export interface AcademicTeacher {
   designation?: string;
   email?: string;
   phone?: string;
+  password?: string;
   status: TeacherStatus;
   assignedClasses?: string[];
   assignedSubjects?: string[];

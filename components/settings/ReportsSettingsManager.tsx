@@ -565,7 +565,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </h2>
               <p className="text-xs text-slate-500 mt-1">
                 {isBn 
-                  ? 'মাদ্রাসার নাম, ঠিকানা, যোগাযোগ নম্বর, শিক্ষাবর্ষ এবং মুহতামিমের তথ্য আপডেট করুন।'
+                  ? 'মাদ্রাসার নাম, ঠিকানা, যোগাযোগ নম্বর, শিক্ষাবর্ষ এবং অধ্যক্ষ / প্রধানের তথ্য আপডেট করুন।'
                   : 'Update institution name in Bengali and English, EIIN, contact info, and principal credentials.'}
               </p>
             </div>
@@ -713,21 +713,21 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {isBn ? 'মুহতামিম / প্রধান শিক্ষকের নাম (বাংলা)' : 'Muhtamim / Principal Name (Bangla)'}
+                  {isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট / প্রধান শিক্ষকের নাম (বাংলা)' : 'Principal / Superintendent Name (Bangla)'}
                 </label>
                 <input
                   type="text"
                   name="headMasterNameBn"
                   value={profileData.headMasterNameBn || ''}
                   onChange={handleProfileChange}
-                  placeholder="যেমন: হযরত মাওলানা আবুল হাসান"
+                  placeholder="যেমন: ড. মুহাম্মদ মাহমুদুল হাসান"
                   className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla font-semibold bg-slate-50 focus:bg-white"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {isBn ? 'মুহতামিম / প্রধান শিক্ষকের নাম (English)' : 'Muhtamim / Principal Name (English)'}
+                  {isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট / প্রধান শিক্ষকের নাম (English)' : 'Principal / Superintendent Name (English)'}
                 </label>
                 <input
                   type="text"
@@ -790,7 +790,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </h2>
               <p className="text-xs text-slate-500 mt-1">
                 {isBn
-                  ? 'মাদ্রাসার লোগো, ওয়াটারমার্ক, মুহতামিমের ডিজিটাল স্বাক্ষর এবং ফলাফল কার্ডের থিম কাস্টমাইজ করুন।'
+                  ? 'মাদ্রাসার লোগো, ওয়াটারমার্ক, অধ্যক্ষের ডিজিটাল স্বাক্ষর এবং ফলাফল কার্ডের থিম কাস্টমাইজ করুন।'
                   : 'Customize logo, watermarks, principal digital signatures, and certificate templates.'}
               </p>
             </div>
@@ -852,7 +852,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
             {/* Signature Upload Box */}
             <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4 text-center">
               <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                {isBn ? 'মুহতামিমের অফিসিয়াল স্বাক্ষর' : 'Principal / Muhtamim Signature'}
+                {isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্টের অফিসিয়াল স্বাক্ষর' : 'Principal / Superintendent Signature'}
               </h3>
               
               <div className="w-28 h-28 mx-auto rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center p-2 bg-slate-50 relative">
@@ -987,7 +987,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                     className="w-4 h-4 text-indigo-600 rounded-sm border-slate-300 focus:ring-indigo-500"
                   />
                   <span className="text-xs font-bold text-slate-700">
-                    {isBn ? 'মুহতামিমের স্বাক্ষর মার্কশিটে স্বয়ংক্রিয় প্রিন্ট করুন' : 'Show Principal Signature on result cards'}
+                    {isBn ? 'অধ্যক্ষের স্বাক্ষর মার্কশিটে স্বয়ংক্রিয় প্রিন্ট করুন' : 'Show Principal Signature on result cards'}
                   </span>
                 </label>
 

@@ -275,7 +275,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                             'অধ্যক্ষ'
                           )}
                         </div>
-                        <span className="text-[8px]">মুহতামিম / অধ্যক্ষ</span>
+                        <span className="text-[8px]">অধ্যক্ষ / সুপারিনটেনডেন্ট</span>
                       </div>
                     </div>
                   </div>
@@ -323,10 +323,10 @@ export const StudentIDCardGenerator: React.FC = () => {
                           {schoolProfile.signatureUrl ? (
                             <img src={schoolProfile.signatureUrl} alt="Sig" className="h-6 mx-auto object-contain" />
                           ) : (
-                            'মুহতামিম'
+                            'অধ্যক্ষ'
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400">মুহতামিম / অধ্যক্ষের স্বাক্ষর</span>
+                        <span className="text-[10px] text-slate-400">অধ্যক্ষ / সুপারিনটেনডেন্টের স্বাক্ষর</span>
                       </div>
                     </div>
                   </div>
@@ -364,7 +364,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                           {schoolProfile.signatureUrl ? (
                             <img src={schoolProfile.signatureUrl} alt="Sig" className="h-8 mx-auto object-contain" />
                           ) : (
-                            <span className="font-bold text-slate-900">মুহতামিম / অধ্যক্ষ</span>
+                            <span className="font-bold text-slate-900">অধ্যক্ষ / সুপারিনটেনডেন্ট</span>
                           )}
                         </div>
                         <span className="text-[10px] text-slate-500 mt-1 block">স্বাক্ষর ও প্রাতিষ্ঠানিক সিল</span>

@@ -52,21 +52,21 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
 
   const incomeCategoriesList: { value: IncomeCategory; label: string }[] = [
     { value: 'GENERAL_DONATION', label: 'সাধারণ দান ও অনুদান' },
-    { value: 'ZAKAT_FITRA', label: 'যাকাত ও ফিতরা ফান্ড' },
+    { value: 'ZAKAT_FITRA', label: 'ছাত্রকল্যাণ ও যাকাত ফান্ড' },
     { value: 'MONTHLY_DONOR', label: 'দাতা সদস্য মাসিক চাঁদা' },
     { value: 'QURBANI_LEATHER', label: 'কোরবানির চামড়া বাবদ দান' },
-    { value: 'BUILDING_CONSTRUCTION', label: 'মসজিদ ও ভবন নির্মাণ অনুদান' },
-    { value: 'ORPHAN_SPONSOR', label: 'এতিম ও লিল্লাহ বোর্ডিং দান' },
+    { value: 'BUILDING_CONSTRUCTION', label: 'ক্যাম্পাস ও ভবন নির্মাণ অনুদান' },
+    { value: 'ORPHAN_SPONSOR', label: 'ছাত্রকল্যাণ ও এতিম তহবিল দান' },
     { value: 'PROPERTY_RENT', label: 'দোকান ও জমি ভাড়া বাবদ আয়' },
-    { value: 'MAHFIL_COLLECTION', label: 'বার্ষিক মাহফিল ও জলসা ফান্ড' },
+    { value: 'MAHFIL_COLLECTION', label: 'বার্ষিক ক্রীড়া, সাংস্কৃতিক ও সিরাত মাহফিল ফান্ড' },
     { value: 'GOV_GRANT', label: 'সরকারি অনুদান' },
-    { value: 'BOOK_STATIONERY', label: 'কিতাব ও খাতা বিক্রয় আয়' },
+    { value: 'BOOK_STATIONERY', label: 'লাইব্রেরি ও পাঠ্যবই খাত' },
     { value: 'MISC_INCOME', label: 'বিবিধ আয়' },
     { value: 'OTHER_INCOME', label: 'অন্যান্য বিশেষ আয়' },
   ];
 
   const expenseCategoriesList: { value: ExpenseCategory; label: string }[] = [
-    { value: 'BOARDING_MESS', label: 'বোর্ডিং ও মেস বাজার খরচ (চাল, ডাল, তেল)' },
+    { value: 'BOARDING_MESS', label: 'ছাত্রাবাস ও হোস্টেল মেস ডাইনিং খরচ (চাল, ডাল, তেল)' },
     { value: 'UTILITY_BILL', label: 'বিদ্যুৎ, গ্যাস ও পানির বিল' },
     { value: 'BOOKS_LIBRARY', label: 'কিতাব ও পাঠাগার সংক্রান্ত ব্যয়' },
     { value: 'EXAM_EXPENSE', label: 'পরীক্ষার প্রশ্নপত্র ও খাতা খরচ' },

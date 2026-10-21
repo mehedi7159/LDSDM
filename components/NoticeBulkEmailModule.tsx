@@ -49,7 +49,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
   const [emailSubject, setEmailSubject] = useState<string>('');
   const [emailContent, setEmailContent] = useState<string>('');
   const [senderTitle, setSenderTitle] = useState<string>(
-    authUser?.displayName || schoolProfile?.headMasterName || 'মুহতামিম কার্যালয়'
+    authUser?.displayName || schoolProfile?.headMasterName || 'অধ্যক্ষ কার্যালয়'
   );
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());

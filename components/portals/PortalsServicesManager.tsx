@@ -230,58 +230,16 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
   const [admissions, setAdmissions] = useState<AdmissionApplication[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_ADMISSIONS_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(a => !a?.id?.startsWith('adm-'));
+        }
+      }
     } catch (e) {
       console.error(e);
     }
-    // Initial sample applications
-    return [
-      {
-        id: 'adm-001',
-        applicantName: 'Abdullah Al Mamun',
-        applicantNameBn: 'আব্দুল্লাহ আল মামুন',
-        fatherName: 'মাওলানা রফিকুল ইসলাম',
-        phone: '01712345678',
-        desiredClass: classes[0]?.name || 'ইবতেদায়ী ১ম',
-        previousSchool: 'দারুল উলুম নুরানী মাদ্রাসা',
-        dateOfBirth: '2016-04-12',
-        gender: 'male',
-        isResidential: true,
-        status: 'pending',
-        appliedDate: new Date(Date.now() - 86400000 * 2).toISOString(),
-        notes: 'হিফজ শাখায় ভর্তি হতে আগ্রহী'
-      },
-      {
-        id: 'adm-002',
-        applicantName: 'Tawhid Hasan',
-        applicantNameBn: 'তাওহীদ হাসান',
-        fatherName: 'মোঃ আবুল হোসেন',
-        phone: '01898765432',
-        desiredClass: classes[1]?.name || 'দাখিল ৬ষ্ঠ',
-        previousSchool: 'আদর্শ উচ্চ বিদ্যালয়',
-        dateOfBirth: '2012-08-20',
-        gender: 'male',
-        isResidential: false,
-        status: 'interview_called',
-        appliedDate: new Date(Date.now() - 86400000 * 5).toISOString(),
-        notes: 'বাংলা ও গণিত বিষয়ে দক্ষ'
-      },
-      {
-        id: 'adm-003',
-        applicantName: 'Fatima Tuz Zohra',
-        applicantNameBn: 'ফাতিমা তুজ জোহরা',
-        fatherName: 'মোঃ আব্দুল্লাহিল কাফী',
-        phone: '01911223344',
-        desiredClass: classes[0]?.name || 'নূরানী শিশু',
-        previousSchool: 'প্রথম পাঠ',
-        dateOfBirth: '2019-01-10',
-        gender: 'female',
-        isResidential: false,
-        status: 'approved',
-        appliedDate: new Date(Date.now() - 86400000 * 7).toISOString(),
-        notes: 'ভর্তি ফি জমা সাপেক্ষে ভর্তি নিশ্চিত করা হবে'
-      }
-    ];
+    return [];
   });
 
   const saveAdmissions = (list: AdmissionApplication[]) => {
@@ -384,32 +342,20 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
   );
   const [smsProvider, setSmsProvider] = useState<'greenweb' | 'bulksmsbd' | 'ssl' | 'alpha' | 'device_intent'>('greenweb');
   const [smsSenderId, setSmsSenderId] = useState(schoolProfile.nameBn?.slice(0, 11) || 'MADRASAH');
-  const [smsApiKey, setSmsApiKey] = useState('gw_demo_live_sec_key_9921');
+  const [smsApiKey, setSmsApiKey] = useState('');
   const [smsLogs, setSmsLogs] = useState<Array<{ id: string; time: string; recipient: string; phone: string; message: string; status: string }>>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_SMS_LOGS_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(l => !l?.id?.startsWith('sms-log-'));
+        }
+      }
     } catch (e) {
       console.error(e);
     }
-    return [
-      {
-        id: 'sms-log-1',
-        time: formatSafeDateTime(new Date(Date.now() - 3600000 * 4)),
-        recipient: 'মাওলানা রফিকুল ইসলাম',
-        phone: '01712345678',
-        message: 'সম্মানিত অভিভাবক, আব্দুল্লাহ আল মামুন এর ১ম সাময়িক পরীক্ষার ফলাফল প্রকাশিত হয়েছে। জিপিএ: ৫.০০ (A+)।',
-        status: 'delivered'
-      },
-      {
-        id: 'sms-log-2',
-        time: formatSafeDateTime(new Date(Date.now() - 3600000 * 24)),
-        recipient: 'মোঃ আবুল হোসেন',
-        phone: '01898765432',
-        message: 'সম্মানিত অভিভাবক, আপনার সন্তান তাওহীদ হাসান আজ মাদ্রাসায় অনুপস্থিত রয়েছে।',
-        status: 'delivered'
-      }
-    ];
+    return [];
   });
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [smsSuccessMsg, setSmsSuccessMsg] = useState('');
@@ -551,30 +497,16 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
   const [welfareBeneficiaries, setWelfareBeneficiaries] = useState<WelfareBeneficiary[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_WELFARE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(w => !w?.id?.startsWith('wel-'));
+        }
+      }
     } catch (e) {
       console.error(e);
     }
-    return [
-      {
-        id: 'wel-1',
-        studentId: students[0]?.id || 'std-1',
-        category: 'orphan',
-        sponsorName: 'হাজী মোঃ ইউসুফ আলী (কাতার প্রবাসী)',
-        monthlyStipend: 2500,
-        approvedDate: '2026-01-01',
-        notes: 'সম্পূর্ণ খাবার ও কিতাব ফ্রি'
-      },
-      {
-        id: 'wel-2',
-        studentId: students[1]?.id || 'std-2',
-        category: 'needy',
-        sponsorName: 'মাদ্রাসা যাকাত ফান্ড',
-        monthlyStipend: 1500,
-        approvedDate: '2026-01-15',
-        notes: 'মাসিক হাফ ফি মওকুফ ও কিতাব অনুদান'
-      }
-    ];
+    return [];
   });
 
   const saveWelfare = (list: WelfareBeneficiary[]) => {
@@ -607,10 +539,10 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     return {
       zakatIncome,
       zakatExpense,
-      zakatBalance: Math.max(0, zakatBalance || 48500),
+      zakatBalance: Math.max(0, zakatBalance),
       orphanIncome,
       orphanExpense,
-      orphanBalance: Math.max(0, orphanBalance || 35200)
+      orphanBalance: Math.max(0, orphanBalance)
     };
   }, [transactions]);
 
@@ -628,7 +560,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
       paymentMethod: 'CASH',
       description: `${disburseForm.purpose} - ${st?.nameBn || st?.name || 'শিক্ষার্থী'}`,
       studentId: disburseForm.studentId,
-      receivedBy: 'মুহতামিম / হিসাবরক্ষক'
+      receivedBy: 'অধ্যক্ষ / হিসাবরক্ষক'
     });
 
     setIsDisburseModalOpen(false);
@@ -652,8 +584,8 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
               {isBn 
-                ? 'অভিভাবক পোর্টাল, অনলাইন রেজাল্ট ও কিউআর যাচাই, ভর্তি আবেদন ট্র্যাকার, এসএমএস নোটিফিকেশন গেটওয়ে, আবাসিক বোর্ডিং মেস এবং লিল্লাহ ও যাকাত সমাজকল্যাণ ফান্ড।'
-                : 'Unified hub for Guardian Portal, Web Results, QR Verification, Online Admissions, SMS Gateway, Residential Mess, and Lillah/Zakat Welfare.'}
+                ? 'অভিভাবক পোর্টাল, অনলাইন রেজাল্ট ও কিউআর যাচাই, ভর্তি আবেদন ট্র্যাকার, এসএমএস নোটিফিকেশন গেটওয়ে, আবাসিক বোর্ডিং মেস এবং ছাত্রকল্যাণ ও উপবৃত্তি ফান্ড।'
+                : 'Unified hub for Guardian Portal, Web Results, QR Verification, Online Admissions, SMS Gateway, Residential Mess, and Student Welfare/Stipend.'}
             </p>
           </div>
 
@@ -702,8 +634,8 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             { id: 'online_admissions', labelBn: 'অনলাইন ভর্তি ট্র্যাকার', labelEn: 'Online Admissions', icon: FileText, badge: formatNumber(admissions.length, language) },
             { id: 'web_results', labelBn: 'অনলাইন রেজাল্ট ও কিউআর', labelEn: 'Web Results & QR', icon: QrCode, badge: 'Live' },
             { id: 'sms_gateway', labelBn: 'এসএমএস ও নোটিফিকেশন', labelEn: 'SMS Gateway', icon: MessageSquare, badge: 'Gateway' },
-            { id: 'boarding_mess', labelBn: 'আবাসিক বোর্ডিং ও মেস', labelEn: 'Boarding & Mess', icon: Home, badge: formatNumber(residentialStudents.length, language) },
-            { id: 'islamic_welfare', labelBn: 'লিল্লাহ ও যাকাত কল্যাণ', labelEn: 'Zakat & Welfare', icon: HeartHandshake, badge: 'Welfare' }
+            { id: 'boarding_mess', labelBn: 'ছাত্রাবাস ও হোস্টেল মেস', labelEn: 'Hostel & Mess', icon: Home, badge: formatNumber(residentialStudents.length, language) },
+            { id: 'islamic_welfare', labelBn: 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল', labelEn: 'Student Welfare & Stipends', icon: HeartHandshake, badge: 'Welfare' }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
@@ -1863,7 +1795,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
             <div className="bg-gradient-to-br from-indigo-800 to-slate-900 text-white p-5 rounded-3xl shadow-md border border-indigo-700/40">
               <span className="text-xs font-bold text-indigo-200 uppercase tracking-wide block">
-                {isBn ? 'লিল্লাহ বোর্ডিং ও এতিম তহবিল' : 'Lillah & Orphan Welfare Fund'}
+                {isBn ? 'সাধারণ ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipend Fund'}
               </span>
               <span className="text-3xl font-black text-white mt-1 block">
                 ৳{formatNumber(welfareFunds.orphanBalance, language)}
@@ -1876,7 +1808,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wide block">
-                  {isBn ? 'কল্যাণ ভাতা গ্রহণকারী তালিব-এ ইলম' : 'Sponsored Students'}
+                  {isBn ? 'উপবৃত্তি ও সহায়তা গ্রহণকারী শিক্ষার্থী' : 'Stipend Beneficiaries'}
                 </span>
                 <span className="text-2xl font-black text-slate-900 mt-1 block">
                   {formatNumber(welfareBeneficiaries.length, language)} {isBn ? 'জন' : ''}
@@ -1958,7 +1890,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
                     <HeartHandshake size={18} className="text-teal-600" />
-                    <span>{isBn ? 'নতুন যাকাত / লিল্লাহ অনুদান বিতরণ' : 'Disburse Grant / Stipend'}</span>
+                    <span>{isBn ? 'নতুন ছাত্রকল্যাণ ও উপবৃত্তি অনুদান বিতরণ' : 'Disburse Student Welfare / Stipend'}</span>
                   </h3>
                   <button onClick={() => setIsDisburseModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                     <X size={18} />
@@ -1987,8 +1919,8 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                         onChange={(e) => setDisburseForm({ ...disburseForm, fund: e.target.value as any })}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                       >
-                        <option value="ZAKAT">{isBn ? 'যাকাত তহবিল' : 'Zakat Fund'}</option>
-                        <option value="ORPHAN_AID">{isBn ? 'লিল্লাহ ও এতিম তহবিল' : 'Lillah Fund'}</option>
+                        <option value="ZAKAT">{isBn ? 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipend'}</option>
+                        <option value="ORPHAN_AID">{isBn ? 'মেধাবৃত্তি ও দরিদ্র সহায়তা তহবিল' : 'Merit & Need Aid'}</option>
                       </select>
                     </div>
                     <div>

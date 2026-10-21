@@ -38,7 +38,8 @@ import {
   getInstitutionMember,
   getAllInstitutionMembers,
   setInstitutionMember,
-  deleteInstitutionMember
+  deleteInstitutionMember,
+  approveInstitutionMember
 } from '../services/rbac';
 import { generateId } from '../services/utils';
 import { translations, Language } from '../services/translations';
@@ -298,6 +299,10 @@ interface AppContextType extends AppState {
   currentMember: InstitutionMember | null;
   institutionRoles: CustomRole[];
   refreshInstitutionRoles: () => Promise<void>;
+  pendingMembers: InstitutionMember[];
+  refreshPendingMembers: () => Promise<void>;
+  approveMember: (uid: string, roleId?: string, assignedClasses?: string[], assignedSubjects?: string[]) => Promise<{ success: boolean; message?: string }>;
+  rejectMember: (uid: string) => Promise<{ success: boolean; message?: string }>;
   t: (key: keyof typeof translations['en']) => string;
 }
 
@@ -307,7 +312,7 @@ const defaultSchoolProfile: SchoolProfile = {
   phone: '+880 1234 567890',
   email: 'info@madrasha.edu.bd',
   academicYear: new Date().getFullYear().toString(),
-  headMasterName: 'Moulana Abdul Karim',
+  headMasterName: '',
   resultCardTemplate: 'Classic',
   showHeadmasterSignature: true,
   showGuardianSignature: true,
@@ -333,72 +338,10 @@ const defaultAppUsers: AppUser[] = [
     id: 'user_admin_01',
     name: 'Mehedi Hasan Sagor',
     nameBn: 'মেহেদী হাসান সাগর',
-    phone: '01700000000',
+    phone: '',
     email: 'mehedihasansagor26@gmail.com',
-    password: '123',
     role: 'super_admin',
     designation: 'প্রতিষ্ঠাতা ও সুপার অ্যাডমিন',
-    status: 'active',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'user_principal_01',
-    name: 'Moulana Abdul Karim',
-    nameBn: 'মাওলানা আব্দুল করিম',
-    phone: '01755555555',
-    email: 'principal@madrasha.local',
-    password: '123',
-    role: 'principal',
-    designation: 'অধ্যক্ষ / মুহতামিম',
-    status: 'active',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'user_teacher_01',
-    name: 'Hafez Mawlana Hafizur Rahman',
-    nameBn: 'হাফেজ মাওলানা হাফিজুর রহমান',
-    phone: '01711111111',
-    email: 'hafizur@madrasha.local',
-    password: '123',
-    role: 'teacher',
-    designation: 'সিনিয়র মুয়াল্লিম',
-    assignedClasses: ['ইবতেদায়ী ১ম', 'ইবতেদায়ী ২য়'],
-    status: 'active',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'user_acc_01',
-    name: 'Muhammad Abdullah',
-    nameBn: 'মুহাম্মদ আবদুল্লাহ',
-    phone: '01722222222',
-    email: 'accountant@madrasha.local',
-    password: '123',
-    role: 'accountant',
-    designation: 'প্রধান হিসাবরক্ষক',
-    status: 'active',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'user_staff_01',
-    name: 'Abdur Rahim',
-    nameBn: 'আব্দুর রহিম',
-    phone: '01733333333',
-    email: 'staff@madrasha.local',
-    password: '123',
-    role: 'staff',
-    designation: 'অফিস সহকারী',
-    status: 'active',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'user_guardian_01',
-    name: 'Md. Rafiqul Islam',
-    nameBn: 'মো: রফিকুল ইসলাম',
-    phone: '01744444444',
-    email: 'guardian@madrasha.local',
-    password: '123',
-    role: 'guardian',
-    designation: 'অভিভাবক',
     status: 'active',
     createdAt: '2025-01-01T00:00:00.000Z'
   }
@@ -477,12 +420,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const [students, setStudents] = useState<Student[]>(() => {
     const saved = localStorage.getItem('students');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((s: Student) => !s?.id?.startsWith('demo-std-') && s?.id !== 'st-1' && s?.id !== 'st-2');
+        }
+      } catch {}
+    }
+    return [];
   });
 
   const [subjects, setSubjects] = useState<Subject[]>(() => {
     const saved = localStorage.getItem('subjects');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((sub: Subject) => !sub?.id?.startsWith('demo-sub-'));
+        }
+      } catch {}
+    }
+    return [];
   });
 
   const [teachers, setTeachers] = useState<AcademicTeacher[]>(() => {
@@ -567,7 +526,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const [marks, setMarks] = useState<MarkRecord[]>(() => {
     const saved = localStorage.getItem('marks');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((m: MarkRecord) => !m?.id?.startsWith('demo-mark-'));
+        }
+      } catch {}
+    }
+    return [];
   });
 
   const [remarks, setRemarks] = useState<RemarkRecord[]>(() => {
@@ -577,12 +544,25 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const [transactions, setTransactions] = useState<FinanceTransaction[]>(() => {
     const saved = localStorage.getItem('madrasha_transactions');
-    return saved ? JSON.parse(saved) : generateSampleFinanceData();
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((t: FinanceTransaction) => !t?.id?.startsWith('tx-init-'));
+        }
+      } catch {}
+    }
+    return [];
   });
 
   const [feeStructures, setFeeStructures] = useState<ClassFeeStructure[]>(() => {
     const saved = localStorage.getItem('madrasha_fee_structures');
-    return saved ? JSON.parse(saved) : defaultFeeStructures;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
   });
 
   const [promotionHistory, setPromotionHistory] = useState<PromotionHistoryRecord[]>(() => {
@@ -595,66 +575,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return [];
   });
 
-  const defaultSampleNotices: NoticeItem[] = [
-    {
-      id: 'notice-urgent-1',
-      title: 'জরুরি সতর্কতা: তীব্র শৈত্যপ্রবাহ ও দুর্যোগপূর্ণ আবহাওয়ার কারণে শ্রেণি কার্যক্রম স্থগিত',
-      content: 'সরকারি ও প্রাতিষ্ঠানিক নির্দেশনানুযায়ী তীব্র শৈত্যপ্রবাহ ও দুর্যোগপূর্ণ আবহাওয়ার কারণে আগামীকাল বৃহস্পতিবার সকল শ্রেণির ক্লাস স্থগিত থাকবে। তবে আবাসিক হেফজ ও কিতাবখানা নিজস্ব সূচি অনুযায়ী পরিচালিত হবে।',
-      category: 'cancellation',
-      priority: 'urgent',
-      target: 'all',
-      isPinned: true,
-      isActive: true,
-      showMarquee: true,
-      showAlertBanner: true,
-      authorName: 'মুহতামিম কার্যালয়',
-      authorRole: 'অধ্যক্ষ',
-      date: '2026-10-07',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'notice-exam-1',
-      title: 'আসন্ন ১ম সাময়িক পরীক্ষা ২০২৬ এর চূড়ান্ত রুটিন ও প্রবেশপত্র বিতরণ সংক্রান্ত বিজ্ঞপ্তি',
-      content: 'সকল শিক্ষার্থী ও অভিভাবকদের জানানো যাচ্ছে যে, আগামী ১৫ অক্টোবর থেকে ১ম সাময়িক পরীক্ষা শুরু হবে। ১২ অক্টোবরের মধ্যে অফিস কক্ষ থেকে পরীক্ষার প্রবেশপত্র সংগ্রহ করতে হবে।',
-      category: 'exam',
-      priority: 'important',
-      target: 'students',
-      isPinned: true,
-      isActive: true,
-      showMarquee: true,
-      showAlertBanner: true,
-      authorName: 'পরীক্ষা নিয়ন্ত্রণ কমিটি',
-      authorRole: 'পরীক্ষা নিয়ন্ত্রক',
-      date: '2026-10-06',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'notice-update-1',
-      title: 'অভিভাবক সমাবেশ ও মাসিক মূল্যায়ন ফলাফল পর্যালোচনা সংক্রান্ত নোটিশ',
-      content: 'আগামী শনিবার সকাল ১০:০০ ঘটিকায় মাদ্রাসার অডিটোরিয়ামে অভিভাবক সমাবেশ অনুষ্ঠিত হবে। সকল অভিভাবককে যথাসময়ে উপস্থিত থাকার জন্য বিনীত অনুরোধ করা হচ্ছে।',
-      category: 'urgent',
-      priority: 'important',
-      target: 'guardians',
-      isPinned: false,
-      isActive: true,
-      showMarquee: true,
-      showAlertBanner: false,
-      authorName: 'প্রশাসন বিভাগ',
-      authorRole: 'অফিস ইনচার্জ',
-      date: '2026-10-05',
-      createdAt: new Date().toISOString()
-    }
-  ];
-
   const [notices, setNotices] = useState<NoticeItem[]>(() => {
     const saved = localStorage.getItem('madrasha_notices');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((n: NoticeItem) => !n?.id?.startsWith('notice-urgent-') && !n?.id?.startsWith('notice-exam-') && !n?.id?.startsWith('notice-update-'));
+        }
       } catch {}
     }
-    return defaultSampleNotices;
+    return [];
   });
 
   useEffect(() => {
@@ -771,13 +702,146 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
-  // App Users State & Persistence
+  // Pending Institution Members State & Actions
+  const [pendingMembers, setPendingMembers] = useState<InstitutionMember[]>([]);
+
+  const refreshPendingMembers = async () => {
+    try {
+      const all = await getAllInstitutionMembers('inst_madrasah_primary');
+      const pending = all.filter(m => m.status === 'pending');
+      setPendingMembers(pending);
+    } catch (err) {
+      console.warn('Pending members fetch error:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshPendingMembers();
+  }, [authUser]);
+
+  const approveMember = async (
+    uid: string, 
+    roleId?: string, 
+    assignedClasses: string[] = [], 
+    assignedSubjects: string[] = []
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const all = await getAllInstitutionMembers('inst_madrasah_primary');
+      const target = all.find(m => m.uid === uid);
+      const effectiveRole = roleId || target?.roleId || 'role_teacher';
+      const actorUid = authUser?.uid || 'admin';
+
+      await approveInstitutionMember(
+        'inst_madrasah_primary',
+        uid,
+        effectiveRole,
+        assignedClasses,
+        assignedSubjects,
+        actorUid
+      );
+
+      // If current member was this user, update active state
+      if (currentMember?.uid === uid) {
+        setCurrentMember(prev => prev ? { ...prev, status: 'active', roleId: effectiveRole } : null);
+      }
+
+      // Update in users state
+      const cleanRole: UserRole = (effectiveRole.replace('role_', '')) as UserRole;
+      setUsers(prev => {
+        const found = prev.find(u => u.id === uid || (target?.email && u.email?.toLowerCase() === target.email.toLowerCase()));
+        if (found) {
+          return prev.map(u => (u.id === found.id) ? {
+            ...u,
+            status: 'active',
+            role: cleanRole,
+            assignedClasses: assignedClasses.length > 0 ? assignedClasses : u.assignedClasses
+          } : u);
+        }
+        if (target) {
+          const newUser: AppUser = {
+            id: target.uid,
+            name: target.displayName || 'User',
+            nameBn: target.displayName || 'ব্যবহারকারী',
+            phone: target.phone || '',
+            email: target.email || undefined,
+            password: target.password || '123456',
+            role: cleanRole,
+            assignedClasses,
+            status: 'active',
+            createdAt: target.createdAt || new Date().toISOString()
+          };
+          return [newUser, ...prev];
+        }
+        return prev;
+      });
+
+      // If teacher, ensure present and ACTIVE in academic teachers list
+      if (cleanRole === 'teacher' && target) {
+        setTeachers(prev => {
+          const exists = prev.find(t => t.id === uid || (target.email && t.email?.toLowerCase() === target.email.toLowerCase()) || (target.phone && t.phone === target.phone));
+          if (exists) {
+            const updated = prev.map(t => t.id === exists.id ? { ...t, status: 'ACTIVE' as const, assignedClasses } : t);
+            try { localStorage.setItem('teachers', JSON.stringify(updated)); } catch (e) {}
+            return updated;
+          } else {
+            const newT: AcademicTeacher = {
+              id: uid,
+              institutionId: 'inst_madrasah_primary',
+              name: target.displayName || 'Teacher',
+              nameBn: target.displayName || 'শিক্ষক',
+              phone: target.phone || '',
+              email: target.email,
+              password: target.password || '123456',
+              designation: target.requestedRole || 'সহকারী শিক্ষক',
+              status: 'ACTIVE',
+              assignedClasses,
+              assignedSubjects,
+              createdAt: target.createdAt || new Date().toISOString()
+            };
+            const updated = [newT, ...prev];
+            try { localStorage.setItem('teachers', JSON.stringify(updated)); } catch (e) {}
+            return updated;
+          }
+        });
+      }
+
+      await refreshPendingMembers();
+      return { success: true, message: 'সফলভাবে অ্যাকাউন্ট অনুমোদন ও সক্রিয় করা হয়েছে!' };
+    } catch (e: any) {
+      console.error('Approve error:', e);
+      return { success: false, message: e.message || 'অনুমোদন সম্পন্ন করা যায়নি।' };
+    }
+  };
+
+  const rejectMember = async (uid: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      await deleteInstitutionMember('inst_madrasah_primary', uid);
+      setUsers(prev => prev.filter(u => u.id !== uid));
+      setTeachers(prev => prev.filter(t => t.id !== uid));
+      await refreshPendingMembers();
+      return { success: true, message: 'আবেদনটি বাতিল করা হয়েছে।' };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'বাতিল করা যায়নি।' };
+    }
+  };
+
+  // App Users State & Persistence (excluding demo accounts)
   const [users, setUsers] = useState<AppUser[]>(() => {
     try {
       const saved = localStorage.getItem('madrasha_app_users');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter(u =>
+            !u.id.startsWith('user_teacher_') &&
+            !u.id.startsWith('user_acc_') &&
+            !u.id.startsWith('user_staff_') &&
+            !u.id.startsWith('user_guardian_') &&
+            !u.id.startsWith('user_principal_') &&
+            !Boolean(u.email && u.email.includes('madrasha.local'))
+          );
+          if (cleaned.length > 0) return cleaned;
+        }
       }
     } catch (e) {}
     return defaultAppUsers;
@@ -954,15 +1018,57 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const cleanId = identifier.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    const user = users.find(u => 
+    let user = users.find(u => 
       (u.phone && u.phone.trim() === cleanId) || 
       (u.email && u.email.trim().toLowerCase() === cleanId)
     );
 
+    // If not found in users, check academic teachers (added by admin)
     if (!user) {
+      const teacher = teachers.find(t => 
+        (t.phone && t.phone.trim() === cleanId) || 
+        (t.email && t.email.trim().toLowerCase() === cleanId)
+      );
+      if (teacher) {
+        user = {
+          id: teacher.id,
+          name: teacher.name,
+          nameBn: teacher.nameBn || teacher.name,
+          phone: teacher.phone || '',
+          email: teacher.email || undefined,
+          password: teacher.password || '123456',
+          role: 'teacher',
+          designation: teacher.designation || 'সহকারী শিক্ষক',
+          assignedClasses: teacher.assignedClasses || [],
+          assignedSubjects: teacher.assignedSubjects || [],
+          status: (teacher.status?.toUpperCase() === 'PENDING') ? 'pending' : 'active',
+          createdAt: teacher.createdAt || new Date().toISOString()
+        };
+        // Auto-persist in users
+        setUsers(prev => [user!, ...prev.filter(u => u.id !== user!.id)]);
+        try {
+          const stored = localStorage.getItem('madrasha_app_users');
+          const list = stored ? JSON.parse(stored) : [];
+          localStorage.setItem('madrasha_app_users', JSON.stringify([user, ...list.filter((u: any) => u.id !== user!.id)]));
+        } catch (e) {}
+      }
+    }
+
+    if (!user) {
+      const isPending = pendingMembers.some(m => 
+        (m.phone && m.phone.trim() === cleanId) || 
+        (m.email && m.email.trim().toLowerCase() === cleanId)
+      );
+      if (isPending) {
+        return {
+          success: false,
+          message: 'আপনার অ্যাকাউন্টটি এখনও অ্যাডমিনের অনুমোদনের অপেক্ষায় রয়েছে (Pending Admin Approval)। অ্যাডমিন প্যানেল থেকে অনুমোদন করলেই আপনি প্রবেশ করতে পারবেন।'
+        };
+      }
+
       return {
         success: false,
-        message: 'এই মোবাইল বা ইমেইলে কোনো ব্যবহারকারী খুঁজে পাওয়া যায়নি।'
+        message: 'এই মোবাইল বা ইমেইলে কোনো ব্যবহারকারী খুঁজে পাওয়া যায়নি। সঠিক তথ্য দিন অথবা অ্যাডমিনের সাথে যোগাযোগ করুন।'
       };
     }
 
@@ -970,6 +1076,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return {
         success: false,
         message: 'ভুল পাসওয়ার্ড। আবার চেষ্টা করুন।'
+      };
+    }
+
+    if (user.status === 'pending') {
+      return {
+        success: false,
+        message: 'আপনার অ্যাকাউন্টটি অনুমোদনের অপেক্ষায় রয়েছে (Pending Approval)। অ্যাডমিন অনুমোদন করলেই আপনি ড্যাশবোর্ডে প্রবেশ করতে পারবেন।'
       };
     }
 
@@ -1208,20 +1321,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('schoolProfile', JSON.stringify(data.schoolProfile)); } catch {}
     }
     if (data.students && Array.isArray(data.students)) {
-      setStudents(data.students);
-      try { localStorage.setItem('students', JSON.stringify(data.students)); } catch {}
+      const cleanStudents = data.students.filter(s => !s.id?.startsWith('demo-std-') && s.id !== 'st-1' && s.id !== 'st-2');
+      setStudents(cleanStudents);
+      try { localStorage.setItem('students', JSON.stringify(cleanStudents)); } catch {}
     }
     if (data.subjects && Array.isArray(data.subjects)) {
-      setSubjects(data.subjects);
-      try { localStorage.setItem('subjects', JSON.stringify(data.subjects)); } catch {}
+      const cleanSubjects = data.subjects.filter(s => !s.id?.startsWith('demo-sub-'));
+      setSubjects(cleanSubjects);
+      try { localStorage.setItem('subjects', JSON.stringify(cleanSubjects)); } catch {}
     }
     if (data.exams && Array.isArray(data.exams)) {
       setExams(data.exams);
       try { localStorage.setItem('exams', JSON.stringify(data.exams)); } catch {}
     }
     if (data.marks && Array.isArray(data.marks)) {
-      setMarks(data.marks);
-      try { localStorage.setItem('marks', JSON.stringify(data.marks)); } catch {}
+      const cleanMarks = data.marks.filter(m => !m.id?.startsWith('demo-mark-'));
+      setMarks(cleanMarks);
+      try { localStorage.setItem('marks', JSON.stringify(cleanMarks)); } catch {}
     }
     if (data.remarks && Array.isArray(data.remarks)) {
       setRemarks(data.remarks);
@@ -1240,8 +1356,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('sections', JSON.stringify(data.sections)); } catch {}
     }
     if (data.transactions && Array.isArray(data.transactions)) {
-      setTransactions(data.transactions);
-      try { localStorage.setItem('madrasha_transactions', JSON.stringify(data.transactions)); } catch {}
+      const cleanTransactions = data.transactions.filter(t => !t.id?.startsWith('tx-init-'));
+      setTransactions(cleanTransactions);
+      try { localStorage.setItem('madrasha_transactions', JSON.stringify(cleanTransactions)); } catch {}
     }
     if (data.feeStructures && Array.isArray(data.feeStructures)) {
       setFeeStructures(data.feeStructures);
@@ -1276,12 +1393,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('madrasha_exam_subject_assignments', JSON.stringify(data.examSubjectAssignments)); } catch {}
     }
     if (data.users && Array.isArray(data.users)) {
-      setUsers(data.users);
-      try { localStorage.setItem('madrasha_app_users', JSON.stringify(data.users)); } catch {}
+      const cleanUsers = data.users.filter(u =>
+        !u.id.startsWith('user_teacher_') &&
+        !u.id.startsWith('user_acc_') &&
+        !u.id.startsWith('user_staff_') &&
+        !u.id.startsWith('user_guardian_') &&
+        !u.id.startsWith('user_principal_') &&
+        !Boolean(u.email && u.email.includes('madrasha.local'))
+      );
+      setUsers(cleanUsers);
+      try { localStorage.setItem('madrasha_app_users', JSON.stringify(cleanUsers)); } catch {}
     }
     if (data.notices && Array.isArray(data.notices)) {
-      setNotices(data.notices);
-      try { localStorage.setItem('madrasha_notices', JSON.stringify(data.notices)); } catch {}
+      const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
+      setNotices(cleanNotices);
+      try { localStorage.setItem('madrasha_notices', JSON.stringify(cleanNotices)); } catch {}
     }
 
     setCloudStatus('connected');
@@ -1292,6 +1418,53 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       isRemoteUpdateRef.current = false;
     }, 400);
   };
+
+  // One-time startup sweep to purge any legacy demo data from localStorage across all modules
+  useEffect(() => {
+    try {
+      const cleanups: Array<{ key: string; isDemo: (item: any) => boolean }> = [
+        { key: 'students', isDemo: (s) => s?.id?.startsWith('demo-std-') || s?.id === 'st-1' || s?.id === 'st-2' },
+        { key: 'subjects', isDemo: (s) => s?.id?.startsWith('demo-sub-') },
+        { key: 'marks', isDemo: (m) => m?.id?.startsWith('demo-mark-') },
+        { key: 'madrasha_transactions', isDemo: (t) => t?.id?.startsWith('tx-init-') },
+        { key: 'madrasha_notices', isDemo: (n) => n?.id?.startsWith('notice-urgent-') || n?.id?.startsWith('notice-exam-') || n?.id?.startsWith('notice-update-') },
+        { key: 'madrasha_app_users', isDemo: (u) => u?.id?.startsWith('user_teacher_') || u?.id?.startsWith('user_acc_') || u?.id?.startsWith('user_staff_') || u?.id?.startsWith('user_guardian_') || u?.id?.startsWith('user_principal_') || (u?.email && u?.email?.includes('madrasha.local')) },
+        { key: 'madrasah_staff_leaves', isDemo: (l) => l?.id === 'leave_1' },
+        { key: 'madrasah_books_catalog', isDemo: (b) => b?.id?.startsWith('book-') },
+        { key: 'madrasah_book_issues', isDemo: (i) => i?.id?.startsWith('issue-') },
+        { key: 'madrasah_transport_vehicles', isDemo: (v) => v?.id?.startsWith('veh-') },
+        { key: 'madrasah_transport_roster', isDemo: (r) => r?.id?.startsWith('tr-') },
+        { key: 'madrasah_mahfil_events', isDemo: (e) => e?.id?.startsWith('evt-') },
+        { key: 'madrasah_cocurricular_clubs', isDemo: (c) => c?.id?.startsWith('club-') },
+        { key: 'madrasha_ops_v1_assets', isDemo: (a) => a?.id?.startsWith('ast-') },
+        { key: 'madrasha_ops_v1_store', isDemo: (s) => s?.id?.startsWith('itm-') },
+        { key: 'madrasha_ops_v1_movements', isDemo: (m) => m?.id?.startsWith('mov-') },
+        { key: 'madrasha_ops_v1_houses', isDemo: (h) => h?.id?.startsWith('house-') },
+        { key: 'madrasha_ops_v1_house_logs', isDemo: (l) => l?.id?.startsWith('hpl-') },
+        { key: 'madrasha_ops_v1_alumni', isDemo: (a) => a?.id?.startsWith('alm-') },
+        { key: 'madrasha_ops_v1_health', isDemo: (h) => h?.id?.startsWith('hlth-') },
+        { key: 'madrasha_admissions_v1', isDemo: (a) => a?.id?.startsWith('adm-') },
+        { key: 'madrasah_admissions_v1', isDemo: (a) => a?.id?.startsWith('app-') },
+        { key: 'madrasha_sms_logs_v1', isDemo: (s) => s?.id?.startsWith('sms-log-') },
+        { key: 'madrasha_welfare_v1', isDemo: (w) => w?.id?.startsWith('wel-') },
+      ];
+
+      cleanups.forEach(({ key, isDemo }) => {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              const filtered = parsed.filter(item => !isDemo(item));
+              localStorage.setItem(key, JSON.stringify(filtered));
+            }
+          } catch {}
+        }
+      });
+    } catch (e) {
+      console.warn('Startup demo data cleanup notice:', e);
+    }
+  }, []);
 
   // Load from and Listen to Firebase Firestore in real-time
   useEffect(() => {
@@ -1971,7 +2144,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let defaultRole = 'role_teacher';
     if (requestedRole.toLowerCase().includes('account') || requestedRole.toLowerCase().includes('ক্যাশ')) {
       defaultRole = 'role_accountant';
-    } else if (requestedRole.toLowerCase().includes('principal') || requestedRole.toLowerCase().includes('মুহতামিম')) {
+    } else if (requestedRole.toLowerCase().includes('principal') || requestedRole.toLowerCase().includes('অধ্যক্ষ') || requestedRole.toLowerCase().includes('সুপার') || requestedRole.toLowerCase().includes('মুহতামিম')) {
       defaultRole = 'role_principal';
     } else if (requestedRole.toLowerCase().includes('staff') || requestedRole.toLowerCase().includes('অফিস')) {
       defaultRole = 'role_office_staff';
@@ -2055,17 +2228,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const demoConfigs: Record<string, { email: string; name: string; roleId: string; classes?: string[]; subjects?: string[] }> = {
       superadmin: {
         email: 'mehedihasansagor26@gmail.com',
-        name: 'মুহতামিম / অ্যাডমিন (ডেমো ভিউ)',
+        name: 'অধ্যক্ষ / অ্যাডমিন (ডেমো ভিউ)',
         roleId: 'role_institution_admin'
       },
       principal: {
         email: 'principal@madrasha.edu.bd',
-        name: 'মুহতামিম মাওলানা আব্দুল করিম (ডেমো)',
+        name: 'অধ্যক্ষ মাওলানা আব্দুল করিম (ডেমো)',
         roleId: 'role_principal'
       },
       teacher: {
         email: 'teacher.mahmud@madrasha.edu.bd',
-        name: 'মাওলানা মাহমুদুর রহমান (ডেমো উস্তাদ)',
+        name: 'মাওলানা মাহমুদুর রহমান (সহকারী শিক্ষক)',
         roleId: 'role_teacher',
         classes: ['cls_7', 'cls_8', '1', '2'],
         subjects: ['sub_math', 'sub_arabic']
@@ -2480,29 +2653,65 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
     const { teacher } = buildCreateTeacherPayload(teacherData, 'inst_madrasah_primary', actor, teachers);
     if (teacher) {
-      setTeachers(prev => [...prev, teacher]);
+      const rawPassword = teacherData.password?.trim() || '123456';
+      const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
+      const cleanPhone = teacher.phone?.trim() || '';
+
+      const teacherWithCredentials: AcademicTeacher = {
+        ...teacher,
+        password: rawPassword,
+        email: cleanEmail,
+        status: teacherData.status || 'ACTIVE'
+      };
+
+      setTeachers(prev => [...prev, teacherWithCredentials]);
       
-      // Auto-sync into institution members store
+      // Auto-sync into institution members store with teacher.id as UID
       const memberData: InstitutionMember = {
         uid: teacher.id,
         institutionId: 'inst_madrasah_primary',
-        email: teacher.phone ? `teacher.${teacher.phone.replace(/[^0-9]/g, '')}@madrasha.local` : `teacher.${teacher.id}@madrasha.local`,
+        email: cleanEmail || (cleanPhone ? `teacher.${cleanPhone.replace(/[^0-9]/g, '')}@madrasha.local` : `teacher.${teacher.id}@madrasha.local`),
         displayName: teacher.nameBn || teacher.name,
-        phone: teacher.phone || '',
+        phone: cleanPhone,
+        password: rawPassword,
         roleId: 'role_teacher',
         requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',
-        status: teacher.status === 'ACTIVE' ? 'active' : 'inactive',
-        assignedClasses: [],
-        assignedSubjects: [],
+        status: 'active',
+        assignedClasses: teacher.assignedClasses || [],
+        assignedSubjects: teacher.assignedSubjects || [],
         createdAt: teacher.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      setInstitutionMember('inst_madrasah_primary', memberData, authUser?.uid || teacher.id).catch(() => {});
+      setInstitutionMember('inst_madrasah_primary', memberData, teacher.id).catch(() => {});
+
+      // Auto-create/sync AppUser in users list for direct login
+      const userObj: AppUser = {
+        id: teacher.id,
+        name: teacher.name,
+        nameBn: teacher.nameBn || teacher.name,
+        phone: cleanPhone,
+        email: cleanEmail,
+        password: rawPassword,
+        role: 'teacher',
+        designation: teacher.designation || 'মুয়াল্লিম / সহকারী শিক্ষক',
+        assignedClasses: teacher.assignedClasses || [],
+        status: 'active',
+        createdAt: teacher.createdAt || new Date().toISOString()
+      };
+
+      setUsers(prev => {
+        const filtered = prev.filter(u => 
+          u.id !== teacher.id && 
+          (!cleanEmail || u.email?.toLowerCase() !== cleanEmail) &&
+          (!cleanPhone || u.phone !== cleanPhone)
+        );
+        return [userObj, ...filtered];
+      });
 
       if (authUser) {
         recordTeacherAuditEvent({
           action: 'TEACHER_CREATED',
-          teacher,
+          teacher: teacherWithCredentials,
           actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
         });
       }
@@ -2515,11 +2724,61 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const { teacher } = existing
       ? buildUpdateTeacherPayload(existing, updatedTeacher, actor, teachers)
       : { teacher: updatedTeacher };
-    setTeachers(prev => prev.map(t => t.id === teacher.id ? teacher : t));
+
+    const rawPassword = updatedTeacher.password?.trim() || existing?.password || '123456';
+    const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
+    const cleanPhone = teacher.phone?.trim() || '';
+
+    const teacherWithCredentials: AcademicTeacher = {
+      ...teacher,
+      password: rawPassword,
+      email: cleanEmail,
+      phone: cleanPhone,
+      status: updatedTeacher.status || teacher.status || 'ACTIVE'
+    };
+
+    setTeachers(prev => prev.map(t => t.id === teacher.id ? teacherWithCredentials : t));
+
+    // Update in users
+    setUsers(prev => prev.map(u => {
+      if (u.id === teacher.id || (cleanEmail && u.email?.toLowerCase() === cleanEmail) || (cleanPhone && u.phone === cleanPhone)) {
+        return {
+          ...u,
+          name: teacher.name,
+          nameBn: teacher.nameBn || teacher.name,
+          email: cleanEmail,
+          phone: cleanPhone,
+          password: rawPassword,
+          designation: teacher.designation,
+          assignedClasses: teacher.assignedClasses || [],
+          status: 'active'
+        };
+      }
+      return u;
+    }));
+
+    // Update in institution members
+    const memberData: InstitutionMember = {
+      uid: teacher.id,
+      institutionId: 'inst_madrasah_primary',
+      email: cleanEmail || (cleanPhone ? `teacher.${cleanPhone.replace(/[^0-9]/g, '')}@madrasha.local` : `teacher.${teacher.id}@madrasha.local`),
+      displayName: teacher.nameBn || teacher.name,
+      phone: cleanPhone,
+      password: rawPassword,
+      roleId: 'role_teacher',
+      requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',
+      status: 'active',
+      assignedClasses: teacher.assignedClasses || [],
+      assignedSubjects: teacher.assignedSubjects || [],
+      createdAt: teacher.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setInstitutionMember('inst_madrasah_primary', memberData, teacher.id).catch(() => {});
+
     if (authUser) {
       recordTeacherAuditEvent({
         action: 'TEACHER_UPDATED',
-        teacher,
+        teacher: teacherWithCredentials,
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' },
         before: existing ? { name: existing.name, designation: existing.designation, status: existing.status } : null
       });
@@ -3050,9 +3309,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       localStorage.setItem('students', JSON.stringify([]));
       localStorage.setItem('marks', JSON.stringify([]));
       localStorage.setItem('remarks', JSON.stringify([]));
-      localStorage.setItem('transactions', JSON.stringify([]));
+      localStorage.setItem('madrasha_transactions', JSON.stringify([]));
       localStorage.setItem('promotionHistory', JSON.stringify([]));
-      localStorage.setItem('notices', JSON.stringify([]));
+      localStorage.setItem('madrasha_notices', JSON.stringify([]));
+      localStorage.setItem('madrasha_fee_structures', JSON.stringify([]));
+      localStorage.setItem('madrasah_staff_leaves', JSON.stringify([]));
+      localStorage.setItem('madrasah_books_catalog', JSON.stringify([]));
+      localStorage.setItem('madrasah_book_issues', JSON.stringify([]));
+      localStorage.setItem('madrasah_transport_vehicles', JSON.stringify([]));
+      localStorage.setItem('madrasah_transport_roster', JSON.stringify([]));
+      localStorage.setItem('madrasah_mahfil_events', JSON.stringify([]));
+      localStorage.setItem('madrasah_cocurricular_clubs', JSON.stringify([]));
+      localStorage.setItem('madrasha_ops_v1_assets', JSON.stringify([]));
+      localStorage.setItem('madrasha_ops_v1_store', JSON.stringify([]));
+      localStorage.setItem('madrasha_ops_v1_movements', JSON.stringify([]));
+      localStorage.setItem('madrasha_ops_v1_houses', JSON.stringify([]));
+      localStorage.setItem('madrasha_ops_v1_house_logs', JSON.stringify([]));
+      localStorage.setItem('madrasha_ops_v1_alumni', JSON.stringify([]));
+      localStorage.setItem('madrasha_ops_v1_health', JSON.stringify([]));
+      localStorage.setItem('madrasha_admissions_v1', JSON.stringify([]));
+      localStorage.setItem('madrasah_admissions_v1', JSON.stringify([]));
+      localStorage.setItem('madrasha_sms_logs_v1', JSON.stringify([]));
+      localStorage.setItem('madrasha_welfare_v1', JSON.stringify([]));
 
       // 4. Push clean state to Cloud Firestore
       try {
@@ -3064,6 +3342,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           transactions: [],
           promotionHistory: [],
           notices: [],
+          feeStructures: [],
           updatedAt: new Date().toISOString(),
           updatedBy: authUser?.email || adminEmail || 'mehedihasansagor26@gmail.com'
         }, { merge: true });
@@ -3249,6 +3528,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setUsers,
       currentUser,
       userRole,
+      pendingMembers,
+      refreshPendingMembers,
+      approveMember,
+      rejectMember,
       signUpUser,
       updateAppUser,
       deleteAppUser,

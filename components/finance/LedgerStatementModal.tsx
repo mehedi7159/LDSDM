@@ -328,7 +328,7 @@ export const LedgerStatementModal: React.FC<LedgerStatementModalProps> = ({
               </div>
               <div>
                 <div className="border-t border-slate-600 w-36 mx-auto pt-1">
-                  {isBn ? 'মুহতামিম / সভাপতি' : 'Principal / President'}
+                  {isBn ? 'অধ্যক্ষ / সভাপতি' : 'Principal / President'}
                 </div>
               </div>
             </div>

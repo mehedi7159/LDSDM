@@ -188,6 +188,12 @@ export function buildAuthorizationContext(
     ...(member?.dataScopes || {})
   };
 
+  // If member has explicitly assigned classes and is not admin, restrict class data scope
+  if (!isSuper && !isInstAdmin && member?.assignedClasses && member.assignedClasses.length > 0) {
+    effectiveDataScopes.allClasses = false;
+    effectiveDataScopes.classes = member.assignedClasses;
+  }
+
   return {
     uid,
     email,

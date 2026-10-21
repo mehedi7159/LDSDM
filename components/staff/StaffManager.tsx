@@ -80,9 +80,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 }) => {
   const { 
     teachers = [], 
+    setTeachers,
     addTeacher, 
     updateTeacher, 
     users = [], 
+    setUsers,
+    pendingMembers = [],
+    approveMember,
+    refreshPendingMembers,
     classes = [], 
     subjects = [], 
     transactions = [], 
@@ -114,6 +119,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
     phone: '',
     email: '',
+    password: '123',
     status: 'ACTIVE',
     assignedClasses: [],
     assignedSubjects: []
@@ -123,23 +129,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const [leaves, setLeaves] = useState<StaffLeaveRecord[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_LEAVES);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [
-      {
-        id: 'leave_1',
-        teacherId: 't1',
-        teacherName: 'মাওলানা মাহমুদ হাসান',
-        designation: 'প্রধান মুহাদ্দিস ও সিনিয়র শিক্ষক',
-        leaveType: 'CASUAL',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
-        daysCount: 1,
-        reason: 'পারিবারিক জরুরি কাজ',
-        status: 'APPROVED',
-        appliedAt: new Date().toISOString()
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(l => l?.id !== 'leave_1');
+        }
       }
-    ];
+    } catch (e) {}
+    return [];
   });
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -185,7 +182,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     return dailyAttendanceService.getStaffAttendanceByDate(todayStr);
   }, [todayStr]);
 
-  // Unified Staff list (merging teachers and staff roles from users)
+  // Unified Staff list (merging teachers, staff roles from users, and pending members)
   const unifiedStaffList = useMemo(() => {
     const list: AcademicTeacher[] = [...teachers];
     // If teachers are empty or users have staff not in teachers, complement
@@ -195,16 +192,41 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           id: u.id,
           name: u.name,
           nameBn: u.nameBn,
-          designation: u.designation || (u.role === 'principal' ? 'মুহতামিম / অধ্যক্ষ' : u.role === 'accountant' ? 'হিসাবরক্ষক' : u.role === 'staff' ? 'অফিস কর্মী' : 'সহকারী শিক্ষক'),
+          designation: u.designation || (u.role === 'principal' ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : u.role === 'accountant' ? 'হিসাবরক্ষক' : u.role === 'staff' ? 'অফিস কর্মী' : 'সহকারী শিক্ষক'),
           phone: u.phone,
           email: u.email,
-          status: 'ACTIVE',
+          status: (u.status === 'pending') ? 'PENDING' : 'ACTIVE',
           assignedClasses: u.assignedClasses || []
         });
       }
     });
+
+    // Also include pending registered members
+    pendingMembers.forEach(m => {
+      if (!list.some(t => t.id === m.uid || (m.email && t.email?.toLowerCase() === m.email.toLowerCase()))) {
+        list.push({
+          id: m.uid,
+          name: m.displayName || 'Teacher',
+          nameBn: m.displayName || 'শিক্ষক',
+          designation: m.requestedRole || 'মুয়াল্লিম (সহকারী শিক্ষক)',
+          phone: m.phone || '',
+          email: m.email || '',
+          status: 'PENDING',
+          assignedClasses: m.assignedClasses || []
+        });
+      }
+    });
+
     return list;
-  }, [teachers, users]);
+  }, [teachers, users, pendingMembers]);
+
+  // List of pending staff awaiting approval
+  const pendingStaffApprovals = useMemo(() => {
+    return unifiedStaffList.filter(s => 
+      s.status?.toUpperCase() === 'PENDING' ||
+      pendingMembers.some(m => m.uid === s.id || (s.email && m.email?.toLowerCase() === s.email.toLowerCase()))
+    );
+  }, [unifiedStaffList, pendingMembers]);
 
   // Real-time KPI Calculations
   const kpis = useMemo(() => {
@@ -281,6 +303,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
       phone: '',
       email: '',
+      password: '123',
       status: 'ACTIVE',
       assignedClasses: [],
       assignedSubjects: []
@@ -291,7 +314,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Handle open edit modal
   const handleOpenEditModal = (teacher: AcademicTeacher) => {
     setEditingTeacher(teacher);
-    setTeacherFormData({ ...teacher });
+    setTeacherFormData({
+      ...teacher,
+      password: teacher.password || '123'
+    });
     setIsAddEditModalOpen(true);
   };
 
@@ -303,12 +329,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       return;
     }
 
+    const rawPassword = teacherFormData.password?.trim() || '123';
+
     if (editingTeacher) {
       updateTeacher({
         ...editingTeacher,
         ...teacherFormData,
         name: teacherFormData.name.trim(),
-        nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim()
+        nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
+        password: rawPassword
       } as AcademicTeacher);
       showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
     } else {
@@ -319,14 +348,41 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         designation: teacherFormData.designation || 'সহকারী শিক্ষক',
         phone: teacherFormData.phone || '',
         email: teacherFormData.email || '',
+        password: rawPassword,
         status: teacherFormData.status || 'ACTIVE',
         assignedClasses: teacherFormData.assignedClasses || [],
         assignedSubjects: teacherFormData.assignedSubjects || []
       });
-      showToast(isBn ? 'নতুন শিক্ষক/কর্মচারী সফলভাবে যুক্ত হয়েছে' : 'New staff member added successfully');
+      showToast(isBn ? 'নতুন শিক্ষক/কর্মচারী ও লগইন অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে' : 'New staff member and login account added successfully');
     }
 
     setIsAddEditModalOpen(false);
+  };
+
+  // Handle 1-click approve staff
+  const handleQuickApproveStaff = async (staff: AcademicTeacher) => {
+    try {
+      if (approveMember) {
+        await approveMember(staff.id, 'role_teacher', staff.assignedClasses || [], staff.assignedSubjects || []);
+      }
+      updateTeacher({ ...staff, status: 'ACTIVE' });
+      setUsers(prev => prev.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u));
+      try {
+        const stored = localStorage.getItem('madrasha_app_users');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const updated = list.map((u: any) => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u);
+          localStorage.setItem('madrasha_app_users', JSON.stringify(updated));
+        }
+      } catch (e) {}
+
+      if (refreshPendingMembers) {
+        await refreshPendingMembers();
+      }
+      showToast(isBn ? 'শিক্ষকের অ্যাকাউন্ট সফলভাবে অনুমোদন ও সক্রিয় করা হয়েছে!' : 'Staff account approved successfully!');
+    } catch (err: any) {
+      showToast(isBn ? 'অনুমোদনে সমস্যা হয়েছে' : 'Approval failed');
+    }
   };
 
   // Handle add leave
@@ -357,7 +413,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       reason: newLeaveData.reason || '',
       status: newLeaveData.status || 'APPROVED',
       appliedAt: new Date().toISOString(),
-      approvedBy: isOwnerAdmin ? 'মুহতামিম / প্রধান' : 'প্রশাসন'
+      approvedBy: isOwnerAdmin ? 'অধ্যক্ষ / প্রধান' : 'প্রশাসন'
     };
 
     setLeaves(prev => [record, ...prev]);
@@ -569,6 +625,50 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         {/* 1. Staff & Faculty Directory */}
         {activeTab === 'directory' && (
           <div className="space-y-4">
+            {/* Pending Approvals Notice for Staff */}
+            {pendingStaffApprovals.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 rounded-3xl p-5 shadow-xs space-y-3 animate-in fade-in">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
+                      <Clock size={20} className="animate-spin" style={{ animationDuration: '4s' }} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                        <span>অনুমোদনের অপেক্ষায় থাকা শিক্ষক ও কর্মী ({pendingStaffApprovals.length} জন)</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">অনুমোদন প্রয়োজন</span>
+                      </h4>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        নিবন্ধিত এই শিক্ষকরা অনুমোদনের অপেক্ষায় আছেন। এখানে এক ক্লিকে অনুমোদন ও সক্রিয় করুন।
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {pendingStaffApprovals.map(staff => (
+                    <div key={staff.id} className="bg-white rounded-2xl p-3.5 border border-amber-200 shadow-2xs flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-slate-900 text-sm">{staff.nameBn || staff.name}</div>
+                        <div className="text-xs text-slate-500 font-mono">{staff.email || staff.phone || 'N/A'}</div>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold">
+                          {staff.designation || 'সহকারী শিক্ষক'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickApproveStaff(staff)}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>✓ অনুমোদন করুন</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Filter and Search Bar */}
             <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
               <div className="relative flex-1 min-w-[220px]">
@@ -630,9 +730,25 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         <h4 className="font-bold text-slate-900 text-sm leading-snug">
                           {isBn ? (staff.nameBn || staff.name) : staff.name}
                         </h4>
-                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200/80">
-                          {staff.designation || 'সহকারী শিক্ষক'}
-                        </span>
+                        {Boolean(staff.status?.toUpperCase() === 'PENDING' || pendingMembers.some(m => m.uid === staff.id || (staff.email && m.email?.toLowerCase() === staff.email.toLowerCase()))) ? (
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                              {isBn ? 'অপেক্ষমাণ (Pending)' : 'Pending'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickApproveStaff(staff)}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs cursor-pointer"
+                            >
+                              <CheckCircle2 size={11} />
+                              <span>{isBn ? '✓ অনুমোদন' : 'Approve'}</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200/80">
+                            {staff.designation || 'সহকারী শিক্ষক'}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -669,6 +785,13 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       <div className="flex items-center justify-between truncate">
                         <span className="text-slate-400 font-medium">{isBn ? 'ইমেইল:' : 'Email:'}</span>
                         <span className="text-slate-600 text-[11px] truncate">{staff.email}</span>
+                      </div>
+                    )}
+
+                    {staff.password && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">{isBn ? 'লগইন পাসওয়ার্ড:' : 'Login Password:'}</span>
+                        <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{staff.password}</span>
                       </div>
                     )}
                   </div>
@@ -908,7 +1031,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right text-slate-600 font-medium">
-                          {l.approvedBy || (isBn ? 'মুহতামিম' : 'Principal')}
+                          {l.approvedBy || (isBn ? 'অধ্যক্ষ' : 'Principal')}
                         </td>
                       </tr>
                     ))}
@@ -993,7 +1116,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
                     <div className="text-center">
                       <div className="w-12 h-6 border-b border-slate-400 mx-auto mb-0.5"></div>
-                      <span className="text-[9px] font-bold text-slate-500">{isBn ? 'মুহতামিম স্বাক্ষর' : 'Principal'}</span>
+                      <span className="text-[9px] font-bold text-slate-500">{isBn ? 'অধ্যক্ষ স্বাক্ষর' : 'Principal'}</span>
                     </div>
                   </div>
                 </div>
@@ -1140,6 +1263,64 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Login Password */}
+              <div className="bg-teal-50/70 p-3 rounded-2xl border border-teal-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-teal-950 text-xs">
+                    {isBn ? 'লগইন পাসওয়ার্ড (Login Password):' : 'Login Password:'} *
+                  </label>
+                  <span className="text-[10px] text-teal-700 bg-teal-100/70 px-2 py-0.5 rounded-full font-bold">
+                    {isBn ? 'সরাসরি লগইনের জন্য' : 'For direct login'}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: 123"
+                  value={teacherFormData.password || '123'}
+                  onChange={(e) => setTeacherFormData({ ...teacherFormData, password: e.target.value })}
+                  className="w-full border border-teal-200 rounded-xl p-2.5 font-mono text-sm font-bold bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-teal-800">
+                  {isBn ? '💡 শিক্ষক এই পাসওয়ার্ড ও মোবাইল নম্বর/ইমেইল দিয়ে সিস্টেমে সরাসরি লগইন করতে পারবেন।' : 'Teacher will use this password and phone/email to log in.'}
+                </p>
+              </div>
+
+              {/* Assigned Classes */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  {isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি (Assigned Classes - শ্রেণি শিক্ষক):' : 'Assigned Class(es):'}
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl max-h-28 overflow-y-auto">
+                  {classes.map(c => {
+                    const isSelected = (teacherFormData.assignedClasses || []).includes(c.name);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          const current = teacherFormData.assignedClasses || [];
+                          const updated = isSelected 
+                            ? current.filter(cn => cn !== c.name)
+                            : [...current, c.name];
+                          setTeacherFormData({ ...teacherFormData, assignedClasses: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          isSelected 
+                            ? 'bg-teal-600 text-white shadow-xs' 
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : ''}{c.nameBn || c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {isBn ? 'শ্রেণি শিক্ষক হিসেবে নির্বাচিত শ্রেণির শিক্ষার্থী ও বকেয়া ফি এই শিক্ষক দেখতে পাবেন।' : 'Teacher will see students and dues for selected classes.'}
+                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -1307,7 +1488,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
                 <div className="text-center">
                   <div className="w-32 border-b border-slate-800 mx-auto mb-1"></div>
-                  <div className="font-bold">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'মুহতামিম / অধ্যক্ষ'}</div>
+                  <div className="font-bold">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'অধ্যক্ষ / সুপারিনটেনডেন্ট'}</div>
                   <div className="text-[10px] text-slate-600">{schoolProfile.nameBn || schoolProfile.name}</div>
                 </div>
               </div>

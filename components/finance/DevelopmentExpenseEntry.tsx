@@ -39,7 +39,7 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BKASH' | 'NAGAD' | 'BANK_TRANSFER' | 'CHEQUE'>('CASH');
   const [description, setDescription] = useState<string>('');
-  const [approvedBy, setApprovedBy] = useState<string>('নির্মাণ কমিটি / মুহতামিম');
+  const [approvedBy, setApprovedBy] = useState<string>('উন্নয়ন কমিটি / অধ্যক্ষ');
 
   const developmentProjects = [
     'মসজিদ ও ভবন নির্মাণ (রড, সিমেন্ট, ইট)',

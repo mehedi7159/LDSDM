@@ -40,7 +40,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
   const [target, setTarget] = useState<NoticeTarget>('all');
   const [targetClass, setTargetClass] = useState<string>('');
   const [isPinned, setIsPinned] = useState(false);
-  const [authorName, setAuthorName] = useState(authUser?.displayName || 'মুহতামিম কার্যালয়');
+  const [authorName, setAuthorName] = useState(authUser?.displayName || 'অধ্যক্ষ কার্যালয়');
 
   // Filter notices
   const filteredNotices = useMemo(() => {
@@ -312,7 +312,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
               <div className="pt-2 flex justify-between items-center text-xs text-slate-500">
                 <div>
                   <span>কর্তৃপক্ষ: </span>
-                  <strong className="text-slate-800">{selectedNoticeForModal.authorName || 'মুহতামিম'}</strong>
+                  <strong className="text-slate-800">{selectedNoticeForModal.authorName || 'অধ্যক্ষ'}</strong>
                 </div>
                 {selectedNoticeForModal.authorRole && (
                   <span className="text-slate-400">({selectedNoticeForModal.authorRole})</span>
@@ -417,7 +417,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   >
                     <option value="all">{language === 'bn' ? 'সকলের জন্য (All)' : 'Everyone'}</option>
                     <option value="students">{language === 'bn' ? 'শিক্ষার্থী ও অভিভাবক' : 'Students & Guardians'}</option>
-                    <option value="teachers">{language === 'bn' ? 'উস্তাদবৃন্দ (Teachers)' : 'Teachers'}</option>
+                    <option value="teachers">{language === 'bn' ? 'শিক্ষকবৃন্দ (Teachers)' : 'Teachers'}</option>
                     <option value="class">{language === 'bn' ? 'নির্দিষ্ট শ্রেণি' : 'Specific Class'}</option>
                   </select>
                 </div>
@@ -461,7 +461,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 <div className="flex-1 mr-4">
                   <input
                     type="text"
-                    placeholder="ঘোষণাকারীর নাম (যেমন: মুহতামিম)"
+                    placeholder="ঘোষণাকারীর নাম (যেমন: অধ্যক্ষ / সুপারিনটেনডেন্ট)"
                     value={authorName}
                     onChange={(e) => setAuthorName(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50"

@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build & PWA dev artifacts
+dev-dist
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Internal AI Studio artifacts & media uploads
+.aistudio
+public/assets/aistudio
+public/assets
+temp_frames
+public/temp_frames
+*.mp4
+*.webm
+*.mov
+*.avi
+*.mkv

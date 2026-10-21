@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { 
   Users, 
   UserPlus, 
+  UserCheck,
   ShieldCheck, 
   Trash2, 
   Edit2, 
@@ -15,7 +16,10 @@ import {
   Mail, 
   Sparkles,
   Search,
-  BookOpen
+  BookOpen,
+  Clock,
+  Check,
+  X
 } from 'lucide-react';
 import { AppUser, UserRole } from '../types';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -29,6 +33,12 @@ export const UserRoleManager: React.FC = () => {
     signUpUser, 
     classes = [], 
     subjects = [], 
+    teachers = [],
+    setTeachers,
+    pendingMembers = [],
+    refreshPendingMembers,
+    approveMember,
+    rejectMember,
     language,
     authUser,
     adminEmail,
@@ -173,6 +183,132 @@ export const UserRoleManager: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  // Unified pending approval list across Firestore pendingMembers, users with pending status, and teachers
+  const pendingApprovals = React.useMemo(() => {
+    const list: Array<{
+      id: string;
+      name: string;
+      email?: string;
+      phone?: string;
+      role: string;
+      roleId?: string;
+      requestedRole?: string;
+      assignedClasses?: string[];
+      createdAt?: string;
+    }> = [];
+
+    // 1. From pendingMembers (Firebase Firestore)
+    pendingMembers.forEach(m => {
+      list.push({
+        id: m.uid,
+        name: m.displayName || m.email?.split('@')[0] || 'User',
+        email: m.email,
+        phone: m.phone,
+        role: m.requestedRole || m.roleId?.replace('role_', '') || 'teacher',
+        roleId: m.roleId || 'role_teacher',
+        requestedRole: m.requestedRole || 'মুয়াল্লিম / সহকারী শিক্ষক',
+        assignedClasses: m.assignedClasses || [],
+        createdAt: m.createdAt
+      });
+    });
+
+    // 2. From users with status 'pending'
+    safeUsers.filter(u => u.status === 'pending').forEach(u => {
+      if (!list.some(item => item.id === u.id || (u.email && item.email?.toLowerCase() === u.email.toLowerCase()))) {
+        list.push({
+          id: u.id,
+          name: u.nameBn || u.name,
+          email: u.email,
+          phone: u.phone,
+          role: u.role,
+          roleId: `role_${u.role}`,
+          requestedRole: u.designation || (u.role === 'teacher' ? 'সহকারী শিক্ষক' : u.role),
+          assignedClasses: u.assignedClasses || [],
+          createdAt: u.createdAt
+        });
+      }
+    });
+
+    // 3. From teachers with status 'PENDING'
+    teachers.filter(t => t.status?.toUpperCase() === 'PENDING').forEach(t => {
+      if (!list.some(item => item.id === t.id || (t.email && item.email?.toLowerCase() === t.email.toLowerCase()))) {
+        list.push({
+          id: t.id,
+          name: t.nameBn || t.name,
+          email: t.email,
+          phone: t.phone,
+          role: 'teacher',
+          roleId: 'role_teacher',
+          requestedRole: t.designation || 'সহকারী শিক্ষক',
+          assignedClasses: t.assignedClasses || [],
+          createdAt: t.createdAt
+        });
+      }
+    });
+
+    return list;
+  }, [pendingMembers, safeUsers, teachers]);
+
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  const handleApprove = async (item: { id: string; roleId?: string; role?: string; assignedClasses?: string[] }) => {
+    setApprovingId(item.id);
+    try {
+      if (approveMember) {
+        await approveMember(item.id, item.roleId || 'role_teacher', item.assignedClasses || []);
+      }
+      
+      // Update safeUsers
+      setUsers(prev => prev.map(u => (u.id === item.id || (item.id.includes(u.id))) ? { ...u, status: 'active' } : u));
+      try {
+        const stored = localStorage.getItem('madrasha_app_users');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const updated = list.map((u: any) => u.id === item.id ? { ...u, status: 'active' } : u);
+          localStorage.setItem('madrasha_app_users', JSON.stringify(updated));
+        }
+      } catch (e) {}
+
+      // Update teachers
+      setTeachers(prev => prev.map(t => (t.id === item.id || (item.id.includes(t.id))) ? { ...t, status: 'ACTIVE' } : t));
+      try {
+        const storedT = localStorage.getItem('teachers');
+        if (storedT) {
+          const listT = JSON.parse(storedT);
+          const updatedT = listT.map((t: any) => t.id === item.id ? { ...t, status: 'ACTIVE' } : t);
+          localStorage.setItem('teachers', JSON.stringify(updatedT));
+        }
+      } catch (e) {}
+
+      if (refreshPendingMembers) {
+        await refreshPendingMembers();
+      }
+
+      setNotification('অ্যাকাউন্ট সফলভাবে অনুমোদন ও সক্রিয় করা হয়েছে! শিক্ষক/ব্যবহারকারী এখন অবিলম্বে সিস্টেমে প্রবেশ করতে পারবেন।');
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err: any) {
+      alert('অনুমোদনে সমস্যা: ' + (err.message || 'Error'));
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (!confirm('আপনি কি এই অ্যাকাউন্ট আবেদনটি বাতিল করতে চান?')) return;
+    try {
+      if (rejectMember) {
+        await rejectMember(id);
+      }
+      setUsers(prev => prev.filter(u => u.id !== id));
+      setTeachers(prev => prev.filter(t => t.id !== id));
+      if (refreshPendingMembers) {
+        await refreshPendingMembers();
+      }
+      setNotification('অ্যাকাউন্ট আবেদন সফলভাবে বাতিল করা হয়েছে।');
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err: any) {}
+  };
+
   const filteredUsers = safeUsers.filter(u => {
     if (!u) return false;
     const query = searchQuery.trim().toLowerCase();
@@ -269,17 +405,65 @@ export const UserRoleManager: React.FC = () => {
         </div>
       )}
 
-      {/* Demo Data Notice if demo users exist */}
-      {hasDemoUsers && (
-        <div className="p-4 bg-amber-50/90 border border-amber-200/80 rounded-2xl text-amber-900 text-xs flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <AlertCircle size={16} className="text-amber-600 shrink-0" />
-            <span>
-              <strong>নমুনা ডাটা নোটিশ:</strong> নিচের তালিকায় সিস্টেমের টেস্ট করার জন্য কিছু নমুনা মুয়াল্লিম ও স্টাফের নাম রয়েছে। আপনি <strong>&quot;ডেমো ইউজার ডাটা মুছুন&quot;</strong> বোতামে ক্লিক করে এগুলো সহজেই পরিষ্কার করে নিজের মাদ্রাসার আসল শিক্ষকদের যোগ করতে পারেন।
-            </span>
+      {/* PENDING APPROVALS SECTION - Visible to Admin when users are awaiting approval */}
+      {pendingApprovals.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 rounded-3xl p-5 shadow-xs space-y-4 animate-in fade-in">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
+                <Clock size={20} className="animate-spin" style={{ animationDuration: '4s' }} />
+              </div>
+              <div>
+                <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <span>অপেক্ষমাণ অ্যাকাউন্ট অনুমোদন ({pendingApprovals.length} জন)</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">অনুমোদন প্রয়োজন</span>
+                </h4>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  যেসব শিক্ষক বা কর্মচারী একাউন্ট খোলার পর অপেক্ষমাণ আছেন, তাদের এক ক্লিকে অনুমোদন ও সক্রিয় করুন।
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingApprovals.map(item => (
+              <div key={item.id} className="bg-white rounded-2xl p-4 border border-amber-200 shadow-xs flex flex-col justify-between gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm">{item.name}</div>
+                    <div className="text-xs text-slate-500 font-mono mt-0.5">{item.email || item.phone || 'ইমেইল/ফোন নেই'}</div>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px]">
+                        আবেদিত রোল: {item.requestedRole || item.role}
+                      </span>
+                      {item.phone && <span className="text-[11px] text-slate-600 font-mono font-medium">📱 {item.phone}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => handleReject(item.id)}
+                    className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <X size={13} />
+                    <span>বাতিল</span>
+                  </button>
+                  <button
+                    onClick={() => handleApprove(item)}
+                    disabled={approvingId === item.id}
+                    className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  >
+                    <Check size={14} />
+                    <span>{approvingId === item.id ? 'অনুমোদন হচ্ছে...' : '✓ অনুমোদন ও সক্রিয় করুন'}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
+
 
       {/* Filters Bar */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
@@ -395,6 +579,11 @@ export const UserRoleManager: React.FC = () => {
                          u.role === 'accountant' ? 'হিসাবরক্ষক' :
                          u.role === 'guardian' ? 'অভিভাবক' : 'অফিস স্টাফ'}
                       </span>
+                      {u.status === 'pending' && (
+                        <span className="block mt-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                          অপেক্ষমাণ (Pending)
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 font-mono font-bold text-slate-700">
                       <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700">{u.password || '******'}</span>
@@ -412,6 +601,16 @@ export const UserRoleManager: React.FC = () => {
                     </td>
                     <td className="p-4 text-right">
                       <div className="inline-flex items-center gap-1.5">
+                        {u.status === 'pending' && (
+                          <button
+                            onClick={() => handleApprove({ id: u.id, roleId: `role_${u.role}`, role: u.role, assignedClasses: u.assignedClasses })}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs cursor-pointer"
+                            title="অ্যাকাউন্ট অনুমোদন করুন"
+                          >
+                            <Check size={12} />
+                            <span>অনুমোদন</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => handleOpenEdit(u)}
                           className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
@@ -516,6 +715,15 @@ export const UserRoleManager: React.FC = () => {
                 )}
 
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                  {u.status === 'pending' && (
+                    <button
+                      onClick={() => handleApprove({ id: u.id, roleId: `role_${u.role}`, role: u.role, assignedClasses: u.assignedClasses })}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Check size={13} />
+                      <span>অনুমোদন</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => handleOpenEdit(u)}
                     className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"

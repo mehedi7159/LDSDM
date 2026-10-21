@@ -1,7 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
+import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
+import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, StudentDueProfile } from '../services/studentDuesService';
+import { Student, MarkRecord, Exam, Subject } from '../types';
 import { 
   Home, 
   CheckSquare, 
@@ -17,7 +20,6 @@ import {
   Clock, 
   Award, 
   CreditCard, 
-  BookOpen, 
   LogOut, 
   CheckCircle2, 
   AlertCircle, 
@@ -26,10 +28,17 @@ import {
   GraduationCap, 
   ArrowLeft,
   X,
-  Sparkles,
   Phone,
   Layers,
-  Search
+  Search,
+  MessageSquare,
+  Copy,
+  Check,
+  RefreshCw,
+  Send,
+  Save,
+  Filter,
+  DollarSign
 } from 'lucide-react';
 
 interface MobileRoleAppViewProps {
@@ -41,6 +50,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
   const { 
     authUser, 
     currentMember, 
+    currentUser,
     schoolProfile, 
     students = [], 
     classes = [], 
@@ -48,32 +58,35 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
     marks = [], 
     exams = [], 
     transactions = [], 
-    academicYears = [], 
+    feeStructures = [],
+    notices = [],
+    bulkUpdateMarks,
     language,
     logoutAdmin,
     setActiveTab,
     activeTab
   } = useApp();
 
-  // Determine current active role
+  // 1. Determine current active role
   const userRole = useMemo<'teacher' | 'cashier' | 'parent' | 'staff'>(() => {
-    const roleId = currentMember?.roleId || '';
+    const roleId = currentMember?.roleId || currentUser?.role || '';
     if (roleId === 'role_accountant' || roleId === 'accountant') return 'cashier';
     if (roleId === 'role_guardian' || roleId === 'guardian' || roleId === 'parent') return 'parent';
     if (roleId === 'role_staff' || roleId === 'staff') return 'staff';
     return 'teacher'; // Default role for standard instructors
-  }, [currentMember]);
+  }, [currentMember, currentUser]);
 
   // Active Mobile View Sub-Tab
   const [activeBottomNav, setActiveBottomNav] = useState<'home' | 'action1' | 'action2' | 'action3'>('home');
   const [activeSubModule, setActiveSubModule] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
 
-  // Convert English digits to Bengali digits helper
+  // Helper for Bengali number formatting
   const toBn = (num: number | string | undefined | null) => {
     if (num === undefined || num === null || num === '') return '';
     const str = String(num);
-    if (language !== 'bn') return str;
     const banglaNums: Record<string, string> = {
       '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
       '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯',
@@ -82,7 +95,173 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
     return str.split('').map(c => banglaNums[c] || c).join('');
   };
 
-  // Get localized formatted current date & greeting
+  // 2. Class Scope Isolation for Teacher
+  // "je class teacher se sudu tar class er student der ke dekte parbe"
+  const teacherClasses = useMemo(() => {
+    const assigned = currentMember?.assignedClasses || currentUser?.assignedClasses || [];
+    if (assigned.length > 0) return assigned;
+    // Fallback to first available class if not yet assigned
+    return classes.length > 0 ? [classes[0].name] : ['Class 1'];
+  }, [currentMember, currentUser, classes]);
+
+  const [selectedClass, setSelectedClass] = useState<string>(() => {
+    return teacherClasses[0] || (classes[0]?.name || 'Class 1');
+  });
+
+  useEffect(() => {
+    if (teacherClasses.length > 0 && !teacherClasses.includes(selectedClass)) {
+      setSelectedClass(teacherClasses[0]);
+    }
+  }, [teacherClasses, selectedClass]);
+
+  // Students isolated to the selected assigned class
+  const classStudents = useMemo(() => {
+    if (userRole === 'teacher') {
+      return students.filter(s => s.status === 'Active' && !s.isFormer && s.classLevel === selectedClass);
+    }
+    return students.filter(s => s.status === 'Active' && !s.isFormer);
+  }, [students, selectedClass, userRole]);
+
+  // Dues Summary for the teacher's class ("oi class a kar koto taka baki ase ta jana jabe")
+  const classDuesSummary = useMemo(() => {
+    return calculateClassDuesSummary(classStudents, feeStructures, transactions);
+  }, [classStudents, feeStructures, transactions]);
+
+  // 3. Daily Attendance Local State for Today / Selected Date
+  const [attendanceDate, setAttendanceDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  const [studentAttendanceMap, setStudentAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
+
+  // Load existing saved attendance for attendanceDate and selectedClass
+  useEffect(() => {
+    const savedRecords = dailyAttendanceService.getRecordsByDateAndClass(attendanceDate, selectedClass);
+    const map: Record<string, AttendanceStatus> = {};
+    savedRecords.forEach(r => {
+      map[r.studentId] = r.status;
+    });
+    setStudentAttendanceMap(map);
+  }, [attendanceDate, selectedClass]);
+
+  // Calculate live attendance stats for current class
+  const attendanceStats = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    let leave = 0;
+    const total = classStudents.length;
+
+    classStudents.forEach(st => {
+      const status = studentAttendanceMap[st.id] || studentAttendanceMap[st.studentId || ''];
+      if (status === 'PRESENT') present++;
+      else if (status === 'ABSENT') absent++;
+      else if (status === 'LATE') late++;
+      else if (status === 'LEAVE') leave++;
+    });
+
+    const attended = present + late;
+    const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+    return { total, present, absent, late, leave, attended, rate };
+  }, [classStudents, studentAttendanceMap]);
+
+  // Mark all students present in one click
+  const handleMarkAllPresent = () => {
+    const nextMap: Record<string, AttendanceStatus> = { ...studentAttendanceMap };
+    classStudents.forEach(st => {
+      nextMap[st.id] = 'PRESENT';
+    });
+    setStudentAttendanceMap(nextMap);
+  };
+
+  // Toggle or set individual student attendance
+  const handleSetStudentStatus = (studentId: string, status: AttendanceStatus) => {
+    setStudentAttendanceMap(prev => ({
+      ...prev,
+      [studentId]: status
+    }));
+  };
+
+  // Save attendance batch
+  const handleSaveAttendance = () => {
+    const records: DailyStudentAttendanceRecord[] = classStudents.map(st => {
+      const status = studentAttendanceMap[st.id] || 'PRESENT';
+      return {
+        id: `${attendanceDate}_${st.id}`,
+        date: attendanceDate,
+        studentId: st.id,
+        studentName: st.nameBn || st.name,
+        roll: st.roll || st.rollNumber || '',
+        classLevel: st.classLevel,
+        status,
+        updatedAt: new Date().toISOString()
+      };
+    });
+
+    dailyAttendanceService.batchSaveStudentAttendance(records);
+    setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
+    setTimeout(() => setSaveSuccessNotice(null), 3000);
+  };
+
+  // 4. Marks Entry Local State for Teacher
+  const activeExams = useMemo(() => exams.filter(e => !e.isFinalized), [exams]);
+  const [selectedExamId, setSelectedExamId] = useState<string>(() => exams[0]?.id || '');
+  const classSubjects = useMemo(() => {
+    return subjects.filter(sub => sub.classLevel === selectedClass || sub.classId === selectedClass);
+  }, [subjects, selectedClass]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => classSubjects[0]?.id || '');
+
+  useEffect(() => {
+    if (classSubjects.length > 0 && !classSubjects.some(s => s.id === selectedSubjectId)) {
+      setSelectedSubjectId(classSubjects[0].id);
+    }
+  }, [classSubjects, selectedSubjectId]);
+
+  const [marksInputMap, setMarksInputMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!selectedExamId || !selectedSubjectId) return;
+    const initialMap: Record<string, string> = {};
+    classStudents.forEach(st => {
+      const existing = marks.find(m => m.studentId === st.id && m.subjectId === selectedSubjectId && m.examId === selectedExamId);
+      if (existing) {
+        initialMap[st.id] = String(existing.obtained ?? (existing as any).marksObtained ?? '');
+      }
+    });
+    setMarksInputMap(initialMap);
+  }, [selectedExamId, selectedSubjectId, classStudents, marks]);
+
+  const handleSaveMarks = () => {
+    if (!selectedExamId || !selectedSubjectId) return;
+    const markRecordsToUpdate: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
+
+    classStudents.forEach(st => {
+      const val = marksInputMap[st.id];
+      if (val !== undefined && val !== '') {
+        const numVal = Math.min(100, Math.max(0, Number(val) || 0));
+        const existing = marks.find(m => m.studentId === st.id && m.subjectId === selectedSubjectId && m.examId === selectedExamId);
+        markRecordsToUpdate.push({
+          id: existing?.id,
+          studentId: st.id,
+          subjectId: selectedSubjectId,
+          examId: selectedExamId,
+          obtained: numVal,
+          total: 100,
+          grade: numVal >= 80 ? 'A+' : numVal >= 70 ? 'A' : numVal >= 60 ? 'A-' : numVal >= 50 ? 'B' : numVal >= 40 ? 'C' : numVal >= 33 ? 'D' : 'F',
+          gradePoint: numVal >= 80 ? 5 : numVal >= 70 ? 4 : numVal >= 60 ? 3.5 : numVal >= 50 ? 3 : numVal >= 40 ? 2 : numVal >= 33 ? 1 : 0
+        });
+      }
+    });
+
+    if (markRecordsToUpdate.length > 0) {
+      bulkUpdateMarks(markRecordsToUpdate);
+      setSaveSuccessNotice('✓ নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
+      setTimeout(() => setSaveSuccessNotice(null), 3000);
+    }
+  };
+
+  // 5. Date & Greeting helper
   const todayGreeting = useMemo(() => {
     const now = new Date();
     const hour = now.getHours();
@@ -106,86 +285,75 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
     };
   }, [language]);
 
-  // Specific Role Stats Computations
+  // 6. Dynamic Non-Demo Role KPI Stats
   const roleStats = useMemo(() => {
     if (userRole === 'teacher') {
-      const assignedClasses = currentMember?.assignedClasses || [];
-      const myStudents = assignedClasses.length > 0 
-        ? students.filter(s => s.status === 'Active' && !s.isFormer && assignedClasses.includes(s.classLevel))
-        : students.filter(s => s.status === 'Active' && !s.isFormer);
-
-      const activeExams = exams.filter(e => !e.isFinalized);
-      const pendingMarks = activeExams.length > 0 ? 1 : 0;
-
       return {
-        stat1Value: toBn(assignedClasses.length > 0 ? assignedClasses.length : 3) + 'টি',
-        stat1Label: 'আজকের ক্লাস',
-        stat2Value: toBn(myStudents.length) + ' জন',
-        stat2Label: 'আমার শিক্ষার্থী',
-        stat3Value: toBn(pendingMarks) + 'টি',
-        stat3Label: 'অসম্পূর্ণ কাজ',
-        nextTaskTime: '১০:৩০',
-        nextTaskDesc: assignedClasses.length > 0 
-          ? `${assignedClasses[0]} — গণিত ও কোরআনের হাজিরা নিতে হবে`
-          : 'সপ্তম শ্রেণি, শাখা A — গণিতের হাজিরা নিতে হবে'
+        stat1Value: toBn(teacherClasses.length) + 'টি',
+        stat1Label: 'আমার ক্লাস',
+        stat2Value: toBn(classStudents.length) + ' জন',
+        stat2Label: 'শ্রেণির শিক্ষার্থী',
+        stat3Value: '৳' + toBn(classDuesSummary.totalDue.toLocaleString()),
+        stat3Label: 'মোট বকেয়া ফি',
+        nextTaskTime: 'আজকের কাজ',
+        nextTaskDesc: `${selectedClass} — দৈনিক হাজিরা গ্রহণ ও বকেয়া ফি পর্যবেক্ষণ`
       };
     } else if (userRole === 'cashier') {
       const todayStr = new Date().toISOString().split('T')[0];
       const todayIncome = transactions
-        .filter(t => (t.type === 'INCOME' || t.category === 'FEE') && (t.date?.startsWith(todayStr) || true))
+        .filter(t => t.type === 'INCOME' && (t.date?.startsWith(todayStr)))
         .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
       
-      const totalSlips = transactions.length;
+      const todayReceipts = transactions.filter(t => t.type === 'INCOME' && t.date?.startsWith(todayStr)).length;
 
       return {
-        stat1Value: '৳' + toBn(todayIncome > 0 ? todayIncome.toLocaleString() : '১২,৫০০'),
+        stat1Value: '৳' + toBn(todayIncome.toLocaleString()),
         stat1Label: 'আজকের আদায়',
-        stat2Value: toBn(totalSlips > 0 ? totalSlips : 15) + 'টি',
+        stat2Value: toBn(todayReceipts) + 'টি',
         stat2Label: 'মোট রসিদ',
-        stat3Value: toBn(8) + ' জন',
-        stat3Label: 'বকেয়া তালিকা',
-        nextTaskTime: '১১:০০',
-        nextTaskDesc: 'চলতি মাসের বেতন আদায় ও ক্যাশ খতিয়ান মিলানো'
+        stat3Value: toBn(students.length) + ' জন',
+        stat3Label: 'মোট ছাত্র',
+        nextTaskTime: 'ক্যাশিয়ার ডেস্ক',
+        nextTaskDesc: 'চলতি মাসের বেতন আদায় ও ফি রসিদ তৈরি'
       };
     } else if (userRole === 'parent') {
       return {
-        stat1Value: 'উপস্থিত',
-        stat1Label: 'আজকের হাজিরা',
-        stat2Value: '১ম সাময়িক',
+        stat1Value: attendanceStats.rate > 0 ? `${toBn(attendanceStats.rate)}%` : 'নিয়মিত',
+        stat1Label: 'হাজিরা রেকর্ড',
+        stat2Value: exams.length > 0 ? (exams[0].name || 'পরীক্ষা') : 'সাময়িক',
         stat2Label: 'চলমান পরীক্ষা',
-        stat3Value: '৳০.০০',
+        stat3Value: '৳' + toBn(classDuesSummary.totalDue > 0 ? classDuesSummary.totalDue.toLocaleString() : '০'),
         stat3Label: 'বকেয়া ফি',
-        nextTaskTime: 'আগামীকাল',
-        nextTaskDesc: 'মাসিক মূল্যায়ন পরীক্ষা ও ফলাফল প্রকাশ'
+        nextTaskTime: 'অভিভাবক ডায়েরি',
+        nextTaskDesc: 'সন্তানের লেখাপড়া ও মাদরাসা নোটিশ'
       };
     } else { // Staff
       return {
         stat1Value: toBn(students.filter(s => s.status === 'Active').length) + ' জন',
         stat1Label: 'মোট শিক্ষার্থী',
-        stat2Value: '৯৫%',
-        stat2Label: 'আজকের উপস্থিতি',
-        stat3Value: toBn(12) + 'টি',
-        stat3Label: 'পেন্ডিং আইডি কার্ড',
-        nextTaskTime: '১২:০০',
-        nextTaskDesc: 'নতুন ভর্তি আবেদন ও প্রশংসাপত্র প্রিন্ট'
+        stat2Value: toBn(classes.length) + 'টি',
+        stat2Label: 'মোট শ্রেণি',
+        stat3Value: toBn(notices.length) + 'টি',
+        stat3Label: 'সক্রিয় নোটিশ',
+        nextTaskTime: 'অফিস প্রশাসন',
+        nextTaskDesc: 'শিক্ষার্থী তথ্য যাচাই ও সনদপত্র প্রিন্ট'
       };
     }
-  }, [userRole, currentMember, students, exams, transactions]);
+  }, [userRole, teacherClasses, classStudents, classDuesSummary, transactions, students, exams, notices, selectedClass, attendanceStats]);
 
   // Role Badges
   const roleBadges = useMemo(() => {
     if (userRole === 'teacher') {
-      const assigned = currentMember?.assignedClasses || [];
       return [
-        'শিক্ষক / ওস্তাদ',
-        assigned.length > 0 ? assigned.join(', ') : 'সপ্তম শ্রেণি • শাখা A',
-        'গণিত • ইংরেজি'
+        'শ্রেণি শিক্ষক / ওস্তাদ',
+        selectedClass,
+        `${toBn(classStudents.length)} জন শিক্ষার্থী`
       ];
     }
-    if (userRole === 'cashier') return ['হিসাবরক্ষক / ক্যাশিয়ার', 'ফি ও ক্যাশ শাখা', 'ক্যাশ ইনচার্জ'];
-    if (userRole === 'parent') return ['অভিভাবক পোর্টাল', 'শিক্ষার্থী: আব্দুল্লাহ', 'রোল: ০৫'];
+    if (userRole === 'cashier') return ['হিসাবরক্ষক / ক্যাশিয়ার', 'ফি ও ক্যাশ শাখা', 'রসিদ ইনচার্জ'];
+    if (userRole === 'parent') return ['অভিভাবক পোর্টাল', 'সন্তানের তথ্য'];
     return ['অফিস স্টাফ', 'ভর্তি ও প্রশাসন', 'সার্টিফিকেট শাখা'];
-  }, [userRole, currentMember]);
+  }, [userRole, selectedClass, classStudents]);
 
   // Quick Action List Items per Role
   const roleActions = useMemo(() => {
@@ -193,38 +361,31 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
       return [
         {
           id: 'attendance',
-          title: 'হাজিরা',
-          subtitle: 'দৈনিক উপস্থিতি নিন — এক ক্লিকে সবাই উপস্থিত',
+          title: 'দৈনিক হাজিরা গ্রহণ',
+          subtitle: `${selectedClass}-এর উপস্থিতি নিন — এক ক্লিকে সবাই প্রেজেন্ট`,
           icon: CheckSquare,
-          moduleKey: 'attendance'
+          moduleKey: 'teacher_attendance'
+        },
+        {
+          id: 'students_dues',
+          title: 'আমার ক্লাসের শিক্ষার্থী ও বকেয়া ফি',
+          subtitle: 'ছাত্র তালিকা, অভিভাবকের মোবাইল ও কার কত টাকা বাকি আছে',
+          icon: Users,
+          moduleKey: 'teacher_students_dues'
         },
         {
           id: 'marks',
-          title: 'নম্বর এন্ট্রি',
-          subtitle: 'পরীক্ষার বিষয়ভিত্তিক নম্বর এন্ট্রি ও মূল্যায়ন',
+          title: 'পরীক্ষার নম্বর এন্ট্রি',
+          subtitle: `${selectedClass}-এর বিষয়ভিত্তিক মার্কস এন্ট্রি ও জিপিএ তৈরি`,
           icon: PenTool,
-          moduleKey: 'marks'
-        },
-        {
-          id: 'students',
-          title: 'আমার ক্লাসের শিক্ষার্থী',
-          subtitle: 'শিক্ষার্থী তালিকা, রোল ও যোগাযোগের তথ্য',
-          icon: Users,
-          moduleKey: 'students'
-        },
-        {
-          id: 'results',
-          title: 'ফলাফল ও প্রগ্রেস কার্ড',
-          subtitle: 'সাময়িক ও চূড়ান্ত পরীক্ষার রেজাল্ট শিট',
-          icon: FileSpreadsheet,
-          moduleKey: 'results'
+          moduleKey: 'teacher_marks'
         },
         {
           id: 'notices',
-          title: 'নোটিশ ও ক্লাস ডায়রি',
-          subtitle: 'মাদরাসার জরুরি নোটিশ ও দৈনন্দিন বার্তা',
+          title: 'মাদরাসা নোটিশ বোর্ড',
+          subtitle: 'জরুরি সার্কুলার ও প্রাতিষ্ঠানিক নির্দেশনা',
           icon: Bell,
-          moduleKey: 'notice_board'
+          moduleKey: 'teacher_notices'
         }
       ];
     } else if (userRole === 'cashier') {
@@ -245,14 +406,14 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
         },
         {
           id: 'students',
-          title: 'ছাত্র তালিকা ও বকেয়া',
-          subtitle: 'ক্লাস অনুযায়ী বকেয়া শিক্ষার্থী ও গার্ডিয়ানের মোবাইল',
+          title: 'ছাত্র তালিকা ও বকেয়া খতিয়ান',
+          subtitle: 'সকল ক্লাসের বকেয়া শিক্ষার্থী ও গার্ডিয়ানের মোবাইল',
           icon: Users,
           moduleKey: 'students'
         },
         {
           id: 'finance_reports',
-          title: 'আর্থিক বিবরণী ও খতিয়ান',
+          title: 'আর্থিক বিবরণী ও রিপোর্ট',
           subtitle: 'দৈনিক ও মাসিক মোট ক্যাশ জমার রিপোর্ট',
           icon: FileSpreadsheet,
           moduleKey: 'finance_reports'
@@ -321,16 +482,16 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
         }
       ];
     }
-  }, [userRole]);
+  }, [userRole, selectedClass]);
 
   // Bottom Nav items per Role
   const bottomNavItems = useMemo(() => {
     if (userRole === 'teacher') {
       return [
         { id: 'home', label: 'হোম', icon: Home, targetModule: null },
-        { id: 'action1', label: 'হাজিরা', icon: CheckSquare, targetModule: 'attendance' },
-        { id: 'action2', label: 'নম্বর', icon: PenTool, targetModule: 'marks' },
-        { id: 'action3', label: 'ছাত্র', icon: Users, targetModule: 'students' }
+        { id: 'action1', label: 'হাজিরা', icon: CheckSquare, targetModule: 'teacher_attendance' },
+        { id: 'action2', label: 'বকেয়া ফি', icon: DollarSign, targetModule: 'teacher_students_dues' },
+        { id: 'action3', label: 'নম্বর', icon: PenTool, targetModule: 'teacher_marks' }
       ];
     } else if (userRole === 'cashier') {
       return [
@@ -358,7 +519,6 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
 
   const handleOpenModule = (moduleKey: string) => {
     setActiveSubModule(moduleKey);
-    setActiveTab(moduleKey);
   };
 
   const handleBottomNavClick = (nav: typeof bottomNavItems[0]) => {
@@ -367,56 +527,701 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
       handleOpenModule(nav.targetModule);
     } else {
       setActiveSubModule(null);
-      setActiveTab('dashboard');
     }
   };
 
-  const initialLetter = (authUser?.displayName || authUser?.email || 'ম')[0].toUpperCase();
+  const initialLetter = (authUser?.displayName || authUser?.email || 'উ')[0].toUpperCase();
 
   const roleTitleBengali = {
-    teacher: 'শিক্ষক ড্যাশবোর্ড',
+    teacher: 'শ্রেণি শিক্ষক ড্যাশবোর্ড',
     cashier: 'হিসাবরক্ষক ড্যাশবোর্ড',
     parent: 'অভিভাবক পোর্টাল',
     staff: 'অফিস স্টাফ পোর্টাল'
   }[userRole];
 
-  // If a sub-module is open, render with mobile header and full interactive functionality
+  // Search & Filter state for Students & Dues module
+  const [duesSearchQuery, setDuesSearchQuery] = useState('');
+  const [duesFilterMode, setDuesFilterMode] = useState<'ALL' | 'DUE_ONLY' | 'PAID_ONLY'>('ALL');
+
+  const filteredDuesProfiles = useMemo(() => {
+    return classDuesSummary.profiles.filter(p => {
+      if (duesFilterMode === 'DUE_ONLY' && p.dueThisMonth <= 0) return false;
+      if (duesFilterMode === 'PAID_ONLY' && p.dueThisMonth > 0) return false;
+
+      if (!duesSearchQuery.trim()) return true;
+      const q = duesSearchQuery.toLowerCase().trim();
+      const st = p.student;
+      return (
+        (st.name && st.name.toLowerCase().includes(q)) ||
+        (st.nameBn && st.nameBn.includes(q)) ||
+        (st.roll && String(st.roll).includes(q)) ||
+        (st.rollNumber && String(st.rollNumber).includes(q)) ||
+        (st.guardianPhone && String(st.guardianPhone).includes(q))
+      );
+    });
+  }, [classDuesSummary, duesSearchQuery, duesFilterMode]);
+
+  // Copy SMS text handler
+  const handleCopySms = (profile: StudentDueProfile) => {
+    const text = getDueReminderMessage(
+      profile.student.nameBn || profile.student.name,
+      profile.classLevel,
+      profile.dueThisMonth,
+      schoolProfile.nameBn || schoolProfile.name
+    );
+    navigator.clipboard.writeText(text);
+    setCopiedStudentId(profile.student.id);
+    setTimeout(() => setCopiedStudentId(null), 2500);
+  };
+
+  // -------------------------------------------------------------
+  // RENDER DEDICATED NATIVE MOBILE SUB-MODULES
+  // -------------------------------------------------------------
   if (activeSubModule) {
     return (
-      <div className="min-h-screen bg-[#121212] text-slate-100 flex flex-col font-sans pb-20 mobile-role-app-container no-horizontal-scroll">
-        {/* Mobile Subview Header */}
+      <div className="min-h-screen bg-[#121212] text-slate-100 flex flex-col font-sans pb-24 mobile-role-app-container no-horizontal-scroll">
+        {/* Sticky Mobile Header */}
         <header className="sticky top-0 z-40 bg-[#1a1a1a] border-b border-white/10 px-4 py-3 flex items-center justify-between shadow-md">
           <button
             onClick={() => {
               setActiveSubModule(null);
               setActiveBottomNav('home');
-              setActiveTab('dashboard');
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold cursor-pointer transition-all active:scale-95"
           >
             <ArrowLeft size={16} />
-            <span>ফিরে যান (Home)</span>
+            <span>হোমে ফিরুন</span>
           </button>
 
-          <span className="text-xs font-bold text-amber-400 truncate max-w-[150px]">
-            {roleTitleBengali}
-          </span>
+          <div className="flex flex-col items-center">
+            <span className="text-xs font-bold text-amber-400 truncate max-w-[170px]">
+              {selectedClass} • {userRole === 'teacher' ? 'ক্লাস শিক্ষক' : roleTitleBengali}
+            </span>
+          </div>
 
           <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs border border-amber-500/30">
             {initialLetter}
           </div>
         </header>
 
-        {/* Embedded Module Content Area with Responsive Zero-Horizontal-Scroll Viewport */}
-        <main className="flex-1 p-3 overflow-y-auto mobile-responsive-viewport">
-          <div className="w-full max-w-full overflow-x-hidden space-y-3">
-            {renderModuleContent ? renderModuleContent(activeSubModule) : null}
+        {/* Global Save Feedback Alert */}
+        {saveSuccessNotice && (
+          <div className="mx-4 mt-3 p-3 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+            <span>{saveSuccessNotice}</span>
           </div>
+        )}
+
+        <main className="flex-1 p-3.5 space-y-4 overflow-y-auto">
+
+          {/* ============================================================== */}
+          {/* TEACHER SUB-MODULE 1: DAILY ATTENDANCE ("toi class er attendance dakte parbe") */}
+          {/* ============================================================== */}
+          {activeSubModule === 'teacher_attendance' && (
+            <div className="space-y-4">
+              {/* Header card with Class Switcher & Date Selector */}
+              <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl p-4 space-y-3 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare size={18} className="text-amber-400" />
+                    <h2 className="text-sm font-bold text-white">দৈনিক উপস্থিতি গ্রহণ</h2>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">
+                    {selectedClass}
+                  </span>
+                </div>
+
+                {/* If multiple classes assigned, provide quick toggle buttons */}
+                {teacherClasses.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {teacherClasses.map(clsName => (
+                      <button
+                        key={clsName}
+                        onClick={() => setSelectedClass(clsName)}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                          selectedClass === clsName
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {clsName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Date Picker & Fast Action */}
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex-1 flex items-center gap-2 bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-xs">
+                    <Calendar size={14} className="text-slate-400" />
+                    <input
+                      type="date"
+                      value={attendanceDate}
+                      onChange={e => setAttendanceDate(e.target.value)}
+                      className="bg-transparent text-white font-mono text-xs focus:outline-hidden w-full"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleMarkAllPresent}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>সবাই উপস্থিত</span>
+                  </button>
+                </div>
+
+                {/* Live Real-Time Attendance KPI Row */}
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/5 text-center">
+                  <div className="bg-[#121212] p-2 rounded-xl">
+                    <span className="text-xs font-bold text-slate-400 block">মোট</span>
+                    <span className="text-sm font-black text-white">{toBn(attendanceStats.total)}</span>
+                  </div>
+                  <div className="bg-[#121212] p-2 rounded-xl">
+                    <span className="text-xs font-bold text-emerald-400 block">উপস্থিত</span>
+                    <span className="text-sm font-black text-emerald-400">{toBn(attendanceStats.present)}</span>
+                  </div>
+                  <div className="bg-[#121212] p-2 rounded-xl">
+                    <span className="text-xs font-bold text-rose-400 block">অনুপস্থিত</span>
+                    <span className="text-sm font-black text-rose-400">{toBn(attendanceStats.absent)}</span>
+                  </div>
+                  <div className="bg-[#121212] p-2 rounded-xl">
+                    <span className="text-xs font-bold text-amber-400 block">উপস্থিত হার</span>
+                    <span className="text-sm font-black text-amber-400">{toBn(attendanceStats.rate)}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Roster List for Attendance */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-slate-400">
+                    শিক্ষার্থী তালিকা ({toBn(classStudents.length)} জন)
+                  </span>
+                  <span className="text-[11px] text-slate-400">ট্যাপ করে স্ট্যাটাস পরিবর্তন করুন</span>
+                </div>
+
+                {classStudents.length === 0 ? (
+                  <div className="p-8 text-center bg-[#1e1e1e] rounded-2xl border border-white/5 space-y-2">
+                    <Users size={32} className="mx-auto text-slate-600" />
+                    <p className="text-xs text-slate-400 font-medium">
+                      {selectedClass}-এ কোনো শিক্ষার্থী পাওয়া যায়নি।
+                    </p>
+                  </div>
+                ) : (
+                  classStudents.map(st => {
+                    const currentStatus: AttendanceStatus = studentAttendanceMap[st.id] || 'PRESENT';
+                    return (
+                      <div
+                        key={st.id}
+                        className="p-3 rounded-2xl bg-[#1e1e1e] border border-white/5 flex flex-col gap-2.5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-8 h-8 rounded-xl bg-white/5 text-amber-400 font-bold flex items-center justify-center text-xs border border-white/10 font-mono">
+                              {toBn(st.roll || st.rollNumber || '—')}
+                            </span>
+                            <div>
+                              <h3 className="text-xs font-bold text-white">
+                                {st.nameBn || st.name}
+                              </h3>
+                              <p className="text-[11px] text-slate-400">
+                                পিতা: {st.fatherNameBn || st.fatherName || 'উল্লেখ নেই'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Quick Status Tag */}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            currentStatus === 'PRESENT' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+                            currentStatus === 'ABSENT' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' :
+                            currentStatus === 'LATE' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
+                            'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                          }`}>
+                            {currentStatus === 'PRESENT' ? 'উপস্থিত' : currentStatus === 'ABSENT' ? 'অনুপস্থিত' : currentStatus === 'LATE' ? 'দেরি' : 'ছুটি'}
+                          </span>
+                        </div>
+
+                        {/* 4-way Status Selector Touch Buttons */}
+                        <div className="grid grid-cols-4 gap-1.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSetStudentStatus(st.id, 'PRESENT')}
+                            className={`py-1.5 rounded-xl text-xs font-bold transition-all ${
+                              currentStatus === 'PRESENT'
+                                ? 'bg-emerald-600 text-white shadow-sm scale-[1.02]'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            উপস্থিত
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSetStudentStatus(st.id, 'ABSENT')}
+                            className={`py-1.5 rounded-xl text-xs font-bold transition-all ${
+                              currentStatus === 'ABSENT'
+                                ? 'bg-rose-600 text-white shadow-sm scale-[1.02]'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            অনুপস্থিত
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSetStudentStatus(st.id, 'LATE')}
+                            className={`py-1.5 rounded-xl text-xs font-bold transition-all ${
+                              currentStatus === 'LATE'
+                                ? 'bg-amber-600 text-white shadow-sm scale-[1.02]'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            দেরিতে
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSetStudentStatus(st.id, 'LEAVE')}
+                            className={`py-1.5 rounded-xl text-xs font-bold transition-all ${
+                              currentStatus === 'LEAVE'
+                                ? 'bg-blue-600 text-white shadow-sm scale-[1.02]'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            ছুটি
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Bottom Sticky Save Action Bar */}
+              {classStudents.length > 0 && (
+                <div className="pt-2 sticky bottom-20 z-30">
+                  <button
+                    onClick={handleSaveAttendance}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <Save size={18} />
+                    <span>আজকের হাজিরা সংরক্ষণ করুন</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TEACHER SUB-MODULE 2: STUDENTS & DUES ("oi class a kar koto taka baki ase ta jana jabe") */}
+          {/* ============================================================== */}
+          {activeSubModule === 'teacher_students_dues' && (
+            <div className="space-y-4">
+              {/* Financial & Census Header Card */}
+              <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl p-4 space-y-3 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign size={18} className="text-amber-400" />
+                    <h2 className="text-sm font-bold text-white">আমার শ্রেণির বকেয়া ও ফি খতিয়ান</h2>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">
+                    {selectedClass}
+                  </span>
+                </div>
+
+                {/* Multiple Class Switcher */}
+                {teacherClasses.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {teacherClasses.map(clsName => (
+                      <button
+                        key={clsName}
+                        onClick={() => setSelectedClass(clsName)}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                          selectedClass === clsName
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {clsName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* 4 Financial KPI Stat Cards */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                  <div className="bg-[#121212] p-2.5 rounded-xl border border-white/5">
+                    <span className="text-[11px] text-slate-400 font-medium block">মোট শিক্ষার্থী</span>
+                    <span className="text-base font-black text-white">{toBn(classDuesSummary.totalStudents)} জন</span>
+                  </div>
+
+                  <div className="bg-[#121212] p-2.5 rounded-xl border border-rose-500/20 bg-rose-950/15">
+                    <span className="text-[11px] text-rose-300 font-medium block">মোট বকেয়া ফি</span>
+                    <span className="text-base font-black text-rose-400">৳{toBn(classDuesSummary.totalDue.toLocaleString())}</span>
+                  </div>
+
+                  <div className="bg-[#121212] p-2.5 rounded-xl border border-white/5">
+                    <span className="text-[11px] text-slate-400 font-medium block">বকেয়া রয়েছে</span>
+                    <span className="text-sm font-bold text-rose-400">{toBn(classDuesSummary.dueStudentsCount)} জন</span>
+                  </div>
+
+                  <div className="bg-[#121212] p-2.5 rounded-xl border border-white/5">
+                    <span className="text-[11px] text-slate-400 font-medium block">পরিশোধিত</span>
+                    <span className="text-sm font-bold text-emerald-400">{toBn(classDuesSummary.paidStudentsCount)} জন</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search & Filter Controls */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    value={duesSearchQuery}
+                    onChange={e => setDuesSearchQuery(e.target.value)}
+                    placeholder="রোল, নাম বা অভিভাবকের মোবাইল দিয়ে খুঁজুন..."
+                    className="w-full pl-9 pr-3 py-2.5 bg-[#1e1e1e] border border-white/10 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-hidden focus:border-amber-400"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  <button
+                    onClick={() => setDuesFilterMode('ALL')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                      duesFilterMode === 'ALL'
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'bg-[#1e1e1e] text-slate-400 border border-white/5'
+                    }`}
+                  >
+                    সকল শিক্ষার্থী ({toBn(classDuesSummary.totalStudents)})
+                  </button>
+                  <button
+                    onClick={() => setDuesFilterMode('DUE_ONLY')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                      duesFilterMode === 'DUE_ONLY'
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-[#1e1e1e] text-rose-400 border border-white/5'
+                    }`}
+                  >
+                    শুধু বকেয়া ({toBn(classDuesSummary.dueStudentsCount)})
+                  </button>
+                  <button
+                    onClick={() => setDuesFilterMode('PAID_ONLY')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                      duesFilterMode === 'PAID_ONLY'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-[#1e1e1e] text-emerald-400 border border-white/5'
+                    }`}
+                  >
+                    পরিশোধিত ({toBn(classDuesSummary.paidStudentsCount)})
+                  </button>
+                </div>
+              </div>
+
+              {/* Student Cards with Dues Status & Quick Reminder SMS Action */}
+              <div className="space-y-2.5">
+                {filteredDuesProfiles.length === 0 ? (
+                  <div className="p-8 text-center bg-[#1e1e1e] rounded-2xl border border-white/5 space-y-2">
+                    <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
+                    <p className="text-xs text-slate-300 font-medium">
+                      কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।
+                    </p>
+                  </div>
+                ) : (
+                  filteredDuesProfiles.map(p => {
+                    const st = p.student;
+                    const hasDue = p.dueThisMonth > 0;
+                    const phone = st.guardianPhone;
+
+                    return (
+                      <div
+                        key={st.id}
+                        className={`p-3.5 rounded-2xl bg-[#1e1e1e] border ${
+                          hasDue ? 'border-rose-950/50 hover:border-rose-700/50' : 'border-white/5'
+                        } flex flex-col gap-2.5 shadow-sm transition-all`}
+                      >
+                        {/* Student Name & Roll Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-9 h-9 rounded-xl bg-white/5 text-amber-400 font-black flex items-center justify-center text-xs border border-white/10 font-mono shrink-0">
+                              {toBn(st.roll || st.rollNumber || '—')}
+                            </span>
+                            <div>
+                              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>{st.nameBn || st.name}</span>
+                              </h3>
+                              <p className="text-[11px] text-slate-400">
+                                পিতা: {st.fatherNameBn || st.fatherName || 'অভিভাবক'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Fee Status Badge */}
+                          <div className="text-right shrink-0">
+                            <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl border ${
+                              hasDue 
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' 
+                                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                            }`}>
+                              {hasDue ? `বকেয়া: ৳${toBn(p.dueThisMonth.toLocaleString())}` : 'পরিশোধিত ✓'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Fee Breakdown Details */}
+                        <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-[#121212] text-[11px] border border-white/5">
+                          <div>
+                            <span className="text-slate-400">মাসিক ধার্য ফি: </span>
+                            <span className="text-white font-mono font-bold">
+                              ৳{toBn(p.monthlyExpected.toLocaleString())}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-slate-400">পরিশোধিত ফি: </span>
+                            <span className="text-emerald-400 font-mono font-bold">
+                              ৳{toBn(p.paidThisMonth.toLocaleString())}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Guardian Phone & Direct Contact / Reminder Actions */}
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                            <Phone size={13} className="text-amber-400" />
+                            <span className="font-mono text-[11px]">
+                              {phone ? toBn(phone) : 'ফোন নম্বর নেই'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {phone && (
+                              <a
+                                href={`tel:${phone}`}
+                                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-[11px] font-bold flex items-center gap-1 transition-all"
+                              >
+                                <Phone size={11} />
+                                <span>কল</span>
+                              </a>
+                            )}
+
+                            {hasDue && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopySms(p)}
+                                  className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold flex items-center gap-1 border border-amber-500/30 transition-all cursor-pointer"
+                                >
+                                  {copiedStudentId === st.id ? (
+                                    <>
+                                      <Check size={11} className="text-emerald-400" />
+                                      <span className="text-emerald-400">কপি হয়েছে</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy size={11} />
+                                      <span>তাগাদা কপি</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                {phone && (
+                                  <a
+                                    href={`sms:${phone}?body=${encodeURIComponent(
+                                      getDueReminderMessage(
+                                        st.nameBn || st.name,
+                                        p.classLevel,
+                                        p.dueThisMonth,
+                                        schoolProfile.nameBn || schoolProfile.name
+                                      )
+                                    )}`}
+                                    className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm transition-all"
+                                  >
+                                    <Send size={11} />
+                                    <span>এসএমএস</span>
+                                  </a>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TEACHER SUB-MODULE 3: MARKS ENTRY */}
+          {/* ============================================================== */}
+          {activeSubModule === 'teacher_marks' && (
+            <div className="space-y-4">
+              <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl p-4 space-y-3 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PenTool size={18} className="text-amber-400" />
+                    <h2 className="text-sm font-bold text-white">পরীক্ষার বিষয়ভিত্তিক নম্বর এন্ট্রি</h2>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">
+                    {selectedClass}
+                  </span>
+                </div>
+
+                {/* Exam & Subject Selectors */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="text-[11px] text-slate-400 font-medium block mb-1">পরীক্ষা</label>
+                    <select
+                      value={selectedExamId}
+                      onChange={e => setSelectedExamId(e.target.value)}
+                      className="w-full bg-[#121212] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-hidden"
+                    >
+                      {exams.map(e => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-slate-400 font-medium block mb-1">বিষয়</label>
+                    <select
+                      value={selectedSubjectId}
+                      onChange={e => setSelectedSubjectId(e.target.value)}
+                      className="w-full bg-[#121212] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-hidden"
+                    >
+                      {classSubjects.map(s => (
+                        <option key={s.id} value={s.id}>{s.nameBn || s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Marks List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-slate-400">
+                    শিক্ষার্থী তালিকা ({toBn(classStudents.length)} জন)
+                  </span>
+                  <span className="text-[11px] text-slate-400">পূর্ণমান: ১০০</span>
+                </div>
+
+                {classStudents.map(st => {
+                  const currentVal = marksInputMap[st.id] ?? '';
+                  const numVal = Number(currentVal);
+                  const grade = currentVal !== '' 
+                    ? (numVal >= 80 ? 'A+' : numVal >= 70 ? 'A' : numVal >= 60 ? 'A-' : numVal >= 50 ? 'B' : numVal >= 40 ? 'C' : numVal >= 33 ? 'D' : 'F') 
+                    : '—';
+
+                  return (
+                    <div
+                      key={st.id}
+                      className="p-3 rounded-2xl bg-[#1e1e1e] border border-white/5 flex items-center justify-between gap-3 shadow-sm"
+                    >
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <span className="w-8 h-8 rounded-xl bg-white/5 text-amber-400 font-bold flex items-center justify-center text-xs border border-white/10 font-mono shrink-0">
+                          {toBn(st.roll || st.rollNumber || '—')}
+                        </span>
+                        <div className="overflow-hidden">
+                          <h3 className="text-xs font-bold text-white truncate">
+                            {st.nameBn || st.name}
+                          </h3>
+                          <span className="text-[11px] text-slate-400">
+                            গ্রেড: <strong className={grade === 'F' ? 'text-rose-400' : 'text-emerald-400'}>{grade}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={currentVal}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setMarksInputMap(prev => ({ ...prev, [st.id]: val }));
+                          }}
+                          placeholder="নম্বর"
+                          className="w-16 py-1.5 px-2 bg-[#121212] border border-white/15 rounded-xl text-center text-xs font-mono font-bold text-white focus:outline-hidden focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Save Marks Button */}
+              {classStudents.length > 0 && (
+                <div className="pt-2 sticky bottom-20 z-30">
+                  <button
+                    onClick={handleSaveMarks}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <Save size={18} />
+                    <span>নম্বর সংরক্ষণ করুন</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TEACHER SUB-MODULE 4: NOTICES */}
+          {/* ============================================================== */}
+          {activeSubModule === 'teacher_notices' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Bell size={18} className="text-amber-400" />
+                <h2 className="text-sm font-bold text-white">মাদরাসা নোটিশ ও সার্কুলার</h2>
+              </div>
+
+              {notices.length === 0 ? (
+                <div className="p-8 text-center bg-[#1e1e1e] rounded-2xl border border-white/5 space-y-2">
+                  <Bell size={32} className="mx-auto text-slate-600" />
+                  <p className="text-xs text-slate-400 font-medium">কোনো সক্রিয় নোটিশ নেই।</p>
+                </div>
+              ) : (
+                notices.map(notice => (
+                  <div
+                    key={notice.id}
+                    className="p-4 rounded-2xl bg-[#1e1e1e] border border-white/5 space-y-2 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30">
+                        {notice.category || 'সাধারণ নোটিশ'}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        {toBn(notice.publishDate || notice.date || '')}
+                      </span>
+                    </div>
+
+                    <h3 className="text-xs font-bold text-white">
+                      {notice.title}
+                    </h3>
+
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {notice.content}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* FALLBACK / PASSTHROUGH FOR OTHER ROLES (Cashier, Parent, Staff) */}
+          {/* ============================================================== */}
+          {!['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices'].includes(activeSubModule) && (
+            <div className="w-full max-w-full overflow-x-hidden space-y-3">
+              {renderModuleContent ? renderModuleContent(activeSubModule) : null}
+            </div>
+          )}
         </main>
 
         {/* Fixed Mobile Bottom Navigation Bar */}
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#181818]/95 backdrop-blur-xl border-t border-white/10 px-2 py-2 flex items-center justify-around shadow-2xl">
-          {bottomNavItems.map((item) => {
+          {bottomNavItems.map(item => {
             const Icon = item.icon;
             const isActive = (item.id === 'home' && !activeSubModule) || (item.targetModule === activeSubModule);
             return (
@@ -440,7 +1245,9 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
     );
   }
 
-  // Mobile App Native Dashboard (matching screenshot)
+  // -------------------------------------------------------------
+  // MOBILE NATIVE HOME DASHBOARD VIEW (Matching video screenshot layout)
+  // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-[#121212] text-slate-100 flex flex-col font-sans pb-24 selection:bg-amber-500/30 mobile-role-app-container no-horizontal-scroll">
       
@@ -456,11 +1263,11 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
                 {roleTitleBengali}
               </h1>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
-                শিক্ষাবর্ষ {toBn(schoolProfile.academicYear || '২০২৬')}
+                {toBn(schoolProfile.academicYear || new Date().getFullYear().toString())}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]">
-              {authUser?.displayName || currentMember?.name || schoolProfile.nameBn || schoolProfile.name}
+              {authUser?.displayName || currentMember?.displayName || currentUser?.name || schoolProfile.nameBn || schoolProfile.name}
             </p>
           </div>
         </div>
@@ -473,7 +1280,9 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
             className="w-10 h-10 rounded-2xl bg-[#1e1e1e] border border-white/10 flex items-center justify-center text-slate-300 hover:text-white relative cursor-pointer active:scale-95"
           >
             <Bell size={18} />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500" />
+            {notices.length > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500" />
+            )}
           </button>
 
           <div className="w-10 h-10 rounded-2xl bg-[#e5a01d] text-[#121212] font-extrabold flex items-center justify-center text-base shadow-sm">
@@ -482,7 +1291,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
         </div>
       </header>
 
-      {/* Notifications Drawer Dialog */}
+      {/* Notifications Drawer */}
       {showNotifications && (
         <div className="fixed inset-x-4 top-16 z-50 p-4 rounded-2xl bg-[#1e1e1e] border border-white/10 shadow-2xl text-xs space-y-2 animate-in fade-in">
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
@@ -491,21 +1300,25 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
               <X size={14} />
             </button>
           </div>
-          <div className="p-2 rounded-xl bg-white/5 text-slate-300">
-            🔔 আজকের সকল ক্লাসের হাজিরা ও নম্বর এন্ট্রি সম্পন্ন করার অনুরোধ করা হলো।
-          </div>
-          <div className="p-2 rounded-xl bg-white/5 text-slate-300">
-            📢 আগামী বৃহস্পতিবার মাদরাসার মাসিক অভিভাবক সভা অনুষ্ঠিত হবে।
-          </div>
+          {notices.slice(0, 3).map(n => (
+            <div key={n.id} className="p-2 rounded-xl bg-white/5 text-slate-300">
+              <span className="font-bold text-white block mb-0.5">{n.title}</span>
+              <p className="text-[11px] text-slate-400 line-clamp-2">{n.content}</p>
+            </div>
+          ))}
+          {notices.length === 0 && (
+            <div className="p-2 rounded-xl bg-white/5 text-slate-400 text-center">
+              কোনো নতুন নোটিফিকেশন নেই।
+            </div>
+          )}
         </div>
       )}
 
       {/* Main App Content Body */}
       <main className="p-4 space-y-4">
 
-        {/* 2. Hero Greeting Card (Warm Amber/Gold Box matching screenshot) */}
+        {/* 2. Hero Greeting Card (Warm Gold matching video) */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#e5a01d] via-[#e59b15] to-[#d68a0a] text-[#1a1205] p-5 rounded-[1.8rem] shadow-lg space-y-3">
-          {/* Top date kicker */}
           <div className="text-xs font-semibold text-[#3d2703] flex items-center gap-1.5">
             <span>{todayGreeting.fullDateText}</span>
           </div>
@@ -515,7 +1328,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
               {schoolProfile.nameBn || schoolProfile.name}
             </span>
             <h2 className="text-2xl font-black text-[#1a1002] tracking-tight mt-0.5">
-              {authUser?.displayName || currentMember?.name || ((authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com' ? 'মেহেদী হাসান সাগর' : (schoolProfile.headMasterName || 'অ্যাডমিন'))}
+              {authUser?.displayName || currentMember?.displayName || currentUser?.name || 'শিক্ষক মহোদয়'}
             </h2>
           </div>
 
@@ -532,7 +1345,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
           </div>
         </div>
 
-        {/* 3. 3-Column Quick KPI Summary Cards (matching screenshot) */}
+        {/* 3. 3-Column Quick KPI Summary Cards */}
         <div className="grid grid-cols-3 gap-2.5">
           <div className="bg-[#1e1e1e] border border-white/5 p-3.5 rounded-2xl text-center flex flex-col justify-center shadow-sm">
             <span className="text-lg font-black text-white font-mono">{roleStats.stat1Value}</span>
@@ -543,12 +1356,12 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
             <span className="text-[11px] text-slate-400 mt-0.5 font-medium">{roleStats.stat2Label}</span>
           </div>
           <div className="bg-[#1e1e1e] border border-white/5 p-3.5 rounded-2xl text-center flex flex-col justify-center shadow-sm">
-            <span className="text-lg font-black text-white font-mono">{roleStats.stat3Value}</span>
-            <span className="text-[11px] text-slate-400 mt-0.5 font-medium">{roleStats.stat3Label}</span>
+            <span className="text-lg font-black text-white font-mono truncate">{roleStats.stat3Value}</span>
+            <span className="text-[11px] text-slate-400 mt-0.5 font-medium truncate">{roleStats.stat3Label}</span>
           </div>
         </div>
 
-        {/* 4. Next Task / Upcoming Action Banner (matching screenshot) */}
+        {/* 4. Next Task / Upcoming Action Banner */}
         <div className="bg-[#1a1a1a] border border-white/5 p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
           <div className="w-11 h-11 rounded-2xl bg-[#262626] text-amber-400 flex items-center justify-center shrink-0 border border-white/5">
             <Calendar size={20} />
@@ -556,7 +1369,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
           <div className="overflow-hidden">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-amber-400">
-                পরবর্তী কাজ • {toBn(roleStats.nextTaskTime)}
+                {roleStats.nextTaskTime}
               </span>
             </div>
             <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
@@ -565,7 +1378,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
           </div>
         </div>
 
-        {/* 5. Quick Actions Section ("দ্রুত কার্যাবলি" - matching screenshot) */}
+        {/* 5. Quick Actions Section ("দ্রুত কার্যাবলি") */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -578,7 +1391,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
           </div>
 
           <div className="space-y-2.5">
-            {roleActions.map((act) => {
+            {roleActions.map(act => {
               const Icon = act.icon;
               return (
                 <div
@@ -610,7 +1423,7 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
         {/* 6. Quick Logout & Switch Account Button */}
         <div className="pt-4 text-center">
           <button
-            onClick={() => logoutAdmin()}
+            onClick={() => (onLogout ? onLogout() : logoutAdmin())}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 text-xs font-bold transition-all cursor-pointer active:scale-95"
           >
             <LogOut size={14} />
@@ -620,9 +1433,9 @@ export const MobileRoleAppView: React.FC<MobileRoleAppViewProps> = ({ onLogout, 
 
       </main>
 
-      {/* 7. Fixed Mobile Bottom Navigation Bar (matching screenshot) */}
+      {/* 7. Fixed Mobile Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#181818]/95 backdrop-blur-xl border-t border-white/10 px-2 py-2 flex items-center justify-around shadow-2xl">
-        {bottomNavItems.map((item) => {
+        {bottomNavItems.map(item => {
           const Icon = item.icon;
           const isActive = activeBottomNav === item.id && !activeSubModule;
           return (

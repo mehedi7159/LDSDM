@@ -208,7 +208,7 @@ export function readCurrentLocalStoragePayload(): SystemDataPayload {
     phone: '',
     email: '',
     academicYear: '২০২৬',
-    headMasterName: 'মুহতামিম সাহেব'
+    headMasterName: 'অধ্যক্ষ সাহেব'
   };
 
   return {

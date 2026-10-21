@@ -51,12 +51,22 @@ import {
   Library,
   Bus,
   CalendarDays,
-  Trophy
+  Trophy,
+  Package,
+  Boxes,
+  HeartPulse,
+  Palette,
+  Sun,
+  Moon,
+  Bot
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { AdminAuthModal } from './AdminAuthModal';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
+import { MobileMoreSheet } from './ui/MobileMoreSheet';
+import { ThemeSwitcherModal } from './ui/ThemeSwitcherModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -103,6 +113,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   } = useApp();
 
   const isOwnerEmail = (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwner = isSuperAdmin || isOwnerEmail || (currentUser?.role === 'super_admin');
+  const isPrincipal = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
+  const canAccessMasterAi = isOwner || isPrincipal;
+
+  // Theme & Mobile Navigation Sheet states
+  const { darkMode, toggleDarkMode } = useTheme();
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
   // Sidebar is closed by default and opens on-demand when user clicks the menu button
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -145,7 +163,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       return item.permissions.some(p => hasPermission(p as any));
     }
 
-    // 5. Open / general items
+    // 5. For non-admin, non-principal roles: hide administrative operations and HR hubs
+    const isPrincipalUser = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal';
+    if (!isAdmin && !isSuperAdmin && !isOwnerEmail && !isPrincipalUser) {
+      if (['fixed_assets', 'store_inventory', 'house_system', 'fuzala_alumni', 'health_medical'].includes(item.id)) {
+        return false;
+      }
+      if (['staff_leaves', 'staff_id_cards', 'staff_payroll', 'staff_analytics', 'user_roles', 'staff_roles'].includes(item.id)) {
+        return false;
+      }
+      if (['sms_gateway', 'boarding_mess', 'islamic_welfare'].includes(item.id)) {
+        return userRole === 'accountant' || currentMember?.roleId === 'role_accountant';
+      }
+      if (['student_tc', 'promotion', 'student_admission'].includes(item.id)) {
+        return false;
+      }
+    }
+
+    // 6. Open / general items
     return true;
   };
 
@@ -629,13 +664,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         },
         { 
           id: 'boarding_mess', 
-          label: language === 'bn' ? 'আবাসিক বোর্ডিং ও মেস' : 'Boarding & Mess Meals', 
+          label: language === 'bn' ? 'ছাত্রাবাস ও হোস্টেল ডাইনিং' : 'Hostel & Mess Dining', 
           icon: Home, 
           subType: 'action'
         },
         { 
           id: 'islamic_welfare', 
-          label: language === 'bn' ? 'লিল্লাহ, যাকাত ও সমাজকল্যাণ' : 'Lillah, Zakat & Welfare', 
+          label: language === 'bn' ? 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipends', 
           icon: HeartHandshake, 
           subType: 'report',
           badge: 'Welfare'
@@ -643,16 +678,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       ]
     },
 
-    // ১০. লাইব্রেরি, পরিবহন ও মাহফিল/ইভেন্ট (Library, Transport & Events Hub)
+    // ১০. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান (Library, Transport & Annual Events Hub)
     {
       id: 'specialized_services_section',
-      categoryBn: '১০. লাইব্রেরি, পরিবহন ও মাহফিল হাব',
-      categoryEn: '10. Library, Transport & Events Hub',
+      categoryBn: '১০. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান',
+      categoryEn: '10. Library, Transport & Annual Events',
       icon: Library,
       items: [
         { 
           id: 'book_bank', 
-          label: language === 'bn' ? 'কিতাব ব্যাংক ও লাইব্রেরি ক্যাটালগ' : 'Kitab Bank & Library Catalog', 
+          label: language === 'bn' ? 'লাইব্রেরি ও পাঠ্যবই ব্যাংক' : 'Library & Textbook Bank', 
           icon: BookOpen, 
           subType: 'action',
           badge: 'Books'
@@ -673,7 +708,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         },
         { 
           id: 'mahfil_events', 
-          label: language === 'bn' ? 'বার্ষিক মাহফিল ও সমাবেশ' : 'Annual Mahfil & Events', 
+          label: language === 'bn' ? 'বার্ষিক ক্রীড়া, সাংস্কৃতিক ও সিরাত মাহফিল' : 'Annual Sports, Culture & Events', 
           icon: CalendarDays, 
           subType: 'action',
           badge: 'Event'
@@ -684,6 +719,51 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           icon: Trophy, 
           subType: 'report',
           badge: 'Club'
+        }
+      ]
+    },
+
+    // ১১. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব (Institutional Operations Hub)
+    {
+      id: 'institutional_operations_section',
+      categoryBn: '১১. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব',
+      categoryEn: '11. Assets, Houses, Alumni & Health',
+      icon: Package,
+      items: [
+        { 
+          id: 'fixed_assets', 
+          label: language === 'bn' ? 'স্থায়ী সম্পদ ও আসবাবপত্র' : 'Fixed Assets & Property', 
+          icon: Package, 
+          subType: 'action',
+          badge: 'Asset'
+        },
+        { 
+          id: 'store_inventory', 
+          label: language === 'bn' ? 'স্টোর ইনভেন্টরি ও কনজিউমেবল' : 'Store & Consumables', 
+          icon: Boxes, 
+          subType: 'action',
+          badge: 'Store'
+        },
+        { 
+          id: 'house_system', 
+          label: language === 'bn' ? 'হাউজ সিস্টেম ও হোস্টেল উইং' : 'House Wings & Points', 
+          icon: Shield, 
+          subType: 'action',
+          badge: 'House'
+        },
+        { 
+          id: 'fuzala_alumni', 
+          label: language === 'bn' ? 'প্রাক্তন শিক্ষার্থী (অ্যালামনাই) পরিষদ' : 'Alumni Association', 
+          icon: GraduationCap, 
+          subType: 'action',
+          badge: 'Alumni'
+        },
+        { 
+          id: 'health_medical', 
+          label: language === 'bn' ? 'স্বাস্থ্যসেবা ও ফার্স্ট এইড লগ' : 'Health & First Aid Log', 
+          icon: HeartPulse, 
+          subType: 'report',
+          badge: 'Health'
         }
       ]
     }
@@ -700,7 +780,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
   const getRoleBadgeTitle = () => {
     if (isSuperAdmin) return '👑 Super Admin';
-    if (currentMember?.roleId === 'role_principal') return '🎓 মুহতামিম / Principal';
+    if (currentMember?.roleId === 'role_principal') return '🎓 অধ্যক্ষ / সুপারিনটেনডেন্ট (Principal)';
     if (currentMember?.roleId === 'role_accountant') return '💼 হিসাবরক্ষক (Cashier)';
     if (currentMember?.roleId === 'role_teacher') return '👨‍🏫 সহকারী শিক্ষক (Teacher)';
     if (currentMember?.roleId === 'role_guardian') return '👨‍👩‍👧 অভিভাবক (Guardian)';
@@ -709,7 +789,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden font-sans relative">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans relative">
       {/* Dimmed Overlay Backdrop when Sidebar is opened */}
       {isSidebarOpen && (
         <div 
@@ -836,6 +916,54 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             </button>
           )}
 
+          {/* Persistent Premium 'Master AI Principal' Entry Point (Exclusively for Owner and Principal roles) */}
+          {canAccessMasterAi && (!menuSearchQuery || ['ai', 'এআই', 'master', 'মাস্টার', 'principal', 'প্রিন্সিপাল'].some(k => menuSearchQuery.toLowerCase().includes(k))) && (
+            <div className="pt-2">
+              <button
+                onClick={() => handleTabClick('ai_principal_advisor')}
+                className={`w-full p-3 rounded-2xl text-left transition-all cursor-pointer relative overflow-hidden group active:scale-[0.98] border ${
+                  activeTab === 'ai_principal_advisor'
+                    ? 'bg-gradient-to-r from-amber-500/25 via-indigo-600 to-indigo-800 text-white border-amber-400 shadow-xl shadow-indigo-950 ring-2 ring-amber-400/40'
+                    : 'bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 hover:from-slate-800 hover:to-indigo-900 text-slate-100 border-indigo-700/60 hover:border-amber-400/80 shadow-md shadow-indigo-950/50'
+                }`}
+              >
+                {/* Subtle ambient amber glow */}
+                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none -mr-6 -mt-6 group-hover:bg-amber-400/25 transition-all" />
+
+                <div className="flex items-center justify-between gap-2 relative z-10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Modern icon container with pulsing live dot */}
+                    <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-purple-600 p-0.5 shadow-md shrink-0">
+                      <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-amber-300">
+                        <Bot size={18} className="group-hover:rotate-6 transition-transform text-amber-400" />
+                      </div>
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 ring-2 ring-slate-900" />
+                      </span>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black tracking-tight text-white truncate block">
+                          {language === 'bn' ? 'মাস্টার এআই প্রিন্সিপাল' : 'Master AI Principal'}
+                        </span>
+                        <Sparkles size={12} className="text-amber-400 shrink-0 animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-indigo-300 block truncate font-medium">
+                        {language === 'bn' ? 'প্রাতিষ্ঠানিক কমান্ড ও কোপাইলট' : 'Executive Cockpit & Copilot'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className="px-2 py-0.5 rounded-md text-[9px] bg-amber-400 text-slate-950 font-black tracking-wider uppercase shrink-0 shadow-xs">
+                    PRO
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
+
           {!menuSearchQuery && <div className="h-px bg-slate-800 my-1" />}
 
           {(navGroups || []).map((group, gIdx) => {
@@ -960,17 +1088,136 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         </div>
       </aside>
 
+      {/* Modern Desktop Slim Sidebar (Linear / Stripe inspired clean aesthetic) */}
+      <aside className="hidden md:flex flex-col w-16 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 shrink-0 z-20 justify-between items-center py-3 select-none">
+        {/* Top: Institution Brand Icon */}
+        <div className="flex flex-col items-center gap-2.5 w-full">
+          <button
+            type="button"
+            onClick={() => handleTabClick('dashboard')}
+            className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            title={schoolProfile.nameBn || schoolProfile.name}
+            style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
+          >
+            <GraduationCap size={20} />
+          </button>
+
+          {/* Persistent Premium 'Master AI Principal' Entry Point (Exclusively for Owner & Principal roles) */}
+          {canAccessMasterAi && (
+            <div className="w-full px-2 flex justify-center">
+              <button
+                type="button"
+                onClick={() => handleTabClick('ai_principal_advisor')}
+                title={language === 'bn' ? 'মাস্টার এআই প্রিন্সিপাল • এক্সিকিউটিভ কমান্ড হাব' : 'Master AI Principal • Executive Intelligence'}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative group active:scale-95 ${
+                  activeTab === 'ai_principal_advisor'
+                    ? 'bg-gradient-to-tr from-amber-500 via-indigo-600 to-purple-700 text-white shadow-lg shadow-indigo-600/40 ring-2 ring-amber-400 scale-105'
+                    : 'bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-800 dark:via-indigo-950 dark:to-slate-800 text-amber-400 border border-amber-400/50 hover:border-amber-400 shadow-md shadow-indigo-950/40 hover:scale-105'
+                }`}
+              >
+                <Bot size={20} className={activeTab === 'ai_principal_advisor' ? 'stroke-[2.5]' : 'stroke-[2] text-amber-400 group-hover:rotate-6 transition-transform'} />
+                
+                {/* Live pulsing amber radar indicator */}
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 ring-2 ring-white dark:ring-slate-900" />
+                </span>
+
+                {/* Left active indicator pill */}
+                {activeTab === 'ai_principal_advisor' && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-amber-400" />
+                )}
+              </button>
+            </div>
+          )}
+
+          <div className="w-8 h-px bg-slate-200 dark:bg-slate-800 my-0.5" />
+
+          {/* Quick Nav Icon Buttons with tooltips */}
+          <div className="flex flex-col items-center gap-1.5 w-full px-2">
+            {[
+              { id: 'dashboard', label: language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard', icon: LayoutDashboard },
+              { id: 'students', label: language === 'bn' ? 'শিক্ষার্থী' : 'Students', icon: Users },
+              { id: 'attendance', label: language === 'bn' ? 'হাজিরা' : 'Attendance', icon: UserCheck },
+              { id: 'results', label: language === 'bn' ? 'ফলাফল' : 'Results', icon: Award },
+              { id: 'finance', label: language === 'bn' ? 'হিসাব' : 'Finance', icon: Wallet },
+              { id: 'routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
+              { id: 'notices', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
+              { id: 'settings', label: language === 'bn' ? 'সেটিংস' : 'Settings', icon: Settings }
+            ].map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleTabClick(item.id)}
+                  title={item.label}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer relative group active:scale-95 ${
+                    isActive
+                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                  style={isActive ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
+                >
+                  <Icon size={18} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+                  {isActive && (
+                    <span
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full"
+                      style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Bottom Tools in Slim Sidebar: Full Drawer button, Theme switcher, Dark mode toggle */}
+        <div className="flex flex-col items-center gap-2 w-full px-2 pt-2 border-t border-slate-200/80 dark:border-slate-800">
+          {/* Full Drawer Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            title={language === 'bn' ? 'সকল মেনু ও মডিউল' : 'All Modules'}
+            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
+          >
+            <Menu size={18} />
+          </button>
+
+          {/* Theme Switcher Button */}
+          <button
+            type="button"
+            onClick={() => setIsThemeModalOpen(true)}
+            title={language === 'bn' ? 'কালার থিম কাস্টমাইজ' : 'Accent Theme'}
+            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
+          >
+            <Palette size={18} />
+          </button>
+
+          {/* Dark Mode Button */}
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            title={darkMode ? (language === 'bn' ? 'লাইট মোড' : 'Light Mode') : (language === 'bn' ? 'ডার্ক মোড' : 'Dark Mode')}
+            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
+          >
+            {darkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
+          </button>
+        </div>
+      </aside>
+
       {/* Main Content Viewport */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Top Header */}
-        <header className="bg-white border-b border-slate-200 z-30 print:hidden shadow-xs sticky top-0">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 z-30 print:hidden shadow-xs sticky top-0 transition-colors">
           <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 gap-2">
             
             {/* Left: Interactive Menu Button & Institution Header */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button 
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
                 title="Open Navigation Menu"
               >
                 <Menu size={16} className="text-indigo-400" />
@@ -979,11 +1226,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h1 className="text-xs sm:text-base font-bold text-slate-800 truncate">
+                  <h1 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white truncate">
                     {language === 'bn' ? (schoolProfile.nameBn || schoolProfile.name) : schoolProfile.name}
                   </h1>
                 </div>
-                <p className="text-[10px] sm:text-xs text-slate-400 truncate max-w-[200px] sm:max-w-md hidden sm:block">
+                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-400 truncate max-w-[200px] sm:max-w-md hidden sm:block">
                   {schoolProfile.address}
                 </p>
               </div>
@@ -991,16 +1238,37 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
             {/* Right Tools & Mode Switcher */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Theme Customizer Button (Palette modal) */}
+              <button
+                type="button"
+                onClick={() => setIsThemeModalOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px]"
+                title={language === 'bn' ? 'ডিজাইন ও কালার থিম' : 'Accent Theme'}
+              >
+                <Palette size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="hidden lg:inline">{language === 'bn' ? 'থিম' : 'Theme'}</span>
+              </button>
+
+              {/* Dark Mode toggle */}
+              <button
+                type="button"
+                onClick={toggleDarkMode}
+                className="flex items-center justify-center p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px] min-w-[36px]"
+                title={darkMode ? (language === 'bn' ? 'লাইট মোড' : 'Light Mode') : (language === 'bn' ? 'ডার্ক মোড' : 'Dark Mode')}
+              >
+                {darkMode ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-slate-600 dark:text-slate-300" />}
+              </button>
+
               {/* PWA In-App Install Button */}
               <PWAInstallButton />
 
               {/* Backup Hub Button */}
               <button
                 onClick={() => setActiveTab('backup_recovery')}
-                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold transition-all cursor-pointer"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition-all cursor-pointer min-h-[36px]"
                 title={language === 'bn' ? 'ডাটা সুরক্ষা ও ব্যাকআপ কেন্দ্র' : 'Data Safety & Backup Hub'}
               >
-                <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span className="hidden sm:inline">
                   {language === 'bn' ? 'ব্যাকআপ হাব' : 'Backup Hub'}
                 </span>
@@ -1009,30 +1277,30 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               {/* Cloud Status */}
               <div 
                 onClick={() => setActiveTab('settings')}
-                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium cursor-pointer hover:bg-slate-100 transition-colors"
+                className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 title="Cloud Status"
               >
-                <Cloud size={13} className="text-indigo-600" />
+                <Cloud size={13} className="text-indigo-600 dark:text-indigo-400" />
                 {cloudStatus === 'connected' && (
-                  <span className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>{language === 'bn' ? 'সংযুক্ত' : 'Connected'}</span>
                   </span>
                 )}
                 {cloudStatus === 'syncing' && (
-                  <span className="flex items-center gap-1 text-blue-600 text-xs font-semibold">
+                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 text-xs font-semibold">
                     <RefreshCw size={11} className="animate-spin text-blue-500" />
                     <span>{language === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...'}</span>
                   </span>
                 )}
                 {cloudStatus === 'offline' && (
-                  <span className="flex items-center gap-1 text-amber-600 text-xs font-semibold">
+                  <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-semibold">
                     <AlertCircle size={11} className="text-amber-500" />
                     <span>{language === 'bn' ? 'অফলাইন' : 'Offline'}</span>
                   </span>
                 )}
                 {cloudStatus === 'error' && (
-                  <span className="flex items-center gap-1 text-rose-600 text-xs font-semibold">
+                  <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 text-xs font-semibold">
                     <AlertCircle size={11} className="text-rose-500" />
                     <span>{language === 'bn' ? 'অনুমতি ত্রুটি' : 'Auth Error'}</span>
                   </span>
@@ -1042,10 +1310,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               {/* Language switcher */}
               <button 
                 onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')}
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px]"
                 title="Switch Language"
               >
-                <Languages size={13} className="text-indigo-600 shrink-0" />
+                <Languages size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span className="hidden xs:inline">{language === 'en' ? 'বাংলা' : 'English'}</span>
                 <span className="xs:hidden font-bold">{language === 'en' ? 'বাং' : 'EN'}</span>
               </button>
@@ -1053,22 +1321,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               {/* User Profile & Logout */}
               <div className="flex items-center gap-1.5 sm:gap-2">
                 {authUser && (
-                  <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100/90 border border-slate-200/80 text-xs">
+                  <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs">
                     <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-[11px] shrink-0">
                       {(authUser.displayName || (authUser.email?.toLowerCase() === 'mehedihasansagor26@gmail.com' ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
                     </div>
-                    <span className="font-bold text-slate-800 truncate max-w-[140px]">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
                       {authUser.displayName || (authUser.email?.toLowerCase() === 'mehedihasansagor26@gmail.com' ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
                     </span>
                   </div>
                 )}
 
-                <div className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold ${
+                <div className={`hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold ${
                   isSuperAdmin
-                    ? 'bg-purple-50 border-purple-200 text-purple-900'
-                    : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                    ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300'
+                    : 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300'
                 }`}>
-                  <ShieldCheck size={13} className={isSuperAdmin ? 'text-purple-600' : 'text-indigo-600'} />
+                  <ShieldCheck size={13} className={isSuperAdmin ? 'text-purple-600 dark:text-purple-400' : 'text-indigo-600 dark:text-indigo-400'} />
                   <span>
                     {isSuperAdmin 
                       ? 'Super Admin'
@@ -1085,7 +1353,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 <button 
                   onClick={() => logoutAdmin()}
                   title={language === 'bn' ? 'লগআউট' : 'Logout'}
-                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-colors cursor-pointer active:scale-95"
+                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold transition-colors cursor-pointer active:scale-95 min-h-[36px]"
                 >
                   <LogOut size={13} />
                   <span className="hidden sm:inline">{language === 'bn' ? 'লগআউট' : 'Exit'}</span>
@@ -1096,62 +1364,66 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         </header>
 
         {/* Content Area with responsive bottom padding for mobile dock */}
-        <main className="flex-1 overflow-auto p-3.5 sm:p-6 pb-24 md:pb-6 print:p-0 bg-slate-50/60">
+        <main className="flex-1 overflow-auto p-3.5 sm:p-6 pb-24 md:pb-6 print:p-0 bg-slate-50/60 dark:bg-slate-950 transition-colors">
           {children}
         </main>
 
-        {/* Modern Mobile Bottom Navigation Bar (Docked for Phone Screens) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-xl px-2 py-1.5 print:hidden">
+        {/* Modern Mobile Bottom Navigation Bar (Docked for Phone Screens with 44px min touch targets) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-1 py-1 print:hidden">
           <div className="flex items-center justify-around max-w-lg mx-auto">
             {/* 1. Dashboard */}
             <button
               onClick={() => handleTabClick('dashboard')}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
+              className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'dashboard'
-                  ? 'text-indigo-600 font-bold scale-105'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
+              style={activeTab === 'dashboard' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
-              <LayoutDashboard size={18} className={activeTab === 'dashboard' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-500'} />
+              <LayoutDashboard size={19} className={activeTab === 'dashboard' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'ড্যাশবোর্ড' : 'Home'}</span>
             </button>
 
             {/* 2. Students */}
             <button
               onClick={() => handleTabClick('students')}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
+              className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'students'
-                  ? 'text-indigo-600 font-bold scale-105'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
+              style={activeTab === 'students' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
-              <Users size={18} className={activeTab === 'students' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-500'} />
+              <Users size={19} className={activeTab === 'students' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'শিক্ষার্থী' : 'Students'}</span>
             </button>
 
             {/* 3. Attendance */}
             <button
               onClick={() => handleTabClick('attendance')}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
+              className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'attendance'
-                  ? 'text-indigo-600 font-bold scale-105'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
+              style={activeTab === 'attendance' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
-              <UserCheck size={18} className={activeTab === 'attendance' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-500'} />
+              <UserCheck size={19} className={activeTab === 'attendance' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'হাজিরা' : 'Attendance'}</span>
             </button>
 
             {/* 4. Results */}
             <button
               onClick={() => handleTabClick('results')}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
+              className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'results'
-                  ? 'text-indigo-600 font-bold scale-105'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
+              style={activeTab === 'results' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
-              <Award size={18} className={activeTab === 'results' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-500'} />
+              <Award size={19} className={activeTab === 'results' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'ফলাফল' : 'Results'}</span>
             </button>
 
@@ -1159,52 +1431,69 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             {(isOwnerEmail || isAdmin || isSuperAdmin || hasPermission('finance.view') || hasPermission('finance.collect_fee')) ? (
               <button
                 onClick={() => handleTabClick('finance')}
-                className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                   activeTab === 'finance'
-                    ? 'text-indigo-600 font-bold scale-105'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
+                style={activeTab === 'finance' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
               >
-                <Wallet size={18} className={activeTab === 'finance' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-500'} />
+                <Wallet size={19} className={activeTab === 'finance' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
                 <span className="text-[10px] mt-0.5">{language === 'bn' ? 'হিসাব' : 'Finance'}</span>
               </button>
             ) : (currentMember?.roleId === 'role_teacher' || currentMember?.role === 'Teacher') ? (
               <button
                 onClick={() => handleTabClick('marks')}
-                className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                   activeTab === 'marks'
-                    ? 'text-indigo-600 font-bold scale-105'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
+                style={activeTab === 'marks' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
               >
-                <PenTool size={18} className={activeTab === 'marks' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-500'} />
+                <PenTool size={19} className={activeTab === 'marks' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
                 <span className="text-[10px] mt-0.5">{language === 'bn' ? 'নম্বর' : 'Marks'}</span>
               </button>
             ) : (
               <button
                 onClick={() => handleTabClick('notices')}
-                className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
+                className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                   activeTab === 'notices'
-                    ? 'text-indigo-600 font-bold scale-105'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
+                style={activeTab === 'notices' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
               >
-                <Megaphone size={18} className={activeTab === 'notices' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-500'} />
+                <Megaphone size={19} className={activeTab === 'notices' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
                 <span className="text-[10px] mt-0.5">{language === 'bn' ? 'নোটিশ' : 'Notices'}</span>
               </button>
             )}
 
-            {/* 6. More / All Modules Drawer */}
+            {/* 6. More / All Modules Drawer (Opens MobileMoreSheet) */}
             <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
+              onClick={() => setIsMobileMoreOpen(true)}
+              className="min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-all cursor-pointer"
             >
-              <Menu size={18} className="text-slate-600" />
+              <Menu size={19} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'মেনু' : 'Menu'}</span>
             </button>
           </div>
         </nav>
       </div>
+
+      {/* Mobile More Sheet */}
+      <MobileMoreSheet
+        isOpen={isMobileMoreOpen}
+        onClose={() => setIsMobileMoreOpen(false)}
+        onNavigateTab={handleTabClick}
+        activeTab={activeTab}
+      />
+
+      {/* Modern Accent Theme Customizer Modal */}
+      <ThemeSwitcherModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+      />
 
       {/* Reusable Admin Authentication Modal */}
       <AdminAuthModal 

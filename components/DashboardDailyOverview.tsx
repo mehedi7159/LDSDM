@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { formatSafeDate, formatSafeTime } from '../services/utils';
 import { dailyAttendanceService } from '../services/dailyAttendanceService';
+import { CountUpNumber } from './ui/StatCard';
 
 // Helper to convert English digits to Bengali
 const toBanglaDigits = (num: number | string | undefined | null, language: string = 'bn') => {
@@ -488,41 +489,45 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 2. আজকের উপস্থিতি (Today's Attendance) */}
         <div 
           onClick={() => onNavigate('attendance')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'আজকের উপস্থিতি' : "Today's Attendance"}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <UserCheck size={20} />
               </div>
             </div>
 
             <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-                {toBanglaDigits(attendanceMetrics.rate, language)}%
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
+                <CountUpNumber target={Math.round(Number(attendanceMetrics.rate) || 0)} suffix="%" />
               </h3>
-              <span className="text-xs font-semibold text-emerald-600 flex items-center gap-0.5">
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
                 <CheckCircle2 size={13} />
                 <span>{isBn ? 'সন্তোষজনক' : 'Good'}</span>
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
-              <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-100 text-emerald-900">
-                <span className="text-[10px] text-emerald-600 font-bold block">{isBn ? 'উপস্থিত' : 'Present'}</span>
-                <span className="text-base font-black">{toBanglaDigits(attendanceMetrics.present, language)} {isBn ? 'জন' : ''}</span>
+            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+              <div className="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">{isBn ? 'উপস্থিত' : 'Present'}</span>
+                <span className="text-base font-black tabular-nums font-mono">
+                  <CountUpNumber target={attendanceMetrics.present} /> {isBn ? 'জন' : ''}
+                </span>
               </div>
-              <div className="p-2 rounded-lg bg-rose-50/70 border border-rose-100 text-rose-900">
-                <span className="text-[10px] text-rose-600 font-bold block">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
-                <span className="text-base font-black">{toBanglaDigits(attendanceMetrics.absent, language)} {isBn ? 'জন' : ''}</span>
+              <div className="p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800/60 text-rose-900 dark:text-rose-200">
+                <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
+                <span className="text-base font-black tabular-nums font-mono">
+                  <CountUpNumber target={attendanceMetrics.absent} /> {isBn ? 'জন' : ''}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:text-blue-700">
+          <div className="mt-4 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">
             <span>{isBn ? 'হাজিরা শিট খুলুন' : 'Open Register'}</span>
             <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </div>
@@ -531,45 +536,51 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 3. আজকের আয়–ব্যয় (Today's Income & Expense) */}
         <div 
           onClick={() => onNavigate('finance')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'আজকের আয়–ব্যয় ও ক্যাশ' : "Today's Cash Flow"}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Wallet size={20} />
               </div>
             </div>
 
             <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-bold text-slate-500">৳</span>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-                {toBanglaDigits(todayCashFlow.todayIncome.toLocaleString(), language)}
+              <span className="text-sm font-bold text-slate-400">৳</span>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
+                <CountUpNumber target={todayCashFlow.todayIncome} />
               </h3>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
-              <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-100 text-emerald-900">
-                <span className="text-[10px] text-emerald-600 font-bold block flex items-center gap-1">
+            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+              <div className="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block flex items-center gap-1">
                   <ArrowDownRight size={11} />
                   <span>{isBn ? 'আজকের জমা' : 'Inflow'}</span>
                 </span>
-                <span className="text-sm font-black truncate block">৳{toBanglaDigits(todayCashFlow.todayIncome.toLocaleString(), language)}</span>
+                <span className="text-sm font-black truncate block tabular-nums font-mono">
+                  ৳<CountUpNumber target={todayCashFlow.todayIncome} />
+                </span>
               </div>
-              <div className="p-2 rounded-lg bg-rose-50/70 border border-rose-100 text-rose-900">
-                <span className="text-[10px] text-rose-600 font-bold block flex items-center gap-1">
+              <div className="p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800/60 text-rose-900 dark:text-rose-200">
+                <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block flex items-center gap-1">
                   <ArrowUpRight size={11} />
                   <span>{isBn ? 'আজকের খরচ' : 'Outflow'}</span>
                 </span>
-                <span className="text-sm font-black truncate block">৳{toBanglaDigits(todayCashFlow.todayExpense.toLocaleString(), language)}</span>
+                <span className="text-sm font-black truncate block tabular-nums font-mono">
+                  ৳<CountUpNumber target={todayCashFlow.todayExpense} />
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600 group-hover:text-emerald-700">
-            <span className="truncate">{isBn ? `হাতে নগদ: ৳${toBanglaDigits(todayCashFlow.todayNet.toLocaleString(), language)}` : `Net: ৳${todayCashFlow.todayNet}`}</span>
+          <div className="mt-4 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+            <span className="truncate tabular-nums font-mono">
+              {isBn ? `হাতে নগদ: ৳${toBanglaDigits(todayCashFlow.todayNet.toLocaleString(), language)}` : `Net: ৳${todayCashFlow.todayNet}`}
+            </span>
             <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform shrink-0" />
           </div>
         </div>
@@ -577,40 +588,44 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 4. শিক্ষার্থী ও কর্মচারীর সংখ্যা (Students & Staff Count) */}
         <div 
           onClick={() => onNavigate('students')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'শিক্ষার্থী ও জনবল' : 'Students & Faculty'}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Users size={20} />
               </div>
             </div>
 
             <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-                {toBanglaDigits(studentMetrics.active, language)}
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
+                <CountUpNumber target={studentMetrics.active} />
               </h3>
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {isBn ? 'জন শিক্ষার্থী' : 'Students'}
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
-              <div className="p-2 rounded-lg bg-indigo-50/70 border border-indigo-100 text-indigo-900">
-                <span className="text-[10px] text-indigo-600 font-bold block">{isBn ? 'শিক্ষক ও কর্মী' : 'Teachers/Staff'}</span>
-                <span className="text-base font-black">{toBanglaDigits(staffMetrics.teachersCount, language)} {isBn ? 'জন' : ''}</span>
+            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+              <div className="p-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/60 text-indigo-900 dark:text-indigo-200">
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold block">{isBn ? 'শিক্ষক ও কর্মী' : 'Teachers/Staff'}</span>
+                <span className="text-base font-black tabular-nums font-mono">
+                  <CountUpNumber target={staffMetrics.teachersCount} /> {isBn ? 'জন' : ''}
+                </span>
               </div>
-              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-800">
-                <span className="text-[10px] text-slate-500 font-bold block">{isBn ? 'মোট জামাত/শ্রেণি' : 'Classes'}</span>
-                <span className="text-base font-black">{toBanglaDigits(classes.length, language)} {isBn ? 'টি' : ''}</span>
+              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">{isBn ? 'মোট জামাত/শ্রেণি' : 'Classes'}</span>
+                <span className="text-base font-black tabular-nums font-mono">
+                  <CountUpNumber target={classes.length} /> {isBn ? 'টি' : ''}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600 group-hover:text-indigo-700">
+          <div className="mt-4 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
             <span>{isBn ? `অনুপাত: ১:${toBanglaDigits(staffMetrics.ratio, language)}` : `Ratio: 1:${staffMetrics.ratio}`}</span>
             <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </div>
@@ -619,45 +634,47 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 5. বকেয়া বেতন ও ফি (Due Fees & Receivables) */}
         <div 
           onClick={() => onNavigate('finance_reports')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'বকেয়া বেতন ও ফি' : 'Fee Dues & Collection'}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <CreditCard size={20} />
               </div>
             </div>
 
             <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-bold text-slate-500">৳</span>
-              <h3 className="text-3xl font-black text-amber-600 tracking-tight">
-                {toBanglaDigits(feeDuesMetrics.dues.toLocaleString(), language)}
+              <span className="text-sm font-bold text-slate-400">৳</span>
+              <h3 className="text-3xl font-black text-amber-600 dark:text-amber-400 tracking-tight tabular-nums font-mono">
+                <CountUpNumber target={feeDuesMetrics.dues} />
               </h3>
             </div>
 
             {/* Collection Progress Bar */}
-            <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
               <div className="flex items-center justify-between text-[11px] font-bold">
-                <span className="text-slate-500">{isBn ? 'আদায়ের অগ্রগতি' : 'Collection Rate'}</span>
-                <span className="text-emerald-600">{toBanglaDigits(feeDuesMetrics.rate, language)}%</span>
+                <span className="text-slate-500 dark:text-slate-400">{isBn ? 'আদায়ের অগ্রগতি' : 'Collection Rate'}</span>
+                <span className="text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
+                  <CountUpNumber target={feeDuesMetrics.rate} suffix="%" />
+                </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                 <div 
                   className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(5, feeDuesMetrics.rate))}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
+              <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium tabular-nums font-mono">
                 <span>{isBn ? `আদায়: ৳${toBanglaDigits(feeDuesMetrics.collected.toLocaleString(), language)}` : `Collected: ৳${feeDuesMetrics.collected}`}</span>
                 <span>{isBn ? `প্রত্যাশিত: ৳${toBanglaDigits(feeDuesMetrics.expected.toLocaleString(), language)}` : `Target: ৳${feeDuesMetrics.expected}`}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700 group-hover:text-amber-800">
+          <div className="mt-4 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:text-amber-700 dark:group-hover:text-amber-300">
             <span>{isBn ? 'বকেয়া তালিকা দেখুন' : 'View Due List'}</span>
             <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </div>

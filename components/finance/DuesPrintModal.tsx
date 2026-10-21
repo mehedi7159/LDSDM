@@ -334,7 +334,7 @@ export const DuesPrintModal: React.FC<DuesPrintModalProps> = ({
               </div>
               <div>
                 <div className="w-44 border-t border-slate-900 mx-auto mb-1" />
-                <span className="font-bold text-slate-800">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || (isBn ? 'মুহতামিম / অধ্যক্ষ' : 'Principal')}</span>
+                <span className="font-bold text-slate-800">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || (isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : 'Principal')}</span>
               </div>
             </div>
 
