@@ -150,12 +150,6 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     }
   };
 
-  const handleSelectDemoStudent = (std: Student) => {
-    const idToUse = std.studentId || std.id;
-    setActiveStudentId(idToUse);
-    setLoginError('');
-  };
-
   const handleLogout = () => {
     setActiveStudentId('');
     localStorage.removeItem('mms_logged_in_student_id');
@@ -595,36 +589,6 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 <ChevronRight size={16} />
               </button>
             </form>
-
-            {/* Registered Student Quick Selector */}
-            {students.length > 0 && (
-              <div className="pt-4 border-t border-slate-800/80 space-y-2.5">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="font-semibold">{language === 'bn' ? 'নিবন্ধিত শিক্ষার্থী (দ্রুত নির্বাচন):' : 'Registered Students (Quick Select):'}</span>
-                  <span className="text-[10px] text-indigo-400">({students.length} {language === 'bn' ? 'জন শিক্ষার্থী' : 'students'})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-                  {students.slice(0, 6).map(std => (
-                    <button
-                      key={std.id}
-                      type="button"
-                      onClick={() => handleSelectDemoStudent(std)}
-                      className="p-2 text-left rounded-xl bg-slate-950/60 hover:bg-indigo-950/40 border border-slate-800/80 hover:border-indigo-500/40 text-xs transition-all cursor-pointer flex items-center justify-between group"
-                    >
-                      <div className="truncate mr-2">
-                        <div className="font-bold text-white text-[11px] truncate group-hover:text-indigo-300">
-                          {language === 'bn' ? (std.nameBn || std.name) : std.name}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          ID: <span className="text-slate-200 font-mono">{std.studentId || std.id}</span> • {std.classLevel}
-                        </div>
-                      </div>
-                      <ChevronRight size={12} className="text-slate-600 group-hover:text-indigo-400 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="text-center pt-2">
               <p className="text-[11px] text-slate-500">
