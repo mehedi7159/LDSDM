@@ -41,7 +41,7 @@ import { StudentProfileView } from './components/StudentProfileView';
 import { NoticeBoard } from './components/NoticeBoard';
 import { ExamManager } from './components/ExamManager';
 import { DataSecurityBackupCenter } from './components/DataSecurityBackupCenter';
-import { MobileRoleAppView } from './components/MobileRoleAppView';
+import { StaffMobileApp } from './components/StaffMobileApp';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -727,7 +727,7 @@ const AppContent = () => {
         <>
           {/* Dedicated Native Mobile App View for Teacher, Cashier, Parent, Staff */}
           <div className="block md:hidden">
-            <MobileRoleAppView 
+            <StaffMobileApp 
               onLogout={() => logoutAdmin()} 
               renderModuleContent={() => renderContent()}
             />
