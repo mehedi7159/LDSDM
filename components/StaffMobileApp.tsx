@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
+import { calculateTotalGPA } from '../services/utils';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
@@ -35,7 +37,12 @@ import {
   User,
   TrendingUp,
   ClipboardList,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon,
+  Lock,
+  BarChart3,
+  Globe
 } from 'lucide-react';
 
 /**
@@ -77,9 +84,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     notices = [],
     bulkUpdateMarks,
     language,
+    setLanguage,
+    hasPermission,
     logoutAdmin,
     setActiveTab,
   } = useApp();
+
+  const { accentTheme, setAccentTheme, darkMode, setDarkMode, toggleDarkMode } = useTheme();
+  const isEn = language === 'en';
 
   // 1. Determine current active role
   const userRole = useMemo<'teacher' | 'cashier' | 'parent' | 'staff'>(() => {
@@ -246,6 +258,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   }, [selectedExamId, selectedSubjectId, classStudents, marks]);
 
   const handleSaveMarks = () => {
+    if (!canEnterMarks) return; // Permission gate: admin has not enabled entry
     if (!selectedExamId || !selectedSubjectId) return;
     const markRecordsToUpdate: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
 
@@ -428,7 +441,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     ];
   }, [userRole]);
 
-  const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices'];
+  const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result'];
 
   const handleOpenModule = (moduleKey: string) => {
     // For shared desktop modules, switch the app tab first so the
@@ -513,10 +526,103 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   };
 
   // -------------------------------------------------------------
+  // Phase 2 additions: marks-entry permission gate + class reports
+  // -------------------------------------------------------------
+  // Marks entry is allowed only when the admin has granted the
+  // marks.create / marks.edit permission to this user's role
+  // (managed from User & Role Management). Otherwise marks are view-only.
+  const canEnterMarks = useMemo(() => {
+    try {
+      if (typeof hasPermission !== 'function') return true;
+      return !!(hasPermission('marks.create' as any) || hasPermission('marks.edit' as any));
+    } catch {
+      return true;
+    }
+  }, [hasPermission, currentMember, currentUser]);
+
+  // This month's attendance report for the teacher's selected class
+  const monthlyAttendance = useMemo(() => {
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const perStudent = new Map<string, { present: number; absent: number; late: number; leave: number; total: number }>();
+    let totalRecords = 0;
+    let presentRecords = 0;
+    const days = new Set<string>();
+    for (let d = 1; d <= 31; d++) {
+      const dateStr = `${prefix}-${String(d).padStart(2, '0')}`;
+      const recs = dailyAttendanceService.getRecordsByDateAndClass(dateStr, selectedClass);
+      if (recs.length > 0) days.add(dateStr);
+      recs.forEach(r => {
+        totalRecords++;
+        if (r.status === 'PRESENT' || r.status === 'LATE') presentRecords++;
+        const cur = perStudent.get(r.studentId) || { present: 0, absent: 0, late: 0, leave: 0, total: 0 };
+        cur.total++;
+        if (r.status === 'PRESENT') cur.present++;
+        else if (r.status === 'ABSENT') cur.absent++;
+        else if (r.status === 'LATE') cur.late++;
+        else if (r.status === 'LEAVE') cur.leave++;
+        perStudent.set(r.studentId, cur);
+      });
+    }
+    const rate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
+    return { schoolDays: days.size, totalRecords, rate, perStudent };
+  }, [selectedClass, attendanceDate]);
+
+  // Latest exam result summary for the teacher's class
+  const classResultReport = useMemo(() => {
+    const exam = exams.length > 0 ? exams[exams.length - 1] : null;
+    if (!exam) return null;
+    const rows = classStudents.map(st => {
+      const has = marks.some(m => m.studentId === st.id && m.examId === exam.id);
+      const res = calculateTotalGPA(classSubjects, marks, st.id, exam.id, st.group, exams);
+      return { student: st, has, ...res };
+    });
+    const appeared = rows.filter(r => r.has);
+    const passed = appeared.filter(r => !r.isFail);
+    const avgGpa = appeared.length > 0 ? appeared.reduce((s, r) => s + r.gpa, 0) / appeared.length : 0;
+    const passRate = appeared.length > 0 ? Math.round((passed.length / appeared.length) * 100) : 0;
+    const sorted = [...rows].sort((a, b) => b.gpa - a.gpa || b.totalMarks - a.totalMarks);
+    return { exam, rows: sorted, appeared: appeared.length, passed: passed.length, failed: appeared.length - passed.length, avgGpa, passRate };
+  }, [exams, marks, classStudents, classSubjects]);
+
+  // This month's fee collection for the teacher's class
+  const classFeeReport = useMemo(() => {
+    const expected = classDuesSummary.profiles.reduce((s, p) => s + (p.monthlyExpected || 0), 0);
+    const paid = classDuesSummary.profiles.reduce((s, p) => s + (p.paidThisMonth || 0), 0);
+    const pct = expected > 0 ? Math.round((paid / expected) * 100) : 0;
+    return { expected, paid, pct };
+  }, [classDuesSummary]);
+
+  // Accountant: today's expense + top dues list
+  const todayExpense = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return transactions
+      .filter(t => t.type === 'EXPENSE' && (t.date?.startsWith(todayStr)))
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  }, [transactions]);
+
+  const topDueProfiles = useMemo(() => {
+    return [...allDuesSummary.profiles]
+      .filter(p => p.dueThisMonth > 0)
+      .sort((a, b) => b.dueThisMonth - a.dueThisMonth)
+      .slice(0, 5);
+  }, [allDuesSummary]);
+
+  // -------------------------------------------------------------
   // Shared chrome
   // -------------------------------------------------------------
+  const brandCss = (
+    <style>{`
+      .brand-grad { background-image: linear-gradient(135deg, var(--color-brand), var(--color-brand-hover)) !important; }
+      .brand-soft { background-color: var(--color-brand-light) !important; color: var(--color-brand) !important; }
+      .brand-text { color: var(--color-brand) !important; }
+      .brand-bg { background-color: var(--color-brand) !important; }
+    `}</style>
+  );
+
   const BottomNav = (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#161c2e]/95 backdrop-blur-xl border-t border-[#e8ecf4] dark:border-white/5 shadow-[0_-4px_24px_rgba(30,36,51,0.06)]">
+      {brandCss}
       <div className="grid grid-cols-5 h-[68px] px-1">
         {bottomNavItems.map(item => {
           const Icon = item.icon;
@@ -530,11 +636,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               onClick={() => handleBottomNavClick(item)}
               className="relative flex flex-col items-center justify-center gap-1 min-h-[56px] cursor-pointer"
             >
-              <Icon size={21} className={isActive ? 'text-[#7c3aed] dark:text-violet-300' : 'text-[#8a93a8] dark:text-slate-500'} />
-              <span className={`text-[11px] leading-none ${isActive ? 'font-bold text-[#7c3aed] dark:text-violet-300' : 'font-medium text-[#8a93a8] dark:text-slate-500'}`}>
+              <Icon size={21} className={isActive ? 'brand-text' : 'text-[#8a93a8] dark:text-slate-500'} />
+              <span className={`text-[11px] leading-none ${isActive ? 'font-bold brand-text' : 'font-medium text-[#8a93a8] dark:text-slate-500'}`}>
                 {item.label}
               </span>
-              <span className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-[#7c3aed] transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`} />
+              <span className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full brand-bg transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`} />
             </button>
           );
         })}
@@ -557,7 +663,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           onClick={() => setSelectedClass(clsName)}
           className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
             selectedClass === clsName
-              ? 'bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] text-white shadow-md shadow-violet-500/25'
+              ? 'brand-grad text-white shadow-md shadow-violet-500/25'
               : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
           }`}
         >
@@ -588,7 +694,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </span>
             <span className="text-[10px] text-[#8a93a8]">{schoolProfile.nameBn || schoolProfile.name}</span>
           </div>
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/25">
+          <div className="w-9 h-9 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/25">
             {initialLetter}
           </div>
         </header>
@@ -608,7 +714,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     </span>
                     <h2 className="text-sm font-bold">দৈনিক হাজিরা গ্রহণ</h2>
                   </div>
-                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 font-bold">
+                  <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">
                     {selectedClass}
                   </span>
                 </div>
@@ -683,7 +789,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={st.id} className={`${cardCls} p-3.5 flex flex-col gap-3`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div>
@@ -716,7 +822,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 <div className="sticky bottom-[84px] z-30 pt-1">
                   <button
                     onClick={handleSaveAttendance}
-                    className="w-full py-3.5 px-4 rounded-[20px] bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <Save size={17} />
                     <span>হাজিরা সংরক্ষণ করুন</span>
@@ -737,7 +843,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     </span>
                     <h2 className="text-sm font-bold">শ্রেণির বকেয়া খতিয়ান</h2>
                   </div>
-                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 font-bold">{selectedClass}</span>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">{selectedClass}</span>
                 </div>
 
                 {classSwitcher}
@@ -784,7 +890,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       onClick={() => setDuesFilterMode(mode)}
                       className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                         duesFilterMode === mode
-                          ? 'bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] text-white shadow-md shadow-violet-500/25'
+                          ? 'brand-grad text-white shadow-md shadow-violet-500/25'
                           : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
                       }`}
                     >
@@ -810,7 +916,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div>
@@ -856,7 +962,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                               <button
                                 type="button"
                                 onClick={() => handleCopySms(p)}
-                                className="px-2.5 py-1.5 rounded-xl bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                className="px-2.5 py-1.5 rounded-xl brand-soft text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                               >
                                 {copiedStudentId === st.id ? (<><Check size={11} /> কপি হয়েছে</>) : (<><Copy size={11} /> তাগাদা</>)}
                               </button>
@@ -874,15 +980,30 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           {/* ============ TEACHER: MARKS ENTRY ============ */}
           {activeSubModule === 'teacher_marks' && (
             <div className="space-y-4">
+              {!canEnterMarks && (
+                <div className="p-4 rounded-[24px] bg-[#fef3c7] dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 flex items-start gap-3">
+                  <span className="w-9 h-9 rounded-2xl bg-[#f59e0b] text-white flex items-center justify-center shrink-0">
+                    <Lock size={16} />
+                  </span>
+                  <div>
+                    <h3 className="text-[13px] font-bold text-[#92400e] dark:text-amber-200">{isEn ? 'Marks entry is closed' : 'নম্বর এন্ট্রি বর্তমানে বন্ধ আছে'}</h3>
+                    <p className="text-[11px] text-[#92400e]/80 dark:text-amber-200/70 mt-0.5 leading-relaxed">
+                      {isEn
+                        ? 'The admin has not enabled marks entry for your role right now. You can only view the entered marks below.'
+                        : 'এডমিন এখন আপনার রোলের জন্য নম্বর এন্ট্রির অনুমতি চালু রাখেননি। নিচে শুধু আগের দেওয়া নম্বর দেখতে পারবেন। এন্ট্রি চালু করতে প্রিন্সিপাল/এডমিনের সাথে যোগাযোগ করুন।'}
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className={`${cardCls} p-4 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-9 h-9 rounded-2xl bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 flex items-center justify-center">
+                    <span className="w-9 h-9 rounded-2xl brand-soft flex items-center justify-center">
                       <PenTool size={17} />
                     </span>
-                    <h2 className="text-sm font-bold">নম্বর এন্ট্রি</h2>
+                    <h2 className="text-sm font-bold">{canEnterMarks ? (isEn ? 'Marks Entry' : 'নম্বর এন্ট্রি') : (isEn ? 'View Marks' : 'নম্বর দেখুন')}</h2>
                   </div>
-                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 font-bold">{selectedClass}</span>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">{selectedClass}</span>
                 </div>
 
                 {classSwitcher}
@@ -930,7 +1051,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   return (
                     <div key={st.id} className={`${cardCls} p-3.5 flex items-center justify-between gap-3`}>
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <span className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                        <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
                           {(st.nameBn || st.name || 'শ').charAt(0)}
                         </span>
                         <div className="overflow-hidden">
@@ -940,30 +1061,181 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           </span>
                         </div>
                       </div>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        inputMode="numeric"
-                        value={currentVal}
-                        onChange={e => setMarksInputMap(prev => ({ ...prev, [st.id]: e.target.value }))}
-                        placeholder="০"
-                        className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black focus:outline-none focus:ring-2 focus:ring-violet-400 shrink-0"
-                      />
+                      {canEnterMarks ? (
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          inputMode="numeric"
+                          value={currentVal}
+                          onChange={e => setMarksInputMap(prev => ({ ...prev, [st.id]: e.target.value }))}
+                          placeholder="০"
+                          className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black focus:outline-none focus:ring-2 focus:ring-violet-400 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-dashed border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black text-[#5b6478] dark:text-slate-300 shrink-0">
+                          {currentVal !== '' ? toBn(currentVal) : '—'}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
-              {classStudents.length > 0 && (
+              {canEnterMarks && classStudents.length > 0 && (
                 <div className="sticky bottom-[84px] z-30 pt-1">
                   <button
                     onClick={handleSaveMarks}
-                    className="w-full py-3.5 px-4 rounded-[20px] bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <Save size={17} />
                     <span>নম্বর সংরক্ষণ করুন</span>
                   </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ============ TEACHER: MONTHLY ATTENDANCE REPORT ============ */}
+          {activeSubModule === 'teacher_report_attendance' && (
+            <div className="space-y-4">
+              <div className={`${cardCls} p-5 space-y-3`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="w-10 h-10 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                    <BarChart3 size={18} />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-bold">{isEn ? 'Attendance Report — This Month' : 'হাজিরা রিপোর্ট — এই মাস'}</h2>
+                    <p className="text-[11px] text-[#8a93a8]">{selectedClass}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className={`${softBg} p-3 rounded-2xl`}>
+                    <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400 block">{isEn ? 'School days' : 'কর্মদিবস'}</span>
+                    <span className="text-lg font-black">{toBn(monthlyAttendance.schoolDays)}</span>
+                  </div>
+                  <div className="bg-[#d1fae5] dark:bg-emerald-500/10 p-3 rounded-2xl">
+                    <span className="text-[11px] font-semibold text-[#059669] block">{isEn ? 'Avg. attendance' : 'গড় উপস্থিতি'}</span>
+                    <span className="text-lg font-black text-[#059669] dark:text-emerald-300">{toBn(monthlyAttendance.rate)}%</span>
+                  </div>
+                  <div className={`${softBg} p-3 rounded-2xl`}>
+                    <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400 block">{isEn ? 'Records' : 'মোট রেকর্ড'}</span>
+                    <span className="text-lg font-black">{toBn(monthlyAttendance.totalRecords)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {classStudents.map(st => {
+                  const rec = monthlyAttendance.perStudent.get(st.id);
+                  const pct = rec && rec.total > 0 ? Math.round(((rec.present + rec.late) / rec.total) * 100) : null;
+                  return (
+                    <div key={st.id} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shadow-md shrink-0">
+                          {(st.nameBn || st.name || 'শ').charAt(0)}
+                        </span>
+                        <div className="min-w-0">
+                          <h3 className="text-[13px] font-bold truncate">{st.nameBn || st.name}</h3>
+                          <p className="text-[11px] text-[#8a93a8]">
+                            {rec
+                              ? `${isEn ? 'Present' : 'উপস্থিত'} ${toBn(rec.present + rec.late)} • ${isEn ? 'Absent' : 'অনুপস্থিত'} ${toBn(rec.absent)} • ${isEn ? 'Leave' : 'ছুটি'} ${toBn(rec.leave)}`
+                              : (isEn ? 'No record this month' : 'এই মাসে রেকর্ড নেই')}
+                          </p>
+                        </div>
+                      </div>
+                      {pct !== null && (
+                        <span className={`text-xs font-black px-2.5 py-1.5 rounded-xl shrink-0 ${pct >= 85 ? 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300' : pct >= 60 ? 'bg-[#fef3c7] text-[#92400e] dark:bg-amber-500/15 dark:text-amber-300' : 'bg-[#fee2e2] text-[#991b1b] dark:bg-rose-500/15 dark:text-rose-300'}`}>
+                          {toBn(pct)}%
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+                {classStudents.length === 0 && (
+                  <div className={`${cardCls} p-8 text-center`}>
+                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{selectedClass}-এ কোনো শিক্ষার্থী পাওয়া যায়নি।</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ============ TEACHER: CLASS RESULT REPORT ============ */}
+          {activeSubModule === 'teacher_report_result' && (
+            <div className="space-y-4">
+              {classResultReport ? (
+                <>
+                  <div className={`${cardCls} p-5 space-y-3`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-10 h-10 rounded-2xl brand-soft flex items-center justify-center">
+                        <Award size={18} />
+                      </span>
+                      <div>
+                        <h2 className="text-sm font-bold">{classResultReport.exam.name}</h2>
+                        <p className="text-[11px] text-[#8a93a8]">{isEn ? 'Class result summary' : 'শ্রেণির ফলাফল সারাংশ'} • {selectedClass}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div className={`${softBg} p-2.5 rounded-2xl`}>
+                        <span className="text-[10px] font-semibold text-[#5b6478] dark:text-slate-400 block">{isEn ? 'Appeared' : 'অংশগ্রহণ'}</span>
+                        <span className="text-base font-black">{toBn(classResultReport.appeared)}</span>
+                      </div>
+                      <div className="bg-[#d1fae5] dark:bg-emerald-500/10 p-2.5 rounded-2xl">
+                        <span className="text-[10px] font-semibold text-[#059669] block">{isEn ? 'Passed' : 'পাস'}</span>
+                        <span className="text-base font-black text-[#059669] dark:text-emerald-300">{toBn(classResultReport.passed)}</span>
+                      </div>
+                      <div className="bg-[#fee2e2] dark:bg-rose-500/10 p-2.5 rounded-2xl">
+                        <span className="text-[10px] font-semibold text-[#dc2626] block">{isEn ? 'Failed' : 'ফেল'}</span>
+                        <span className="text-base font-black text-[#dc2626] dark:text-rose-300">{toBn(classResultReport.failed)}</span>
+                      </div>
+                      <div className="bg-[#fef3c7] dark:bg-amber-500/10 p-2.5 rounded-2xl">
+                        <span className="text-[10px] font-semibold text-[#d97706] block">{isEn ? 'Avg GPA' : 'গড় GPA'}</span>
+                        <span className="text-base font-black text-[#d97706] dark:text-amber-300">{toBn(classResultReport.avgGpa.toFixed(2))}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-semibold mb-1.5">
+                        <span className="text-[#5b6478] dark:text-slate-400">{isEn ? 'Pass rate' : 'পাসের হার'}</span>
+                        <span>{toBn(classResultReport.passRate)}%</span>
+                      </div>
+                      <div className="h-2.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${classResultReport.passRate}%` }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {classResultReport.rows.map((r, idx) => (
+                      <div key={r.student.id} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="w-7 text-center text-sm font-black text-[#8a93a8] shrink-0">{toBn(idx + 1)}</span>
+                          <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shadow-md shrink-0">
+                            {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="text-[13px] font-bold truncate">{r.student.nameBn || r.student.name}</h3>
+                            <p className="text-[11px] text-[#8a93a8]">
+                              {r.has ? `${isEn ? 'Total' : 'মোট নম্বর'}: ${toBn(r.totalMarks)}` : (isEn ? 'Did not appear' : 'অংশ নেয়নি')}
+                            </p>
+                          </div>
+                        </div>
+                        {r.has && (
+                          <div className="text-right shrink-0">
+                            <span className={`text-xs font-black px-2.5 py-1.5 rounded-xl ${r.isFail ? 'bg-[#fee2e2] text-[#991b1b] dark:bg-rose-500/15 dark:text-rose-300' : 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300'}`}>
+                              GPA {toBn(r.gpa.toFixed(2))}
+                            </span>
+                            <p className="text-[10px] text-[#8a93a8] mt-1 font-semibold">{isEn ? 'Grade' : 'গ্রেড'}: {r.grade}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className={`${cardCls} p-8 text-center space-y-2`}>
+                  <Award size={32} className="mx-auto text-[#c3c9d9]" />
+                  <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{isEn ? 'No exam found yet.' : 'এখনো কোনো পরীক্ষা তৈরি হয়নি।'}</p>
                 </div>
               )}
             </div>
@@ -1023,7 +1295,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
         <main className="p-4 space-y-4">
           <div className={`${cardCls} p-5 flex flex-col items-center text-center space-y-3`}>
-            <div className="w-20 h-20 rounded-[26px] bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white font-black flex items-center justify-center text-3xl shadow-xl shadow-violet-500/30">
+            <div className="w-20 h-20 rounded-[26px] brand-grad text-white font-black flex items-center justify-center text-3xl shadow-xl shadow-violet-500/30">
               {initialLetter}
             </div>
             <div>
@@ -1032,7 +1304,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </div>
             <div className="flex flex-wrap justify-center gap-1.5">
               {roleBadges.map((badge, idx) => (
-                <span key={idx} className="px-3 py-1 rounded-full bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 text-[11px] font-bold">
+                <span key={idx} className="px-3 py-1 rounded-full brand-soft text-[11px] font-bold">
                   {badge}
                 </span>
               ))}
@@ -1065,14 +1337,80 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </div>
           </div>
 
+          {/* Appearance: display mode, accent colour, language */}
+          <div className={`${cardCls} p-5 space-y-5`}>
+            <div>
+              <p className="text-xs font-bold mb-2.5 flex items-center gap-1.5">
+                {darkMode ? <Moon size={13} /> : <Sun size={13} />}
+                {isEn ? 'Display Mode' : 'ডিসপ্লে মোড'}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setDarkMode(false)}
+                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${!darkMode ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                >
+                  <Sun size={15} /> {isEn ? 'Light' : 'লাইট'}
+                </button>
+                <button
+                  onClick={() => setDarkMode(true)}
+                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${darkMode ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                >
+                  <Moon size={15} /> {isEn ? 'Dark' : 'ডার্ক'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold mb-2.5">{isEn ? 'Accent Colour' : 'অ্যাকসেন্ট রঙ'}</p>
+              <div className="flex items-start gap-3">
+                {ACCENT_THEMES.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setAccentTheme(t.id)}
+                    className="flex flex-col items-center gap-1.5 cursor-pointer"
+                    aria-label={t.nameEn}
+                  >
+                    <span
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition-all ${accentTheme === t.id ? 'ring-4 ring-offset-2 ring-offset-white dark:ring-offset-[#161c2e] scale-105' : ''}`}
+                      style={{ backgroundColor: t.primary, ['--tw-ring-color' as any]: t.ring }}
+                    >
+                      {accentTheme === t.id && <Check size={16} />}
+                    </span>
+                    <span className={`text-[9px] font-semibold leading-tight text-center ${accentTheme === t.id ? '' : 'text-[#8a93a8]'}`}>{isEn ? t.nameEn : t.nameBn}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold mb-2.5 flex items-center gap-1.5">
+                <Globe size={13} /> {isEn ? 'Language' : 'ভাষা / Language'}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setLanguage('bn')}
+                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${!isEn ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                >
+                  বাংলা
+                </button>
+                <button
+                  onClick={() => setLanguage('en')}
+                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${isEn ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                >
+                  English
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className={`${cardCls} p-4 flex items-center justify-between`}>
             <div className="flex items-center gap-3">
-              <span className="w-10 h-10 rounded-2xl bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 flex items-center justify-center">
+              <span className="w-10 h-10 rounded-2xl brand-soft flex items-center justify-center">
                 <Sparkles size={18} />
               </span>
               <div>
-                <p className="text-xs font-bold">অ্যাপ ইনস্টল করুন</p>
-                <p className="text-[11px] text-[#8a93a8]">হোম স্ক্রিনে যোগ করে দ্রুত খুলুন</p>
+                <p className="text-xs font-bold">{isEn ? 'Install App' : 'অ্যাপ ইনস্টল করুন'}</p>
+                <p className="text-[11px] text-[#8a93a8]">{isEn ? 'Add to home screen for quick access' : 'হোম স্ক্রিনে যোগ করে দ্রুত খুলুন'}</p>
               </div>
             </div>
             <PWAInstallButton />
@@ -1094,198 +1432,373 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   }
 
   // -------------------------------------------------------------
-  // HOME DASHBOARD
+  // HOME DASHBOARD — Tutor App style
+  // (gradient hero with quick-action tiles inside, airy stat cards,
+  //  progress cards, soft nudges — logic unchanged, presentation new)
   // -------------------------------------------------------------
-  const StatCard = ({ value, label, Icon, cls }: { value: string; label: string; Icon: any; cls: string }) => (
-    <div className={`${cardCls} p-3.5 flex flex-col items-center text-center gap-1.5`}>
-      <span className={`w-9 h-9 rounded-2xl flex items-center justify-center ${cls}`}>
-        <Icon size={17} />
-      </span>
-      <span className="text-[15px] font-black leading-none truncate max-w-full">{value}</span>
-      <span className="text-[10px] text-[#8a93a8] font-semibold leading-none">{label}</span>
-    </div>
-  );
+  const tileLabels: Record<string, string> = {
+    attendance: 'হাজিরা',
+    students_dues: 'বকেয়া',
+    marks: 'নম্বর',
+    notices: 'নোটিশ',
+    finance_collect: 'ফি আদায়',
+    finance_expense: 'খরচ',
+    students: 'ছাত্র',
+    finance_reports: 'রিপোর্ট',
+    results: 'ফলাফল',
+    finance: 'ফি',
+    id_cards: 'আইডি কার্ড'
+  };
+
+  const statsRow = [
+    { value: roleStats.stat1Value, label: roleStats.stat1Label, Icon: roleStats.stat1Icon, cls: roleStats.stat1Cls },
+    { value: roleStats.stat2Value, label: roleStats.stat2Label, Icon: roleStats.stat2Icon, cls: roleStats.stat2Cls },
+    { value: roleStats.stat3Value, label: roleStats.stat3Label, Icon: roleStats.stat3Icon, cls: roleStats.stat3Cls }
+  ];
+
+  const attendanceTakenPct = attendanceStats.total > 0 ? Math.round((attendanceStats.takenCount / attendanceStats.total) * 100) : 0;
+  const cashierNet = cashierFigures.todayIncome - todayExpense;
+  const cashierBarMax = Math.max(cashierFigures.todayIncome, todayExpense, 1);
 
   return (
     <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] text-[#1e2433] dark:text-slate-100 flex flex-col pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#f4f6fb]/90 dark:bg-[#0e1220]/90 backdrop-blur-xl px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-[16px] bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white font-black flex items-center justify-center text-lg shadow-lg shadow-violet-500/25 shrink-0">
-            {initialLetter}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] text-[#8a93a8] font-semibold">{todayGreeting.greeting} 👋</p>
-            <h1 className="text-[15px] font-black truncate leading-tight">{displayName}</h1>
-          </div>
+      {/* Top bar */}
+      <header className="px-4 pt-5 pb-1 flex items-center gap-3 relative">
+        <div className="w-12 h-12 rounded-[16px] brand-grad text-white font-black flex items-center justify-center text-lg shadow-lg shrink-0">
+          {initialLetter}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <PWAInstallButton />
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 flex items-center justify-center text-[#5b6478] dark:text-slate-300 relative cursor-pointer active:scale-95 transition-all"
-          >
-            <Bell size={17} />
-            {notices.length > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#ef4444]" />}
-          </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-[#5b6478] dark:text-slate-400">{todayGreeting.greeting} 👋</p>
+          <h1 className="text-lg font-black leading-tight truncate">{displayName}</h1>
         </div>
-      </header>
-
-      {/* Notifications drawer */}
-      {showNotifications && (
-        <div className={`fixed inset-x-4 top-16 z-50 p-4 ${cardCls} text-xs space-y-2`}>
-          <div className="flex items-center justify-between border-b border-[#e8ecf4] dark:border-white/5 pb-2">
-            <span className="font-bold text-[#6d28d9] dark:text-violet-300">মাদরাসা নোটিফিকেশন</span>
-            <button onClick={() => setShowNotifications(false)} className="text-[#8a93a8] cursor-pointer"><X size={15} /></button>
-          </div>
-          {notices.slice(0, 3).map(n => (
-            <div key={n.id} className={`p-2.5 rounded-2xl ${softBg}`}>
-              <span className="font-bold block mb-0.5">{n.title}</span>
-              <p className="text-[11px] text-[#5b6478] dark:text-slate-400 line-clamp-2">{n.content}</p>
-            </div>
-          ))}
-          {notices.length === 0 && (
-            <div className={`p-2.5 rounded-2xl ${softBg} text-[#8a93a8] text-center`}>কোনো নতুন নোটিফিকেশন নেই।</div>
+        <button
+          onClick={toggleDarkMode}
+          aria-label="Toggle light/dark mode"
+          className="w-10 h-10 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 flex items-center justify-center text-[#5b6478] dark:text-amber-300 cursor-pointer active:scale-95 transition-all shrink-0"
+        >
+          {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+        <button
+          onClick={() => setShowNotifications(!showNotifications)}
+          aria-label="Notifications"
+          className="relative w-10 h-10 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 flex items-center justify-center text-[#5b6478] dark:text-slate-300 cursor-pointer active:scale-95 transition-all shrink-0"
+        >
+          <Bell size={17} />
+          {notices.length > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ef4444] text-white text-[10px] font-bold flex items-center justify-center">
+              {toBn(Math.min(notices.length, 9))}
+            </span>
           )}
-        </div>
-      )}
+        </button>
 
-      <main className="p-4 space-y-4">
-        {/* Hero card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#8b5cf6] via-[#7c3aed] to-[#6d28d9] text-white p-5 rounded-[28px] shadow-xl shadow-violet-500/25 space-y-3">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-100 relative">
-            <Calendar size={12} />
-            <span>{todayGreeting.fullDateText}</span>
-          </div>
-          <div className="relative">
-            <span className="text-[11px] font-semibold text-violet-200 block truncate">{schoolProfile.nameBn || schoolProfile.name}</span>
-            <h2 className="text-[22px] font-black tracking-tight mt-0.5 leading-snug">{roleTitleBengali[userRole]}</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 relative">
-            {roleBadges.map((badge, idx) => (
-              <span key={idx} className="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-[11px] font-bold">
-                {badge}
-              </span>
+        {showNotifications && (
+          <div className={`absolute right-4 top-[72px] w-[300px] max-w-[calc(100vw-2rem)] ${cardCls} p-3 z-50 space-y-1`}>
+            <p className="text-xs font-black px-1 pb-1">{isEn ? 'Latest notices' : 'সর্বশেষ নোটিশ'}</p>
+            {notices.length === 0 && (
+              <p className="text-[11px] text-[#8a93a8] px-1 py-2">{isEn ? 'No notices yet.' : 'এখনো কোনো নোটিশ নেই।'}</p>
+            )}
+            {notices.slice(0, 5).map(n => (
+              <button
+                key={n.id}
+                onClick={() => { setShowNotifications(false); handleOpenModule(userRole === 'teacher' ? 'teacher_notices' : 'notice_board'); }}
+                className="w-full text-left px-2 py-2 rounded-xl hover:bg-[#f4f6fb] dark:hover:bg-white/5 cursor-pointer"
+              >
+                <p className="text-xs font-bold truncate">{n.title}</p>
+                <p className="text-[10px] text-[#8a93a8]">{toBn(n.publishDate || (n as any).date || '')}</p>
+              </button>
             ))}
           </div>
-        </div>
+        )}
+      </header>
 
-        {/* KPI cards */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <StatCard value={roleStats.stat1Value} label={roleStats.stat1Label} Icon={roleStats.stat1Icon} cls={roleStats.stat1Cls} />
-          <StatCard value={roleStats.stat2Value} label={roleStats.stat2Label} Icon={roleStats.stat2Icon} cls={roleStats.stat2Cls} />
-          <StatCard value={roleStats.stat3Value} label={roleStats.stat3Label} Icon={roleStats.stat3Icon} cls={roleStats.stat3Cls} />
-        </div>
+      {successToast}
 
-        {/* Teacher: today's attendance progress */}
-        {userRole === 'teacher' && (
-          <div className={`${cardCls} p-4 space-y-3`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-9 h-9 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
-                  <ClipboardList size={17} />
+      <main className="flex-1 p-4 space-y-4">
+        {/* HERO — gradient greeting + quick actions inside (Tutor App pattern) */}
+        <section className="relative overflow-hidden rounded-[28px] brand-grad text-white p-5 shadow-xl">
+          <div className="absolute w-40 h-40 -top-10 -right-10 rounded-full bg-white/[0.14] pointer-events-none" />
+          <div className="absolute w-24 h-24 bottom-2 right-32 rounded-full bg-white/[0.10] pointer-events-none" />
+          <div className="relative">
+            <p className="text-[13px] font-medium text-white/85">{todayGreeting.fullDateText}</p>
+            <h2 className="text-[22px] font-black mt-0.5 leading-snug">{roleTitleBengali[userRole]}</h2>
+            <p className="text-[13px] text-white/80 mt-0.5">{schoolProfile.nameBn || schoolProfile.name}</p>
+
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {roleBadges.map((b, i) => (
+                <span key={i} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/[0.16]">
+                  {b}
                 </span>
-                <div>
-                  <h3 className="text-[13px] font-bold leading-tight">আজকের হাজিরা — {selectedClass}</h3>
-                  <p className="text-[11px] text-[#8a93a8]">{toBn(attendanceStats.takenCount)}/{toBn(attendanceStats.total)} জনের হাজিরা নেওয়া হয়েছে</p>
-                </div>
-              </div>
-              <span className="text-lg font-black text-[#059669] dark:text-emerald-300">{toBn(attendanceStats.rate)}%</span>
+              ))}
+            </div>
+
+            <p className="text-[11px] font-bold uppercase tracking-wider text-white/70 mt-5 mb-2.5">
+              {isEn ? 'Quick actions' : 'দ্রুত কাজ'}
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {roleActions.map(a => {
+                const TileIcon = a.icon;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => handleOpenModule(a.moduleKey)}
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 px-1 min-h-[64px] bg-white/[0.16] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <TileIcon size={20} className="text-white" />
+                    <span className="text-[11px] font-semibold text-white leading-tight text-center">
+                      {tileLabels[a.id] || a.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* STAT CARDS — icon chip on top, big value, soft label (Tutor App pattern) */}
+        <section className="grid grid-cols-3 gap-3">
+          {statsRow.map((s, i) => (
+            <div key={i} className={`${cardCls} p-4`}>
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.cls}`}>
+                <s.Icon size={19} />
+              </span>
+              <p className="text-[16px] font-black leading-tight mt-3 break-words">{s.value}</p>
+              <p className="text-[11px] font-medium text-[#5b6478] dark:text-slate-400 mt-0.5 leading-snug">{s.label}</p>
+            </div>
+          ))}
+        </section>
+
+        {/* TEACHER: today's attendance progress */}
+        {userRole === 'teacher' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                  <CheckSquare size={15} />
+                </span>
+                {isEn ? "Today's Attendance" : 'আজকের হাজিরা'}
+              </h3>
+              <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">{selectedClass}</span>
+            </div>
+            <div className="flex items-end justify-between">
+              <p className="text-[32px] leading-none font-black">
+                {toBn(attendanceStats.rate)}<span className="text-lg text-[#8a93a8]">%</span>
+              </p>
+              <p className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400">
+                {isEn ? 'Taken' : 'নেওয়া হয়েছে'} {toBn(attendanceStats.takenCount)}/{toBn(attendanceStats.total)} {isEn ? 'students' : 'জন'}
+              </p>
             </div>
             <div className="h-2.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981] transition-all" style={{ width: `${attendanceStats.total > 0 ? (attendanceStats.takenCount / attendanceStats.total) * 100 : 0}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981] transition-all" style={{ width: `${attendanceTakenPct}%` }} />
             </div>
+            <p className="text-[11px] text-[#5b6478] dark:text-slate-400 font-medium">
+              {isEn ? 'Present' : 'উপস্থিত'} {toBn(attendanceStats.present)} • {isEn ? 'Absent' : 'অনুপস্থিত'} {toBn(attendanceStats.absent)} • {isEn ? 'Late' : 'দেরি'} {toBn(attendanceStats.late)} • {isEn ? 'Leave' : 'ছুটি'} {toBn(attendanceStats.leave)}
+            </p>
             <button
               onClick={() => handleOpenModule('teacher_attendance')}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] text-white text-xs font-bold shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-all cursor-pointer"
+              className="w-full py-3.5 rounded-2xl brand-grad text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all cursor-pointer"
             >
-              হাজিরা নিতে যান
+              <CheckSquare size={16} />
+              <span>{attendanceStats.takenCount >= attendanceStats.total && attendanceStats.total > 0 ? (isEn ? 'Attendance done — review' : 'হাজিরা সম্পন্ন ✓ — আবার দেখুন') : (isEn ? 'Take attendance' : 'হাজিরা নিতে যান')}</span>
             </button>
-          </div>
+          </section>
         )}
 
-        {/* Cashier: recent collections */}
-        {userRole === 'cashier' && cashierFigures.recent.length > 0 && (
-          <div className={`${cardCls} p-4 space-y-3`}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-bold">সাম্প্রতিক আদায়</h3>
-              <button onClick={() => handleOpenModule('finance_reports')} className="text-[11px] font-bold text-[#7c3aed] dark:text-violet-300 cursor-pointer">সব রিপোর্ট</button>
-            </div>
-            <div className="space-y-2">
-              {cashierFigures.recent.map(t => (
-                <div key={t.id} className={`flex items-center justify-between p-3 rounded-2xl ${softBg}`}>
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-9 h-9 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center shrink-0">
-                      <Receipt size={15} />
+        {/* TEACHER: class reports */}
+        {userRole === 'teacher' && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-black flex items-center gap-2 px-0.5">
+              <span className="w-1 h-4 rounded-full brand-bg" />
+              {isEn ? 'My Class Reports' : 'আমার ক্লাসের রিপোর্ট'}
+            </h3>
+            <div className={`${cardCls} p-5 space-y-5`}>
+              <button onClick={() => handleOpenModule('teacher_report_attendance')} className="w-full text-left cursor-pointer active:scale-[0.99] transition-all">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="flex items-center gap-2 text-[13px] font-bold">
+                    <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                      <BarChart3 size={15} />
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold truncate">{(t as any).studentName || (t as any).description || (t as any).category || 'ফি আদায়'}</p>
-                      <p className="text-[10px] text-[#8a93a8]">{toBn(String(t.date || '').slice(0, 10))}</p>
+                    {isEn ? 'Attendance — this month' : 'হাজিরা রিপোর্ট — এই মাস'}
+                  </span>
+                  <span className="text-sm font-black text-[#059669] dark:text-emerald-300">{toBn(monthlyAttendance.rate)}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${monthlyAttendance.rate}%` }} />
+                </div>
+                <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
+                  {isEn ? 'School days' : 'কর্মদিবস'} {toBn(monthlyAttendance.schoolDays)} {isEn ? 'days • tap for student-wise report' : 'দিন • ছাত্রভিত্তিক দেখতে ট্যাপ করুন'}
+                </p>
+              </button>
+
+              <button onClick={() => handleOpenModule('teacher_report_result')} className="w-full text-left cursor-pointer active:scale-[0.99] transition-all">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="flex items-center gap-2 text-[13px] font-bold">
+                    <span className="w-8 h-8 rounded-xl brand-soft flex items-center justify-center">
+                      <Award size={15} />
+                    </span>
+                    {isEn ? 'Result — latest exam' : 'ফলাফল — সর্বশেষ পরীক্ষা'}
+                  </span>
+                  <span className="text-sm font-black brand-text">
+                    {classResultReport ? `${isEn ? 'Pass' : 'পাস'} ${toBn(classResultReport.passRate)}%` : '—'}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
+                  <div className="h-full rounded-full brand-grad" style={{ width: `${classResultReport ? classResultReport.passRate : 0}%` }} />
+                </div>
+                <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
+                  {classResultReport
+                    ? `${classResultReport.exam.name} • ${isEn ? 'Avg GPA' : 'গড় GPA'} ${toBn(classResultReport.avgGpa.toFixed(2))}`
+                    : (isEn ? 'No exam yet' : 'এখনো পরীক্ষা হয়নি')}
+                </p>
+              </button>
+
+              <button onClick={() => handleOpenModule('teacher_students_dues')} className="w-full text-left cursor-pointer active:scale-[0.99] transition-all">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="flex items-center gap-2 text-[13px] font-bold">
+                    <span className="w-8 h-8 rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 flex items-center justify-center">
+                      <Wallet size={15} />
+                    </span>
+                    {isEn ? 'Fee collection — this month' : 'ফি আদায় — এই মাস'}
+                  </span>
+                  <span className="text-sm font-black text-[#d97706] dark:text-amber-300">৳{toBn(classFeeReport.paid.toLocaleString())}</span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]" style={{ width: `${classFeeReport.pct}%` }} />
+                </div>
+                <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
+                  {isEn ? 'Expected' : 'ধার্য'} ৳{toBn(classFeeReport.expected.toLocaleString())} — {toBn(classFeeReport.pct)}% {isEn ? 'collected' : 'আদায় হয়েছে'}
+                </p>
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* CASHIER: today's income vs expense */}
+        {userRole === 'cashier' && (
+          <section className={`${cardCls} p-5 space-y-4`}>
+            <h3 className="text-sm font-black flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                <Wallet size={15} />
+              </span>
+              {isEn ? "Today's Accounts" : 'আজকের আয়-ব্যয়'}
+            </h3>
+            <div className="space-y-3.5">
+              <div>
+                <div className="flex items-center justify-between text-[12px] font-semibold mb-1.5">
+                  <span className="text-[#5b6478] dark:text-slate-400">{isEn ? 'Income (collection)' : 'আয় (আদায়)'}</span>
+                  <span className="text-[#059669] dark:text-emerald-300 font-black">+ ৳{toBn(cashierFigures.todayIncome.toLocaleString())}</span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${Math.round((cashierFigures.todayIncome / cashierBarMax) * 100)}%` }} />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-[12px] font-semibold mb-1.5">
+                  <span className="text-[#5b6478] dark:text-slate-400">{isEn ? 'Expense' : 'ব্যয় (খরচ)'}</span>
+                  <span className="text-[#dc2626] dark:text-rose-300 font-black">− ৳{toBn(todayExpense.toLocaleString())}</span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#fb7185] to-[#ef4444]" style={{ width: `${Math.round((todayExpense / cashierBarMax) * 100)}%` }} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-dashed border-[#e8ecf4] dark:border-white/10">
+                <span className="text-xs font-bold">{isEn ? "Today's net" : 'আজকের নিট'}</span>
+                <span className={`text-base font-black ${cashierNet >= 0 ? 'text-[#059669] dark:text-emerald-300' : 'text-[#dc2626] dark:text-rose-300'}`}>
+                  ৳{toBn(cashierNet.toLocaleString())}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* CASHIER: recent collections */}
+        {userRole === 'cashier' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <h3 className="text-sm font-black">{isEn ? 'Recent Collections' : 'সাম্প্রতিক আদায়'}</h3>
+            {cashierFigures.recent.length === 0 ? (
+              <p className="text-xs text-[#8a93a8] font-medium py-2">{isEn ? 'No collections yet.' : 'এখনো কোনো আদায়ের রেকর্ড নেই।'}</p>
+            ) : (
+              <div className="space-y-2.5">
+                {cashierFigures.recent.map((t, i) => (
+                  <div key={(t as any).id || i} className="flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center shrink-0">
+                      <Receipt size={16} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold truncate">{(t as any).description || (t as any).category || (isEn ? 'Fee collection' : 'ফি আদায়')}</p>
+                      <p className="text-[11px] text-[#8a93a8]">{toBn(String(t.date || '').slice(0, 10))}</p>
                     </div>
+                    <span className="text-[13px] font-black text-[#059669] dark:text-emerald-300 shrink-0">৳{toBn((Number(t.amount) || 0).toLocaleString())}</span>
                   </div>
-                  <span className="text-xs font-black text-[#059669] dark:text-emerald-300 shrink-0">+৳{toBn(Number(t.amount || 0).toLocaleString())}</span>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* CASHIER: top dues with one-tap tagada */}
+        {userRole === 'cashier' && topDueProfiles.length > 0 && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <h3 className="text-sm font-black flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 flex items-center justify-center">
+                <TrendingUp size={15} />
+              </span>
+              {isEn ? 'Top Dues — follow up' : 'সর্বোচ্চ বকেয়া — তাগাদা দিন'}
+            </h3>
+            <div className="space-y-2.5">
+              {topDueProfiles.map(p => (
+                <div key={p.student.id} className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                    {(p.student.nameBn || p.student.name || 'শ').charAt(0)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold truncate">{p.student.nameBn || p.student.name}</p>
+                    <p className="text-[11px] text-[#8a93a8]">{p.student.classLevel || ''}</p>
+                  </div>
+                  <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(p.dueThisMonth.toLocaleString())}</span>
+                  {p.guardianPhone && (
+                    <>
+                      <a
+                        href={whatsappLink(p)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="WhatsApp reminder"
+                        className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                      >
+                        <MessageCircle size={15} />
+                      </a>
+                      <a
+                        href={`tel:${p.guardianPhone}`}
+                        aria-label="Call guardian"
+                        className="w-9 h-9 rounded-full bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                      >
+                        <Phone size={15} />
+                      </a>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Next task banner */}
-        <div className={`${cardCls} p-4 flex items-center gap-3.5`}>
-          <div className="w-11 h-11 rounded-2xl bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 flex items-center justify-center shrink-0">
-            <FileText size={19} />
+        {/* Next-task nudge (all roles) */}
+        <section className={`${cardCls} p-4 flex items-center gap-3`}>
+          <span className="w-10 h-10 rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 flex items-center justify-center shrink-0">
+            <FileText size={17} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold">{roleStats.nextTaskTime}</p>
+            <p className="text-xs text-[#5b6478] dark:text-slate-400 leading-snug">{roleStats.nextTaskDesc}</p>
           </div>
-          <div className="overflow-hidden">
-            <span className="text-[11px] font-bold text-[#d97706] dark:text-amber-300">{roleStats.nextTaskTime}</span>
-            <p className="text-xs font-semibold mt-0.5 truncate">{roleStats.nextTaskDesc}</p>
-          </div>
-        </div>
+        </section>
 
-        {/* Quick actions */}
-        <div className="space-y-3 pt-1">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-4 bg-gradient-to-b from-[#8b5cf6] to-[#7c3aed] rounded-full" />
-              <h3 className="text-[15px] font-black tracking-tight">দ্রুত কার্যাবলি</h3>
-            </div>
-            <span className="text-[11px] text-[#8a93a8] font-semibold">দায়িত্ব অনুযায়ী</span>
-          </div>
-
-          <div className="space-y-2.5">
-            {roleActions.map(act => {
-              const Icon = act.icon;
-              return (
-                <div
-                  key={act.id}
-                  onClick={() => handleOpenModule(act.moduleKey)}
-                  className={`${cardCls} p-3.5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all`}
-                >
-                  <div className="flex items-center gap-3.5 overflow-hidden">
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${act.chip}`}>
-                      <Icon size={20} />
-                    </div>
-                    <div className="overflow-hidden">
-                      <h4 className="text-[13px] font-bold truncate">{act.title}</h4>
-                      <p className="text-[11px] text-[#8a93a8] truncate mt-0.5">{act.subtitle}</p>
-                    </div>
-                  </div>
-                  <ChevronRight size={17} className="text-[#c3c9d9] shrink-0 ml-2" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="pt-2 text-center">
-          <button
-            onClick={() => (onLogout ? onLogout() : logoutAdmin())}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-[#dc2626] dark:text-rose-300 text-xs font-bold cursor-pointer active:scale-95 transition-all"
-          >
-            <LogOut size={14} />
-            <span>লগআউট / একাউন্ট পরিবর্তন</span>
-          </button>
-        </div>
+        <button
+          onClick={() => (onLogout ? onLogout() : logoutAdmin())}
+          className="w-full py-3.5 rounded-[20px] bg-white dark:bg-[#161c2e] border border-rose-200 dark:border-rose-500/20 text-[#dc2626] dark:text-rose-300 text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
+        >
+          <LogOut size={16} />
+          <span>{isEn ? 'Logout / Switch account' : 'লগআউট / একাউন্ট পরিবর্তন'}</span>
+        </button>
       </main>
 
       {BottomNav}
