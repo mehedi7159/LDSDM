@@ -116,6 +116,24 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            // Phase 5: split stable vendor libraries into cacheable chunks so
+            // app-code updates don't force re-downloading React/Firebase/etc.
+            // The PDF chain stays out of the boot path: it is only reachable
+            // through dynamic import() and lazy route chunks.
+            manualChunks(id: string) {
+              if (!id.includes('node_modules')) return undefined;
+              if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'vendor-react';
+              if (/node_modules\/(@firebase|firebase)\//.test(id)) return 'vendor-firebase';
+              if (/node_modules\/recharts\//.test(id)) return 'vendor-charts';
+              if (/node_modules\/(jspdf|html2canvas|dompurify|canvg|rgbcolor|stackblur-canvas|svg-pathdata|css-line-break|text-segmentation|performance-now|raf)\//.test(id)) return 'vendor-pdf';
+              return undefined;
+            }
+          }
+        }
       }
     };
 });

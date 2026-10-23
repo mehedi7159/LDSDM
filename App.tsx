@@ -1,49 +1,55 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
-import { StudentManager } from './components/StudentManager';
-import { SubjectManager } from './components/SubjectManager';
-import { AcademicManager } from './components/academic/AcademicManager';
-import { MarksEntry } from './components/MarksEntry';
-import { AttendanceEntry } from './components/AttendanceEntry';
-import { AttendanceManager } from './components/attendance/AttendanceManager';
-import { ResultGenerator } from './components/ResultView';
-import { ClassResultView } from './components/ClassResultView';
-import { Settings } from './components/Settings';
-import { FinanceManager } from './components/FinanceManager';
-import { ExamResultsManager } from './components/examination/ExamResultsManager';
-import { StaffManager } from './components/staff/StaffManager';
-import { ReportsSettingsManager } from './components/settings/ReportsSettingsManager';
-import { PortalsServicesManager } from './components/portals/PortalsServicesManager';
-import { SpecializedServicesManager } from './components/services/SpecializedServicesManager';
-import { InstitutionalOperationsManager } from './components/operations/InstitutionalOperationsManager';
-import { MasterPrincipalAiAdvisor } from './components/ai/MasterPrincipalAiAdvisor';
 import { AccessRestrictedView } from './components/AccessRestrictedView';
 import { Button } from './components/ui/Button';
 import { Download, Loader2 } from 'lucide-react';
 import { VerifiedResultModal } from './components/VerifiedResultModal';
 import { LocalDataRecoveryModal } from './components/LocalDataRecoveryModal';
-import { SuperAdminAuditPage } from './components/SuperAdminAuditPage';
-import { UserRoleManager } from './components/UserRoleManager';
 import { AuthPage } from './components/AuthPage';
 import { LandingView } from './components/LandingView';
 import { PendingApprovalView } from './components/PendingApprovalView';
-import { StudentReportView } from './components/StudentReportView';
-import { AttendanceReportView } from './components/AttendanceReportView';
-import { FinanceReportView } from './components/FinanceReportView';
-import { AdminReportView } from './components/AdminReportView';
-import { WebResultView } from './components/WebResultView';
-import { StudentIDCardGenerator } from './components/StudentIDCardGenerator';
 import { StudentProfileView } from './components/StudentProfileView';
-import { NoticeBoard } from './components/NoticeBoard';
-import { ExamManager } from './components/ExamManager';
-import { DataSecurityBackupCenter } from './components/DataSecurityBackupCenter';
-import { StaffMobileApp } from './components/StaffMobileApp';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import { SkeletonStatCard, SkeletonTable } from './components/ui/ShimmerSkeleton';
+
+// ---------------------------------------------------------------------------
+// Phase 5 — route-level code splitting.
+// Heavy tab modules load on demand (the first time their tab is opened)
+// instead of inflating the initial bundle. Kept eager by design: the auth
+// flow, layout/sidebar, Dashboard (landing tab), AppContext, and the public
+// portal path (LandingView / AuthPage / StudentProfileView /
+// VerifiedResultModal) so logged-out portal behaviour is byte-identical.
+// ---------------------------------------------------------------------------
+const StudentManager = lazy(() => import('./components/StudentManager').then(m => ({ default: m.StudentManager })));
+const FinanceManager = lazy(() => import('./components/FinanceManager').then(m => ({ default: m.FinanceManager })));
+const AcademicManager = lazy(() => import('./components/academic/AcademicManager').then(m => ({ default: m.AcademicManager })));
+const AttendanceManager = lazy(() => import('./components/attendance/AttendanceManager').then(m => ({ default: m.AttendanceManager })));
+const ExamResultsManager = lazy(() => import('./components/examination/ExamResultsManager').then(m => ({ default: m.ExamResultsManager })));
+const StaffManager = lazy(() => import('./components/staff/StaffManager').then(m => ({ default: m.StaffManager })));
+const ReportsSettingsManager = lazy(() => import('./components/settings/ReportsSettingsManager').then(m => ({ default: m.ReportsSettingsManager })));
+const PortalsServicesManager = lazy(() => import('./components/portals/PortalsServicesManager').then(m => ({ default: m.PortalsServicesManager })));
+const SpecializedServicesManager = lazy(() => import('./components/services/SpecializedServicesManager').then(m => ({ default: m.SpecializedServicesManager })));
+const InstitutionalOperationsManager = lazy(() => import('./components/operations/InstitutionalOperationsManager').then(m => ({ default: m.InstitutionalOperationsManager })));
+const MasterPrincipalAiAdvisor = lazy(() => import('./components/ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
+const StudentReportView = lazy(() => import('./components/StudentReportView').then(m => ({ default: m.StudentReportView })));
+const StudentIDCardGenerator = lazy(() => import('./components/StudentIDCardGenerator').then(m => ({ default: m.StudentIDCardGenerator })));
+const StaffMobileApp = lazy(() => import('./components/StaffMobileApp').then(m => ({ default: m.StaffMobileApp })));
+
+// Suspense fallback shown only while a lazy tab module is downloading.
+const TabLoadingFallback = () => (
+  <div className="space-y-4 p-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <SkeletonStatCard />
+      <SkeletonStatCard />
+      <SkeletonStatCard />
+      <SkeletonStatCard />
+    </div>
+    <SkeletonTable rows={5} />
+  </div>
+);
 
 // Wrapper component to handle tab logic cleanly inside context
 const AppContent = () => {
@@ -321,6 +327,14 @@ const AppContent = () => {
           if (typeof document !== 'undefined' && (document as any).fonts) {
               await (document as any).fonts.ready.catch(() => {});
           }
+
+          // Phase 5: the PDF libraries load on demand — only when a
+          // tabulation PDF is actually generated — not in the initial bundle.
+          const [{ jsPDF }, html2canvasModule] = await Promise.all([
+              import('jspdf'),
+              import('html2canvas')
+          ]);
+          const html2canvas = html2canvasModule.default;
 
           // Measure natural table width
           const tableEl = element.querySelector('table');
@@ -733,22 +747,32 @@ const AppContent = () => {
         <>
           {/* Dedicated Native Mobile App View for Teacher, Cashier, Parent, Staff */}
           <div className="block md:hidden">
-            <StaffMobileApp 
-              onLogout={() => logoutAdmin()} 
-              renderModuleContent={() => renderContent()}
-            />
+            <Suspense fallback={<TabLoadingFallback />}>
+              <StaffMobileApp
+                onLogout={() => logoutAdmin()}
+                renderModuleContent={() => (
+                  <Suspense fallback={<TabLoadingFallback />}>
+                    {renderContent()}
+                  </Suspense>
+                )}
+              />
+            </Suspense>
           </div>
           {/* Standard Desktop View */}
           <div className="hidden md:block">
             <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-              {renderContent()}
+              <Suspense fallback={<TabLoadingFallback />}>
+                {renderContent()}
+              </Suspense>
             </Layout>
           </div>
         </>
       ) : (
         /* Full Admin & Principal Desktop/Mobile Layout */
         <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-          {renderContent()}
+          <Suspense fallback={<TabLoadingFallback />}>
+            {renderContent()}
+          </Suspense>
         </Layout>
       )}
 

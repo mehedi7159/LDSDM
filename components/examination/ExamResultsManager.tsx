@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Award, 
@@ -33,12 +33,16 @@ import {
 import { formatNumber, calculateTotalGPA, calculateGrade } from '../../services/utils';
 import { ExamManager } from '../ExamManager';
 import { MarksEntry } from '../MarksEntry';
-import { BlankMarksheetView } from '../BlankMarksheetView';
-import { ResultGenerator } from '../ResultView';
-import { ClassResultView } from '../ClassResultView';
+// Phase 5: the marksheet/result sub-views are the heaviest files in this
+// manager's tree (ResultView alone is ~190 KB) — load each on demand when
+// its sub-tab opens. Import-site change only; the files are untouched.
+const BlankMarksheetView = lazy(() => import('../BlankMarksheetView').then(m => ({ default: m.BlankMarksheetView })));
+const ResultGenerator = lazy(() => import('../ResultView').then(m => ({ default: m.ResultGenerator })));
+const ClassResultView = lazy(() => import('../ClassResultView').then(m => ({ default: m.ClassResultView })));
 import { WebResultView } from '../WebResultView';
 import { ResultSmsNotificationModal } from '../ResultSmsNotificationModal';
 import { Button } from '../ui/Button';
+import { SkeletonTable } from '../ui/ShimmerSkeleton';
 
 export type ExamSubTab = 
   | 'setup' 
@@ -441,14 +445,18 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
         {/* 3. Blank Marksheets for Teachers */}
         {activeTab === 'blank_sheet' && (
           <div className="space-y-4">
-            <BlankMarksheetView />
+            <Suspense fallback={<SkeletonTable rows={6} />}>
+              <BlankMarksheetView />
+            </Suspense>
           </div>
         )}
 
         {/* 4. Individual Marksheets / Grade Cards */}
         {activeTab === 'cards' && (
           <div className="space-y-4">
-            <ResultGenerator />
+            <Suspense fallback={<SkeletonTable rows={6} />}>
+              <ResultGenerator />
+            </Suspense>
           </div>
         )}
 
@@ -497,7 +505,9 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
             {/* Tabulation Sheet Content */}
             {selectedTabulationExam ? (
               <div id="tabulation-sheet" className="print-container">
-                <ClassResultView exam={selectedTabulationExam} classLevel={tabulationClass} />
+                <Suspense fallback={<SkeletonTable rows={6} />}>
+                  <ClassResultView exam={selectedTabulationExam} classLevel={tabulationClass} />
+                </Suspense>
               </div>
             ) : (
               <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-500">
