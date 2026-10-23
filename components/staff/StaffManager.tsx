@@ -44,6 +44,7 @@ import { dailyAttendanceService, DailyStaffAttendanceRecord } from '../../servic
 import { AcademicTeacher } from '../../types/academic';
 import { FinanceTransaction, UserRole, StaffLeaveRecord } from '../../types';
 import { deriveRoleFromDesignation } from '../../services/utils';
+import { PageHeader } from '../ui/PageHeader';
 
 export type StaffSubTab = 
   | 'directory' 
@@ -503,58 +504,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       )}
 
       {/* Top Banner Header: Step 7 • Staff & HR Management Suite */}
-      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-cyan-950 text-white rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden print:hidden">
-        {/* Ambient Glow */}
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-teal-500/10 via-transparent to-transparent pointer-events-none"></div>
-        <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-cyan-500/10 blur-2xl pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <div className="flex items-center gap-2 text-teal-300 font-black text-xs uppercase tracking-wider mb-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-              <span>{isBn ? 'ধাপ ৭ • শিক্ষক ও কর্মচারী ব্যবস্থাপনা হাব' : 'Step 7 • Staff & HR Management Suite'}</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <span>👥</span>
-              <span>{isBn ? 'শিক্ষক, কর্মচারী ও মানবসম্পদ (HR) কেন্দ্র' : 'Staff, Faculty & HR Hub'}</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-              {isBn 
-                ? 'উস্তাদ ও কর্মকর্তা ডিরেক্টরি, দায়িত্ব বণ্টন, ডিজিটাল দৈনিক হাজিরা, মাসিক বেতন ও রসিদ, নৈমিত্তিক ছুটি এবং প্রাতিষ্ঠানিক আইডি কার্ড ও প্রত্যয়নপত্র।'
-                : 'Complete faculty and staff directory, teaching assignments, daily attendance logs, monthly salary disbursements, leave ledger, and printable ID cards.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
-            <button
-              type="button"
-              onClick={handleOpenAddModal}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
-            >
-              <UserPlus size={14} className="text-teal-300" />
-              <span>{isBn ? '+ নতুন শিক্ষক যুক্ত' : 'Add Staff'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('attendance')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600/30 hover:bg-teal-600/50 text-teal-200 border border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <CalendarCheck size={14} />
-              <span>{isBn ? 'দৈনিক স্টাফ হাজিরা' : 'Staff Attendance'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('payroll')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border border-cyan-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <CreditCard size={14} />
-              <span>{isBn ? 'বেতন প্রদান' : 'Payroll'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Real-Time KPI Metrics Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
+      <PageHeader
+        tone="brand"
+        className="print:hidden"
+        icon={Users}
+        eyebrow={isBn ? 'ধাপ ৭ • শিক্ষক ও কর্মচারী ব্যবস্থাপনা হাব' : 'Step 7 • Staff & HR Management Suite'}
+        title={isBn ? 'শিক্ষক, কর্মচারী ও মানবসম্পদ (HR) কেন্দ্র' : 'Staff, Faculty & HR Hub'}
+        subtitle={isBn ? 'উস্তাদ ও কর্মকর্তা ডিরেক্টরি, দায়িত্ব বণ্টন, ডিজিটাল দৈনিক হাজিরা, মাসিক বেতন ও রসিদ, নৈমিত্তিক ছুটি এবং প্রাতিষ্ঠানিক আইডি কার্ড ও প্রত্যয়নপত্র।' : 'Complete faculty and staff directory, teaching assignments, daily attendance logs, monthly salary disbursements, leave ledger, and printable ID cards.'}
+        footer={
+<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট শিক্ষক ও উস্তাদ' : 'Total Teachers'}</div>
             <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.teachersOnlyCount, 'bn')} জন</div>
@@ -564,7 +522,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'কর্মচারী ও অফিস স্টাফ' : 'Office & Staff'}</div>
             <div className="text-xl font-black text-cyan-300 mt-0.5">{formatNumber(kpis.officeStaffCount, 'bn')} জন</div>
-            <div className="text-[10px] text-slate-400 font-medium">{isBn ? 'প্রশাসনিক জনবল' : 'Support Personnel'}</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'প্রশাসনিক জনবল' : 'Support Personnel'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -594,10 +552,38 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             <div className="text-[10px] text-indigo-300/80 font-medium">{isBn ? 'কিউআর সহ প্রিন্ট' : 'Print Ready'}</div>
           </div>
         </div>
-      </div>
+        }
+      >
+<div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={handleOpenAddModal}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
+            >
+              <UserPlus size={14} className="text-teal-300" />
+              <span>{isBn ? '+ নতুন শিক্ষক যুক্ত' : 'Add Staff'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('attendance')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600/30 hover:bg-teal-600/50 text-teal-200 border border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <CalendarCheck size={14} />
+              <span>{isBn ? 'দৈনিক স্টাফ হাজিরা' : 'Staff Attendance'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('payroll')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border border-cyan-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <CreditCard size={14} />
+              <span>{isBn ? 'বেতন প্রদান' : 'Payroll'}</span>
+            </button>
+          </div>
+      </PageHeader>
 
-      {/* Sub-Tabs Navigation Bar */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs overflow-x-auto print:hidden">
+{/* Sub-Tabs Navigation Bar */}
+      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-x-auto print:hidden">
         <div className="flex items-center gap-1.5 min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -610,17 +596,17 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   isActive
                     ? 'bg-gradient-to-r from-teal-700 to-cyan-700 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
-                <Icon size={15} className={isActive ? 'text-white' : 'text-slate-500'} />
+                <Icon size={15} className={isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'} />
                 <span>{isBn ? tab.labelBn : tab.labelEn}</span>
                 {tab.badge && (
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                       isActive
                         ? 'bg-white/20 text-white'
-                        : 'bg-slate-200 text-slate-700'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                     }`}
                   >
                     {tab.badge}
@@ -639,18 +625,18 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           <div className="space-y-4">
             {/* Pending Approvals Notice for Staff */}
             {pendingStaffApprovals.length > 0 && (
-              <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 rounded-3xl p-5 shadow-xs space-y-3 animate-in fade-in">
+              <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 shadow-xs space-y-3 animate-in fade-in">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
                       <Clock size={20} className="animate-spin" style={{ animationDuration: '4s' }} />
                     </div>
                     <div>
-                      <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                      <h4 className="font-black text-slate-900 dark:text-white text-sm flex items-center gap-2">
                         <span>অনুমোদনের অপেক্ষায় থাকা শিক্ষক ও কর্মী ({pendingStaffApprovals.length} জন)</span>
                         <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">অনুমোদন প্রয়োজন</span>
                       </h4>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                         নিবন্ধিত এই শিক্ষকরা অনুমোদনের অপেক্ষায় আছেন। এখানে এক ক্লিকে অনুমোদন ও সক্রিয় করুন।
                       </p>
                     </div>
@@ -659,11 +645,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                   {pendingStaffApprovals.map(staff => (
-                    <div key={staff.id} className="bg-white rounded-2xl p-3.5 border border-amber-200 shadow-2xs flex items-center justify-between gap-3">
+                    <div key={staff.id} className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 border border-amber-200 dark:border-amber-800 shadow-2xs flex items-center justify-between gap-3">
                       <div>
-                        <div className="font-bold text-slate-900 text-sm">{staff.nameBn || staff.name}</div>
-                        <div className="text-xs text-slate-500 font-mono">{staff.email || staff.phone || 'N/A'}</div>
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold">
+                        <div className="font-bold text-slate-900 dark:text-white text-sm">{staff.nameBn || staff.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{staff.email || staff.phone || 'N/A'}</div>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
                           {staff.designation || 'সহকারী শিক্ষক'}
                         </span>
                       </div>
@@ -682,15 +668,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             )}
 
             {/* Filter and Search Bar */}
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-3">
               <div className="relative flex-1 min-w-[220px]">
-                <Search className="absolute left-3.5 top-2.5 text-slate-400" size={16} />
+                <Search className="absolute left-3.5 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
                 <input
                   type="text"
                   placeholder={isBn ? 'নাম, পদবি, ফোন বা আইডি দিয়ে খুঁজুন...' : 'Search staff by name, designation, phone...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-slate-50 dark:bg-slate-800/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
                 />
               </div>
 
@@ -698,7 +684,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="border border-slate-200 dark:border-slate-800 rounded-xl p-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="ALL">{isBn ? 'সকল পদবি (All Roles)' : 'All Roles'}</option>
                   <option value="TEACHER">{isBn ? 'শুধু শিক্ষক / উস্তাদ' : 'Teachers Only'}</option>
@@ -708,7 +694,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="border border-slate-200 dark:border-slate-800 rounded-xl p-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="ALL">{isBn ? 'সকল স্ট্যাটাস' : 'All Status'}</option>
                   <option value="ACTIVE">{isBn ? 'সক্রিয় (Active)' : 'Active'}</option>
@@ -732,7 +718,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               {filteredStaff.map((staff, idx) => (
                 <div 
                   key={staff.id || idx} 
-                  className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs hover:border-teal-300 transition-all space-y-4 relative group"
+                  className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-teal-300 transition-all space-y-4 relative group"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -740,12 +726,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         {(staff.nameBn || staff.name || 'উ')[0]}
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-900 text-sm leading-snug">
+                        <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
                           {isBn ? (staff.nameBn || staff.name) : staff.name}
                         </h4>
                         {Boolean(staff.status?.toUpperCase() === 'PENDING' || pendingMembers.some(m => m.uid === staff.id || (staff.email && m.email?.toLowerCase() === staff.email.toLowerCase()))) ? (
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
                               {isBn ? 'অপেক্ষমাণ (Pending)' : 'Pending'}
                             </span>
                             <button
@@ -759,11 +745,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           </div>
                         ) : (
                           <>
-                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200/80">
+                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-950/50 text-teal-800 dark:text-teal-300 border border-teal-200/80">
                             {staff.designation || 'সহকারী শিক্ষক'}
                           </span>
                           {(staff.status || '').toUpperCase() === 'INACTIVE' && (
-                            <span className="inline-block mt-0.5 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="inline-block mt-0.5 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
                               {isBn ? 'নিষ্ক্রিয়' : 'Inactive'}
                             </span>
                           )}
@@ -776,7 +762,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenEditModal(staff)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-teal-700 hover:bg-teal-50 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-teal-700 hover:bg-teal-50 transition-colors"
                         title={isBn ? 'সম্পাদনা করুন' : 'Edit'}
                       >
                         <Edit2 size={13} />
@@ -784,7 +770,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => setStaffToDelete(staff)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                         title={isBn ? 'স্থায়ীভাবে মুছে ফেলুন' : 'Remove permanently'}
                       >
                         <Trash2 size={13} />
@@ -793,16 +779,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   </div>
 
                   {/* Info details */}
-                  <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                  <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 font-medium">{isBn ? 'আইডি / কোড:' : 'Employee ID:'}</span>
-                      <span className="font-mono font-bold text-slate-700">{staff.employeeCode || `EMP-${staff.id.slice(0, 6)}`}</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'আইডি / কোড:' : 'Employee ID:'}</span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-200">{staff.employeeCode || `EMP-${staff.id.slice(0, 6)}`}</span>
                     </div>
 
                     {staff.phone && (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 font-medium">{isBn ? 'মোবাইল নম্বর:' : 'Phone:'}</span>
-                        <a href={`tel:${staff.phone}`} className="font-semibold text-teal-700 hover:underline flex items-center gap-1">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'মোবাইল নম্বর:' : 'Phone:'}</span>
+                        <a href={`tel:${staff.phone}`} className="font-semibold text-teal-700 dark:text-teal-400 hover:underline flex items-center gap-1">
                           <Phone size={11} />
                           <span>{staff.phone}</span>
                         </a>
@@ -811,20 +797,20 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
                     {staff.email && (
                       <div className="flex items-center justify-between truncate">
-                        <span className="text-slate-400 font-medium">{isBn ? 'ইমেইল:' : 'Email:'}</span>
-                        <span className="text-slate-600 text-[11px] truncate">{staff.email}</span>
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'ইমেইল:' : 'Email:'}</span>
+                        <span className="text-slate-600 dark:text-slate-300 text-[11px] truncate">{staff.email}</span>
                       </div>
                     )}
 
                     {staff.password && (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 font-medium">{isBn ? 'লগইন পাসওয়ার্ড:' : 'Login Password:'}</span>
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'লগইন পাসওয়ার্ড:' : 'Login Password:'}</span>
                         <span className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{revealedPwId === staff.id ? staff.password : '••••••'}</span>
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">{revealedPwId === staff.id ? staff.password : '••••••'}</span>
                           <button
                             type="button"
                             onClick={() => setRevealedPwId(revealedPwId === staff.id ? null : staff.id)}
-                            className="text-slate-400 hover:text-teal-700 transition-colors"
+                            className="text-slate-400 dark:text-slate-500 hover:text-teal-700 transition-colors"
                             title={isBn ? 'দেখুন/লুকান' : 'Show/hide'}
                           >
                             {revealedPwId === staff.id ? <EyeOff size={12} /> : <Eye size={12} />}
@@ -836,13 +822,13 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
                   {/* Assigned Classes / Subjects Tags */}
                   {staff.assignedClasses && staff.assignedClasses.length > 0 && (
-                    <div className="pt-2 border-t border-slate-100">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
                         {isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি:' : 'Assigned Classes:'}
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {staff.assignedClasses.map((cls, cIdx) => (
-                          <span key={cIdx} className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700">
+                          <span key={cIdx} className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                             {cls}
                           </span>
                         ))}
@@ -851,16 +837,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   )}
 
                   {/* Action Bar */}
-                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedTeacherForIdCard(staff);
                         setActiveTab('id_cards');
                       }}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center gap-1"
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1"
                     >
-                      <Award size={12} className="text-teal-600" />
+                      <Award size={12} className="text-teal-600 dark:text-teal-400" />
                       <span>{isBn ? 'আইডি কার্ড' : 'ID Card'}</span>
                     </button>
 
@@ -870,7 +856,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         setCertificateTeacher(staff);
                         setIsCertificateModalOpen(true);
                       }}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-800 transition-colors flex items-center gap-1"
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 text-teal-800 dark:text-teal-300 transition-colors flex items-center gap-1"
                     >
                       <FileText size={12} />
                       <span>{isBn ? 'প্রত্যয়নপত্র' : 'NOC'}</span>
@@ -881,7 +867,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         href={`https://wa.me/${staff.phone.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
+                        className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 transition-colors"
                         title="WhatsApp"
                       >
                         <Send size={13} />
@@ -892,12 +878,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               ))}
 
               {filteredStaff.length === 0 && (
-                <div className="col-span-full bg-white p-12 text-center rounded-3xl border border-slate-200 text-slate-500">
+                <div className="col-span-full bg-white dark:bg-slate-900 p-12 text-center rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400">
                   <Users size={40} className="mx-auto text-slate-300 mb-3" />
-                  <p className="font-bold text-sm text-slate-700">
+                  <p className="font-bold text-sm text-slate-700 dark:text-slate-200">
                     {isBn ? 'কোনো শিক্ষক বা কর্মচারীর তথ্য পাওয়া যায়নি' : 'No staff records found'}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                     {isBn ? 'নতুন শিক্ষক যোগ করতে "+ নতুন শিক্ষক যুক্ত" বাটনে ক্লিক করুন।' : 'Click "+ Add Staff" to register a new teacher.'}
                   </p>
                 </div>
@@ -941,40 +927,40 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             {/* Salary Receipt Modal */}
             {salaryReceiptTx && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-                <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                      <CreditCard size={16} className="text-teal-600" />
+                <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
+                      <CreditCard size={16} className="text-teal-600 dark:text-teal-400" />
                       <span>{isBn ? 'বেতন পরিশোধ রসিদ (Pay Slip)' : 'Salary Payment Receipt'}</span>
                     </h3>
                     <button 
                       onClick={() => setSalaryReceiptTx(null)}
-                      className="text-slate-400 hover:text-slate-600 p-1"
+                      className="text-slate-400 dark:text-slate-500 hover:text-slate-600 p-1"
                     >
                       <X size={18} />
                     </button>
                   </div>
 
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2 font-medium">
+                  <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs space-y-2 font-medium">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">{isBn ? 'ভাউচার নম্বর:' : 'Voucher No:'}</span>
-                      <span className="font-mono font-bold text-slate-800">{salaryReceiptTx.voucherNo || salaryReceiptTx.id}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{isBn ? 'ভাউচার নম্বর:' : 'Voucher No:'}</span>
+                      <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{salaryReceiptTx.voucherNo || salaryReceiptTx.id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">{isBn ? 'শিক্ষক/কর্মী:' : 'Staff Name:'}</span>
-                      <span className="font-bold text-slate-900">{salaryReceiptTx.staffName || salaryReceiptTx.description}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{isBn ? 'শিক্ষক/কর্মী:' : 'Staff Name:'}</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{salaryReceiptTx.staffName || salaryReceiptTx.description}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">{isBn ? 'পরিশোধের তারিখ:' : 'Date:'}</span>
-                      <span className="text-slate-800">{salaryReceiptTx.date}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{isBn ? 'পরিশোধের তারিখ:' : 'Date:'}</span>
+                      <span className="text-slate-800 dark:text-slate-100">{salaryReceiptTx.date}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">{isBn ? 'পরিশোধ মাধ্যম:' : 'Payment Method:'}</span>
-                      <span className="font-bold text-teal-800">{salaryReceiptTx.paymentMethod || 'CASH'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{isBn ? 'পরিশোধ মাধ্যম:' : 'Payment Method:'}</span>
+                      <span className="font-bold text-teal-800 dark:text-teal-300">{salaryReceiptTx.paymentMethod || 'CASH'}</span>
                     </div>
-                    <div className="flex justify-between pt-2 border-t border-slate-200 text-sm font-black text-slate-900">
+                    <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-800 text-sm font-black text-slate-900 dark:text-white">
                       <span>{isBn ? 'মোট পরিশোধিত বেতন:' : 'Total Disbursed:'}</span>
-                      <span className="text-emerald-700">৳ {formatBanglaNumber(salaryReceiptTx.amount)}</span>
+                      <span className="text-emerald-700 dark:text-emerald-400">৳ {formatBanglaNumber(salaryReceiptTx.amount)}</span>
                     </div>
                   </div>
 
@@ -997,13 +983,13 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         {/* 6. Leave Records */}
         {activeTab === 'leaves' && (
           <div className="space-y-4">
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                  <Clock size={18} className="text-teal-600" />
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Clock size={18} className="text-teal-600 dark:text-teal-400" />
                   <span>{isBn ? 'শিক্ষক ও কর্মচারী ছুটি রেজিস্টার' : 'Staff Leave & Absence Ledger'}</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {isBn 
                     ? 'নৈমিত্তিক ছুটি, অসুস্থতাজনিত ছুটি ও বিশেষ ছুটির হিসাব এবং অনুমোদন ট্র্যাকিং।' 
                     : 'Track staff leave applications, casual and medical leaves, and approval workflows.'}
@@ -1021,10 +1007,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             </div>
 
             {/* Leave Records Table */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       <th className="py-3 px-4">{isBn ? 'শিক্ষক/কর্মী' : 'Staff'}</th>
                       <th className="py-3 px-4">{isBn ? 'ছুটির ধরন' : 'Leave Type'}</th>
@@ -1036,47 +1022,47 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       <th className="py-3 px-4 text-right">{isBn ? 'অ্যাকশন' : 'Action'}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                     {leaves.map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{l.teacherName}</div>
-                          <div className="text-[10px] text-slate-400">{l.designation}</div>
+                          <div className="font-bold text-slate-900 dark:text-white">{l.teacherName}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500">{l.designation}</div>
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-700">
+                        <td className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-200">
                           {l.leaveType === 'CASUAL' ? (isBn ? 'নৈমিত্তিক ছুটি' : 'Casual Leave') :
                            l.leaveType === 'SICK' ? (isBn ? 'অসুস্থতাজনিত ছুটি' : 'Sick Leave') :
                            l.leaveType === 'HAJJ_UMRAH' ? (isBn ? 'হজ্ব/ওমরাহ ছুটি' : 'Hajj/Umrah') :
                            (isBn ? 'বিশেষ ছুটি' : 'Special Leave')}
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-600">
+                        <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
                           {l.startDate} {l.startDate !== l.endDate ? `থেকে ${l.endDate}` : ''}
                         </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-800">
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-800 dark:text-slate-100">
                           {formatNumber(l.daysCount, 'bn')} দিন
                         </td>
-                        <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">
+                        <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 max-w-xs truncate">
                           {l.reason || 'N/A'}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            l.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
-                            l.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
-                            'bg-rose-100 text-rose-800'
+                            l.status === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' :
+                            l.status === 'PENDING' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300' :
+                            'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300'
                           }`}>
                             {l.status === 'APPROVED' ? (isBn ? 'অনুমোদিত' : 'Approved') :
                              l.status === 'PENDING' ? (isBn ? 'অপেক্ষমাণ' : 'Pending') :
                              (isBn ? 'বাতিল' : 'Rejected')}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right text-slate-600 font-medium">
+                        <td className="py-3.5 px-4 text-right text-slate-600 dark:text-slate-300 font-medium">
                           {l.approvedBy || (isBn ? 'অধ্যক্ষ' : 'Principal')}
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <button
                             type="button"
                             onClick={() => { setLeaves(prev => prev.filter(x => x.id !== l.id)); showToast(isBn ? 'ছুটির রেকর্ড মুছে ফেলা হয়েছে' : 'Leave record removed'); }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                             title={isBn ? 'রেকর্ড মুছুন' : 'Delete record'}
                           >
                             <Trash2 size={13} />
@@ -1178,56 +1164,56 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         {activeTab === 'analytics' && (
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm">{isBn ? 'জনবল কাঠামো বিভাজন' : 'Staff Breakdown'}</h4>
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">{isBn ? 'জনবল কাঠামো বিভাজন' : 'Staff Breakdown'}</h4>
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">{isBn ? 'প্রধান ও সিনিয়র শিক্ষক:' : 'Senior Faculty:'}</span>
-                    <span className="font-bold text-slate-900">{formatNumber(Math.ceil(kpis.teachersOnlyCount * 0.4), 'bn')} জন</span>
+                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'প্রধান ও সিনিয়র শিক্ষক:' : 'Senior Faculty:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(Math.ceil(kpis.teachersOnlyCount * 0.4), 'bn')} জন</span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">{isBn ? 'সহকারী শিক্ষক ও মুয়াল্লিম:' : 'Assistant Faculty:'}</span>
-                    <span className="font-bold text-slate-900">{formatNumber(Math.floor(kpis.teachersOnlyCount * 0.6), 'bn')} জন</span>
+                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'সহকারী শিক্ষক ও মুয়াল্লিম:' : 'Assistant Faculty:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(Math.floor(kpis.teachersOnlyCount * 0.6), 'bn')} জন</span>
                   </div>
                   <div className="flex justify-between py-1.5">
-                    <span className="text-slate-600">{isBn ? 'প্রশাসনিক ও অফিস স্টাফ:' : 'Administrative Staff:'}</span>
-                    <span className="font-bold text-slate-900">{formatNumber(kpis.officeStaffCount, 'bn')} জন</span>
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'প্রশাসনিক ও অফিস স্টাফ:' : 'Administrative Staff:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(kpis.officeStaffCount, 'bn')} জন</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm">{isBn ? 'মাসিক বেতন পরিসংখ্যান' : 'Monthly Salary Census'}</h4>
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">{isBn ? 'মাসিক বেতন পরিসংখ্যান' : 'Monthly Salary Census'}</h4>
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">{isBn ? 'চলতি মাসে প্রদেয়:' : 'Disbursed:'}</span>
-                    <span className="font-bold text-emerald-700">৳ {formatBanglaNumber(kpis.totalDisbursed)}</span>
+                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'চলতি মাসে প্রদেয়:' : 'Disbursed:'}</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">৳ {formatBanglaNumber(kpis.totalDisbursed)}</span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">{isBn ? 'গড় মাসিক শিক্ষক বেতন:' : 'Average Salary:'}</span>
-                    <span className="font-bold text-slate-900">৳ ১২,০০০</span>
+                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'গড় মাসিক শিক্ষক বেতন:' : 'Average Salary:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">৳ ১২,০০০</span>
                   </div>
                   <div className="flex justify-between py-1.5">
-                    <span className="text-slate-600">{isBn ? 'বেতন প্রদেয় মোট কর্মী:' : 'Staff on Payroll:'}</span>
-                    <span className="font-bold text-slate-900">{formatNumber(kpis.totalStaffCount, 'bn')} জন</span>
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'বেতন প্রদেয় মোট কর্মী:' : 'Staff on Payroll:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(kpis.totalStaffCount, 'bn')} জন</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm">{isBn ? 'হাজিরা ও কর্মদিবস সারসংক্ষেপ' : 'Attendance Summary'}</h4>
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">{isBn ? 'হাজিরা ও কর্মদিবস সারসংক্ষেপ' : 'Attendance Summary'}</h4>
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">{isBn ? 'গড় স্টাফ উপস্থিতি হার:' : 'Avg Attendance Rate:'}</span>
-                    <span className="font-bold text-teal-700">{kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'}</span>
+                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'গড় স্টাফ উপস্থিতি হার:' : 'Avg Attendance Rate:'}</span>
+                    <span className="font-bold text-teal-700 dark:text-teal-400">{kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'}</span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">{isBn ? 'অনুমোদিত মোট ছুটি (মাসিক):' : 'Total Leaves This Month:'}</span>
-                    <span className="font-bold text-slate-900">{formatNumber(leaves.length, 'bn')} টি</span>
+                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'অনুমোদিত মোট ছুটি (মাসিক):' : 'Total Leaves This Month:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(leaves.length, 'bn')} টি</span>
                   </div>
                   <div className="flex justify-between py-1.5">
-                    <span className="text-slate-600">{isBn ? 'আজ উপস্থিত কর্মী:' : 'Present Today:'}</span>
-                    <span className="font-bold text-emerald-600">{kpis.attendanceRecorded ? `${formatNumber(kpis.presentToday, 'bn')} জন` : '—'}</span>
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'আজ উপস্থিত কর্মী:' : 'Present Today:'}</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{kpis.attendanceRecorded ? `${formatNumber(kpis.presentToday, 'bn')} জন` : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -1239,15 +1225,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       {/* Add / Edit Staff Modal */}
       {isAddEditModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                <UserPlus size={18} className="text-teal-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
+                <UserPlus size={18} className="text-teal-600 dark:text-teal-400" />
                 <span>{editingTeacher ? (isBn ? 'শিক্ষক/কর্মী তথ্য সম্পাদনা' : 'Edit Staff') : (isBn ? 'নতুন শিক্ষক/কর্মচারী নিবন্ধন' : 'Add New Staff')}</span>
               </h3>
               <button 
                 onClick={() => setIsAddEditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 p-1"
               >
                 <X size={18} />
               </button>
@@ -1255,47 +1241,47 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
             <form onSubmit={handleSaveTeacher} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'পূর্ণ নাম (বাংলা):' : 'Full Name (Bangla):'} *</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'পূর্ণ নাম (বাংলা):' : 'Full Name (Bangla):'} *</label>
                 <input
                   type="text"
                   required
                   placeholder="যেমন: মাওলানা মাহমুদ হাসান"
                   value={teacherFormData.nameBn || ''}
                   onChange={(e) => setTeacherFormData({ ...teacherFormData, nameBn: e.target.value, name: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">{isBn ? 'পদবি (Designation):' : 'Designation:'}</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'পদবি (Designation):' : 'Designation:'}</label>
                   <input
                     type="text"
                     placeholder="মুয়াল্লিম / সহকারী শিক্ষক"
                     value={teacherFormData.designation || ''}
                     onChange={(e) => setTeacherFormData({ ...teacherFormData, designation: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">{isBn ? 'আইডি / কোড:' : 'Employee Code:'}</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'আইডি / কোড:' : 'Employee Code:'}</label>
                   <input
                     type="text"
                     placeholder="MDR-T001"
                     value={teacherFormData.employeeCode || ''}
                     onChange={(e) => setTeacherFormData({ ...teacherFormData, employeeCode: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-2.5 font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'লগইন রোল (Login Role):' : 'Login Role:'}</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'লগইন রোল (Login Role):' : 'Login Role:'}</label>
                 <select
                   value={formLoginRole}
                   onChange={(e) => setFormLoginRole(e.target.value as UserRole)}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white dark:bg-slate-900"
                 >
                   <option value="teacher">{isBn ? 'শিক্ষক (Teacher)' : 'Teacher'}</option>
                   <option value="accountant">{isBn ? 'হিসাবরক্ষক / ক্যাশিয়ার (Accountant)' : 'Accountant / Cashier'}</option>
@@ -1303,42 +1289,42 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <option value="principal">{isBn ? 'অধ্যক্ষ (Principal)' : 'Principal'}</option>
                   <option value="guardian">{isBn ? 'অভিভাবক (Guardian)' : 'Guardian'}</option>
                 </select>
-                <p className="text-[11px] text-slate-400 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। উপরের পদবি শুধু প্রদর্শনের জন্য।' : 'They will log in with this role and see that portal. Designation above is display-only.'}</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। উপরের পদবি শুধু প্রদর্শনের জন্য।' : 'They will log in with this role and see that portal. Designation above is display-only.'}</p>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'স্ট্যাটাস (Status):' : 'Status:'}</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'স্ট্যাটাস (Status):' : 'Status:'}</label>
                 <select
                   value={teacherFormData.status || 'ACTIVE'}
                   onChange={(e) => setTeacherFormData({ ...teacherFormData, status: e.target.value as AcademicTeacher['status'] })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white dark:bg-slate-900"
                 >
                   <option value="ACTIVE">{isBn ? 'সক্রিয় (Active)' : 'Active'}</option>
                   <option value="INACTIVE">{isBn ? 'নিষ্ক্রিয় / সাবেক (Inactive)' : 'Inactive'}</option>
                 </select>
-                <p className="text-[11px] text-slate-400 mt-1">{isBn ? 'নিষ্ক্রিয় করলে উনি তালিকায় থাকবেন কিন্তু সাবেক হিসেবে চিহ্নিত হবেন। পুরোপুরি সরাতে কার্ডের মুছে-ফেলুন বাটন ব্যবহার করুন।' : 'Inactive keeps the record, marked as former. Use the card delete button to remove permanently.'}</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'নিষ্ক্রিয় করলে উনি তালিকায় থাকবেন কিন্তু সাবেক হিসেবে চিহ্নিত হবেন। পুরোপুরি সরাতে কার্ডের মুছে-ফেলুন বাটন ব্যবহার করুন।' : 'Inactive keeps the record, marked as former. Use the card delete button to remove permanently.'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">{isBn ? 'মোবাইল নম্বর:' : 'Phone:'}</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'মোবাইল নম্বর:' : 'Phone:'}</label>
                   <input
                     type="tel"
                     placeholder="017xxxxxxxx"
                     value={teacherFormData.phone || ''}
                     onChange={(e) => setTeacherFormData({ ...teacherFormData, phone: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">{isBn ? 'ইমেইল:' : 'Email:'}</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ইমেইল:' : 'Email:'}</label>
                   <input
                     type="email"
                     placeholder="teacher@madrasha.edu.bd"
                     value={teacherFormData.email || ''}
                     onChange={(e) => setTeacherFormData({ ...teacherFormData, email: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -1346,10 +1332,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               {/* Login Password */}
               <div className="bg-teal-50/70 p-3 rounded-2xl border border-teal-200/80 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="block font-bold text-teal-950 text-xs">
+                  <label className="block font-bold text-teal-950 dark:text-teal-200 text-xs">
                     {isBn ? 'লগইন পাসওয়ার্ড (Login Password):' : 'Login Password:'} *
                   </label>
-                  <span className="text-[10px] text-teal-700 bg-teal-100/70 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] text-teal-700 dark:text-teal-400 bg-teal-100/70 px-2 py-0.5 rounded-full font-bold">
                     {isBn ? 'সরাসরি লগইনের জন্য' : 'For direct login'}
                   </span>
                 </div>
@@ -1359,19 +1345,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   placeholder="যেমন: 123"
                   value={teacherFormData.password || '123'}
                   onChange={(e) => setTeacherFormData({ ...teacherFormData, password: e.target.value })}
-                  className="w-full border border-teal-200 rounded-xl p-2.5 font-mono text-sm font-bold bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 font-mono text-sm font-bold bg-white dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
-                <p className="text-[11px] text-teal-800">
+                <p className="text-[11px] text-teal-800 dark:text-teal-300">
                   {isBn ? '💡 শিক্ষক এই পাসওয়ার্ড ও মোবাইল নম্বর/ইমেইল দিয়ে সিস্টেমে সরাসরি লগইন করতে পারবেন।' : 'Teacher will use this password and phone/email to log in.'}
                 </p>
               </div>
 
               {/* Assigned Classes */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                   {isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি (Assigned Classes - শ্রেণি শিক্ষক):' : 'Assigned Class(es):'}
                 </label>
-                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl max-h-28 overflow-y-auto">
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
                   {classes.map(c => {
                     const isSelected = (teacherFormData.assignedClasses || []).includes(c.name);
                     return (
@@ -1388,7 +1374,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           isSelected 
                             ? 'bg-teal-600 text-white shadow-xs' 
-                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
                         }`}
                       >
                         {isSelected ? '✓ ' : ''}{c.nameBn || c.name}
@@ -1396,16 +1382,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                   {isBn ? 'শ্রেণি শিক্ষক হিসেবে নির্বাচিত শ্রেণির শিক্ষার্থী ও বকেয়া ফি এই শিক্ষক দেখতে পাবেন।' : 'Teacher will see students and dues for selected classes.'}
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAddEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold"
+                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold"
                 >
                   {isBn ? 'বাতিল' : 'Cancel'}
                 </button>
@@ -1425,26 +1411,26 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       {/* Delete Staff Confirm Modal */}
       {staffToDelete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <Trash2 size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 text-base">{isBn ? 'স্থায়ীভাবে মুছে ফেলবেন?' : 'Remove permanently?'}</h3>
-                <p className="text-xs text-slate-500">{isBn ? 'এই কাজটি আর ফেরত নেওয়া যাবে না' : 'This action cannot be undone'}</p>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">{isBn ? 'স্থায়ীভাবে মুছে ফেলবেন?' : 'Remove permanently?'}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'এই কাজটি আর ফেরত নেওয়া যাবে না' : 'This action cannot be undone'}</p>
               </div>
             </div>
-            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3.5 text-xs text-slate-700 space-y-1">
-              <p className="font-bold text-slate-900 text-sm">{staffToDelete.nameBn || staffToDelete.name}</p>
+            <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-100 dark:border-rose-900/60 rounded-2xl p-3.5 text-xs text-slate-700 dark:text-slate-200 space-y-1">
+              <p className="font-bold text-slate-900 dark:text-white text-sm">{staffToDelete.nameBn || staffToDelete.name}</p>
               <p>{staffToDelete.designation || (isBn ? 'সহকারী শিক্ষক' : 'Assistant Teacher')}{staffToDelete.phone ? ` · ${staffToDelete.phone}` : ''}</p>
-              <p className="text-slate-500 pt-1">{isBn ? 'তার স্টাফ রেকর্ড, লগইন অ্যাকাউন্ট ও অ্যাক্সেস — সব একসাথে মুছে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record, login account and access will all be removed together. Past salary and attendance records stay untouched.'}</p>
+              <p className="text-slate-500 dark:text-slate-400 pt-1">{isBn ? 'তার স্টাফ রেকর্ড, লগইন অ্যাকাউন্ট ও অ্যাক্সেস — সব একসাথে মুছে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record, login account and access will all be removed together. Past salary and attendance records stay untouched.'}</p>
             </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setStaffToDelete(null)}
-                className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold text-xs"
+                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold text-xs"
               >
                 {isBn ? 'বাতিল' : 'Cancel'}
               </button>
@@ -1465,25 +1451,25 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       {/* Leave Modal */}
       {isLeaveModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                <Clock size={18} className="text-teal-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
+                <Clock size={18} className="text-teal-600 dark:text-teal-400" />
                 <span>{isBn ? 'ছুটির আবেদন ও এন্ট্রি' : 'Record Staff Leave'}</span>
               </h3>
-              <button onClick={() => setIsLeaveModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setIsLeaveModalOpen(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 p-1">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSaveLeave} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'শিক্ষক/কর্মী নির্বাচন:' : 'Select Staff:'} *</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শিক্ষক/কর্মী নির্বাচন:' : 'Select Staff:'} *</label>
                 <select
                   required
                   value={newLeaveData.teacherId}
                   onChange={(e) => setNewLeaveData({ ...newLeaveData, teacherId: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 bg-white font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 bg-white dark:bg-slate-900 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
                   <option value="">{isBn ? '-- শিক্ষক নির্বাচন করুন --' : '-- Select Teacher --'}</option>
                   {unifiedStaffList.map(s => (
@@ -1493,11 +1479,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'ছুটির ধরন:' : 'Leave Type:'}</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ছুটির ধরন:' : 'Leave Type:'}</label>
                 <select
                   value={newLeaveData.leaveType}
                   onChange={(e) => setNewLeaveData({ ...newLeaveData, leaveType: e.target.value as any })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 bg-white font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 bg-white dark:bg-slate-900 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
                   <option value="CASUAL">{isBn ? 'নৈমিত্তিক ছুটি (Casual Leave)' : 'Casual Leave'}</option>
                   <option value="SICK">{isBn ? 'অসুস্থতাজনিত ছুটি (Sick Leave)' : 'Sick Leave'}</option>
@@ -1508,43 +1494,43 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">{isBn ? 'শুরুর তারিখ:' : 'Start Date:'}</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শুরুর তারিখ:' : 'Start Date:'}</label>
                   <input
                     type="date"
                     required
                     value={newLeaveData.startDate}
                     onChange={(e) => setNewLeaveData({ ...newLeaveData, startDate: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">{isBn ? 'শেষের তারিখ:' : 'End Date:'}</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শেষের তারিখ:' : 'End Date:'}</label>
                   <input
                     type="date"
                     required
                     value={newLeaveData.endDate}
                     onChange={(e) => setNewLeaveData({ ...newLeaveData, endDate: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'ছুটির কারণ:' : 'Reason:'}</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ছুটির কারণ:' : 'Reason:'}</label>
                 <textarea
                   rows={2}
                   placeholder={isBn ? 'যেমন: পারিবারিক জরুরি কাজ' : 'Reason for leave'}
                   value={newLeaveData.reason}
                   onChange={(e) => setNewLeaveData({ ...newLeaveData, reason: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsLeaveModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold"
+                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold"
                 >
                   {isBn ? 'বাতিল' : 'Cancel'}
                 </button>

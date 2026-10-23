@@ -5,6 +5,7 @@ import { formatNumber } from '../services/utils';
 import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle } from 'lucide-react';
 import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
 import { EmptyState } from './ui/EmptyState';
+import { PageHeader } from './ui/PageHeader';
 
 interface MarksEntryProps {
   onNavigate?: (tab: string) => void;
@@ -326,45 +327,39 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-6">
       {/* Header & Status */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-            <Sparkles className="text-blue-600" size={24} />
-            {language === 'bn' ? 'নম্বর এন্ট্রি ও মূল্যায়ন' : 'Marks Entry & Evaluation'}
-          </h2>
-          <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
-            {language === 'bn' 
-              ? 'শিক্ষক দায়িত্ব অনুযায়ী নম্বর ইনপুট, CQ/MCQ/ব্যবহারিক হিসাব ও স্বয়ংক্রিয় গ্রেড নির্ধারণ' 
-              : 'Fast marks entry with component breakdown, auto-validation, and instant GPA preview.'}
-          </p>
-        </div>
-
+      <PageHeader
+        icon={Sparkles}
+        title={language === 'bn' ? 'নম্বর এন্ট্রি ও মূল্যায়ন' : 'Marks Entry & Evaluation'}
+        subtitle={language === 'bn'
+          ? 'শিক্ষক দায়িত্ব অনুযায়ী নম্বর ইনপুট, CQ/MCQ/ব্যবহারিক হিসাব ও স্বয়ংক্রিয় গ্রেড নির্ধারণ'
+          : 'Fast marks entry with component breakdown, auto-validation, and instant GPA preview.'}
+      >
         <div className="flex items-center gap-3">
           {isExamLocked && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-800 text-xs font-bold rounded-xl border border-amber-200">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-xs font-bold rounded-xl border border-amber-200 dark:border-amber-800">
               <Lock size={14} />
               {language === 'bn' ? 'পরীক্ষা চূড়ান্তকৃত (Read-Only)' : 'Finalized (Read-Only)'}
             </div>
           )}
 
           {/* Auto-Save Indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-bold rounded-xl border border-gray-200">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-slate-800/60 text-gray-600 dark:text-slate-300 text-xs font-bold rounded-xl border border-gray-200 dark:border-slate-700">
             {saveStatus === 'saving' && (
               <>
-                <Loader2 size={13} className="animate-spin text-blue-600" />
-                <span className="text-blue-600">{language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}</span>
+                <Loader2 size={13} className="animate-spin text-blue-600 dark:text-blue-400" />
+                <span className="text-blue-600 dark:text-blue-400">{language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}</span>
               </>
             )}
             {saveStatus === 'saved' && (
               <>
-                <CheckCircle2 size={13} className="text-emerald-600" />
-                <span className="text-emerald-700">{language === 'bn' ? 'সংরক্ষিত' : 'Saved'}</span>
+                <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
+                <span className="text-emerald-700 dark:text-emerald-400">{language === 'bn' ? 'সংরক্ষিত' : 'Saved'}</span>
               </>
             )}
             {saveStatus === 'error' && (
               <>
-                <AlertTriangle size={13} className="text-amber-600" />
-                <span className="text-amber-700">{language === 'bn' ? 'ত্রুটি' : 'Error'}</span>
+                <AlertTriangle size={13} className="text-amber-600 dark:text-amber-400" />
+                <span className="text-amber-700 dark:text-amber-400">{language === 'bn' ? 'ত্রুটি' : 'Error'}</span>
               </>
             )}
           </div>
@@ -378,16 +373,16 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
             {language === 'bn' ? 'সেভ করুন' : 'Save'}
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Control Filters */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-center w-full sm:w-auto">
           {/* Exam Selector */}
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-[11px] font-bold text-gray-600">{t('exam')}:</label>
+            <label className="text-[11px] font-bold text-gray-600 dark:text-slate-300">{t('exam')}:</label>
             <select
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-bold bg-white text-gray-900 w-full"
+              className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-900 text-gray-900 dark:text-white w-full"
               value={selectedExamId}
               onChange={e => setSelectedExamId(e.target.value)}
             >
@@ -399,9 +394,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
           {/* Class Selector */}
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-[11px] font-bold text-gray-600">{t('selectClass')}:</label>
+            <label className="text-[11px] font-bold text-gray-600 dark:text-slate-300">{t('selectClass')}:</label>
             <select
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-bold bg-white text-gray-900 w-full"
+              className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-900 text-gray-900 dark:text-white w-full"
               value={selectedClass}
               onChange={e => setSelectedClass(e.target.value)}
             >
@@ -413,9 +408,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
           {/* Subject Selector */}
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-[11px] font-bold text-gray-600">{t('subject')}:</label>
+            <label className="text-[11px] font-bold text-gray-600 dark:text-slate-300">{t('subject')}:</label>
             <select
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-bold bg-white text-gray-900 w-full sm:min-w-[200px]"
+              className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-900 text-gray-900 dark:text-white w-full sm:min-w-[200px]"
               value={selectedSubjectId}
               onChange={e => setSelectedSubjectId(e.target.value)}
             >
@@ -429,14 +424,14 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
         </div>
 
         {/* Total Students Counter */}
-        <div className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 self-stretch sm:self-auto text-center sm:text-left">
+        <div className="text-xs font-bold text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/60 px-3 py-2 rounded-xl border border-gray-100 dark:border-slate-800 self-stretch sm:self-auto text-center sm:text-left">
           {language === 'bn' ? `শিক্ষার্থী সংখ্যা: ${enrolledStudents.length} জন` : `Enrolled Students: ${enrolledStudents.length}`}
         </div>
       </div>
 
       {/* Marks Table or Friendly Empty State */}
       {filteredSubjects.length === 0 ? (
-        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs">
           <EmptyState
             icon={BookOpen}
             title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো বিষয় যোগ করা হয়নি` : `No subjects found in ${selectedClass}`}
@@ -455,41 +450,41 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50/80 border-b border-gray-200">
+              <thead className="bg-gray-50/80 border-b border-gray-200 dark:border-slate-700">
                 <tr>
-                  <th className="px-4 py-3 font-bold text-gray-700 text-xs w-16">রোল</th>
-                  <th className="px-4 py-3 font-bold text-gray-700 text-xs">শিক্ষার্থীর নাম</th>
+                  <th className="px-4 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs w-16">রোল</th>
+                  <th className="px-4 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs">শিক্ষার্থীর নাম</th>
                   
                   {currentSubject?.hasCQ && (
-                    <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-28">
+                    <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-28">
                       CQ ({currentSubject.cqMarks})
                     </th>
                   )}
 
                   {currentSubject?.hasMCQ && (
-                    <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-28">
+                    <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-28">
                       MCQ ({currentSubject.mcqMarks})
                     </th>
                   )}
 
                   {currentSubject?.hasPractical && (
-                    <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-28">
+                    <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-28">
                       ব্যবহারিক ({currentSubject.practicalMarks})
                     </th>
                   )}
 
-                  <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-32">
+                  <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-32">
                     মোট নম্বর ({currentSubject?.fullMarks || 100})
                   </th>
 
-                  <th className="px-3 py-3 font-bold text-gray-700 text-xs text-center w-24">গ্রেড / GPA</th>
-                  <th className="px-4 py-3 font-bold text-gray-700 text-xs text-center w-24">অনুপস্থিত</th>
+                  <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-24">গ্রেড / GPA</th>
+                  <th className="px-4 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-24">অনুপস্থিত</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {enrolledStudents.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-8 sm:p-12">
@@ -522,13 +517,13 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                   const gradePoint = calculateSubjectGradePoint(numObtained, currentSubject?.fullMarks, undefined, isAbsent, currentSubject?.passMarks);
 
                   return (
-                    <tr key={student.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
-                      <td className="px-4 py-3 font-mono font-bold text-xs text-gray-700">
+                    <tr key={student.id} className={idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-gray-50/40'}>
+                      <td className="px-4 py-3 font-mono font-bold text-xs text-gray-700 dark:text-slate-200">
                         {student.rollNumber || student.roll || idx + 1}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-bold text-gray-900 text-xs font-bangla">{student.name}</div>
-                        <div className="text-[10px] text-gray-400 font-mono">{student.studentId || student.id}</div>
+                        <div className="font-bold text-gray-900 dark:text-white text-xs font-bangla">{student.name}</div>
+                        <div className="text-[10px] text-gray-400 dark:text-slate-500 font-mono">{student.studentId || student.id}</div>
                       </td>
 
                       {/* CQ Input */}
@@ -540,7 +535,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                             value={mark.cq ?? ''}
                             onChange={e => handleInputChange(student.id, 'cq', e.target.value)}
                             className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
-                              validation.cqError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-white text-gray-900 border-gray-200'
+                              validation.cqError ? 'border-red-500 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white border-gray-200 dark:border-slate-700'
                             } disabled:bg-gray-100 disabled:opacity-50`}
                             placeholder="0"
                           />
@@ -556,7 +551,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                             value={mark.mcq ?? ''}
                             onChange={e => handleInputChange(student.id, 'mcq', e.target.value)}
                             className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
-                              validation.mcqError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-white text-gray-900 border-gray-200'
+                              validation.mcqError ? 'border-red-500 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white border-gray-200 dark:border-slate-700'
                             } disabled:bg-gray-100 disabled:opacity-50`}
                             placeholder="0"
                           />
@@ -572,7 +567,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                             value={mark.practical ?? ''}
                             onChange={e => handleInputChange(student.id, 'practical', e.target.value)}
                             className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
-                              validation.practicalError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-white text-gray-900 border-gray-200'
+                              validation.practicalError ? 'border-red-500 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white border-gray-200 dark:border-slate-700'
                             } disabled:bg-gray-100 disabled:opacity-50`}
                             placeholder="0"
                           />
@@ -587,7 +582,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                           value={mark.obtained ?? ''}
                           onChange={e => handleInputChange(student.id, 'obtained', e.target.value)}
                           className={`w-24 text-center border rounded-lg p-1.5 text-xs font-black ${
-                            validation.obtainedError ? 'border-red-500 bg-red-50 text-red-900' : 'bg-gray-50 text-blue-900 border-gray-200'
+                            validation.obtainedError ? 'border-red-500 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200' : 'bg-gray-50 dark:bg-slate-800/60 text-blue-900 dark:text-blue-200 border-gray-200 dark:border-slate-700'
                           } disabled:opacity-75`}
                           placeholder="0"
                         />
@@ -596,15 +591,15 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                       {/* Grade / GPA preview */}
                       <td className="px-3 py-2 text-center">
                         {isAbsent ? (
-                          <span className="text-[11px] font-bold text-gray-400">ABS</span>
+                          <span className="text-[11px] font-bold text-gray-400 dark:text-slate-500">ABS</span>
                         ) : (
                           <div className="inline-flex items-center gap-1">
                             <span className={`text-xs font-black px-2 py-0.5 rounded ${
-                              grade === 'F' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
+                              grade === 'F' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300'
                             }`}>
                               {grade}
                             </span>
-                            <span className="text-[10px] font-mono text-gray-500">
+                            <span className="text-[10px] font-mono text-gray-500 dark:text-slate-400">
                               ({gradePoint.toFixed(1)})
                             </span>
                           </div>
@@ -619,7 +614,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                             disabled={isExamLocked}
                             checked={isAbsent}
                             onChange={e => handleInputChange(student.id, 'isAbsent', e.target.checked)}
-                            className="rounded text-red-600 focus:ring-red-500"
+                            className="rounded text-red-600 dark:text-red-400 focus:ring-red-500"
                           />
                         </label>
                       </td>

@@ -23,6 +23,8 @@ import {
   Mail
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { PageHeader } from './ui/PageHeader';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { NoticeBulkEmailModule } from './NoticeBulkEmailModule';
 
 export const NoticeBoardManager: React.FC = () => {
@@ -37,6 +39,7 @@ export const NoticeBoardManager: React.FC = () => {
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [editingNotice, setEditingNotice] = useState<NoticeItem | null>(null);
   const [noticeToPrint, setNoticeToPrint] = useState<NoticeItem | null>(null);
+  const [noticeToDelete, setNoticeToDelete] = useState<NoticeItem | null>(null);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -143,39 +146,33 @@ export const NoticeBoardManager: React.FC = () => {
   const getCategoryBadge = (cat: NoticeCategory) => {
     switch (cat) {
       case 'diary':
-        return { label: language === 'bn' ? 'দৈনিক ডায়েরি' : 'Daily Diary', style: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+        return { label: language === 'bn' ? 'দৈনিক ডায়েরি' : 'Daily Diary', style: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' };
       case 'urgent':
-        return { label: language === 'bn' ? 'জরুরি বিজ্ঞপ্তি' : 'Urgent Notice', style: 'bg-rose-50 text-rose-700 border-rose-200' };
+        return { label: language === 'bn' ? 'জরুরি বিজ্ঞপ্তি' : 'Urgent Notice', style: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800' };
       case 'exam':
-        return { label: language === 'bn' ? 'পরীক্ষা সংক্রান্ত' : 'Examination', style: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+        return { label: language === 'bn' ? 'পরীক্ষা সংক্রান্ত' : 'Examination', style: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800' };
       case 'holiday':
-        return { label: language === 'bn' ? 'ছুটির নোটিশ' : 'Holiday', style: 'bg-purple-50 text-purple-700 border-purple-200' };
+        return { label: language === 'bn' ? 'ছুটির নোটিশ' : 'Holiday', style: 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800' };
       case 'event':
-        return { label: language === 'bn' ? 'অনুষ্ঠান / মাহফিল' : 'Event', style: 'bg-amber-50 text-amber-800 border-amber-200' };
+        return { label: language === 'bn' ? 'অনুষ্ঠান / মাহফিল' : 'Event', style: 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800' };
       default:
-        return { label: language === 'bn' ? 'সাধারণ নোটিশ' : 'General', style: 'bg-blue-50 text-blue-700 border-blue-200' };
+        return { label: language === 'bn' ? 'সাধারণ নোটিশ' : 'General', style: 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800' };
     }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-indigo-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-amber-400/20 print:hidden">
-        <div>
-          <div className="flex items-center gap-2 text-amber-200 text-xs font-bold uppercase tracking-wider mb-1">
-            <Megaphone size={16} />
-            <span>{language === 'bn' ? 'ডিজিটাল নোটিশ ও ঘোষণা বোর্ড' : 'Institutional Notice Board & Daily Diary'}</span>
-          </div>
-          <h1 className="text-2xl font-black tracking-tight">
-            {language === 'bn' ? 'নোটিশ বোর্ড ও দৈনিক ডায়েরি ব্যবস্থাপনা' : 'Notice Board & Daily Activities'}
-          </h1>
-          <p className="text-xs text-amber-100/90 mt-1 max-w-xl">
-            {language === 'bn' 
-              ? 'মাদ্রাসার সমস্ত জরুরি নোটিশ, ছুটির বিজ্ঞপ্তি, পরীক্ষা বার্তা ও দৈনিক ক্লাসের বাড়ির কাজ পোস্ট ও পরিচালনা করুন।' 
-              : 'Post and manage announcements, holidays, exam notifications and daily homework activities.'}
-          </p>
-        </div>
-
+      <PageHeader
+        tone="brand"
+        className="print:hidden"
+        icon={Megaphone}
+        eyebrow={language === 'bn' ? 'ডিজিটাল নোটিশ ও ঘোষণা বোর্ড' : 'Institutional Notice Board & Daily Diary'}
+        title={language === 'bn' ? 'নোটিশ বোর্ড ও দৈনিক ডায়েরি ব্যবস্থাপনা' : 'Notice Board & Daily Activities'}
+        subtitle={language === 'bn'
+          ? 'মাদ্রাসার সমস্ত জরুরি নোটিশ, ছুটির বিজ্ঞপ্তি, পরীক্ষা বার্তা ও দৈনিক ক্লাসের বাড়ির কাজ পোস্ট ও পরিচালনা করুন।'
+          : 'Post and manage announcements, holidays, exam notifications and daily homework activities.'}
+      >
         {canManage && (
           <Button
             onClick={() => openCompose()}
@@ -185,23 +182,23 @@ export const NoticeBoardManager: React.FC = () => {
             <span>{language === 'bn' ? 'নতুন নোটিশ বা ডায়েরি লিখুন' : 'Post New Notice'}</span>
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       {/* Main Tab Navigation for Notice Board */}
-      <div className="flex border-b border-gray-200 bg-white rounded-2xl p-1.5 shadow-xs gap-1.5 print:hidden">
+      <div className="flex border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-xs gap-1.5 print:hidden">
         <button
           type="button"
           onClick={() => setActiveBoardTab('notices')}
           className={`flex-1 sm:flex-none flex items-center justify-center gap-2 py-2.5 px-5 font-bold text-xs rounded-xl transition-all cursor-pointer ${
             activeBoardTab === 'notices'
               ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <Megaphone size={16} />
           <span>{language === 'bn' ? 'সকল নোটিশ ও দৈনিক ডায়েরি' : 'All Notices & Diary'}</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeBoardTab === 'notices' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+            activeBoardTab === 'notices' ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
           }`}>
             {notices.length}
           </span>
@@ -213,13 +210,13 @@ export const NoticeBoardManager: React.FC = () => {
           className={`flex-1 sm:flex-none flex items-center justify-center gap-2 py-2.5 px-5 font-bold text-xs rounded-xl transition-all cursor-pointer ${
             activeBoardTab === 'bulk_email'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <Mail size={16} />
           <span>{language === 'bn' ? 'বাল্ক ইমেইল নোটিশ ব্রডকাস্ট' : 'Bulk Email Dispatch'}</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeBoardTab === 'bulk_email' ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700'
+            activeBoardTab === 'bulk_email' ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400'
           }`}>
             New
           </span>
@@ -231,15 +228,15 @@ export const NoticeBoardManager: React.FC = () => {
       ) : (
         <>
           {/* Filter and Search Bar */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4 print:hidden">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex-1 min-w-[220px] relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder={language === 'bn' ? 'নোটিশের শিরোনাম বা বিষয়বস্তু খুঁজুন...' : 'Search notice by title or content...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
@@ -248,7 +245,7 @@ export const NoticeBoardManager: React.FC = () => {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-800 dark:text-slate-100"
           >
             <option value="all">{language === 'bn' ? 'সকল ক্যাটাগরি' : 'All Categories'}</option>
             <option value="general">{language === 'bn' ? 'সাধারণ নোটিশ' : 'General'}</option>
@@ -263,7 +260,7 @@ export const NoticeBoardManager: React.FC = () => {
           <select
             value={selectedPriority}
             onChange={(e) => setSelectedPriority(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-800 dark:text-slate-100"
           >
             <option value="all">{language === 'bn' ? 'সকল অগ্রাধিকার' : 'All Priorities'}</option>
             <option value="urgent">{language === 'bn' ? 'জরুরি (Urgent)' : 'Urgent'}</option>
@@ -275,7 +272,7 @@ export const NoticeBoardManager: React.FC = () => {
 
       {/* Notices Grid */}
       {filteredNotices.length === 0 ? (
-        <div className="bg-white p-12 text-center rounded-3xl border border-slate-200 text-slate-400">
+        <div className="bg-white dark:bg-slate-900 p-12 text-center rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">
           <BookOpen size={36} className="mx-auto text-slate-300 mb-2" />
           <p className="font-bold">{language === 'bn' ? 'কোনো নোটিশ পাওয়া যায়নি' : 'No notices found'}</p>
         </div>
@@ -288,8 +285,8 @@ export const NoticeBoardManager: React.FC = () => {
             return (
               <div 
                 key={notice.id} 
-                className={`bg-white rounded-3xl border p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all ${
-                  isUrgent ? 'border-rose-300 ring-2 ring-rose-100' : 'border-slate-200/80 hover:border-slate-300'
+                className={`bg-white dark:bg-slate-900 rounded-3xl border p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all ${
+                  isUrgent ? 'border-rose-300 dark:border-rose-700 ring-2 ring-rose-100' : 'border-slate-200/80 hover:border-slate-300'
                 }`}
               >
                 <div>
@@ -300,42 +297,42 @@ export const NoticeBoardManager: React.FC = () => {
                         {badge.label}
                       </span>
                       {notice.isPinned && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[10px] font-bold">
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
                           <Pin size={11} className="fill-amber-600" />
                           <span>{language === 'bn' ? 'পিন করা' : 'Pinned'}</span>
                         </span>
                       )}
                       {notice.targetClass && (
-                        <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-[10px] font-bold">
+                        <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold">
                           {notice.targetClass}
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
                       {notice.date}
                     </span>
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-base font-black text-slate-900 leading-snug">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white leading-snug">
                     {notice.title}
                   </h3>
 
                   {/* Body Content */}
-                  <p className="text-xs text-slate-600 mt-2 leading-relaxed whitespace-pre-line font-bangla">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed whitespace-pre-line font-bangla">
                     {notice.content}
                   </p>
                 </div>
 
                 {/* Card Footer & Action Buttons */}
-                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                   <span className="truncate max-w-[130px] font-medium">✍️ {notice.authorName || 'প্রশাসন'}</span>
 
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => setNoticeToPrint(notice)}
                       title={language === 'bn' ? 'প্রিন্ট ফরম্যাট দেখুন' : 'Print View'}
-                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                      className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
                     >
                       <Printer size={15} />
                     </button>
@@ -345,18 +342,14 @@ export const NoticeBoardManager: React.FC = () => {
                         <button
                           onClick={() => openCompose(notice)}
                           title="Edit"
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
+                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
                         >
                           <Edit2 size={15} />
                         </button>
                         <button
-                          onClick={() => {
-                            if (window.confirm(language === 'bn' ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this notice?')) {
-                              deleteNotice(notice.id);
-                            }
-                          }}
+                          onClick={() => setNoticeToDelete(notice)}
                           title="Delete"
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                          className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
                         >
                           <Trash2 size={15} />
                         </button>
@@ -445,8 +438,8 @@ export const NoticeBoardManager: React.FC = () => {
       {/* Compose / Edit Modal */}
       {isComposeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-indigo-900 text-white flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-600 to-indigo-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Megaphone size={18} />
                 <h3 className="text-sm font-bold tracking-tight">
@@ -465,7 +458,7 @@ export const NoticeBoardManager: React.FC = () => {
 
             <form onSubmit={handleSaveNotice} className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                   {language === 'bn' ? 'শিরোনাম *' : 'Title *'}
                 </label>
                 <input
@@ -474,19 +467,19 @@ export const NoticeBoardManager: React.FC = () => {
                   placeholder={language === 'bn' ? 'বিজ্ঞপ্তির শিরোনাম লিখুন' : 'Notice title'}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                     {language === 'bn' ? 'ক্যাটাগরি' : 'Category'}
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as NoticeCategory)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-800 dark:text-slate-100"
                   >
                     <option value="general">{language === 'bn' ? 'সাধারণ নোটিশ' : 'General'}</option>
                     <option value="diary">{language === 'bn' ? 'দৈনিক ডায়েরি / সবক' : 'Daily Diary'}</option>
@@ -498,13 +491,13 @@ export const NoticeBoardManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                     {language === 'bn' ? 'অগ্রাধিকার' : 'Priority'}
                   </label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as NoticePriority)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-800 dark:text-slate-100"
                   >
                     <option value="normal">{language === 'bn' ? 'সাধারণ (Normal)' : 'Normal'}</option>
                     <option value="important">{language === 'bn' ? 'গুরুত্বপূর্ণ (Important)' : 'Important'}</option>
@@ -515,13 +508,13 @@ export const NoticeBoardManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                     {language === 'bn' ? 'প্রাপক (Audience)' : 'Audience'}
                   </label>
                   <select
                     value={target}
                     onChange={(e) => setTarget(e.target.value as NoticeTarget)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-800 dark:text-slate-100"
                   >
                     <option value="all">{language === 'bn' ? 'সকলের জন্য (All)' : 'Everyone'}</option>
                     <option value="students">{language === 'bn' ? 'শিক্ষার্থী ও অভিভাবক' : 'Students'}</option>
@@ -532,13 +525,13 @@ export const NoticeBoardManager: React.FC = () => {
 
                 {target === 'class' && (
                   <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                       {language === 'bn' ? 'শ্রেণি বাছুন' : 'Select Class'}
                     </label>
                     <select
                       value={targetClass}
                       onChange={(e) => setTargetClass(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                      className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-800 dark:text-slate-100"
                     >
                       <option value="">{language === 'bn' ? 'শ্রেণি নির্বাচন করুন' : 'Select'}</option>
                       {classes.map(c => (
@@ -550,7 +543,7 @@ export const NoticeBoardManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                   {language === 'bn' ? 'বিস্তারিত নোটিশ বা সবক বিবরণী *' : 'Content *'}
                 </label>
                 <textarea
@@ -559,7 +552,7 @@ export const NoticeBoardManager: React.FC = () => {
                   placeholder={language === 'bn' ? 'বিজ্ঞপ্তির বিস্তারিত বা ডায়েরির বাড়ির কাজ এখানে লিখুন...' : 'Write notice details here...'}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla leading-relaxed"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla leading-relaxed"
                 />
               </div>
 
@@ -570,26 +563,26 @@ export const NoticeBoardManager: React.FC = () => {
                     placeholder="ঘোষণাকারীর নাম (যেমন: অধ্যক্ষ / সুপারিনটেনডেন্ট)"
                     value={authorName}
                     onChange={(e) => setAuthorName(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 font-medium"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-medium"
                   />
                 </div>
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 shrink-0">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0">
                   <input
                     type="checkbox"
                     checked={isPinned}
                     onChange={(e) => setIsPinned(e.target.checked)}
-                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                    className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
                   />
                   <span>{language === 'bn' ? 'উপরে পিন করুন' : 'Pin to top'}</span>
                 </label>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsComposeModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                 >
                   {language === 'bn' ? 'বাতিল' : 'Cancel'}
                 </button>
@@ -606,6 +599,24 @@ export const NoticeBoardManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Notice Confirmation */}
+      <ConfirmDialog
+        isOpen={!!noticeToDelete}
+        onClose={() => setNoticeToDelete(null)}
+        onConfirm={() => {
+          if (noticeToDelete) {
+            deleteNotice(noticeToDelete.id);
+            setNoticeToDelete(null);
+          }
+        }}
+        title={language === 'bn' ? 'নোটিশ ডিলিট নিশ্চিতকরণ' : 'Confirm Notice Deletion'}
+        message={language === 'bn' ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this notice?'}
+        highlightText={noticeToDelete ? noticeToDelete.title : undefined}
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
     </div>
   );
 };

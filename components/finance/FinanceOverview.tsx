@@ -160,17 +160,17 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       />
 
       {/* Cash Flow Distribution Ratio Visualizer */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-          <span className="text-sm sm:text-base font-bold text-slate-800">
+          <span className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100">
             {isBn ? 'আয় ও ব্যয় অনুপাত এবং প্রবাহ বিশ্লেষণ (Cash Flow Distribution)' : 'Inflow vs Outflow Ratio'}
           </span>
           <div className="flex items-center gap-4 text-xs sm:text-sm font-bold">
-            <span className="flex items-center gap-1.5 text-emerald-700">
+            <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
               <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
               {isBn ? 'মোট আয়:' : 'In:'} {incomePercent}%
             </span>
-            <span className="flex items-center gap-1.5 text-rose-700">
+            <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
               <span className="w-3 h-3 rounded-full bg-rose-500 inline-block" />
               {isBn ? 'মোট ব্যয়:' : 'Out:'} {expensePercent}%
             </span>
@@ -178,7 +178,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden flex p-0.5 border border-slate-200">
+        <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex p-0.5 border border-slate-200 dark:border-slate-800">
           <div 
             style={{ width: `${incomePercent}%` }} 
             className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500" 
@@ -196,11 +196,11 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-500" />
               {isBn ? 'মাদ্রাসার প্রধান ৪টি আর্থিক খাত (Core Financial Pillars)' : 'Core Financial Streams'}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 font-medium">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
               {isBn ? 'ছাত্র ফি, দান-সদকা, উস্তাদদের হাদিয়া ও মাদ্রাসা উন্নয়নের ডেডিকেটেড সারসংক্ষেপ' : 'Quick access and analytics for primary inflow and expense channels'}
             </p>
           </div>
@@ -214,22 +214,22 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
                   <GraduationCap className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                   {isBn ? 'মূল আয় ১' : 'Income 1'}
                 </span>
               </div>
-              <h3 className="text-base font-extrabold text-slate-900">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                 {isBn ? 'ছাত্র ফি ও বেতন' : 'Student Fees'}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium">
                 {isBn ? 'মাসিক বেতন, খাবার, ভর্তি ও পরীক্ষা ফি' : 'Tuition, Food, Admission & Exam'}
               </p>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-blue-950 font-mono">
+                <div className="text-2xl sm:text-3xl font-black text-blue-950 dark:text-blue-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(studentFeesIncome) : studentFeesIncome.toLocaleString()}
                 </div>
-                <div className="text-xs sm:text-sm text-blue-700 mt-1 font-semibold">
+                <div className="text-xs sm:text-sm text-blue-700 dark:text-blue-400 mt-1 font-semibold">
                   {isBn ? 'চলতি মাসে আদায়:' : 'This Month:'} ৳{isBn ? formatBanglaNumber(studentFeesThisMonth) : studentFeesThisMonth.toLocaleString()}
                 </div>
               </div>
@@ -255,22 +255,22 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
                   <HeartHandshake className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {isBn ? 'মূল আয় ২' : 'Income 2'}
                 </span>
               </div>
-              <h3 className="text-base font-extrabold text-slate-900">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                 {isBn ? 'দান, সদকা ও যাকাত' : 'Dan & Sadaqa'}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium">
                 {isBn ? 'সাধারণ দান, যাকাত, চামড়া ও সদস্য চাঁদা' : 'General Hadya, Zakat, Skin & Donors'}
               </p>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono">
+                <div className="text-2xl sm:text-3xl font-black text-emerald-950 dark:text-emerald-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(donationsIncome) : donationsIncome.toLocaleString()}
                 </div>
-                <div className="text-xs sm:text-sm text-emerald-700 mt-1 font-semibold">
+                <div className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 mt-1 font-semibold">
                   {isBn ? 'চলতি মাসে দান:' : 'This Month:'} ৳{isBn ? formatBanglaNumber(donationsThisMonth) : donationsThisMonth.toLocaleString()}
                 </div>
               </div>
@@ -296,22 +296,22 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 <div className="w-11 h-11 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs">
                   <CreditCard className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                   {isBn ? 'মূল ব্যয় ১' : 'Expense 1'}
                 </span>
               </div>
-              <h3 className="text-base font-extrabold text-slate-900">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                 {isBn ? 'উস্তাদদের হাদিয়া ও বেতন' : 'Teacher Salary'}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium">
                 {isBn ? 'উস্তাদ ও কর্মচারীদের মাসিক হাদিয়া/বেতন' : 'Monthly Teacher & Staff Salaries'}
               </p>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-rose-950 font-mono">
+                <div className="text-2xl sm:text-3xl font-black text-rose-950 dark:text-rose-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(teacherSalaryExpense) : teacherSalaryExpense.toLocaleString()}
                 </div>
-                <div className="text-xs sm:text-sm text-rose-700 mt-1 font-semibold">
+                <div className="text-xs sm:text-sm text-rose-700 dark:text-rose-400 mt-1 font-semibold">
                   {isBn ? 'চলতি মাসে হাদিয়া:' : 'This Month:'} ৳{isBn ? formatBanglaNumber(teacherSalaryThisMonth) : teacherSalaryThisMonth.toLocaleString()}
                 </div>
               </div>
@@ -337,22 +337,22 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 <div className="w-11 h-11 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
                   <Building2 className="w-6 h-6" />
                 </div>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                   {isBn ? 'মূল ব্যয় ২' : 'Expense 2'}
                 </span>
               </div>
-              <h3 className="text-base font-extrabold text-slate-900">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                 {isBn ? 'মাদ্রাসা উন্নয়ন ও নির্মাণ' : 'Development Fund'}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium">
                 {isBn ? 'ভবন নির্মাণ, মেরামত ও মসজিদ উন্নয়ন' : 'Construction, Mosque & Maintenance'}
               </p>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-amber-950 font-mono">
+                <div className="text-2xl sm:text-3xl font-black text-amber-950 dark:text-amber-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(developmentExpense) : developmentExpense.toLocaleString()}
                 </div>
-                <div className="text-xs sm:text-sm text-amber-700 mt-1 font-semibold">
+                <div className="text-xs sm:text-sm text-amber-700 dark:text-amber-400 mt-1 font-semibold">
                   {isBn ? 'চলতি মাসে উন্নয়ন:' : 'This Month:'} ৳{isBn ? formatBanglaNumber(developmentThisMonth) : developmentThisMonth.toLocaleString()}
                 </div>
               </div>
@@ -374,14 +374,14 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       </div>
 
       {/* Madrasah Dedicated Fund Balances */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-emerald-600" />
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Layers className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               {isBn ? 'মাদ্রাসা বিশেষায়িত তহবিল ও ফান্ডের বিস্তারিত স্থিতি' : 'Fund Balances (Segregated Accounting)'}
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600 font-medium">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
               {isBn ? 'শরীয়াহ অনুযায়ী প্রতিটি ফান্ডের আলাদা জমা-খরচের স্বচ্ছ হিসাব' : 'Strict Shariah-compliant fund segregation'}
             </p>
           </div>
@@ -391,7 +391,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
             variant="secondary"
             className="text-xs sm:text-sm font-semibold"
           >
-            <PlusCircle className="w-4 h-4 mr-1.5 text-emerald-600" />
+            <PlusCircle className="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
             {isBn ? 'অন্যান্য খাতে এন্ট্রি' : 'Other Entry'}
           </Button>
         </div>
@@ -409,17 +409,17 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 </div>
 
                 <div className="mt-3">
-                  <div className="text-2xl font-black text-slate-900 font-mono">
+                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
                     ৳{isBn ? formatBanglaNumber(data.balance) : data.balance.toLocaleString()}
                   </div>
                 </div>
 
-                <div className="mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-xs sm:text-sm text-slate-600 font-semibold">
-                  <div className="flex items-center gap-1 text-emerald-700">
+                <div className="mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-semibold">
+                  <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
                     <ArrowDownLeft className="w-3.5 h-3.5" />
                     <span>জমা: ৳{isBn ? formatBanglaNumber(data.income) : data.income.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-rose-700">
+                  <div className="flex items-center gap-1 text-rose-700 dark:text-rose-400">
                     <ArrowUpRight className="w-3.5 h-3.5" />
                     <span>খরচ: ৳{isBn ? formatBanglaNumber(data.expense) : data.expense.toLocaleString()}</span>
                   </div>
@@ -431,10 +431,10 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       </div>
 
       {/* Recent 5 Transactions */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-slate-700" />
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-slate-700 dark:text-slate-200" />
             {isBn ? 'সাম্প্রতিক লেনদেন' : 'Recent Transactions'}
           </h3>
           <Button 
@@ -449,7 +449,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-700 border-y border-slate-200 text-xs uppercase tracking-wider font-bold">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 border-y border-slate-200 dark:border-slate-800 text-xs uppercase tracking-wider font-bold">
               <tr>
                 <th className="py-3 px-3.5 font-bold">{isBn ? 'ভাউচার নং' : 'Voucher No'}</th>
                 <th className="py-3 px-3.5 font-bold">{isBn ? 'তারিখ' : 'Date'}</th>
@@ -459,35 +459,35 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 <th className="py-3 px-3.5 font-bold text-center">{isBn ? 'রসিদ' : 'Receipt'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {transactions.slice(0, 5).map(tx => (
                 <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3 px-3.5 font-bold font-mono text-slate-800">
+                  <td className="py-3 px-3.5 font-bold font-mono text-slate-800 dark:text-slate-100">
                     {tx.voucherNo}
                   </td>
-                  <td className="py-3 px-3.5 text-slate-600 whitespace-nowrap">
+                  <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {tx.date}
                   </td>
                   <td className="py-3 px-3.5">
                     <div className="flex items-center gap-1.5">
                       <span className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${tx.type === 'INCOME' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                      <span className="font-semibold text-slate-800">{tx.categoryName || tx.category}</span>
-                      <span className="text-xs text-slate-400">({FUND_METAS[tx.fundType]?.nameBn || tx.fundType})</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">{tx.categoryName || tx.category}</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500">({FUND_METAS[tx.fundType]?.nameBn || tx.fundType})</span>
                     </div>
                   </td>
-                  <td className="py-3 px-3.5 text-slate-700 font-medium">
+                  <td className="py-3 px-3.5 text-slate-700 dark:text-slate-200 font-medium">
                     {tx.studentNameBn || tx.studentName || tx.payerOrPayee}
-                    {tx.classLevel && <span className="text-xs text-slate-400 ml-1">({tx.classLevel})</span>}
+                    {tx.classLevel && <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">({tx.classLevel})</span>}
                   </td>
                   <td className="py-3 px-3.5 text-right font-bold font-mono text-sm sm:text-base">
-                    <span className={tx.type === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}>
+                    <span className={tx.type === 'INCOME' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}>
                       {tx.type === 'INCOME' ? '+' : '-'} ৳{isBn ? formatBanglaNumber(tx.amount) : tx.amount.toLocaleString()}
                     </span>
                   </td>
                   <td className="py-3 px-3.5 text-center">
                     <button
                       onClick={() => onOpenReceipt(tx)}
-                      className="px-2.5 py-1 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors inline-flex items-center gap-1 text-xs font-bold border border-blue-200"
+                      className="px-2.5 py-1 rounded-lg text-blue-700 dark:text-blue-400 hover:bg-blue-50 transition-colors inline-flex items-center gap-1 text-xs font-bold border border-blue-200 dark:border-blue-800"
                       title={isBn ? 'রসিদ প্রিন্ট' : 'Print Receipt'}
                     >
                       <Printer className="w-3.5 h-3.5" />

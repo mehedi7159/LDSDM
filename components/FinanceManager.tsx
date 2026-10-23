@@ -24,6 +24,7 @@ import {
   Printer
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { PageHeader } from './ui/PageHeader';
 import { FinanceTransaction } from '../types';
 import { FinanceTab } from './finance/types';
 import { FinanceOverview } from './finance/FinanceOverview';
@@ -149,7 +150,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: '1. Overview & Budget', 
       icon: Wallet,
       activeClass: 'bg-slate-900 text-white shadow-md',
-      inactiveClass: 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+      inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
       iconColor: 'text-emerald-400'
     },
     { 
@@ -159,8 +160,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       icon: GraduationCap,
       badge: isBn ? 'ফি গ্রহণ' : 'Collection',
       activeClass: 'bg-blue-600 text-white shadow-md shadow-blue-500/20',
-      inactiveClass: 'text-blue-900 hover:bg-blue-50 hover:text-blue-700',
-      iconColor: 'text-blue-600'
+      inactiveClass: 'text-blue-900 dark:text-blue-200 hover:bg-blue-50 hover:text-blue-700',
+      iconColor: 'text-blue-600 dark:text-blue-400'
     },
     { 
       id: 'donation', 
@@ -169,8 +170,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       icon: HeartHandshake,
       badge: isBn ? 'রসিদ' : 'Receipt',
       activeClass: 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20',
-      inactiveClass: 'text-emerald-900 hover:bg-emerald-50 hover:text-emerald-700',
-      iconColor: 'text-emerald-600'
+      inactiveClass: 'text-emerald-900 dark:text-emerald-200 hover:bg-emerald-50 hover:text-emerald-700',
+      iconColor: 'text-emerald-600 dark:text-emerald-400'
     },
     { 
       id: 'salary', 
@@ -178,8 +179,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: '4. Teacher Salary', 
       icon: CreditCard,
       activeClass: 'bg-rose-600 text-white shadow-md shadow-rose-500/20',
-      inactiveClass: 'text-rose-900 hover:bg-rose-50 hover:text-rose-700',
-      iconColor: 'text-rose-600'
+      inactiveClass: 'text-rose-900 dark:text-rose-200 hover:bg-rose-50 hover:text-rose-700',
+      iconColor: 'text-rose-600 dark:text-rose-400'
     },
     { 
       id: 'development', 
@@ -187,8 +188,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: '5. Development', 
       icon: Building2,
       activeClass: 'bg-amber-600 text-white shadow-md shadow-amber-500/20',
-      inactiveClass: 'text-amber-950 hover:bg-amber-50 hover:text-amber-800',
-      iconColor: 'text-amber-600'
+      inactiveClass: 'text-amber-950 dark:text-amber-200 hover:bg-amber-50 hover:text-amber-800',
+      iconColor: 'text-amber-600 dark:text-amber-400'
     },
     { 
       id: 'general-entry', 
@@ -196,8 +197,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: '6. General Voucher', 
       icon: PlusCircle,
       activeClass: 'bg-cyan-700 text-white shadow-md shadow-cyan-600/20',
-      inactiveClass: 'text-cyan-950 hover:bg-cyan-50 hover:text-cyan-800',
-      iconColor: 'text-cyan-600'
+      inactiveClass: 'text-cyan-950 dark:text-cyan-200 hover:bg-cyan-50 hover:text-cyan-800',
+      iconColor: 'text-cyan-600 dark:text-cyan-400'
     },
     { 
       id: 'ledger', 
@@ -205,8 +206,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: '7. Cash Book & Ledger', 
       icon: BookOpen,
       activeClass: 'bg-violet-700 text-white shadow-md shadow-violet-600/20',
-      inactiveClass: 'text-violet-950 hover:bg-violet-50 hover:text-violet-800',
-      iconColor: 'text-violet-600'
+      inactiveClass: 'text-violet-950 dark:text-violet-200 hover:bg-violet-50 hover:text-violet-800',
+      iconColor: 'text-violet-600 dark:text-violet-400'
     },
     { 
       id: 'fee-settings', 
@@ -214,8 +215,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: '8. Fee Rates & Setup', 
       icon: Settings2,
       activeClass: 'bg-slate-700 text-white shadow-md',
-      inactiveClass: 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
-      iconColor: 'text-slate-600'
+      inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
+      iconColor: 'text-slate-600 dark:text-slate-300'
     },
     { 
       id: 'reports', 
@@ -224,8 +225,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       icon: FileSpreadsheet,
       badge: 'Report',
       activeClass: 'bg-emerald-700 text-white shadow-md shadow-emerald-600/20',
-      inactiveClass: 'text-emerald-950 hover:bg-emerald-50 hover:text-emerald-800',
-      iconColor: 'text-emerald-600'
+      inactiveClass: 'text-emerald-950 dark:text-emerald-200 hover:bg-emerald-50 hover:text-emerald-800',
+      iconColor: 'text-emerald-600 dark:text-emerald-400'
     },
   ];
 
@@ -240,64 +241,14 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       )}
 
       {/* Top Banner Header: Step 5 • Finance & Accounts Suite */}
-      <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-teal-950 text-white rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <div className="flex items-center gap-2 text-emerald-300 font-black text-xs uppercase tracking-wider mb-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{isBn ? 'ধাপ ৫ • হিসাব ও অর্থ ব্যবস্থাপনা হাব' : 'Step 5 • Finance & Accounts Suite'}</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <span>💰</span>
-              <span>{isBn ? 'হিসাব, ফি ও অর্থ ব্যবস্থাপনা কেন্দ্র' : 'Finance, Fees & Accounts Suite'}</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-              {isBn 
-                ? 'ছাত্র ফি ও বকেয়া আদায়, স্বয়ংক্রিয় রসিদ প্রিন্ট, দান-সদকার খতিয়ান, উস্তাদদের বেতন ও ক্যাশ বুক অডিট ট্রেইল।'
-                : 'Comprehensive fee collection, printable vouchers, donations & zakat funds, teacher payroll and audit-ready cashbook ledger.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('student-fee')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <GraduationCap size={14} className="text-blue-300" />
-              <span>{isBn ? 'ছাত্র ফি আদায়' : 'Collect Fee'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('donation')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <HeartHandshake size={14} className="text-emerald-300" />
-              <span>{isBn ? 'দান ও সদকা' : 'Donations'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('salary')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <CreditCard size={14} className="text-rose-300" />
-              <span>{isBn ? 'উস্তাদ বেতন' : 'Salary'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('reports')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
-            >
-              <FileSpreadsheet size={14} className="text-teal-300" />
-              <span>{isBn ? 'আর্থিক বিবরণী' : 'Reports'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Top KPI Metrics Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
+      <PageHeader
+        tone="brand"
+        icon={Wallet}
+        eyebrow={isBn ? 'ধাপ ৫ • হিসাব ও অর্থ ব্যবস্থাপনা হাব' : 'Step 5 • Finance & Accounts Suite'}
+        title={isBn ? 'হিসাব, ফি ও অর্থ ব্যবস্থাপনা কেন্দ্র' : 'Finance, Fees & Accounts Suite'}
+        subtitle={isBn ? 'ছাত্র ফি ও বকেয়া আদায়, স্বয়ংক্রিয় রসিদ প্রিন্ট, দান-সদকার খতিয়ান, উস্তাদদের বেতন ও ক্যাশ বুক অডিট ট্রেইল।' : 'Comprehensive fee collection, printable vouchers, donations & zakat funds, teacher payroll and audit-ready cashbook ledger.'}
+        footer={
+<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের মোট আয়' : "Today's Income"}</div>
             <div className="text-xl font-black text-emerald-300 mt-0.5">৳{formatNumber(kpis.todayIncome, language)}</div>
@@ -336,10 +287,46 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             <div className="text-[10px] text-slate-300 font-medium">{isBn ? 'সংরক্ষিত ভাউচার' : 'Recorded'}</div>
           </div>
         </div>
-      </div>
+        }
+      >
+<div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => setActiveTab('student-fee')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <GraduationCap size={14} className="text-blue-300" />
+              <span>{isBn ? 'ছাত্র ফি আদায়' : 'Collect Fee'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('donation')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <HeartHandshake size={14} className="text-emerald-300" />
+              <span>{isBn ? 'দান ও সদকা' : 'Donations'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('salary')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <CreditCard size={14} className="text-rose-300" />
+              <span>{isBn ? 'উস্তাদ বেতন' : 'Salary'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('reports')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
+            >
+              <FileSpreadsheet size={14} className="text-teal-300" />
+              <span>{isBn ? 'আর্থিক বিবরণী' : 'Reports'}</span>
+            </button>
+          </div>
+      </PageHeader>
 
-      {/* Sub-Navigation Tabs */}
-      <div className="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+{/* Sub-Navigation Tabs */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
         {navTabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -351,14 +338,14 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 isActive 
                   ? 'bg-slate-900 text-white shadow-xs' 
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <Icon size={15} className={isActive ? 'text-emerald-400' : tab.iconColor} />
               <span>{isBn ? tab.labelBn : tab.labelEn}</span>
               {tab.badge && (
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                  isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300'
                 }`}>
                   {tab.badge}
                 </span>

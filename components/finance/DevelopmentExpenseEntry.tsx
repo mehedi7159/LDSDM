@@ -98,17 +98,17 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Main Form (8 Cols) */}
-      <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+      <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 flex items-center justify-center">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 {isBn ? 'মাদ্রাসা উন্নয়ন, নির্মাণ ও সংস্কার ব্যয়' : 'Madrasah Development & Construction'}
               </h2>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {isBn ? 'ভবন নির্মাণ সামগ্রী, মিস্ত্রি মজুরি ও সংস্কার খরচের ডেবিট ভাউচার' : 'Record building, hardware, renovation and contractor fees'}
               </p>
             </div>
@@ -118,13 +118,13 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Project Head Selection */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
               {isBn ? 'উন্নয়ন কাজের সুনির্দিষ্ট খাত *' : 'Development Work Category *'}
             </label>
             <select
               value={projectHead}
               onChange={(e) => setProjectHead(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
             >
               {developmentProjects.map(p => (
                 <option key={p} value={p}>{p}</option>
@@ -135,31 +135,31 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
           {/* Amount & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'খরচের পরিমাণ (টাকা) *' : 'Amount (BDT) *'}
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">৳</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-sm">৳</span>
                 <input
                   type="number"
                   value={amount || ''}
                   onChange={(e) => setAmount(Number(e.target.value))}
                   placeholder="0"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3.5 py-2 text-base text-slate-900 font-black font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3.5 py-2 text-base text-slate-900 dark:text-white font-black font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'খরচের তারিখ *' : 'Date *'}
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 required
               />
             </div>
@@ -168,7 +168,7 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
           {/* Payee / Vendor & Contact */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'সরবরাহকারী প্রতিষ্ঠান / ঠিকাদার / মিস্ত্রির নাম *' : 'Vendor / Contractor / Mason Name *'}
               </label>
               <input
@@ -176,13 +176,13 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
                 value={payeeName}
                 onChange={(e) => setPayeeName(e.target.value)}
                 placeholder={isBn ? 'যেমন: মেসার্স রহিম স্টিল / মোজাম্মেল রাজমিস্ত্রি' : 'e.g. Rahim Steel / Mason Leader'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'মোবাইল নম্বর' : 'Phone Number'}
               </label>
               <input
@@ -190,7 +190,7 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
                 value={payeePhone}
                 onChange={(e) => setPayeePhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
               />
             </div>
           </div>
@@ -198,7 +198,7 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
           {/* Memo No, Payment Method, Approval */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'দোকানের ক্যাশ মেমো / চালান নং' : 'Challan / Memo No'}
               </label>
               <input
@@ -206,18 +206,18 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
                 value={memoNo}
                 onChange={(e) => setMemoNo(e.target.value)}
                 placeholder={isBn ? 'যেমন: মেমো-৪৫২১' : 'e.g. Memo #452'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'পরিশোধ মাধ্যম *' : 'Payment Method *'}
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
               >
                 <option value="CASH">{isBn ? 'নগদ ক্যাশ (Cash)' : 'Cash'}</option>
                 <option value="BKASH">{isBn ? 'বিকাশ (bKash)' : 'bKash'}</option>
@@ -228,21 +228,21 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'অনুমোদনকারী / কমিটি' : 'Approved By'}
               </label>
               <input
                 type="text"
                 value={approvedBy}
                 onChange={(e) => setApprovedBy(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
               {isBn ? 'কাজের বিস্তারিত বিবরণ ও মালপত্রের তালিকা' : 'Material & Work Description'}
             </label>
             <input
@@ -250,12 +250,12 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={isBn ? 'যেমন: নিচতলার বারান্দার জন্য ১০ বস্তা সিমেন্ট ও ৫০০ পিস ইট ক্রয়' : 'Details'}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
             />
           </div>
 
           {/* Submit */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
             <Button
               type="submit"
               size="md"

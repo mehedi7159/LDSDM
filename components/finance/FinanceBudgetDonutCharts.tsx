@@ -72,8 +72,8 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           nameEn: 'Student Fees',
           value: studentFees,
           color: '#2563eb', // Blue-600
-          bgLight: 'bg-blue-50',
-          textColor: 'text-blue-700',
+          bgLight: 'bg-blue-50 dark:bg-blue-950/50',
+          textColor: 'text-blue-700 dark:text-blue-400',
           percent: total > 0 ? Math.round((studentFees / total) * 100) : 0,
         },
         {
@@ -81,8 +81,8 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           nameEn: 'Donations',
           value: donations,
           color: '#059669', // Emerald-600
-          bgLight: 'bg-emerald-50',
-          textColor: 'text-emerald-700',
+          bgLight: 'bg-emerald-50 dark:bg-emerald-950/50',
+          textColor: 'text-emerald-700 dark:text-emerald-400',
           percent: total > 0 ? Math.round((donations / total) * 100) : 0,
         },
         {
@@ -90,8 +90,8 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           nameEn: 'Other Income',
           value: others,
           color: '#8b5cf6', // Purple-500
-          bgLight: 'bg-purple-50',
-          textColor: 'text-purple-700',
+          bgLight: 'bg-purple-50 dark:bg-purple-950/50',
+          textColor: 'text-purple-700 dark:text-purple-400',
           percent: total > 0 ? Math.round((others / total) * 100) : 0,
         },
       ].filter(item => item.value > 0),
@@ -132,8 +132,8 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           nameEn: 'Salary',
           value: salary,
           color: '#e11d48', // Rose-600
-          bgLight: 'bg-rose-50',
-          textColor: 'text-rose-700',
+          bgLight: 'bg-rose-50 dark:bg-rose-950/50',
+          textColor: 'text-rose-700 dark:text-rose-400',
           percent: total > 0 ? Math.round((salary / total) * 100) : 0,
         },
         {
@@ -141,8 +141,8 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           nameEn: 'Development',
           value: development,
           color: '#d97706', // Amber-600
-          bgLight: 'bg-amber-50',
-          textColor: 'text-amber-700',
+          bgLight: 'bg-amber-50 dark:bg-amber-950/50',
+          textColor: 'text-amber-700 dark:text-amber-400',
           percent: total > 0 ? Math.round((development / total) * 100) : 0,
         },
         {
@@ -150,8 +150,8 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           nameEn: 'Other Expense',
           value: others,
           color: '#64748b', // Slate-500
-          bgLight: 'bg-slate-50',
-          textColor: 'text-slate-700',
+          bgLight: 'bg-slate-50 dark:bg-slate-800/60',
+          textColor: 'text-slate-700 dark:text-slate-200',
           percent: total > 0 ? Math.round((others / total) * 100) : 0,
         },
       ].filter(item => item.value > 0),
@@ -181,21 +181,21 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-5">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-5">
       {/* Header with Timeframe Toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
             <ChartIcon className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               {isBn ? 'ডায়নামিক বাজেট ভিজ্যুয়ালাইজার (আয় ও ব্যয় ডোনাট চার্ট)' : 'Dynamic Budget Breakdown Donut Charts'}
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                 Recharts
               </span>
             </h3>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               {isBn 
                 ? 'আয়ের উৎস (ছাত্র ফি বনাম দান) এবং ব্যয়ের খাত (শিক্ষক বেতন বনাম উন্নয়ন) এর আনুপাতিক চিত্র' 
                 : 'Budget visibility: Student Fees vs Donations and Teacher Salary vs Madrasah Development'}
@@ -209,22 +209,22 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
             onClick={() => setTimeframe('THIS_MONTH')}
             className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
               timeframe === 'THIS_MONTH'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5 text-blue-600" />
+            <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>{isBn ? 'চলতি মাস' : 'This Month'}</span>
           </button>
           <button
             onClick={() => setTimeframe('ALL_TIME')}
             className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
               timeframe === 'ALL_TIME'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>{isBn ? 'সর্বমোট সময়' : 'All Time'}</span>
           </button>
         </div>
@@ -237,14 +237,14 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
         <div className="bg-slate-50/60 rounded-2xl border border-slate-200/80 p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
                 <ArrowDownLeft className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-slate-900">
+              <span className="text-xs font-bold text-slate-900 dark:text-white">
                 {isBn ? 'আয়ের উৎস বিভাজন (Student Fees vs Donations)' : 'Income Breakdown (Fees vs Donations)'}
               </span>
             </div>
-            <span className="text-xs font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
               ৳ {isBn ? formatBanglaNumber(incomeData.total) : incomeData.total.toLocaleString()}
             </span>
           </div>
@@ -252,7 +252,7 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           {/* Chart Canvas */}
           <div className="h-64 w-full relative flex items-center justify-center my-2">
             {incomeData.items.length === 0 ? (
-              <div className="text-center text-slate-400 text-xs">
+              <div className="text-center text-slate-400 dark:text-slate-500 text-xs">
                 {isBn ? 'চলতি সময়ে কোনো আয়ের তথ্য নেই' : 'No income data for this period'}
               </div>
             ) : (
@@ -282,10 +282,10 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
             {/* Centered Total Overlay */}
             {incomeData.items.length > 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
                   {isBn ? 'মোট আয়' : 'Total Inflow'}
                 </span>
-                <span className="text-sm sm:text-base font-black text-slate-800 font-mono">
+                <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 font-mono">
                   ৳{isBn ? formatBanglaNumber(incomeData.total) : (incomeData.total >= 1000 ? `${(incomeData.total/1000).toFixed(1)}k` : incomeData.total)}
                 </span>
               </div>
@@ -295,15 +295,15 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           {/* Slices Legend Badges */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 border-t border-slate-200/60">
             {incomeData.items.map((item, idx) => (
-              <div key={idx} className={`p-2 rounded-xl border border-slate-200/60 bg-white flex items-center justify-between text-xs`}>
+              <div key={idx} className={`p-2 rounded-xl border border-slate-200/60 bg-white dark:bg-slate-900 flex items-center justify-between text-xs`}>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                   <div>
-                    <span className="font-bold text-slate-800 text-[11px] block">{item.name}</span>
-                    <span className="text-[10px] text-slate-500 font-medium">{item.percent}% অংশ</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-100 text-[11px] block">{item.name}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{item.percent}% অংশ</span>
                   </div>
                 </div>
-                <span className="font-mono font-bold text-slate-900 text-xs">
+                <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
                   ৳{isBn ? formatBanglaNumber(item.value) : item.value.toLocaleString()}
                 </span>
               </div>
@@ -315,14 +315,14 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
         <div className="bg-slate-50/60 rounded-2xl border border-slate-200/80 p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-400 flex items-center justify-center">
                 <ArrowUpRight className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-slate-900">
+              <span className="text-xs font-bold text-slate-900 dark:text-white">
                 {isBn ? 'ব্যয়ের খাত বিভাজন (Salary vs Development)' : 'Expense Breakdown (Salary vs Development)'}
               </span>
             </div>
-            <span className="text-xs font-bold font-mono text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-bold font-mono text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-md">
               ৳ {isBn ? formatBanglaNumber(expenseData.total) : expenseData.total.toLocaleString()}
             </span>
           </div>
@@ -330,7 +330,7 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           {/* Chart Canvas */}
           <div className="h-64 w-full relative flex items-center justify-center my-2">
             {expenseData.items.length === 0 ? (
-              <div className="text-center text-slate-400 text-xs">
+              <div className="text-center text-slate-400 dark:text-slate-500 text-xs">
                 {isBn ? 'চলতি সময়ে কোনো ব্যয়ের তথ্য নেই' : 'No expense data for this period'}
               </div>
             ) : (
@@ -360,10 +360,10 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
             {/* Centered Total Overlay */}
             {expenseData.items.length > 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
                   {isBn ? 'মোট ব্যয়' : 'Total Outflow'}
                 </span>
-                <span className="text-sm sm:text-base font-black text-slate-800 font-mono">
+                <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 font-mono">
                   ৳{isBn ? formatBanglaNumber(expenseData.total) : (expenseData.total >= 1000 ? `${(expenseData.total/1000).toFixed(1)}k` : expenseData.total)}
                 </span>
               </div>
@@ -373,15 +373,15 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           {/* Slices Legend Badges */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 border-t border-slate-200/60">
             {expenseData.items.map((item, idx) => (
-              <div key={idx} className={`p-2 rounded-xl border border-slate-200/60 bg-white flex items-center justify-between text-xs`}>
+              <div key={idx} className={`p-2 rounded-xl border border-slate-200/60 bg-white dark:bg-slate-900 flex items-center justify-between text-xs`}>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                   <div>
-                    <span className="font-bold text-slate-800 text-[11px] block">{item.name}</span>
-                    <span className="text-[10px] text-slate-500 font-medium">{item.percent}% অংশ</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-100 text-[11px] block">{item.name}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{item.percent}% অংশ</span>
                   </div>
                 </div>
-                <span className="font-mono font-bold text-slate-900 text-xs">
+                <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
                   ৳{isBn ? formatBanglaNumber(item.value) : item.value.toLocaleString()}
                 </span>
               </div>

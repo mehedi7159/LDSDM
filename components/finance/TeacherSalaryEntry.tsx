@@ -117,17 +117,17 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Main Form (8 Cols) */}
-      <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+      <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-400 flex items-center justify-center">
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 {isBn ? 'উস্তাদ ও স্টাফদের বেতন / হাদিয়া প্রদান' : 'Teacher & Staff Salary Disbursement'}
               </h2>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {isBn ? 'মাসিক হাদিয়া, ভাতাসমূহ ও কর্তনের হিসাব সহ ডেবিট ভাউচার তৈরি' : 'Disburse monthly salaries with automated debit voucher'}
               </p>
             </div>
@@ -138,7 +138,7 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
           {/* Row 1: Teacher Name & Designation */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'উস্তাদ / স্টাফের নাম *' : 'Teacher / Staff Name *'}
               </label>
               <input
@@ -146,19 +146,19 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
                 value={staffName}
                 onChange={(e) => setStaffName(e.target.value)}
                 placeholder={isBn ? 'যেমন: মাওলানা মাহমুদুল হাসান' : 'e.g. Maulana Mahmudul Hasan'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'পদবি / দায়িত্ব *' : 'Designation *'}
               </label>
               <select
                 value={designation}
                 onChange={(e) => setDesignation(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none"
               >
                 {commonDesignations.map(d => (
                   <option key={d} value={d}>{d}</option>
@@ -170,33 +170,33 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
           {/* Row 2: Month, Date & Phone */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'বেতনের মাস *' : 'Salary Month *'}
               </label>
               <input
                 type="month"
                 value={salaryMonth}
                 onChange={(e) => setSalaryMonth(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'প্রদানের তারিখ *' : 'Payment Date *'}
               </label>
               <input
                 type="date"
                 value={payDate}
                 onChange={(e) => setPayDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'মোবাইল নম্বর' : 'Phone Number'}
               </label>
               <input
@@ -204,62 +204,62 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Salary Breakdown Block */}
-          <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-4 space-y-3">
-            <span className="text-xs font-bold text-rose-950 block">
+          <div className="bg-rose-50/40 border border-rose-100 dark:border-rose-900/60 rounded-2xl p-4 space-y-3">
+            <span className="text-xs font-bold text-rose-950 dark:text-rose-200 block">
               {isBn ? 'হাদিয়া ও ভাতার বিস্তারিত বিভাজন:' : 'Salary Breakdown:'}
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white p-3 rounded-xl border border-rose-200/80">
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-rose-200/80">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-200 mb-1">
                   {isBn ? 'মূল হাদিয়া / বেতন *' : 'Basic Salary *'}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">৳</span>
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-xs">৳</span>
                   <input
                     type="number"
                     value={basicSalary || ''}
                     onChange={(e) => setBasicSalary(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-6 pr-2 py-1.5 text-xs text-right font-black font-mono focus:ring-1 focus:ring-rose-500 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg pl-6 pr-2 py-1.5 text-xs text-right font-black font-mono focus:ring-1 focus:ring-rose-500 focus:outline-none"
                     required
                   />
                 </div>
               </div>
 
-              <div className="bg-white p-3 rounded-xl border border-emerald-200/80">
-                <label className="block text-[11px] font-bold text-emerald-800 mb-1">
+              <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-emerald-200/80">
+                <label className="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300 mb-1">
                   {isBn ? '+ অন্যান্য ভাতা / মেহমানদারি' : '+ Allowances / Bonus'}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">৳</span>
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-xs">৳</span>
                   <input
                     type="number"
                     value={allowance || ''}
                     onChange={(e) => setAllowance(Number(e.target.value))}
                     placeholder="0"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-6 pr-2 py-1.5 text-xs text-right font-black font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg pl-6 pr-2 py-1.5 text-xs text-right font-black font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="bg-white p-3 rounded-xl border border-amber-200/80">
-                <label className="block text-[11px] font-bold text-amber-800 mb-1">
+              <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200/80">
+                <label className="block text-[11px] font-bold text-amber-800 dark:text-amber-300 mb-1">
                   {isBn ? '- অগ্রিম / ঋণ কর্তন' : '- Deduction / Advance'}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">৳</span>
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-xs">৳</span>
                   <input
                     type="number"
                     value={deduction || ''}
                     onChange={(e) => setDeduction(Number(e.target.value))}
                     placeholder="0"
-                    className="w-full bg-white border border-amber-300 rounded-lg pl-6 pr-2 py-1.5 text-xs text-right font-black font-mono focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                    className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg pl-6 pr-2 py-1.5 text-xs text-right font-black font-mono focus:ring-1 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -269,13 +269,13 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
           {/* Payment Method & Reference */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'পরিশোধ মাধ্যম *' : 'Payment Method *'}
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none"
               >
                 <option value="CASH">{isBn ? 'নগদ ক্যাশ (Cash)' : 'Cash'}</option>
                 <option value="BKASH">{isBn ? 'বিকাশ (bKash)' : 'bKash'}</option>
@@ -285,7 +285,7 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'চেক / ট্রানজেকশন আইডি' : 'TrxID / Cheque'}
               </label>
               <input
@@ -293,28 +293,28 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
                 value={referenceNo}
                 onChange={(e) => setReferenceNo(e.target.value)}
                 placeholder={isBn ? 'ঐচ্ছিক' : 'Optional'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                 {isBn ? 'অনুমোদনকারী' : 'Approved By'}
               </label>
               <input
                 type="text"
                 value={approvedBy}
                 onChange={(e) => setApprovedBy(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Submit */}
-          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-sm font-bold text-slate-800">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
               <span>{isBn ? 'নিট পরিশোধযোগ্য হাদিয়া: ' : 'Net Payable: '}</span>
-              <span className="text-xl sm:text-2xl text-rose-700 font-black font-mono">
+              <span className="text-xl sm:text-2xl text-rose-700 dark:text-rose-400 font-black font-mono">
                 ৳{isBn ? formatBanglaNumber(netPayable) : netPayable.toLocaleString()}
               </span>
             </div>

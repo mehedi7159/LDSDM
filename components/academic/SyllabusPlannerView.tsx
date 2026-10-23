@@ -4,6 +4,8 @@ import { SyllabusItem } from '../../types/academic';
 import { academicScheduleService } from '../../services/academicScheduleService';
 import { formatNumber } from '../../services/utils';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { 
   FileText, 
   Plus, 
@@ -177,11 +179,10 @@ export const SyllabusPlannerView: React.FC = () => {
   };
 
   // Delete
+  const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
+
   const handleDelete = (id: string) => {
-    if (confirm(isBn ? 'এই সিলেবাস অধ্যায়টি মুছে ফেলতে চান?' : 'Delete this syllabus topic?')) {
-      academicScheduleService.deleteSyllabusItem(id);
-      setVersion(v => v + 1);
-    }
+    setTopicToDelete(id);
   };
 
   // Print
@@ -192,27 +193,18 @@ export const SyllabusPlannerView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 text-teal-800 font-bold text-xs uppercase tracking-wider mb-1">
-            <FileText size={16} />
-            <span>{isBn ? 'পাঠ পরিকল্পনা ও কারিকুলাম ট্র্যাকার' : 'Lesson Plan & Syllabus Tracker'}</span>
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            {isBn ? 'সিলেবাস ও পাঠ পরিকল্পনা' : 'Syllabus & Lesson Planning'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {isBn 
-              ? 'টার্মভিত্তিক অধ্যায় রূপরেখা, পিরিয়ড সমাপ্তি অগ্রগতি ও শিক্ষক পাঠ নোট ট্র্যাকিং।'
-              : 'Term-wise syllabus breakdown with period progress and lesson plan tracking.'}
-          </p>
-        </div>
+      <PageHeader
+        icon={FileText}
+        eyebrow={isBn ? 'পাঠ পরিকল্পনা ও কারিকুলাম ট্র্যাকার' : 'Lesson Plan & Syllabus Tracker'}
+        title={isBn ? 'সিলেবাস ও পাঠ পরিকল্পনা' : 'Syllabus & Lesson Planning'}
+        subtitle={isBn ? 'টার্মভিত্তিক অধ্যায় রূপরেখা, পিরিয়ড সমাপ্তি অগ্রগতি ও শিক্ষক পাঠ নোট ট্র্যাকিং।' : 'Term-wise syllabus breakdown with period progress and lesson plan tracking.'}
+      >
 
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             onClick={handlePrint}
             variant="outline"
-            className="text-xs font-bold flex items-center gap-1.5 py-2 px-3 border-slate-300"
+            className="text-xs font-bold flex items-center gap-1.5 py-2 px-3 border-slate-300 dark:border-slate-600"
           >
             <Printer size={14} />
             <span>{isBn ? 'প্রিন্ট সিলেবাস' : 'Print'}</span>
@@ -226,50 +218,50 @@ export const SyllabusPlannerView: React.FC = () => {
             <span>{isBn ? 'নতুন অধ্যায় যুক্ত করুন' : 'Add Chapter'}</span>
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* KPI Overview Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-400">
             <BookOpen size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">{isBn ? 'মোট অধ্যায়/টপিক' : 'Total Topics'}</div>
-            <div className="text-lg font-black text-slate-800">{formatNumber(stats.totalChapters, 'bn')} টি</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'মোট অধ্যায়/টপিক' : 'Total Topics'}</div>
+            <div className="text-lg font-black text-slate-800 dark:text-slate-100">{formatNumber(stats.totalChapters, 'bn')} টি</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">{isBn ? 'সম্পন্ন অধ্যায়' : 'Completed'}</div>
-            <div className="text-lg font-black text-emerald-700">{formatNumber(stats.completedChapters, 'bn')} টি</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'সম্পন্ন অধ্যায়' : 'Completed'}</div>
+            <div className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatNumber(stats.completedChapters, 'bn')} টি</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-700 dark:text-amber-400">
             <Clock size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">{isBn ? 'চলমান অধ্যায়' : 'In Progress'}</div>
-            <div className="text-lg font-black text-amber-700">{formatNumber(stats.inProgressChapters, 'bn')} টি</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'চলমান অধ্যায়' : 'In Progress'}</div>
+            <div className="text-lg font-black text-amber-700 dark:text-amber-400">{formatNumber(stats.inProgressChapters, 'bn')} টি</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-700 dark:text-indigo-400">
             <BarChart3 size={20} />
           </div>
           <div className="flex-1">
-            <div className="text-xs text-slate-500 flex justify-between">
+            <div className="text-xs text-slate-500 dark:text-slate-400 flex justify-between">
               <span>{isBn ? 'সামগ্রিক অগ্রগতি' : 'Progress'}</span>
-              <span className="font-bold text-indigo-700">{formatNumber(stats.completionRate, 'bn')}%</span>
+              <span className="font-bold text-indigo-700 dark:text-indigo-400">{formatNumber(stats.completionRate, 'bn')}%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2 mt-1.5 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-1.5 overflow-hidden">
               <div 
                 className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${stats.completionRate}%` }}
@@ -280,14 +272,14 @@ export const SyllabusPlannerView: React.FC = () => {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700">{isBn ? 'শ্রেণি:' : 'Class:'}</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'শ্রেণি:' : 'Class:'}</span>
             <select
               value={selectedClass}
               onChange={e => setSelectedClass(e.target.value)}
-              className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 shadow-2xs"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs"
             >
               {classes.map(c => (
                 <option key={c.id} value={c.name}>{c.name}</option>
@@ -296,11 +288,11 @@ export const SyllabusPlannerView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700">{isBn ? 'বিষয়:' : 'Subject:'}</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'বিষয়:' : 'Subject:'}</span>
             <select
               value={selectedSubjectId}
               onChange={e => setSelectedSubjectId(e.target.value)}
-              className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 shadow-2xs max-w-[200px]"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs max-w-[200px]"
             >
               <option value="ALL">{isBn ? 'সকল বিষয়' : 'All Subjects'}</option>
               {subjects
@@ -312,11 +304,11 @@ export const SyllabusPlannerView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700">{isBn ? 'টার্ম/পর্ব:' : 'Term:'}</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'টার্ম/পর্ব:' : 'Term:'}</span>
             <select
               value={selectedTerm}
               onChange={e => setSelectedTerm(e.target.value)}
-              className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 shadow-2xs"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs"
             >
               <option value="ALL">{isBn ? 'সকল টার্ম' : 'All Terms'}</option>
               <option value="১ম সাময়িক">১ম সাময়িক</option>
@@ -327,13 +319,13 @@ export const SyllabusPlannerView: React.FC = () => {
         </div>
 
         <div className="relative min-w-[220px]">
-          <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+          <Search size={14} className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder={isBn ? 'অধ্যায় বা টপিক খুঁজুন...' : 'Search topic...'}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full text-xs pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-teal-500 shadow-2xs"
+            className="w-full text-xs pl-8 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-2xs"
           />
         </div>
       </div>
@@ -341,10 +333,10 @@ export const SyllabusPlannerView: React.FC = () => {
       {/* Syllabus Cards / List */}
       <div className="space-y-3">
         {syllabusList.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-10 text-center">
             <FileText size={36} className="mx-auto text-slate-300 mb-2" />
-            <h4 className="text-sm font-bold text-slate-700">{isBn ? 'কোনো পাঠ পরিকল্পনা পাওয়া যায়নি' : 'No syllabus topics found'}</h4>
-            <p className="text-xs text-slate-400 mt-1">
+            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">{isBn ? 'কোনো পাঠ পরিকল্পনা পাওয়া যায়নি' : 'No syllabus topics found'}</h4>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
               {isBn ? 'নির্বাচিত শ্রেণি ও বিষয়ের জন্য নতুন অধ্যায় যুক্ত করুন।' : 'Add a new chapter for selected class & subject.'}
             </p>
             <Button
@@ -364,48 +356,48 @@ export const SyllabusPlannerView: React.FC = () => {
             return (
               <div 
                 key={item.id}
-                className="bg-white border border-slate-200 rounded-2xl p-4.5 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4.5 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
               >
                 <div className="flex-1 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
                       {item.chapterNo || `অধ্যায় ${idx + 1}`}
                     </span>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/50 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                       {item.subjectName}
                     </span>
-                    <span className="text-[11px] font-semibold text-slate-500">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                       • {item.termName}
                     </span>
 
                     {item.status === 'COMPLETED' && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                         <CheckCircle2 size={11} />
                         <span>{isBn ? 'সম্পন্ন' : 'Completed'}</span>
                       </span>
                     )}
                     {item.status === 'IN_PROGRESS' && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
                         <Clock size={11} />
                         <span>{isBn ? 'চলমান' : 'In Progress'}</span>
                       </span>
                     )}
                     {item.status === 'PLANNED' && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800">
                         <Calendar size={11} />
                         <span>{isBn ? 'পরিকল্পিত' : 'Planned'}</span>
                       </span>
                     )}
                   </div>
 
-                  <h3 className="font-black text-slate-800 text-sm">{item.title}</h3>
+                  <h3 className="font-black text-slate-800 dark:text-slate-100 text-sm">{item.title}</h3>
 
                   {item.topics && (
-                    <p className="text-xs text-slate-600 line-clamp-2">{item.topics}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{item.topics}</p>
                   )}
 
                   {item.teacherNotes && (
-                    <div className="text-[11px] text-teal-800 bg-teal-50/70 p-2 rounded-lg border border-teal-100 mt-2">
+                    <div className="text-[11px] text-teal-800 dark:text-teal-300 bg-teal-50/70 p-2 rounded-lg border border-teal-100 dark:border-teal-900/60 mt-2">
                       <span className="font-bold">{isBn ? 'শিক্ষক নোট: ' : 'Teacher Note: '}</span>
                       <span>{item.teacherNotes}</span>
                     </div>
@@ -413,16 +405,16 @@ export const SyllabusPlannerView: React.FC = () => {
                 </div>
 
                 {/* Progress Controls & Actions */}
-                <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+                <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
                   {/* Period Progress Bar */}
                   <div className="w-36 text-right">
-                    <div className="text-[11px] text-slate-500 flex justify-between mb-1">
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 flex justify-between mb-1">
                       <span>{isBn ? 'ক্লাস/পিরিয়ড' : 'Periods'}</span>
-                      <span className="font-bold text-slate-700 font-mono">
+                      <span className="font-bold text-slate-700 dark:text-slate-200 font-mono">
                         {formatNumber(item.completedPeriods || 0, 'bn')}/{formatNumber(item.totalPeriods || 0, 'bn')} ({pct}%)
                       </span>
                     </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                       <div 
                         className={`h-2 rounded-full ${
                           pct >= 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-teal-600' : 'bg-slate-300'
@@ -437,7 +429,7 @@ export const SyllabusPlannerView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleQuickProgress(item, -1)}
-                      className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs"
+                      className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs"
                       title="১ ক্লাস কমান"
                     >
                       -
@@ -445,7 +437,7 @@ export const SyllabusPlannerView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleQuickProgress(item, 1)}
-                      className="w-7 h-7 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-800 flex items-center justify-center font-bold text-xs"
+                      className="w-7 h-7 rounded-lg bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 text-teal-800 dark:text-teal-300 flex items-center justify-center font-bold text-xs"
                       title="১ ক্লাস সম্পন্ন"
                     >
                       +
@@ -453,11 +445,11 @@ export const SyllabusPlannerView: React.FC = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 border-l border-slate-200 pl-3">
+                  <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-800 pl-3">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
-                      className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
+                      className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
                       title="সম্পাদনা"
                     >
                       <Edit2 size={14} />
@@ -465,7 +457,7 @@ export const SyllabusPlannerView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleDelete(item.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                       title="মুছে ফেলুন"
                     >
                       <Trash2 size={14} />
@@ -481,7 +473,7 @@ export const SyllabusPlannerView: React.FC = () => {
       {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-lg w-full border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-teal-700 text-white px-5 py-4 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <FileText size={18} />
@@ -501,11 +493,11 @@ export const SyllabusPlannerView: React.FC = () => {
             <form onSubmit={handleSave} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'শ্রেণি' : 'Class'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শ্রেণি' : 'Class'}</label>
                   <select
                     value={formState.classLevel}
                     onChange={e => setFormState({ ...formState, classLevel: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     {classes.map(c => (
                       <option key={c.id} value={c.name}>{c.name}</option>
@@ -514,12 +506,12 @@ export const SyllabusPlannerView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'বিষয়' : 'Subject'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'বিষয়' : 'Subject'}</label>
                   <select
                     value={formState.subjectId}
                     onChange={e => setFormState({ ...formState, subjectId: e.target.value })}
                     required
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     <option value="">{isBn ? '-- বিষয় নির্বাচন করুন --' : '-- Select Subject --'}</option>
                     {subjects
@@ -533,11 +525,11 @@ export const SyllabusPlannerView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'টার্ম / পর্ব' : 'Term'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'টার্ম / পর্ব' : 'Term'}</label>
                   <select
                     value={formState.termName}
                     onChange={e => setFormState({ ...formState, termName: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     <option value="১ম সাময়িক">১ম সাময়িক</option>
                     <option value="২য় সাময়িক">২য় সাময়িক</option>
@@ -546,67 +538,67 @@ export const SyllabusPlannerView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'অধ্যায় নং / ক্রম' : 'Chapter'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'অধ্যায় নং / ক্রম' : 'Chapter'}</label>
                   <input
                     type="text"
                     value={formState.chapterNo}
                     onChange={e => setFormState({ ...formState, chapterNo: e.target.value })}
                     placeholder="অধ্যায় ১ / দারস ১"
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'অধ্যায়ের নাম বা মূল শিরোনাম *' : 'Chapter Title *'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'অধ্যায়ের নাম বা মূল শিরোনাম *' : 'Chapter Title *'}</label>
                 <input
                   type="text"
                   value={formState.title}
                   onChange={e => setFormState({ ...formState, title: e.target.value })}
                   required
                   placeholder="যেমন: হরফ চেনা, নুকতা ও হরকত পরিচয়"
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'বিস্তারিত বিষয়বস্তু ও টপিক' : 'Topics / Syllabus Details'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'বিস্তারিত বিষয়বস্তু ও টপিক' : 'Topics / Syllabus Details'}</label>
                 <textarea
                   rows={2}
                   value={formState.topics}
                   onChange={e => setFormState({ ...formState, topics: e.target.value })}
                   placeholder="এই অধ্যায়ে যেসব বিষয় শেখানো হবে..."
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'মোট পিরিয়ড' : 'Total Periods'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'মোট পিরিয়ড' : 'Total Periods'}</label>
                   <input
                     type="number"
                     min="1"
                     value={formState.totalPeriods}
                     onChange={e => setFormState({ ...formState, totalPeriods: Number(e.target.value) })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'সম্পন্ন পিরিয়ড' : 'Completed'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'সম্পন্ন পিরিয়ড' : 'Completed'}</label>
                   <input
                     type="number"
                     min="0"
                     value={formState.completedPeriods}
                     onChange={e => setFormState({ ...formState, completedPeriods: Number(e.target.value) })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'অবস্থা' : 'Status'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'অবস্থা' : 'Status'}</label>
                   <select
                     value={formState.status}
                     onChange={e => setFormState({ ...formState, status: e.target.value as any })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     <option value="PLANNED">পরিকল্পিত</option>
                     <option value="IN_PROGRESS">চলমান</option>
@@ -616,17 +608,17 @@ export const SyllabusPlannerView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'শিক্ষক নোট বা দিকনির্দেশনা' : 'Teacher Notes'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শিক্ষক নোট বা দিকনির্দেশনা' : 'Teacher Notes'}</label>
                 <input
                   type="text"
                   value={formState.teacherNotes}
                   onChange={e => setFormState({ ...formState, teacherNotes: e.target.value })}
                   placeholder="দুর্বল ছাত্রদের জন্য অতিরিক্ত সময়..."
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   type="button"
                   variant="outline"
@@ -646,6 +638,25 @@ export const SyllabusPlannerView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!topicToDelete}
+        onClose={() => setTopicToDelete(null)}
+        onConfirm={() => {
+          if (topicToDelete) {
+            academicScheduleService.deleteSyllabusItem(topicToDelete);
+            setVersion(v => v + 1);
+            setTopicToDelete(null);
+          }
+        }}
+        title={isBn ? 'অধ্যায় ডিলিট নিশ্চিতকরণ' : 'Confirm Topic Deletion'}
+        message={isBn ? 'এই সিলেবাস অধ্যায়টি মুছে ফেলতে চান?' : 'Delete this syllabus topic?'}
+        confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
+
     </div>
   );
 };

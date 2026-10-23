@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { SchoolClass, Section } from '../../types';
 import { formatNumber } from '../../services/utils';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { 
   Layers, 
   Plus, 
@@ -194,31 +196,22 @@ export const ClassSectionSetupView: React.FC = () => {
     setIsSectionModalOpen(false);
   };
 
+  const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
+
   const handleDeleteSection = (sectionId: string) => {
     if (!selectedClass) return;
-    if (confirm(isBn ? 'এই শাখাটি মুছে ফেলতে চান?' : 'Delete this section?')) {
-      if (deleteSection) deleteSection(sectionId);
-    }
+    setSectionToDelete(sectionId);
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 text-teal-800 font-bold text-xs uppercase tracking-wider mb-1">
-            <Layers size={16} />
-            <span>{isBn ? 'শ্রেণি, শাখা ও শ্রেণি শিক্ষক বিন্যাস' : 'Class, Section & Class Teacher Setup'}</span>
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            {isBn ? 'শ্রেণি ও শাখা সমন্বয়' : 'Classes & Sections Management'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {isBn 
-              ? 'মাদ্রাসার সকল জামাত/শ্রেণি, শাখা নির্ধারণ, আসন ধারণক্ষমতা, কক্ষ বরাদ্দ ও শ্রেণি শিক্ষক নির্বাচন।'
-              : 'Configure classes, multiple sections, student capacity, classroom mapping and assign class teachers.'}
-          </p>
-        </div>
+      <PageHeader
+        icon={Layers}
+        eyebrow={isBn ? 'শ্রেণি, শাখা ও শ্রেণি শিক্ষক বিন্যাস' : 'Class, Section & Class Teacher Setup'}
+        title={isBn ? 'শ্রেণি ও শাখা সমন্বয়' : 'Classes & Sections Management'}
+        subtitle={isBn ? 'মাদ্রাসার সকল জামাত/শ্রেণি, শাখা নির্ধারণ, আসন ধারণক্ষমতা, কক্ষ বরাদ্দ ও শ্রেণি শিক্ষক নির্বাচন।' : 'Configure classes, multiple sections, student capacity, classroom mapping and assign class teachers.'}
+      >
 
         <div className="flex items-center gap-2 flex-wrap">
           <Button
@@ -233,18 +226,18 @@ export const ClassSectionSetupView: React.FC = () => {
             <span>{isBn ? 'নতুন শ্রেণি যুক্ত করুন' : 'Add Class'}</span>
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Main Grid: Left Class Tabs, Right Sections Configuration */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column: Classes List */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-            <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-              <GraduationCap size={15} className="text-teal-700" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
+          <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <GraduationCap size={15} className="text-teal-700 dark:text-teal-400" />
               <span>{isBn ? 'বিদ্যমান শ্রেণি সমূহ' : 'All Classes'}</span>
             </h3>
-            <span className="text-[11px] font-bold text-slate-500 font-mono">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">
               {formatNumber(classes.length, 'bn')} টি
             </span>
           </div>
@@ -261,12 +254,12 @@ export const ClassSectionSetupView: React.FC = () => {
                   className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
                     isSelected
                       ? 'bg-teal-700 text-white border-teal-800 shadow-xs'
-                      : 'bg-slate-50/60 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      : 'bg-slate-50/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   <div>
                     <div className="font-bold text-xs">{c.name}</div>
-                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
+                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-teal-100' : 'text-slate-400 dark:text-slate-500'}`}>
                       {isBn ? `শিক্ষার্থী: ${formatNumber(countStudents, 'bn')} জন` : `Students: ${countStudents}`}
                     </div>
                   </div>
@@ -280,7 +273,7 @@ export const ClassSectionSetupView: React.FC = () => {
                         setClassForm({ name: c.name, order: c.order || 1 });
                         setIsClassModalOpen(true);
                       }}
-                      className={`p-1 rounded ${isSelected ? 'hover:bg-teal-800 text-teal-100' : 'hover:bg-slate-200 text-slate-500'}`}
+                      className={`p-1 rounded ${isSelected ? 'hover:bg-teal-800 text-teal-100' : 'hover:bg-slate-200 text-slate-500 dark:text-slate-400'}`}
                     >
                       <Edit2 size={13} />
                     </button>
@@ -293,13 +286,13 @@ export const ClassSectionSetupView: React.FC = () => {
 
         {/* Right Column: Sections & Class Teachers of Selected Class */}
         <div className="md:col-span-2 space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="text-base font-black text-slate-800">
+                <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
                   {selectedClass ? selectedClass.name : (isBn ? 'শ্রেণি নির্বাচন করুন' : 'Select Class')}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isBn ? 'এই শ্রেণির অধীন শাখা, রুম নম্বর ও শ্রেণি শিক্ষক পরিচালনা করুন।' : 'Manage sections and assigned class teachers.'}
                 </p>
               </div>
@@ -326,10 +319,10 @@ export const ClassSectionSetupView: React.FC = () => {
             {/* Sections Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {currentSections.length === 0 ? (
-                <div className="col-span-2 p-8 border border-dashed border-slate-300 rounded-2xl text-center">
+                <div className="col-span-2 p-8 border border-dashed border-slate-300 dark:border-slate-600 rounded-2xl text-center">
                   <Layers size={32} className="mx-auto text-slate-300 mb-2" />
-                  <p className="text-xs font-bold text-slate-600">{isBn ? 'এই শ্রেণির কোনো শাখা যোগ করা হয়নি' : 'No sections added'}</p>
-                  <p className="text-[11px] text-slate-400 mt-1">{isBn ? 'উপরের বাটনে ক্লিক করে শাখা যুক্ত করুন।' : 'Click above to add a section.'}</p>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{isBn ? 'এই শ্রেণির কোনো শাখা যোগ করা হয়নি' : 'No sections added'}</p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'উপরের বাটনে ক্লিক করে শাখা যুক্ত করুন।' : 'Click above to add a section.'}</p>
                 </div>
               ) : (
                 currentSections.map((sec) => {
@@ -338,19 +331,19 @@ export const ClassSectionSetupView: React.FC = () => {
                   return (
                     <div
                       key={sec.id}
-                      className="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 space-y-3 relative group hover:border-teal-300 transition-all"
+                      className="bg-slate-50/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 relative group hover:border-teal-300 transition-all"
                     >
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-black text-slate-800">{sec.name}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{sec.name}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300">
                               {sec.shift || 'দিবা'} শিফট
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
                             <span className="flex items-center gap-1">
-                              <DoorClosed size={12} className="text-slate-400" />
+                              <DoorClosed size={12} className="text-slate-400 dark:text-slate-500" />
                               <span>রুম: {sec.room || '—'}</span>
                             </span>
                             <span>•</span>
@@ -372,7 +365,7 @@ export const ClassSectionSetupView: React.FC = () => {
                               });
                               setIsSectionModalOpen(true);
                             }}
-                            className="p-1 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded"
+                            className="p-1 text-slate-500 dark:text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded"
                             title="সম্পাদনা"
                           >
                             <Edit2 size={13} />
@@ -380,7 +373,7 @@ export const ClassSectionSetupView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleDeleteSection(sec.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                            className="p-1 text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
                             title="মুছে ফেলুন"
                           >
                             <Trash2 size={13} />
@@ -389,21 +382,21 @@ export const ClassSectionSetupView: React.FC = () => {
                       </div>
 
                       {/* Class Teacher Badge */}
-                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                      <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-400 shrink-0">
                             <UserCheck size={14} />
                           </div>
                           <div className="min-w-0">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">{isBn ? 'শ্রেণি শিক্ষক' : 'Class Teacher'}</div>
-                            <div className="text-xs font-bold text-slate-800 truncate">
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{isBn ? 'শ্রেণি শিক্ষক' : 'Class Teacher'}</div>
+                            <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
                               {teacher ? (teacher.nameBn || teacher.name) : (isBn ? 'নিয়োগপ্রাপ্ত নয়' : 'Unassigned')}
                             </div>
                           </div>
                         </div>
 
                         {teacher?.phone && (
-                          <a href={`tel:${teacher.phone}`} className="p-1 text-teal-600 hover:text-teal-800">
+                          <a href={`tel:${teacher.phone}`} className="p-1 text-teal-600 dark:text-teal-400 hover:text-teal-800">
                             <Phone size={13} />
                           </a>
                         )}
@@ -420,7 +413,7 @@ export const ClassSectionSetupView: React.FC = () => {
       {/* Class Modal */}
       {isClassModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-teal-700 text-white px-5 py-4 flex justify-between items-center">
               <h3 className="font-bold text-sm">
                 {editingClass ? (isBn ? 'শ্রেণি সম্পাদনা' : 'Edit Class') : (isBn ? 'নতুন শ্রেণি যুক্ত করুন' : 'Add Class')}
@@ -431,24 +424,24 @@ export const ClassSectionSetupView: React.FC = () => {
             </div>
             <form onSubmit={handleSaveClass} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'শ্রেণির নাম *' : 'Class Name *'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শ্রেণির নাম *' : 'Class Name *'}</label>
                 <input
                   type="text"
                   value={classForm.name}
                   onChange={e => setClassForm({ ...classForm, name: e.target.value })}
                   required
                   placeholder="যেমন: ৩য় শ্রেণি / হিফজ বিভাগ"
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'ক্রমিক নং / লেভেল' : 'Order'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ক্রমিক নং / লেভেল' : 'Order'}</label>
                 <input
                   type="number"
                   min="1"
                   value={classForm.order}
                   onChange={e => setClassForm({ ...classForm, order: Number(e.target.value) })}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -467,7 +460,7 @@ export const ClassSectionSetupView: React.FC = () => {
       {/* Section Modal */}
       {isSectionModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-teal-700 text-white px-5 py-4 flex justify-between items-center">
               <h3 className="font-bold text-sm">
                 {editingSectionId !== null ? (isBn ? 'শাখা সম্পাদনা' : 'Edit Section') : (isBn ? 'নতুন শাখা যোগ করুন' : 'Add Section')}
@@ -479,22 +472,22 @@ export const ClassSectionSetupView: React.FC = () => {
             <form onSubmit={handleSaveSection} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'শাখার নাম *' : 'Section Name *'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শাখার নাম *' : 'Section Name *'}</label>
                   <input
                     type="text"
                     value={sectionForm.name}
                     onChange={e => setSectionForm({ ...sectionForm, name: e.target.value })}
                     required
                     placeholder="ক / খ / A / আবু বকর"
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'শিফট' : 'Shift'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শিফট' : 'Shift'}</label>
                   <select
                     value={sectionForm.shift}
                     onChange={e => setSectionForm({ ...sectionForm, shift: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     <option value="দিবা">দিবা (Day)</option>
                     <option value="প্রভাতি">প্রভাতি (Morning)</option>
@@ -505,33 +498,33 @@ export const ClassSectionSetupView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'ধারণক্ষমতা (আসন)' : 'Capacity'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ধারণক্ষমতা (আসন)' : 'Capacity'}</label>
                   <input
                     type="number"
                     min="1"
                     value={sectionForm.capacity}
                     onChange={e => setSectionForm({ ...sectionForm, capacity: Number(e.target.value) })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'বরাদ্দকৃত রুম নং' : 'Room No'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'বরাদ্দকৃত রুম নং' : 'Room No'}</label>
                   <input
                     type="text"
                     value={sectionForm.room}
                     onChange={e => setSectionForm({ ...sectionForm, room: e.target.value })}
                     placeholder="১০১"
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি শিক্ষক' : 'Class Teacher'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি শিক্ষক' : 'Class Teacher'}</label>
                 <select
                   value={sectionForm.teacherId}
                   onChange={e => setSectionForm({ ...sectionForm, teacherId: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                 >
                   <option value="">{isBn ? '-- শ্রেণি শিক্ষক নির্বাচন করুন --' : '-- Select Teacher --'}</option>
                   {teachers.map(t => (
@@ -552,6 +545,24 @@ export const ClassSectionSetupView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!sectionToDelete}
+        onClose={() => setSectionToDelete(null)}
+        onConfirm={() => {
+          if (sectionToDelete) {
+            if (deleteSection) deleteSection(sectionToDelete);
+            setSectionToDelete(null);
+          }
+        }}
+        title={isBn ? 'শাখা ডিলিট নিশ্চিতকরণ' : 'Confirm Section Deletion'}
+        message={isBn ? 'এই শাখাটি মুছে ফেলতে চান?' : 'Delete this section?'}
+        confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
+
     </div>
   );
 };

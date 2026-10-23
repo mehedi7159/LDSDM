@@ -44,6 +44,7 @@ import { AdmissionApplicationManager, AdmissionApplication } from './students/Ad
 import { ClassSectionMatrixView } from './students/ClassSectionMatrixView';
 import { GuardianDirectoryView } from './students/GuardianDirectoryView';
 import { EmptyState } from './ui/EmptyState';
+import { PageHeader } from './ui/PageHeader';
 import { useTheme } from '../context/ThemeContext';
 
 export type StudentSubTab = 
@@ -578,24 +579,13 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Hub Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-teal-700 to-emerald-800 text-white rounded-xl shadow-xs">
-              <Users size={22} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight font-bangla">
-                {language === 'bn' ? '২. শিক্ষার্থী ব্যবস্থাপনা' : '2. Student Management'}
-              </h2>
-              <p className="text-slate-500 text-xs font-semibold mt-0.5">
-                {language === 'bn' 
-                  ? 'শিক্ষার্থীর সম্পূর্ণ তথ্য, ভর্তি কার্যক্রম, প্রোফাইল, অভিভাবক ও ছাড়পত্র' 
-                  : 'Complete Student Directory, Admissions, Profiles, Guardians & Transfers'}
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader
+        icon={Users}
+        title={language === 'bn' ? '২. শিক্ষার্থী ব্যবস্থাপনা' : '2. Student Management'}
+        subtitle={language === 'bn'
+          ? 'শিক্ষার্থীর সম্পূর্ণ তথ্য, ভর্তি কার্যক্রম, প্রোফাইল, অভিভাবক ও ছাড়পত্র'
+          : 'Complete Student Directory, Admissions, Profiles, Guardians & Transfers'}
+      >
         <div className="flex items-center gap-2 flex-wrap">
           {canCreate && (
             <Button 
@@ -632,80 +622,80 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <span>{language === 'bn' ? 'রিপোর্ট' : 'Reports'}</span>
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* 2. Top KPI Summary Strip (Conforming to User Blueprint: মোট শিক্ষার্থী · শ্রেণি · সক্রিয় শিক্ষার্থী) */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
         <div 
           onClick={() => { setSubTab('list'); setActiveTab('all'); }}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs hover:border-teal-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-teal-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</span>
-            <Users size={16} className="text-teal-600" />
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</span>
+            <Users size={16} className="text-teal-600 dark:text-teal-400" />
           </div>
-          <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(allCurrentStudentsList.length, language)}</p>
-          <span className="text-[10px] text-teal-700 font-semibold">{language === 'bn' ? 'বর্তমান রেজিস্টার্ড' : 'Enrolled'}</span>
+          <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 font-bangla">{formatNumber(allCurrentStudentsList.length, language)}</p>
+          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold">{language === 'bn' ? 'বর্তমান রেজিস্টার্ড' : 'Enrolled'}</span>
         </div>
 
         <div 
           onClick={() => { setSubTab('list'); setActiveTab('active'); }}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-emerald-200 shadow-2xs bg-emerald-50/20 hover:border-emerald-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/20 hover:border-emerald-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-700 uppercase">{language === 'bn' ? 'সক্রিয় শিক্ষার্থী' : 'Active Students'}</span>
-            <UserCheck size={16} className="text-emerald-600" />
+            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">{language === 'bn' ? 'সক্রিয় শিক্ষার্থী' : 'Active Students'}</span>
+            <UserCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{formatNumber(activeStudentsList.length, language)}</p>
-          <span className="text-[10px] text-emerald-700 font-semibold">{language === 'bn' ? 'নিয়মিত তালিবুল ইলম' : 'Regular Students'}</span>
+          <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1 font-bangla">{formatNumber(activeStudentsList.length, language)}</p>
+          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">{language === 'bn' ? 'নিয়মিত তালিবুল ইলম' : 'Regular Students'}</span>
         </div>
 
         <div 
           onClick={() => { setSubTab('list'); setActiveTab('inactive'); }}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-amber-200 shadow-2xs bg-amber-50/20 hover:border-amber-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-2xs bg-amber-50/20 hover:border-amber-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-700 uppercase">{language === 'bn' ? 'অনিয়মিত শিক্ষার্থী' : 'Inactive'}</span>
-            <UserX size={16} className="text-amber-600" />
+            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase">{language === 'bn' ? 'অনিয়মিত শিক্ষার্থী' : 'Inactive'}</span>
+            <UserX size={16} className="text-amber-600 dark:text-amber-400" />
           </div>
-          <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{formatNumber(inactiveStudentsList.length, language)}</p>
-          <span className="text-[10px] text-amber-700 font-semibold">{language === 'bn' ? 'ছুটি / পরীক্ষা ছাড়া' : 'On Leave'}</span>
+          <p className="text-2xl font-black text-amber-900 dark:text-amber-200 mt-1 font-bangla">{formatNumber(inactiveStudentsList.length, language)}</p>
+          <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">{language === 'bn' ? 'ছুটি / পরীক্ষা ছাড়া' : 'On Leave'}</span>
         </div>
 
         <div 
           onClick={() => { setSubTab('former'); setActiveTab('former'); }}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs bg-slate-50/50 hover:border-slate-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs bg-slate-50/50 hover:border-slate-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-600 uppercase">{language === 'bn' ? 'সাবেক শিক্ষার্থী' : 'Former Students'}</span>
-            <UserMinus size={16} className="text-slate-600" />
+            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">{language === 'bn' ? 'সাবেক শিক্ষার্থী' : 'Former Students'}</span>
+            <UserMinus size={16} className="text-slate-600 dark:text-slate-300" />
           </div>
-          <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(formerStudentsList.length, language)}</p>
-          <span className="text-[10px] text-slate-600 font-semibold">{language === 'bn' ? 'ছাড়পত্র / সাবেক' : 'TC / Alumni'}</span>
+          <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 font-bangla">{formatNumber(formerStudentsList.length, language)}</p>
+          <span className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold">{language === 'bn' ? 'ছাড়পত্র / সাবেক' : 'TC / Alumni'}</span>
         </div>
 
         <div 
           onClick={() => setSubTab('classes')}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-indigo-200 shadow-2xs bg-indigo-50/20 hover:border-indigo-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-2xs bg-indigo-50/20 hover:border-indigo-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-700 uppercase">{language === 'bn' ? 'শ্রেণি / জামাত' : 'Classes'}</span>
-            <Layers size={16} className="text-indigo-600" />
+            <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">{language === 'bn' ? 'শ্রেণি / জামাত' : 'Classes'}</span>
+            <Layers size={16} className="text-indigo-600 dark:text-indigo-400" />
           </div>
-          <p className="text-2xl font-black text-indigo-900 mt-1 font-bangla">{formatNumber(classes.length, language)}</p>
-          <span className="text-[10px] text-indigo-700 font-semibold">{language === 'bn' ? 'মোট একাডেমিক স্তর' : 'Academic Levels'}</span>
+          <p className="text-2xl font-black text-indigo-900 dark:text-indigo-200 mt-1 font-bangla">{formatNumber(classes.length, language)}</p>
+          <span className="text-[10px] text-indigo-700 dark:text-indigo-400 font-semibold">{language === 'bn' ? 'মোট একাডেমিক স্তর' : 'Academic Levels'}</span>
         </div>
       </div>
 
       {/* 3. Sub-Navigation Tabs matching Step 2 blueprint */}
-      <div className="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
         <button
           type="button"
           onClick={() => setSubTab('list')}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'list'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Users size={15} />
@@ -718,7 +708,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'admission'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <UserPlus size={15} />
@@ -731,7 +721,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'applications'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <FileText size={15} />
@@ -744,7 +734,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'classes'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Layers size={15} />
@@ -757,7 +747,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'guardians'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Phone size={15} />
@@ -767,7 +757,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         <button
           type="button"
           onClick={() => setIsPromotionModalOpen(true)}
-          className="flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer whitespace-nowrap"
+          className="flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer whitespace-nowrap"
         >
           <GraduationCap size={15} />
           <span>{language === 'bn' ? 'শ্রেণি পরিবর্তন / প্রমোশন' : 'Class Promotion'}</span>
@@ -779,7 +769,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'tc'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Award size={15} />
@@ -792,7 +782,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'former'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <UserMinus size={15} />
@@ -818,14 +808,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
       {subTab === 'tc' && (
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Award className="text-teal-700" size={20} />
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Award className="text-teal-700 dark:text-teal-400" size={20} />
                   <span>{language === 'bn' ? 'শিক্ষার্থী ছাড়পত্র ও প্রশংসাপত্র (TC) প্রদান' : 'Issue Transfer Certificate'}</span>
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   {language === 'bn' ? 'যেকোনো শিক্ষার্থী নির্বাচন করে সাথে সাথে অফিশিয়াল ছাড়পত্র তৈরি ও প্রিন্ট করুন' : 'Select a student to generate and print TC'}
                 </p>
               </div>
@@ -833,7 +823,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                   {language === 'bn' ? 'শিক্ষার্থী নির্বাচন করুন (নাম, রোল বা আইডি)' : 'Select Student'}
                 </label>
                 <select 
@@ -845,7 +835,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     }
                   }}
                   defaultValue=""
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="" disabled>{language === 'bn' ? '-- শিক্ষার্থী নির্বাচন করুন --' : '-- Select a Student --'}</option>
                   {allCurrentStudentsList.map(s => (
@@ -873,14 +863,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           </div>
 
           {/* Former / TC Issued Students registry */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 space-y-3">
-            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <UserMinus size={17} className="text-slate-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs p-5 space-y-3">
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <UserMinus size={17} className="text-slate-600 dark:text-slate-300" />
               <span>{language === 'bn' ? 'পূর্বে ছাড়পত্র প্রাপ্ত ও সাবেক শিক্ষার্থীর তালিকা' : 'Alumni & TC Records'}</span>
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="py-2.5 px-3">নাম</th>
                     <th className="py-2.5 px-3">আইডি ও শ্রেণি</th>
@@ -889,22 +879,22 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <th className="py-2.5 px-3 text-right">পুনরায় প্রিন্ট</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {formerStudentsList.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400">কোনো ছাড়পত্র রেকর্ড নেই</td>
+                      <td colSpan={5} className="py-8 text-center text-slate-400 dark:text-slate-500">কোনো ছাড়পত্র রেকর্ড নেই</td>
                     </tr>
                   ) : (
                     formerStudentsList.slice(0, 10).map(s => (
                       <tr key={s.id} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-bold text-slate-800">{s.nameBn || s.name}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{s.classLevel} (আইডি: {s.studentId || '—'})</td>
-                        <td className="py-2.5 px-3 text-slate-700 font-medium">{s.leavingReason || 'মাদ্রাসা ত্যাগ'}</td>
-                        <td className="py-2.5 px-3 text-slate-500">{s.leavingDate || '—'}</td>
+                        <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100">{s.nameBn || s.name}</td>
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{s.classLevel} (আইডি: {s.studentId || '—'})</td>
+                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-200 font-medium">{s.leavingReason || 'মাদ্রাসা ত্যাগ'}</td>
+                        <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{s.leavingDate || '—'}</td>
                         <td className="py-2.5 px-3 text-right">
                           <button
                             onClick={() => { setTcStudent(s); setIsTcModalOpen(true); }}
-                            className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-200 cursor-pointer"
+                            className="px-2.5 py-1 bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 text-teal-800 dark:text-teal-300 rounded-lg text-xs font-bold border border-teal-200 dark:border-teal-800 cursor-pointer"
                           >
                             প্রিন্ট TC
                           </button>
@@ -922,20 +912,20 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {(subTab === 'list' || subTab === 'former' || subTab === 'admission') && (
         <>
           {/* Tabs: All Enrolled vs Active vs Inactive vs Former Students */}
-          <div className="flex border-b border-gray-200 bg-white rounded-t-xl px-2 shadow-xs overflow-x-auto">
+          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-t-xl px-2 shadow-xs overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('all')}
           className={`flex items-center gap-2 py-3 px-4 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'all'
-              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50 rounded-t-lg'
-              : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 rounded-t-lg'
+              : 'border-transparent text-gray-600 dark:text-slate-300 hover:text-gray-900 hover:border-gray-300'
           }`}
         >
           <Users size={17} />
           <span>{language === 'bn' ? 'সকল শিক্ষার্থী' : 'All Students'}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-bold transition-colors ${
-            activeTab === 'all' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-600'
+            activeTab === 'all' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'
           }`}>
             {formatNumber(allCurrentStudentsList.length, language)}
           </span>
@@ -946,14 +936,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setActiveTab('active')}
           className={`flex items-center gap-2 py-3 px-4 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'active'
-              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
-              : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-gray-600 dark:text-slate-300 hover:text-gray-900 hover:border-gray-300'
           }`}
         >
           <UserCheck size={17} />
           <span>{language === 'bn' ? 'সক্রিয় (নিয়মিত)' : 'Active'}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-bold transition-colors ${
-            activeTab === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+            activeTab === 'active' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'
           }`}>
             {formatNumber(activeStudentsList.length, language)}
           </span>
@@ -964,14 +954,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setActiveTab('inactive')}
           className={`flex items-center gap-2 py-3 px-4 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'inactive'
-              ? 'border-amber-600 text-amber-800 bg-amber-50/60 rounded-t-lg'
-              : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              ? 'border-amber-600 text-amber-800 dark:text-amber-300 bg-amber-50/60 rounded-t-lg'
+              : 'border-transparent text-gray-600 dark:text-slate-300 hover:text-gray-900 hover:border-gray-300'
           }`}
         >
           <UserX size={17} />
           <span>{language === 'bn' ? 'অনিয়মিত (পরীক্ষা ছাড়া)' : 'Inactive'}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-bold transition-colors ${
-            activeTab === 'inactive' ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'
+            activeTab === 'inactive' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'
           }`}>
             {formatNumber(inactiveStudentsList.length, language)}
           </span>
@@ -982,14 +972,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setActiveTab('former')}
           className={`flex items-center gap-2 py-3 px-4 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'former'
-              ? 'border-slate-600 text-slate-800 bg-slate-100/70 rounded-t-lg'
-              : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+              ? 'border-slate-600 text-slate-800 dark:text-slate-100 bg-slate-100/70 rounded-t-lg'
+              : 'border-transparent text-gray-600 dark:text-slate-300 hover:text-gray-900 hover:border-gray-300'
           }`}
         >
           <UserMinus size={17} />
           <span>{language === 'bn' ? 'প্রাক্তন শিক্ষার্থী' : 'Former Students'}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-bold transition-colors ${
-            activeTab === 'former' ? 'bg-slate-200 text-slate-800' : 'bg-gray-100 text-gray-600'
+            activeTab === 'former' ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'
           }`}>
             {formatNumber(formerStudentsList.length, language)}
           </span>
@@ -998,19 +988,19 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
       {/* Inactive Students Info Notice */}
       {activeTab === 'inactive' && (
-        <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
-          <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <Info size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-semibold">{language === 'bn' ? 'অনিয়মিত শিক্ষার্থী সংক্রান্ত তথ্য:' : 'Inactive Student Information:'}</p>
-            <p className="text-amber-800 leading-relaxed">{t('inactiveStudentsNotice')}</p>
+            <p className="text-amber-800 dark:text-amber-300 leading-relaxed">{t('inactiveStudentsNotice')}</p>
           </div>
         </div>
       )}
 
       {/* Former Students Info Notice */}
       {activeTab === 'former' && (
-        <div className="p-3.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
-          <Info size={18} className="text-slate-600 shrink-0 mt-0.5" />
+        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <Info size={18} className="text-slate-600 dark:text-slate-300 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             {t('formerStudentInfoNotice')}
           </div>
@@ -1018,21 +1008,21 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       )}
 
       {/* Search & Class Filter */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-xs border border-gray-100 flex flex-col sm:flex-row gap-4 items-center">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
+          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500" size={17} />
           <input
             type="text"
             placeholder={language === 'bn' ? 'নাম, আইডি, রোল, পিতা বা ফোন নম্বর দিয়ে খুঁজুন...' : 'Search by name, ID, roll, father, or phone...'}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 text-xs font-medium placeholder-gray-400"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs font-medium placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="relative w-full sm:w-64">
-          <Filter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
+          <Filter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500" size={17} />
           <select
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 text-xs font-semibold"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs font-semibold"
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
           >
@@ -1047,7 +1037,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           <button
             type="button"
             onClick={() => setIsPromotionModalOpen(true)}
-            className="shrink-0 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+            className="shrink-0 px-3.5 py-2.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
             title={language === 'bn' ? `${filterClass} এর সকল শিক্ষার্থীকে পরবর্তী শ্রেণিতে উত্তীর্ণ করুন` : `Promote ${filterClass} students`}
           >
             <GraduationCap size={15} />
@@ -1078,11 +1068,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       </div>
 
       {/* Student List Container */}
-      <div className="bg-white rounded-2xl shadow-xs border border-gray-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase font-bold text-[10px] tracking-wider">
+            <thead className="bg-gray-50/80 border-b border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 uppercase font-bold text-[10px] tracking-wider">
               <tr>
                 <th className="px-4 py-3.5 w-12 text-center">{t('sn')}</th>
                 <th 
@@ -1128,7 +1118,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 <th className="px-4 py-3.5 text-right">{t('actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-8">
@@ -1145,43 +1135,43 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               ) : (
                 filteredStudents.map((student, idx) => (
                   <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="px-4 py-3 text-gray-400 font-medium text-center">{formatNumber(idx + 1, language)}</td>
-                    <td className="px-4 py-3 font-mono font-bold text-indigo-700">
+                    <td className="px-4 py-3 text-gray-400 dark:text-slate-500 font-medium text-center">{formatNumber(idx + 1, language)}</td>
+                    <td className="px-4 py-3 font-mono font-bold text-indigo-700 dark:text-indigo-400">
                       {(student.roll || student.rollNumber) ? formatNumber(student.roll || student.rollNumber, language) : '-'}
                     </td>
-                    <td className="px-4 py-3 font-mono text-gray-600">
+                    <td className="px-4 py-3 font-mono text-gray-600 dark:text-slate-300">
                       {student.studentId ? formatNumber(student.studentId, language) : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs border border-indigo-200/60 shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 font-bold flex items-center justify-center text-xs border border-indigo-200/60 shrink-0">
                           {(student.name || 'S')[0].toUpperCase()}
                         </div>
                         <div className="truncate max-w-[170px]">
-                          <div className="font-bold text-gray-900 truncate font-bangla">{language === 'bn' ? (student.nameBn || student.name) : student.name}</div>
-                          {language !== 'bn' && student.nameBn && <div className="text-[10px] text-gray-400 truncate font-bangla">{student.nameBn}</div>}
+                          <div className="font-bold text-gray-900 dark:text-white truncate font-bangla">{language === 'bn' ? (student.nameBn || student.name) : student.name}</div>
+                          {language !== 'bn' && student.nameBn && <div className="text-[10px] text-gray-400 dark:text-slate-500 truncate font-bangla">{student.nameBn}</div>}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-medium">
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-300 whitespace-nowrap font-medium">
                       <span>{language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}</span>
-                      {student.group && <span className="ml-1 text-[9px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-bold uppercase">{t(student.group.toLowerCase() as any) || student.group}</span>}
+                      {student.group && <span className="ml-1 text-[9px] bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 px-1.5 py-0.5 rounded font-bold uppercase">{t(student.group.toLowerCase() as any) || student.group}</span>}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 truncate max-w-[180px]">
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-300 truncate max-w-[180px]">
                       {activeTab === 'former' ? (
                         <div>
-                          <div className="text-gray-900 text-xs font-medium">{student.leavingReason || (language === 'bn' ? 'মাদ্রাসা ত্যাগ' : 'Left')}</div>
+                          <div className="text-gray-900 dark:text-white text-xs font-medium">{student.leavingReason || (language === 'bn' ? 'মাদ্রাসা ত্যাগ' : 'Left')}</div>
                           {student.leavingDate && (
-                            <div className="text-[11px] text-gray-400">{student.leavingDate}</div>
+                            <div className="text-[11px] text-gray-400 dark:text-slate-500">{student.leavingDate}</div>
                           )}
                         </div>
                       ) : (
                         <div>
-                          <div className="font-medium text-gray-800 truncate font-bangla">
+                          <div className="font-medium text-gray-800 dark:text-slate-100 truncate font-bangla">
                             {language === 'bn' ? (student.fatherNameBn || student.fatherName || '—') : (student.fatherName || '—')}
                           </div>
                           {student.guardianPhone && (
-                            <div className="text-[10px] text-indigo-600 font-mono">
+                            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono">
                               📞 {student.guardianPhone}
                             </div>
                           )}
@@ -1191,10 +1181,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         student.isFormer || student.status === 'Former' 
-                          ? 'bg-slate-100 text-slate-700 border border-slate-300' 
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600' 
                           : student.status === 'Inactive' 
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300' 
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700' 
+                          : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                       }`}>
                         {student.isFormer || student.status === 'Former' 
                           ? (language === 'bn' ? 'প্রাক্তন' : 'Former') 
@@ -1210,7 +1200,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                           type="button"
                           onClick={() => setProfileStudent(student)}
                           title={language === 'bn' ? 'প্রোফাইল দেখুন' : 'View Profile'}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors"
+                          className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors"
                         >
                           <Eye size={15} />
                         </button>
@@ -1220,7 +1210,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                           type="button"
                           onClick={() => { setTcStudent(student); setIsTcModalOpen(true); }}
                           title={language === 'bn' ? 'ছাড়পত্র / TC তৈরি করুন' : 'Issue Transfer Certificate'}
-                          className="p-1.5 text-teal-700 hover:bg-teal-50 rounded-lg cursor-pointer transition-colors"
+                          className="p-1.5 text-teal-700 dark:text-teal-400 hover:bg-teal-50 rounded-lg cursor-pointer transition-colors"
                         >
                           <Award size={15} />
                         </button>
@@ -1236,8 +1226,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                                   : (language === 'bn' ? 'অনিয়মিত করুন' : 'Make Inactive')}
                                 className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
                                   student.status === 'Inactive'
-                                    ? 'text-emerald-700 hover:bg-emerald-50'
-                                    : 'text-amber-700 hover:bg-amber-50'
+                                    ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50'
+                                    : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50'
                                 }`}
                               >
                                 {student.status === 'Inactive' ? <UserCheck size={15} /> : <UserX size={15} />}
@@ -1246,7 +1236,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                                 type="button"
                                 onClick={() => promptMoveToFormer(student)} 
                                 title={t('moveToFormer')}
-                                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
                               >
                                 <UserMinus size={15} />
                               </button>
@@ -1256,7 +1246,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                               type="button"
                               onClick={() => promptRestore(student)} 
                               title={t('restoreStudent')}
-                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors"
+                              className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors"
                             >
                               <RotateCcw size={15} />
                             </button>
@@ -1268,7 +1258,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                             type="button"
                             onClick={() => handleEdit(student)} 
                             title={t('editStudent' as any) || 'Edit'}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
+                            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
                           >
                             <Edit2 size={15} />
                           </button>
@@ -1279,7 +1269,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                             type="button"
                             onClick={() => setStudentToDelete(student)} 
                             title="Delete"
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                            className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -1294,7 +1284,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         </div>
 
         {/* Mobile Cards View (< md) */}
-        <div className="md:hidden divide-y divide-gray-100">
+        <div className="md:hidden divide-y divide-gray-100 dark:divide-slate-800">
           {filteredStudents.length === 0 ? (
             <div className="p-4">
               <EmptyState
@@ -1311,7 +1301,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               <div 
                 key={student.id} 
                 className={`p-3.5 transition-colors ${
-                  student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white'
+                  student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white dark:bg-slate-900'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2.5">
@@ -1320,32 +1310,32 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       <img 
                         src={student.photoUrl} 
                         alt={student.name} 
-                        className="w-11 h-11 rounded-full object-cover border border-gray-200 shadow-2xs shrink-0" 
+                        className="w-11 h-11 rounded-full object-cover border border-gray-200 dark:border-slate-700 shadow-2xs shrink-0" 
                       />
                     ) : (
-                      <div className="w-11 h-11 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm uppercase shadow-2xs shrink-0">
+                      <div className="w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-sm uppercase shadow-2xs shrink-0">
                         {student.name.charAt(0)}
                       </div>
                     )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-sm text-gray-900 truncate">{student.name}</span>
-                        <span className="text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 shrink-0">
+                        <span className="font-bold text-sm text-gray-900 dark:text-white truncate">{student.name}</span>
+                        <span className="text-[10px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0">
                           {student.studentId}
                         </span>
                       </div>
                       {student.nameBn && (
-                        <div className="text-xs text-gray-500 font-bangla truncate">{student.nameBn}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 font-bangla truncate">{student.nameBn}</div>
                       )}
-                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-600 flex-wrap">
-                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium text-[11px]">
+                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-600 dark:text-slate-300 flex-wrap">
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
                           {language === 'bn' ? 'রোল:' : 'Roll:'} <strong className="font-mono">{formatNumber(student.roll, language)}</strong>
                         </span>
-                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium text-[11px]">
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
                           {language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}
                         </span>
                         {student.group && (
-                          <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold uppercase">
+                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded font-bold uppercase">
                             {t(student.group.toLowerCase() as any) || student.group}
                           </span>
                         )}
@@ -1355,10 +1345,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
                     student.isFormer || student.status === 'Former' 
-                      ? 'bg-slate-100 text-slate-700 border border-slate-300' 
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600' 
                       : student.status === 'Inactive' 
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300' 
-                      : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700' 
+                      : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                   }`}>
                     {student.isFormer || student.status === 'Former' 
                       ? (language === 'bn' ? 'প্রাক্তন' : 'Former') 
@@ -1370,15 +1360,15 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                 {/* Guardian / Contact info on mobile */}
                 {(student.fatherName || student.fatherNameBn || student.guardianPhone) && (
-                  <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
+                  <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-600 dark:text-slate-300">
                     <div className="truncate">
-                      <span className="text-gray-400 text-[11px] mr-1">{language === 'bn' ? 'পিতা:' : 'Father:'}</span>
-                      <span className="font-medium text-gray-800">{language === 'bn' ? (student.fatherNameBn || student.fatherName || '—') : (student.fatherName || '—')}</span>
+                      <span className="text-gray-400 dark:text-slate-500 text-[11px] mr-1">{language === 'bn' ? 'পিতা:' : 'Father:'}</span>
+                      <span className="font-medium text-gray-800 dark:text-slate-100">{language === 'bn' ? (student.fatherNameBn || student.fatherName || '—') : (student.fatherName || '—')}</span>
                     </div>
                     {student.guardianPhone && (
                       <a 
                         href={`tel:${student.guardianPhone}`}
-                        className="text-indigo-600 font-mono text-[11px] font-semibold flex items-center gap-1 hover:underline shrink-0 ml-2"
+                        className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px] font-semibold flex items-center gap-1 hover:underline shrink-0 ml-2"
                       >
                         📞 {student.guardianPhone}
                       </a>
@@ -1387,11 +1377,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 )}
 
                 {/* Mobile Actions Bar */}
-                <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-end gap-1.5">
+                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
                   <button
                     type="button"
                     onClick={() => setProfileStudent(student)}
-                    className="px-2.5 py-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    className="px-2.5 py-1 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Eye size={13} />
                     <span>{language === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
@@ -1400,7 +1390,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <button
                     type="button"
                     onClick={() => { setTcStudent(student); setIsTcModalOpen(true); }}
-                    className="px-2 py-1 text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    className="px-2 py-1 text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Award size={13} />
                     <span>{language === 'bn' ? 'ছাড়পত্র' : 'TC'}</span>
@@ -1414,8 +1404,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                           onClick={() => toggleActiveInactive(student)} 
                           className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                             student.status === 'Inactive'
-                              ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
-                              : 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                              ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100'
+                              : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100'
                           }`}
                         >
                           {student.status === 'Inactive' ? <UserCheck size={14} /> : <UserX size={14} />}
@@ -1423,7 +1413,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                         <button 
                           type="button"
                           onClick={() => promptMoveToFormer(student)} 
-                          className="p-1.5 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
                         >
                           <UserMinus size={14} />
                         </button>
@@ -1432,7 +1422,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       <button 
                         type="button"
                         onClick={() => promptRestore(student)} 
-                        className="px-2 py-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        className="px-2 py-1 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
                       >
                         <RotateCcw size={13} />
                         <span>{language === 'bn' ? 'পুনর্বহাল' : 'Restore'}</span>
@@ -1444,7 +1434,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <button 
                       type="button"
                       onClick={() => handleEdit(student)} 
-                      className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
                     >
                       <Edit2 size={14} />
                     </button>
@@ -1454,7 +1444,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <button 
                       type="button"
                       onClick={() => setStudentToDelete(student)} 
-                      className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -1471,38 +1461,38 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {/* Move to Former Modal */}
       {studentToMoveFormer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-amber-50/70">
-              <div className="flex items-center gap-2 text-amber-900">
-                <UserMinus className="text-amber-600" size={20} />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-amber-50/70">
+              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <UserMinus className="text-amber-600 dark:text-amber-400" size={20} />
                 <h3 className="font-bold text-base sm:text-lg">{t('moveToFormer')}</h3>
               </div>
               <button 
                 type="button"
                 onClick={() => setStudentToMoveFormer(null)} 
-                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 cursor-pointer"
               >
                 <span className="text-2xl leading-none">&times;</span>
               </button>
             </div>
             
             <div className="p-6 space-y-4">
-              <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-200/60 text-xs text-amber-800 leading-relaxed">
+              <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-200/60 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                 {t('confirmMoveToFormer')}
               </div>
 
-              <div className="text-sm bg-gray-50 p-3 rounded-lg space-y-1 border border-gray-200/60">
-                <div className="font-bold text-gray-900 font-bangla">{language === 'bn' ? (studentToMoveFormer.nameBn || studentToMoveFormer.name) : studentToMoveFormer.name}</div>
-                <div className="text-xs text-gray-500 font-mono">
+              <div className="text-sm bg-gray-50 dark:bg-slate-800/60 p-3 rounded-lg space-y-1 border border-gray-200/60">
+                <div className="font-bold text-gray-900 dark:text-white font-bangla">{language === 'bn' ? (studentToMoveFormer.nameBn || studentToMoveFormer.name) : studentToMoveFormer.name}</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400 font-mono">
                   {t('studentId')}: {studentToMoveFormer.studentId || '-'} &bull; {t('class')}: {studentToMoveFormer.classLevel}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-700">{t('leavingReason')}</label>
+                <label className="text-xs font-semibold text-gray-700 dark:text-slate-200">{t('leavingReason')}</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
+                  className="w-full border border-gray-200 dark:border-slate-700 rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                   placeholder={language === 'bn' ? 'যেমন: মাদ্রাসা ত্যাগ / ছাড়পত্র গ্রহণ / স্থানান্তর' : 'e.g. Madrasha transfer / TC / Completed'}
                   value={moveFormerReason}
                   onChange={(e) => setMoveFormerReason(e.target.value)}
@@ -1510,10 +1500,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-700">{t('leavingDate')}</label>
+                <label className="text-xs font-semibold text-gray-700 dark:text-slate-200">{t('leavingDate')}</label>
                 <input
                   type="date"
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
+                  className="w-full border border-gray-200 dark:border-slate-700 rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                   value={moveFormerDate}
                   onChange={(e) => setMoveFormerDate(e.target.value)}
                 />
@@ -1539,30 +1529,30 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {/* Restore Student Modal */}
       {studentToRestore && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-emerald-50/70">
-              <div className="flex items-center gap-2 text-emerald-900">
-                <RotateCcw className="text-emerald-600" size={20} />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-emerald-50/70">
+              <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200">
+                <RotateCcw className="text-emerald-600 dark:text-emerald-400" size={20} />
                 <h3 className="font-bold text-base sm:text-lg">{t('restoreStudent')}</h3>
               </div>
               <button 
                 type="button"
                 onClick={() => setStudentToRestore(null)} 
-                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 cursor-pointer"
               >
                 <span className="text-2xl leading-none">&times;</span>
               </button>
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="text-sm bg-gray-50 p-3 rounded-lg space-y-1 border border-gray-200/60">
-                <div className="font-bold text-gray-900 font-bangla">{language === 'bn' ? (studentToRestore.nameBn || studentToRestore.name) : studentToRestore.name}</div>
-                <div className="text-xs text-gray-500 font-mono">
+              <div className="text-sm bg-gray-50 dark:bg-slate-800/60 p-3 rounded-lg space-y-1 border border-gray-200/60">
+                <div className="font-bold text-gray-900 dark:text-white font-bangla">{language === 'bn' ? (studentToRestore.nameBn || studentToRestore.name) : studentToRestore.name}</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400 font-mono">
                   {t('studentId')}: {studentToRestore.studentId || '-'} &bull; {t('class')}: {studentToRestore.classLevel}
                 </div>
               </div>
 
-              <p className="text-xs text-gray-600 leading-relaxed">
+              <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
                 {language === 'bn' 
                   ? 'আপনি কি এই শিক্ষার্থীকে পুনরায় বর্তমান শিক্ষার্থী তালিকায় ফিরিয়ে আনতে চান? এর ফলে রানিং ক্লাস কার্যক্রমে এই শিক্ষার্থীর নাম যুক্ত হবে।'
                   : 'Do you want to restore this student back to the current running student list?'}
@@ -1588,20 +1578,20 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {/* Add / Edit Student Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-gray-100 animate-in fade-in zoom-in-95">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-slate-900 text-white rounded-t-3xl">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800 animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-slate-900 text-white rounded-t-3xl">
               <div>
                 <h3 className="text-base sm:text-lg font-bold">
                   {editingId ? (language === 'bn' ? 'শিক্ষার্থীর তথ্য সম্পাদনা' : 'Edit Student Profile') : (language === 'bn' ? 'নতুন শিক্ষার্থী ভর্তি ও নিবন্ধন' : 'New Student Registration')}
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   {language === 'bn' ? 'সকল প্রয়োজনীয় তথ্য সঠিকভাবে পূরণ করুন।' : 'Please fill all required student profile fields.'}
                 </p>
               </div>
               <button 
                 type="button"
                 onClick={() => setIsModalOpen(false)} 
-                className="text-slate-400 hover:text-white cursor-pointer p-1.5 rounded-lg hover:bg-slate-800"
+                className="text-slate-400 dark:text-slate-500 hover:text-white cursor-pointer p-1.5 rounded-lg hover:bg-slate-800"
               >
                 <span className="text-2xl leading-none">&times;</span>
               </button>
@@ -1609,27 +1599,27 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6" noValidate>
               {error && (
-                <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold flex items-center gap-2">
                   <ShieldAlert size={16} className="shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
               {success && (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold">
+                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-bold">
                   {t('savedSuccessfully' as any) || 'Saved successfully!'}
                 </div>
               )}
 
               {/* 1. Academic Information Section */}
               <div className="space-y-3">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
                   <span>🎓 একাডেমিক ও ভর্তি সংক্রান্ত তথ্য (Academic Info)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('class')} <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('class')} <span className="text-red-500">*</span></label>
                     <select 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.classLevel || ''} 
                       onChange={e => setFormData({ ...formData, classLevel: e.target.value })}
                     >
@@ -1639,10 +1629,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{language === 'bn' ? 'রোল নম্বর' : 'Roll Number'} <span className="text-indigo-600 font-normal">(ঐচ্ছিক)</span></label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'রোল নম্বর' : 'Roll Number'} <span className="text-indigo-600 dark:text-indigo-400 font-normal">(ঐচ্ছিক)</span></label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.roll || ''} 
                       onChange={e => setFormData({...formData, roll: e.target.value})} 
                       placeholder="e.g. 101"
@@ -1650,10 +1640,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('studentId')} <span className="text-gray-400 font-normal">(অটো জেনারেট)</span></label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('studentId')} <span className="text-gray-400 dark:text-slate-500 font-normal">(অটো জেনারেট)</span></label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.studentId || ''} 
                       onChange={e => setFormData({...formData, studentId: e.target.value})} 
                       placeholder={`e.g. ${new Date().getFullYear()}001`}
@@ -1663,10 +1653,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{language === 'bn' ? 'ভর্তির তারিখ' : 'Admission Date'}</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ভর্তির তারিখ' : 'Admission Date'}</label>
                     <input 
                       type="date" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.admissionDate || ''} 
                       onChange={e => setFormData({...formData, admissionDate: e.target.value})} 
                     />
@@ -1674,9 +1664,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                   {(formData.classLevel === 'Class 9' || formData.classLevel === 'Class 10') && (
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700">{t('group')}</label>
+                      <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('group')}</label>
                       <select 
-                        className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                         value={formData.group || ''} 
                         onChange={e => setFormData({...formData, group: e.target.value as any})}
                       >
@@ -1691,26 +1681,26 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* 2. Personal Information Section */}
               <div className="space-y-3 pt-2">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
                   <span>👤 শিক্ষার্থীর ব্যক্তিগত তথ্য (Personal Profile)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('name')} (English) <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('name')} (English) <span className="text-red-500">*</span></label>
                     <input 
                       ref={nameInputRef}
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.name || ''} 
                       onChange={e => setFormData({...formData, name: e.target.value})} 
                       placeholder="e.g. Abdullah Al Mamun"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('name')} (বাংলায়)</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('name')} (বাংলায়)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 font-bangla" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
                       value={formData.nameBn || ''} 
                       onChange={e => setFormData({...formData, nameBn: e.target.value})} 
                       placeholder="যেমন: আব্দুল্লাহ আল মামুন"
@@ -1720,9 +1710,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{language === 'bn' ? 'লিঙ্গ' : 'Gender'}</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'লিঙ্গ' : 'Gender'}</label>
                     <select 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.gender || 'male'} 
                       onChange={e => setFormData({...formData, gender: e.target.value as any})}
                     >
@@ -1733,19 +1723,19 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{language === 'bn' ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
                     <input 
                       type="date" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.dateOfBirth || ''} 
                       onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} 
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{language === 'bn' ? 'রক্তের গ্রুপ' : 'Blood Group'}</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'রক্তের গ্রুপ' : 'Blood Group'}</label>
                     <select 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.bloodGroup || ''} 
                       onChange={e => setFormData({...formData, bloodGroup: e.target.value})}
                     >
@@ -1765,25 +1755,25 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* 3. Guardian & Contact Section */}
               <div className="space-y-3 pt-2">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
                   <span>👨‍👩‍👧 অভিভাবক ও যোগাযোগের ঠিকানা (Guardian & Contact)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('fatherName')} (English)</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('fatherName')} (English)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.fatherName || ''} 
                       onChange={e => setFormData({...formData, fatherName: e.target.value})} 
                       placeholder="Father's name"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('fatherName')} (বাংলায়)</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('fatherName')} (বাংলায়)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 font-bangla" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
                       value={formData.fatherNameBn || ''} 
                       onChange={e => setFormData({...formData, fatherNameBn: e.target.value})} 
                       placeholder="পিতার নাম"
@@ -1793,20 +1783,20 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('motherName')} (English)</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('motherName')} (English)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.motherName || ''} 
                       onChange={e => setFormData({...formData, motherName: e.target.value})} 
                       placeholder="Mother's name"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{t('motherName')} (বাংলায়)</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('motherName')} (বাংলায়)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 font-bangla" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
                       value={formData.motherNameBn || ''} 
                       onChange={e => setFormData({...formData, motherNameBn: e.target.value})} 
                       placeholder="মাতার নাম"
@@ -1816,10 +1806,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{language === 'bn' ? 'অভিভাবকের মোবাইল নম্বর' : 'Guardian Mobile Phone'}</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'অভিভাবকের মোবাইল নম্বর' : 'Guardian Mobile Phone'}</label>
                     <input 
                       type="tel" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.guardianPhone || ''} 
                       onChange={e => setFormData({...formData, guardianPhone: e.target.value})} 
                       placeholder="017XXXXXXXX"
@@ -1827,10 +1817,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">{language === 'bn' ? 'গ্রাম / ঠিকানা' : 'Address / Village'}</label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'গ্রাম / ঠিকানা' : 'Address / Village'}</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.address || ''} 
                       onChange={e => setFormData({...formData, address: e.target.value})} 
                       placeholder={language === 'bn' ? 'গ্রাম, ডাকঘর, উপজেলা, জেলা' : 'Village, Post, Upazila, District'}
@@ -1841,12 +1831,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* 4. Status Section */}
               <div className="space-y-3 pt-2">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
                   <span>⚙️ বর্তমান স্ট্যাটাস (Student Lifecycle Status)</span>
                 </div>
                 <div className="space-y-1">
                   <select 
-                    className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" 
+                    className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                     value={formData.status || 'Active'} 
                     onChange={e => {
                       const newStatus = e.target.value as 'Active' | 'Inactive' | 'Former';
@@ -1866,26 +1856,26 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {(formData.status === 'Former' || formData.isFormer) && (
                 <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl space-y-3">
-                  <div className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                    <UserMinus size={15} className="text-amber-600" />
+                  <div className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <UserMinus size={15} className="text-amber-600 dark:text-amber-400" />
                     <span>{language === 'bn' ? 'প্রাক্তন শিক্ষার্থী সংক্রান্ত তথ্য' : 'Former Student Information'}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-700">{t('leavingReason')}</label>
+                      <label className="text-xs font-semibold text-gray-700 dark:text-slate-200">{t('leavingReason')}</label>
                       <input 
                         type="text" 
-                        className="w-full border border-gray-200 rounded-xl p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white text-gray-900" 
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                         value={formData.leavingReason || ''} 
                         onChange={e => setFormData({...formData, leavingReason: e.target.value})} 
                         placeholder={language === 'bn' ? 'মাদ্রাসা ত্যাগ / ছাড়পত্র গ্রহণ / স্থানান্তর' : 'Reason for leaving'}
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-700">{t('leavingDate')}</label>
+                      <label className="text-xs font-semibold text-gray-700 dark:text-slate-200">{t('leavingDate')}</label>
                       <input 
                         type="date" 
-                        className="w-full border border-gray-200 rounded-xl p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white text-gray-900" 
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2 text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                         value={formData.leavingDate || ''} 
                         onChange={e => setFormData({...formData, leavingDate: e.target.value})} 
                       />

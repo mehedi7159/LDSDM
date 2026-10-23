@@ -8,6 +8,8 @@ import {
 } from '../../services/academicScheduleService';
 import { formatNumber } from '../../services/utils';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { 
   Calendar, 
   Clock, 
@@ -169,11 +171,10 @@ export const ClassRoutineBuilder: React.FC = () => {
   };
 
   // Delete routine period
+  const [periodToDelete, setPeriodToDelete] = useState<string | null>(null);
+
   const handleDelete = (id: string) => {
-    if (confirm(isBn ? 'আপনি কি এই পিরিয়ডটি রুটিন থেকে মুছে ফেলতে চান?' : 'Delete this routine period?')) {
-      academicScheduleService.deleteRoutineItem(id);
-      setVersion(v => v + 1);
-    }
+    setPeriodToDelete(id);
   };
 
   // Print Routine
@@ -203,32 +204,23 @@ export const ClassRoutineBuilder: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header & Mode Toggle */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 text-teal-800 font-bold text-xs uppercase tracking-wider mb-1">
-            <Clock size={16} />
-            <span>{isBn ? 'সাপ্তাহিক ক্লাস রুটিন ও সময়সূচি' : 'Weekly Timetable & Schedule'}</span>
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            {isBn ? 'ক্লাস রুটিন ও শিক্ষক পিরিয়ড প্ল্যানার' : 'Class Routine & Period Planner'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {isBn 
-              ? 'শ্রেণি ও শিক্ষকভিত্তিক দ্বৈত সময়সূচি, শিক্ষক দ্বন্দ্ব নিরসন ও প্রিন্টবান্ধব রুটিন শিট।'
-              : 'Interactive timetable grid with conflict detection and printable schedule.'}
-          </p>
-        </div>
+      <PageHeader
+        icon={Clock}
+        eyebrow={isBn ? 'সাপ্তাহিক ক্লাস রুটিন ও সময়সূচি' : 'Weekly Timetable & Schedule'}
+        title={isBn ? 'ক্লাস রুটিন ও শিক্ষক পিরিয়ড প্ল্যানার' : 'Class Routine & Period Planner'}
+        subtitle={isBn ? 'শ্রেণি ও শিক্ষকভিত্তিক দ্বৈত সময়সূচি, শিক্ষক দ্বন্দ্ব নিরসন ও প্রিন্টবান্ধব রুটিন শিট।' : 'Interactive timetable grid with conflict detection and printable schedule.'}
+      >
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Mode Switcher */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
+          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 border border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setViewMode('by_class')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'by_class'
-                  ? 'bg-white text-teal-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-teal-900 dark:text-teal-200 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
               <span className="flex items-center gap-1.5">
@@ -241,8 +233,8 @@ export const ClassRoutineBuilder: React.FC = () => {
               onClick={() => setViewMode('by_teacher')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'by_teacher'
-                  ? 'bg-white text-teal-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-teal-900 dark:text-teal-200 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
               <span className="flex items-center gap-1.5">
@@ -255,7 +247,7 @@ export const ClassRoutineBuilder: React.FC = () => {
           <Button
             onClick={handleExportCSV}
             variant="outline"
-            className="text-xs font-bold flex items-center gap-1.5 py-2 px-3 border-slate-300"
+            className="text-xs font-bold flex items-center gap-1.5 py-2 px-3 border-slate-300 dark:border-slate-600"
           >
             <Download size={14} />
             <span>{isBn ? 'CSV এক্সপোর্ট' : 'Export'}</span>
@@ -269,18 +261,18 @@ export const ClassRoutineBuilder: React.FC = () => {
             <span>{isBn ? 'প্রিন্ট রুটিন' : 'Print Routine'}</span>
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Filter Strip */}
-      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
         {viewMode === 'by_class' ? (
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-700">{isBn ? 'শ্রেণি নির্বাচন:' : 'Class:'}</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'শ্রেণি নির্বাচন:' : 'Class:'}</span>
               <select
                 value={selectedClass}
                 onChange={e => setSelectedClass(e.target.value)}
-                className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 shadow-2xs focus:ring-2 focus:ring-teal-500"
+                className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-teal-500"
               >
                 {classes.map(c => (
                   <option key={c.id} value={c.name}>{c.name}</option>
@@ -289,11 +281,11 @@ export const ClassRoutineBuilder: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-700">{isBn ? 'শাখা:' : 'Section:'}</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'শাখা:' : 'Section:'}</span>
               <select
                 value={selectedSection}
                 onChange={e => setSelectedSection(e.target.value)}
-                className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 shadow-2xs focus:ring-2 focus:ring-teal-500"
+                className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-teal-500"
               >
                 <option value="ALL">{isBn ? 'সকল শাখা' : 'All Sections'}</option>
                 <option value="ক">শাখা ক</option>
@@ -306,11 +298,11 @@ export const ClassRoutineBuilder: React.FC = () => {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-700">{isBn ? 'শিক্ষক নির্বাচন:' : 'Teacher:'}</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'শিক্ষক নির্বাচন:' : 'Teacher:'}</span>
             <select
               value={selectedTeacherId}
               onChange={e => setSelectedTeacherId(e.target.value)}
-              className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 shadow-2xs focus:ring-2 focus:ring-teal-500 min-w-[200px]"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-teal-500 min-w-[200px]"
             >
               {teachers.map(t => (
                 <option key={t.id} value={t.id}>{t.nameBn || t.name} ({t.designation || 'শিক্ষক'})</option>
@@ -319,33 +311,33 @@ export const ClassRoutineBuilder: React.FC = () => {
           </div>
         )}
 
-        <div className="flex items-center gap-4 text-xs text-slate-600">
-          <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+        <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-300">
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
             <span className="w-2 h-2 rounded-full bg-teal-500"></span>
             <span>{isBn ? `মোট নির্ধারিত পিরিয়ড: ${formatNumber(totalClassesInRoutine, 'bn')}` : `Total Periods: ${totalClassesInRoutine}`}</span>
           </div>
-          <span className="text-slate-400">|</span>
-          <span className="text-[11px] text-slate-500">{isBn ? 'শুক্রবার সাপ্তাহিক মাদ্রাসা বন্ধ' : 'Friday off'}</span>
+          <span className="text-slate-400 dark:text-slate-500">|</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">{isBn ? 'শুক্রবার সাপ্তাহিক মাদ্রাসা বন্ধ' : 'Friday off'}</span>
         </div>
       </div>
 
       {/* Interactive Timetable Grid (Printable Area) */}
-      <div ref={printRef} className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden print:border-none print:shadow-none">
+      <div ref={printRef} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden print:border-none print:shadow-none">
         {/* Printable Header */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50/60 print:bg-white flex justify-between items-center">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 print:bg-white flex justify-between items-center">
           <div>
-            <h3 className="font-bold text-slate-800 text-sm">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
               {viewMode === 'by_class' 
                 ? (isBn ? `শ্রেণি: ${selectedClass} (${selectedSection === 'ALL' ? 'সকল শাখা' : selectedSection}) এর সাপ্তাহিক রুটিন` : `Timetable: ${selectedClass}`)
                 : (isBn 
                     ? `শিক্ষক: ${teachers.find(t => t.id === selectedTeacherId)?.nameBn || teachers.find(t => t.id === selectedTeacherId)?.name || ''} এর ব্যক্তিগত সময়সূচি` 
                     : `Teacher Timetable`)}
             </h3>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {isBn ? 'শিক্ষাবর্ষ: ২০২৬ • মাদ্রাসা ও শিক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম' : 'Academic Year: 2026'}
             </p>
           </div>
-          <div className="text-[11px] text-slate-400 hidden print:block">
+          <div className="text-[11px] text-slate-400 dark:text-slate-500 hidden print:block">
             {new Date().toLocaleDateString('bn-BD')}
           </div>
         </div>
@@ -354,25 +346,25 @@ export const ClassRoutineBuilder: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[750px]">
             <thead>
-              <tr className="bg-slate-100/80 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
-                <th className="py-3 px-3 w-28 text-center border-r border-slate-200 bg-slate-200/50">
+              <tr className="bg-slate-100/80 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <th className="py-3 px-3 w-28 text-center border-r border-slate-200 dark:border-slate-800 bg-slate-200/50">
                   {isBn ? 'বার / দিন' : 'Day'}
                 </th>
                 {activePeriods.map(p => (
-                  <th key={p.number} className="py-2.5 px-3 border-r border-slate-200 text-center min-w-[130px]">
-                    <div className="font-black text-slate-800">{p.nameBn}</div>
-                    <div className="text-[10px] font-mono text-slate-500">{p.start} - {p.end}</div>
+                  <th key={p.number} className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-center min-w-[130px]">
+                    <div className="font-black text-slate-800 dark:text-slate-100">{p.nameBn}</div>
+                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{p.start} - {p.end}</div>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 text-xs">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
               {activeDays.map(day => (
                 <tr key={day.en} className="hover:bg-slate-50/50 transition-colors">
                   {/* Day Label */}
-                  <td className="py-3 px-3 font-bold text-slate-800 bg-slate-50 text-center border-r border-slate-200 align-middle">
+                  <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/60 text-center border-r border-slate-200 dark:border-slate-800 align-middle">
                     <div className="text-xs">{day.bn}</div>
-                    <div className="text-[10px] font-mono text-slate-400">{day.en}</div>
+                    <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500">{day.en}</div>
                   </td>
 
                   {/* Period Cells */}
@@ -380,28 +372,28 @@ export const ClassRoutineBuilder: React.FC = () => {
                     const match = routineItems.find(r => r.dayOfWeek === day.en && r.periodNumber === period.number);
 
                     return (
-                      <td key={period.number} className="py-2 px-2.5 border-r border-slate-200 align-top h-24">
+                      <td key={period.number} className="py-2 px-2.5 border-r border-slate-200 dark:border-slate-800 align-top h-24">
                         {match ? (
-                          <div className="bg-teal-50/80 border border-teal-200 rounded-xl p-2.5 h-full flex flex-col justify-between group hover:border-teal-400 transition-all shadow-2xs">
+                          <div className="bg-teal-50/80 border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 h-full flex flex-col justify-between group hover:border-teal-400 transition-all shadow-2xs">
                             <div>
-                              <div className="font-bold text-teal-950 text-xs flex items-center justify-between">
+                              <div className="font-bold text-teal-950 dark:text-teal-200 text-xs flex items-center justify-between">
                                 <span className="truncate" title={match.subjectName}>
                                   {match.subjectName}
                                 </span>
                                 {match.roomNumber && (
-                                  <span className="text-[10px] font-mono bg-teal-100 text-teal-800 px-1 rounded font-semibold ml-1 shrink-0">
+                                  <span className="text-[10px] font-mono bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300 px-1 rounded font-semibold ml-1 shrink-0">
                                     রুম {match.roomNumber}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="text-[11px] text-teal-800 mt-1 flex items-center gap-1 truncate" title={match.teacherName}>
-                                <Users size={11} className="shrink-0 text-teal-600" />
+                              <div className="text-[11px] text-teal-800 dark:text-teal-300 mt-1 flex items-center gap-1 truncate" title={match.teacherName}>
+                                <Users size={11} className="shrink-0 text-teal-600 dark:text-teal-400" />
                                 <span className="truncate">{match.teacherName || (isBn ? 'শিক্ষক অপ্রাপ্ত' : 'No teacher')}</span>
                               </div>
 
                               {viewMode === 'by_teacher' && (
-                                <div className="text-[10px] font-bold text-slate-600 mt-1">
+                                <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300 mt-1">
                                   {match.classLevel} {match.sectionName ? `(${match.sectionName})` : ''}
                                 </div>
                               )}
@@ -412,7 +404,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleOpenEdit(match)}
-                                className="p-1 text-teal-700 hover:text-teal-900 hover:bg-teal-100 rounded"
+                                className="p-1 text-teal-700 dark:text-teal-400 hover:text-teal-900 hover:bg-teal-100 rounded"
                                 title="সম্পাদনা"
                               >
                                 <Edit2 size={12} />
@@ -420,7 +412,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleDelete(match.id)}
-                                className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-100 rounded"
+                                className="p-1 text-rose-600 dark:text-rose-400 hover:text-rose-800 hover:bg-rose-100 rounded"
                                 title="মুছে ফেলুন"
                               >
                                 <Trash2 size={12} />
@@ -428,7 +420,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="h-full border border-dashed border-slate-200 rounded-xl p-2 flex flex-col items-center justify-center text-slate-400 hover:border-teal-300 hover:bg-teal-50/30 transition-all group cursor-pointer print:hidden"
+                          <div className="h-full border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-2 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:border-teal-300 hover:bg-teal-50/30 transition-all group cursor-pointer print:hidden"
                                onClick={() => handleOpenAdd(day.en, period.number)}>
                             <Plus size={14} className="text-slate-300 group-hover:text-teal-600 mb-0.5" />
                             <span className="text-[10px] font-bold group-hover:text-teal-700">
@@ -446,11 +438,11 @@ export const ClassRoutineBuilder: React.FC = () => {
         </div>
 
         {/* Timetable Notice Footer */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-2">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-2">
           <span>
             {isBn ? '⚠️ প্রতিটি পিরিয়ডের শুরু ও সমাপ্তি সময় অনুযায়ী ঘণ্টাধ্বনি বাজানো হবে।' : 'Standard madrasah periods.'}
           </span>
-          <span className="font-mono text-slate-400">
+          <span className="font-mono text-slate-400 dark:text-slate-500">
             Madrasah Routine Management System • v3.0
           </span>
         </div>
@@ -459,7 +451,7 @@ export const ClassRoutineBuilder: React.FC = () => {
       {/* Routine Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-teal-700 text-white px-5 py-4 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Clock size={18} />
@@ -478,8 +470,8 @@ export const ClassRoutineBuilder: React.FC = () => {
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
               {conflictError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
-                  <AlertTriangle size={15} className="shrink-0 mt-0.5 text-rose-600" />
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs flex items-start gap-2">
+                  <AlertTriangle size={15} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
                   <div>
                     <div className="font-bold">{isBn ? 'সময়সূচি দ্বন্দ্ব সনাক্ত হয়েছে!' : 'Schedule Conflict!'}</div>
                     <div>{conflictError}</div>
@@ -489,13 +481,13 @@ export const ClassRoutineBuilder: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                     {isBn ? 'বার / দিন' : 'Day'}
                   </label>
                   <select
                     value={formState.dayOfWeek}
                     onChange={e => setFormState({ ...formState, dayOfWeek: e.target.value as DayOfWeek })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     {activeDays.map(d => (
                       <option key={d.en} value={d.en}>{d.bn}</option>
@@ -504,7 +496,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                     {isBn ? 'পিরিয়ড নং' : 'Period'}
                   </label>
                   <select
@@ -520,7 +512,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                         endTime: p?.end || formState.endTime
                       });
                     }}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     {activePeriods.map(p => (
                       <option key={p.number} value={p.number}>{p.nameBn}</option>
@@ -531,13 +523,13 @@ export const ClassRoutineBuilder: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                     {isBn ? 'শ্রেণি' : 'Class'}
                   </label>
                   <select
                     value={formState.classLevel}
                     onChange={e => setFormState({ ...formState, classLevel: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                   >
                     {classes.map(c => (
                       <option key={c.id} value={c.name}>{c.name}</option>
@@ -546,7 +538,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                     {isBn ? 'শাখা' : 'Section'}
                   </label>
                   <input
@@ -554,20 +546,20 @@ export const ClassRoutineBuilder: React.FC = () => {
                     value={formState.sectionName}
                     onChange={e => setFormState({ ...formState, sectionName: e.target.value })}
                     placeholder="ক / খ / A"
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                   {isBn ? 'বিষয় নির্বাচন *' : 'Subject *'}
                 </label>
                 <select
                   value={formState.subjectId}
                   onChange={e => setFormState({ ...formState, subjectId: e.target.value })}
                   required
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                 >
                   <option value="">{isBn ? '-- বিষয় নির্বাচন করুন --' : '-- Select Subject --'}</option>
                   {subjects
@@ -581,13 +573,13 @@ export const ClassRoutineBuilder: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                   {isBn ? 'নিয়োজিত শিক্ষক' : 'Assigned Teacher'}
                 </label>
                 <select
                   value={formState.teacherId}
                   onChange={e => setFormState({ ...formState, teacherId: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                 >
                   <option value="">{isBn ? '-- শিক্ষক নির্বাচন করুন (ঐচ্ছিক) --' : '-- Select Teacher --'}</option>
                   {teachers.map(t => (
@@ -600,29 +592,29 @@ export const ClassRoutineBuilder: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                     {isBn ? 'শুরু সময়' : 'Start'}
                   </label>
                   <input
                     type="text"
                     value={formState.startTime}
                     onChange={e => setFormState({ ...formState, startTime: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                     {isBn ? 'সমাপ্তি সময়' : 'End'}
                   </label>
                   <input
                     type="text"
                     value={formState.endTime}
                     onChange={e => setFormState({ ...formState, endTime: e.target.value })}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                     {isBn ? 'কক্ষ নং' : 'Room'}
                   </label>
                   <input
@@ -630,12 +622,12 @@ export const ClassRoutineBuilder: React.FC = () => {
                     value={formState.roomNumber}
                     onChange={e => setFormState({ ...formState, roomNumber: e.target.value })}
                     placeholder="১০১"
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   type="button"
                   variant="outline"
@@ -655,6 +647,25 @@ export const ClassRoutineBuilder: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!periodToDelete}
+        onClose={() => setPeriodToDelete(null)}
+        onConfirm={() => {
+          if (periodToDelete) {
+            academicScheduleService.deleteRoutineItem(periodToDelete);
+            setVersion(v => v + 1);
+            setPeriodToDelete(null);
+          }
+        }}
+        title={isBn ? 'পিরিয়ড ডিলিট নিশ্চিতকরণ' : 'Confirm Period Deletion'}
+        message={isBn ? 'আপনি কি এই পিরিয়ডটি রুটিন থেকে মুছে ফেলতে চান?' : 'Delete this routine period?'}
+        confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
+
     </div>
   );
 };

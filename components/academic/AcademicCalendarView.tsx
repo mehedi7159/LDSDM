@@ -4,6 +4,8 @@ import { AcademicCalendarEvent } from '../../types/academic';
 import { academicScheduleService } from '../../services/academicScheduleService';
 import { formatNumber, formatSafeDate } from '../../services/utils';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { 
   Calendar, 
   Plus, 
@@ -141,11 +143,10 @@ export const AcademicCalendarView: React.FC = () => {
   };
 
   // Delete
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+
   const handleDelete = (id: string) => {
-    if (confirm(isBn ? 'এই ইভেন্টটি ক্যালেন্ডার থেকে মুছে ফেলতে চান?' : 'Delete this calendar event?')) {
-      academicScheduleService.deleteCalendarEvent(id);
-      setVersion(v => v + 1);
-    }
+    setEventToDelete(id);
   };
 
   // Print
@@ -156,7 +157,7 @@ export const AcademicCalendarView: React.FC = () => {
   const getEventBadge = (type: string, isHoliday: boolean) => {
     if (isHoliday) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
           <PartyPopper size={11} />
           <span>{isBn ? 'ছুটি' : 'Holiday'}</span>
         </span>
@@ -165,21 +166,21 @@ export const AcademicCalendarView: React.FC = () => {
     switch (type) {
       case 'EXAM':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
             <BookOpen size={11} />
             <span>{isBn ? 'পরীক্ষা' : 'Exam'}</span>
           </span>
         );
       case 'ACADEMIC_TERM':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800">
             <Clock size={11} />
             <span>{isBn ? 'শিক্ষাবর্ষ/টার্ম' : 'Term'}</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
             <CalendarCheck size={11} />
             <span>{isBn ? 'ইভেন্ট' : 'Event'}</span>
           </span>
@@ -190,27 +191,18 @@ export const AcademicCalendarView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 text-teal-800 font-bold text-xs uppercase tracking-wider mb-1">
-            <Calendar size={16} />
-            <span>{isBn ? 'বাৎসরিক একাডেমিক ও ছুটির দিনপঞ্জি' : 'Annual Academic & Holiday Calendar'}</span>
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            {isBn ? 'একাডেমিক ক্যালেন্ডার ও ছুটির তালিকা' : 'Academic Calendar & Holidays'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {isBn 
-              ? 'ইসলামিক ও জাতীয় সাধারণ ছুটি, সাময়িক ও বার্ষিক পরীক্ষার সময়রেখা এবং প্রাতিষ্ঠানিক অনুষ্ঠানসূচি।'
-              : 'Official holidays, Islamic dates, examination timeline and institutional events.'}
-          </p>
-        </div>
+      <PageHeader
+        icon={Calendar}
+        eyebrow={isBn ? 'বাৎসরিক একাডেমিক ও ছুটির দিনপঞ্জি' : 'Annual Academic & Holiday Calendar'}
+        title={isBn ? 'একাডেমিক ক্যালেন্ডার ও ছুটির তালিকা' : 'Academic Calendar & Holidays'}
+        subtitle={isBn ? 'ইসলামিক ও জাতীয় সাধারণ ছুটি, সাময়িক ও বার্ষিক পরীক্ষার সময়রেখা এবং প্রাতিষ্ঠানিক অনুষ্ঠানসূচি।' : 'Official holidays, Islamic dates, examination timeline and institutional events.'}
+      >
 
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             onClick={handlePrint}
             variant="outline"
-            className="text-xs font-bold flex items-center gap-1.5 py-2 px-3 border-slate-300"
+            className="text-xs font-bold flex items-center gap-1.5 py-2 px-3 border-slate-300 dark:border-slate-600"
           >
             <Printer size={14} />
             <span>{isBn ? 'প্রিন্ট ক্যালেন্ডার' : 'Print'}</span>
@@ -224,7 +216,7 @@ export const AcademicCalendarView: React.FC = () => {
             <span>{isBn ? 'নতুন ইভেন্ট / ছুটি যুক্ত করুন' : 'Add Event'}</span>
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Overview Cards & Next Upcoming Alert */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -254,32 +246,32 @@ export const AcademicCalendarView: React.FC = () => {
         </div>
 
         {/* Holiday Stats */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-700 dark:text-rose-400">
             <PartyPopper size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">{isBn ? 'মোট সাধারণ ছুটি' : 'Holidays'}</div>
-            <div className="text-lg font-black text-slate-800">{formatNumber(stats.totalHolidayDays, 'bn')} দিন</div>
-            <div className="text-[10px] text-slate-400 font-semibold">{formatNumber(stats.holidayCount, 'bn')} টি উপলক্ষ</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'মোট সাধারণ ছুটি' : 'Holidays'}</div>
+            <div className="text-lg font-black text-slate-800 dark:text-slate-100">{formatNumber(stats.totalHolidayDays, 'bn')} দিন</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{formatNumber(stats.holidayCount, 'bn')} টি উপলক্ষ</div>
           </div>
         </div>
 
         {/* Exams Stats */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-purple-700 dark:text-purple-400">
             <BookOpen size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">{isBn ? 'নির্ধারিত পরীক্ষা টার্ম' : 'Exam Terms'}</div>
-            <div className="text-lg font-black text-purple-800">{formatNumber(stats.examEvents, 'bn')} টি</div>
-            <div className="text-[10px] text-slate-400 font-semibold">{isBn ? '১ম, ২য় ও বার্ষিক' : 'Term exams'}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'নির্ধারিত পরীক্ষা টার্ম' : 'Exam Terms'}</div>
+            <div className="text-lg font-black text-purple-800 dark:text-purple-300">{formatNumber(stats.examEvents, 'bn')} টি</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{isBn ? '১ম, ২য় ও বার্ষিক' : 'Term exams'}</div>
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex border-b border-slate-200 bg-white rounded-xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-1.5 shadow-2xs overflow-x-auto gap-1">
         {[
           { id: 'ALL', label: isBn ? 'সকল ইভেন্ট ও ছুটি' : 'All Events' },
           { id: 'HOLIDAY_ALL', label: isBn ? 'শুধুমাত্র ছুটির তালিকা' : 'Holidays Only' },
@@ -294,7 +286,7 @@ export const AcademicCalendarView: React.FC = () => {
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               filterType === tab.id
                 ? 'bg-teal-700 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             {tab.label}
@@ -307,14 +299,14 @@ export const AcademicCalendarView: React.FC = () => {
         {events.map((event, idx) => (
           <div
             key={event.id}
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
           >
             <div className="flex items-start gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex flex-col items-center justify-center shrink-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shrink-0">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                   {new Date(event.startDate).toLocaleString('en', { month: 'short' })}
                 </span>
-                <span className="text-base font-black text-slate-800 leading-tight">
+                <span className="text-base font-black text-slate-800 dark:text-slate-100 leading-tight">
                   {new Date(event.startDate).getDate()}
                 </span>
               </div>
@@ -322,18 +314,18 @@ export const AcademicCalendarView: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   {getEventBadge(event.type, event.isHoliday)}
-                  <span className="text-xs font-mono font-bold text-slate-500">
+                  <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
                     {formatSafeDate(event.startDate, isBn)} 
                     {event.startDate !== event.endDate ? ` – ${formatSafeDate(event.endDate, isBn)}` : ''}
                   </span>
-                  <span className="text-[11px] font-semibold text-slate-400">
+                  <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                     ({formatNumber(event.totalDays, 'bn')} দিন)
                   </span>
                 </div>
 
-                <h3 className="font-bold text-slate-800 text-sm">{event.titleBn || event.title}</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">{event.titleBn || event.title}</h3>
                 {event.description && (
-                  <p className="text-xs text-slate-500 mt-0.5">{event.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{event.description}</p>
                 )}
               </div>
             </div>
@@ -342,7 +334,7 @@ export const AcademicCalendarView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleOpenEdit(event)}
-                className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
+                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
                 title="সম্পাদনা"
               >
                 <Edit2 size={14} />
@@ -350,7 +342,7 @@ export const AcademicCalendarView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDelete(event.id)}
-                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                 title="মুছে ফেলুন"
               >
                 <Trash2 size={14} />
@@ -363,7 +355,7 @@ export const AcademicCalendarView: React.FC = () => {
       {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-teal-700 text-white px-5 py-4 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Calendar size={18} />
@@ -382,19 +374,19 @@ export const AcademicCalendarView: React.FC = () => {
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'ইভেন্ট বা ছুটির নাম (বাংলা) *' : 'Title (Bangla) *'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ইভেন্ট বা ছুটির নাম (বাংলা) *' : 'Title (Bangla) *'}</label>
                 <input
                   type="text"
                   value={formState.titleBn}
                   onChange={e => setFormState({ ...formState, titleBn: e.target.value })}
                   required
                   placeholder="যেমন: পবিত্র ঈদুল ফিতর"
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'ইভেন্টের ধরন' : 'Event Type'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ইভেন্টের ধরন' : 'Event Type'}</label>
                 <select
                   value={formState.type}
                   onChange={e => {
@@ -405,7 +397,7 @@ export const AcademicCalendarView: React.FC = () => {
                       isHoliday: val === 'HOLIDAY' || val === 'VACATION' 
                     });
                   }}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-semibold"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
                 >
                   <option value="HOLIDAY">সাধারণ ছুটি (Holiday)</option>
                   <option value="VACATION">দীর্ঘ অবকাশ (Vacation)</option>
@@ -418,23 +410,23 @@ export const AcademicCalendarView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'শুরুর তারিখ' : 'Start Date'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শুরুর তারিখ' : 'Start Date'}</label>
                   <input
                     type="date"
                     value={formState.startDate}
                     onChange={e => setFormState({ ...formState, startDate: e.target.value })}
                     required
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'সমাপ্তির তারিখ' : 'End Date'}</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'সমাপ্তির তারিখ' : 'End Date'}</label>
                   <input
                     type="date"
                     value={formState.endDate}
                     onChange={e => setFormState({ ...formState, endDate: e.target.value })}
                     required
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                    className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                   />
                 </div>
               </div>
@@ -445,25 +437,25 @@ export const AcademicCalendarView: React.FC = () => {
                   id="isHolidayCheck"
                   checked={formState.isHoliday}
                   onChange={e => setFormState({ ...formState, isHoliday: e.target.checked })}
-                  className="rounded text-teal-700 focus:ring-teal-500 w-4 h-4 cursor-pointer"
+                  className="rounded text-teal-700 dark:text-teal-400 focus:ring-teal-500 w-4 h-4 cursor-pointer"
                 />
-                <label htmlFor="isHolidayCheck" className="text-xs font-bold text-slate-700 cursor-pointer">
+                <label htmlFor="isHolidayCheck" className="text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
                   {isBn ? 'মাদ্রাসা বা পাঠদান বন্ধ থাকবে (অফিসিয়াল ছুটি)' : 'Off Day / Institutional Holiday'}
                 </label>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isBn ? 'বিবরণ বা নোটিশ' : 'Description'}</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'বিবরণ বা নোটিশ' : 'Description'}</label>
                 <textarea
                   rows={2}
                   value={formState.description}
                   onChange={e => setFormState({ ...formState, description: e.target.value })}
                   placeholder="ছুটি বা ইভেন্টের অতিরিক্ত তথ্য..."
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2"
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   type="button"
                   variant="outline"
@@ -483,6 +475,25 @@ export const AcademicCalendarView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!eventToDelete}
+        onClose={() => setEventToDelete(null)}
+        onConfirm={() => {
+          if (eventToDelete) {
+            academicScheduleService.deleteCalendarEvent(eventToDelete);
+            setVersion(v => v + 1);
+            setEventToDelete(null);
+          }
+        }}
+        title={isBn ? 'ইভেন্ট ডিলিট নিশ্চিতকরণ' : 'Confirm Event Deletion'}
+        message={isBn ? 'এই ইভেন্টটি ক্যালেন্ডার থেকে মুছে ফেলতে চান?' : 'Delete this calendar event?'}
+        confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
+
     </div>
   );
 };

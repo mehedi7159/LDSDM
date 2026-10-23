@@ -24,6 +24,7 @@ import {
 import { formatBanglaNumber } from '../../services/utils';
 import { FUND_METAS, FinanceFilterCategory } from './types';
 import { Button } from '../ui/Button';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useApp } from '../../context/AppContext';
 import { LedgerStatementModal } from './LedgerStatementModal';
 
@@ -162,24 +163,30 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
     showToast(isBn ? 'রোজনামচা এক্সপোর্ট সফল হয়েছে!' : 'Exported to CSV successfully!');
   };
 
+  const [txToDelete, setTxToDelete] = useState<{ id: string; voucher: string } | null>(null);
+
   const handleDelete = (id: string, voucher: string) => {
-    if (confirm(isBn ? `আপনি কি নিশ্চিতভাবে ভাউচার নং ${voucher} মুছে ফেলতে চান?` : `Are you sure you want to delete voucher ${voucher}?`)) {
-      onDeleteTransaction(id);
-      showToast(isBn ? `ভাউচার ${voucher} মুছে ফেলা হয়েছে!` : `Voucher ${voucher} deleted!`);
-    }
+    setTxToDelete({ id, voucher });
+  };
+
+  const confirmDelete = () => {
+    if (!txToDelete) return;
+    onDeleteTransaction(txToDelete.id);
+    showToast(isBn ? `ভাউচার ${txToDelete.voucher} মুছে ফেলা হয়েছে!` : `Voucher ${txToDelete.voucher} deleted!`);
+    setTxToDelete(null);
   };
 
   return (
     <div className="space-y-4">
       {/* Pillar Selection Chips */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
           <button
             onClick={() => setPillarFilter('ALL')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'ALL'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -191,7 +198,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'STUDENT_FEES'
                 ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200/60'
+                : 'bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 hover:bg-blue-100 border border-blue-200/60'
             }`}
           >
             <GraduationCap className="w-3.5 h-3.5" />
@@ -203,7 +210,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'DONATIONS'
                 ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60'
+                : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200/60'
             }`}
           >
             <HeartHandshake className="w-3.5 h-3.5" />
@@ -215,7 +222,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'TEACHER_SALARY'
                 ? 'bg-rose-600 text-white shadow-xs'
-                : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200/60'
+                : 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 hover:bg-rose-100 border border-rose-200/60'
             }`}
           >
             <CreditCard className="w-3.5 h-3.5" />
@@ -227,7 +234,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'DEVELOPMENT'
                 ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60'
+                : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 border border-amber-200/60'
             }`}
           >
             <Building2 className="w-3.5 h-3.5" />
@@ -239,7 +246,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'OTHERS'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200/60'
+                : 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 hover:bg-purple-100 border border-purple-200/60'
             }`}
           >
             <Receipt className="w-3.5 h-3.5" />
@@ -249,17 +256,17 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
       </div>
 
       {/* Filter Control Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
           {/* Search Box */}
           <div className="lg:col-span-4 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={isBn ? 'রসিদ নং, ছাত্রের নাম, দাতা বা খাত খুঁজুন...' : 'Search voucher, name, donor...'}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
 
@@ -268,7 +275,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as any)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="ALL">{isBn ? 'সকল ধরন (All Type)' : 'All Type'}</option>
               <option value="INCOME">{isBn ? 'শুধু জমা / আয় (Income)' : 'Income Only'}</option>
@@ -281,7 +288,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             <select
               value={fundFilter}
               onChange={(e) => setFundFilter(e.target.value as any)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="ALL">{isBn ? 'সকল তহবিল (All Funds)' : 'All Funds'}</option>
               {(Object.keys(FUND_METAS) as FundType[]).map(f => (
@@ -297,7 +304,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             <select
               value={dateFilterMode}
               onChange={(e) => setDateFilterMode(e.target.value as any)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="THIS_MONTH">{isBn ? 'চলতি মাস' : 'This Month'}</option>
               <option value="TODAY">{isBn ? 'আজকের দিন' : 'Today'}</option>
@@ -310,27 +317,27 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
 
         {/* Custom Date Range Picker */}
         {dateFilterMode === 'CUSTOM' && (
-          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-            <span className="font-bold text-slate-700">{isBn ? 'তারিখ নির্বাচন:' : 'Select Range:'}</span>
+          <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+            <span className="font-bold text-slate-700 dark:text-slate-200">{isBn ? 'তারিখ নির্বাচন:' : 'Select Range:'}</span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1 text-xs"
             />
-            <span className="text-slate-400">থেকে</span>
+            <span className="text-slate-400 dark:text-slate-500">থেকে</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1 text-xs"
             />
           </div>
         )}
 
         {/* Action Buttons: Export & Print */}
-        <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 gap-2">
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+        <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 gap-2">
+          <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-300">
             <span>{isBn ? `মোট এন্ট্রি: ${aggregates.count} টি` : `Total Entries: ${aggregates.count}`}</span>
           </div>
 
@@ -341,7 +348,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
               variant="secondary"
               className="text-xs font-semibold"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
               <span>{isBn ? 'এক্সেল / CSV' : 'Export CSV'}</span>
             </Button>
             <Button
@@ -359,24 +366,24 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
 
       {/* Aggregate Stats Summary Card */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
+        <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-emerald-800 uppercase block">{isBn ? 'ফিল্টারকৃত মোট আয়' : 'Total Inflow'}</span>
-            <span className="text-lg font-black text-emerald-900 font-mono">
+            <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase block">{isBn ? 'ফিল্টারকৃত মোট আয়' : 'Total Inflow'}</span>
+            <span className="text-lg font-black text-emerald-900 dark:text-emerald-200 font-mono">
               + ৳{isBn ? formatBanglaNumber(aggregates.income) : aggregates.income.toLocaleString()}
             </span>
           </div>
-          <ArrowDownLeft className="w-6 h-6 text-emerald-600 opacity-80" />
+          <ArrowDownLeft className="w-6 h-6 text-emerald-600 dark:text-emerald-400 opacity-80" />
         </div>
 
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center justify-between">
+        <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl p-3 flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-rose-800 uppercase block">{isBn ? 'ফিল্টারকৃত মোট ব্যয়' : 'Total Outflow'}</span>
-            <span className="text-lg font-black text-rose-900 font-mono">
+            <span className="text-[11px] font-bold text-rose-800 dark:text-rose-300 uppercase block">{isBn ? 'ফিল্টারকৃত মোট ব্যয়' : 'Total Outflow'}</span>
+            <span className="text-lg font-black text-rose-900 dark:text-rose-200 font-mono">
               - ৳{isBn ? formatBanglaNumber(aggregates.expense) : aggregates.expense.toLocaleString()}
             </span>
           </div>
-          <ArrowUpRight className="w-6 h-6 text-rose-600 opacity-80" />
+          <ArrowUpRight className="w-6 h-6 text-rose-600 dark:text-rose-400 opacity-80" />
         </div>
 
         <div className="bg-slate-900 text-white rounded-xl p-3 flex items-center justify-between">
@@ -386,15 +393,15 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
               ৳{isBn ? formatBanglaNumber(aggregates.balance) : aggregates.balance.toLocaleString()}
             </span>
           </div>
-          <Receipt className="w-6 h-6 text-slate-400 opacity-80" />
+          <Receipt className="w-6 h-6 text-slate-400 dark:text-slate-500 opacity-80" />
         </div>
       </div>
 
       {/* Main Transactions Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="py-3 px-3.5 font-bold">{isBn ? 'ভাউচার নং' : 'Voucher'}</th>
                 <th className="py-3 px-3 font-bold">{isBn ? 'তারিখ' : 'Date'}</th>
@@ -405,10 +412,10 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
                 <th className="py-3 px-3 font-bold text-center">{isBn ? 'একশন' : 'Actions'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-400 dark:text-slate-500">
                     {isBn ? 'কোনো লেনদেনের রেকর্ড পাওয়া যায়নি।' : 'No transactions found.'}
                   </td>
                 </tr>
@@ -418,34 +425,34 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
                   const isIncome = tx.type === 'INCOME';
                   return (
                     <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3.5 font-mono font-bold text-slate-900">
+                      <td className="py-3 px-3.5 font-mono font-bold text-slate-900 dark:text-white">
                         {tx.voucherNo}
                       </td>
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {tx.date}
                       </td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1.5">
                           <span className={`w-2 h-2 rounded-full ${isIncome ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                          <span className="font-bold text-slate-800">{tx.categoryName || tx.category}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100">{tx.categoryName || tx.category}</span>
                         </div>
                         <span className={`inline-block mt-0.5 text-[10px] font-semibold px-1.5 py-0.2 rounded border ${fundMeta.bg} ${fundMeta.border} ${fundMeta.color}`}>
                           {isBn ? fundMeta.nameBn : fundMeta.name}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-slate-800 font-medium">
+                      <td className="py-3 px-3 text-slate-800 dark:text-slate-100 font-medium">
                         {tx.studentNameBn || tx.studentName || tx.payerOrPayee}
-                        {tx.classLevel && <span className="ml-1 text-[10px] text-slate-500">[{tx.classLevel}]</span>}
-                        {tx.contactNo && <div className="text-[10px] text-slate-400 font-mono">{tx.contactNo}</div>}
+                        {tx.classLevel && <span className="ml-1 text-[10px] text-slate-500 dark:text-slate-400">[{tx.classLevel}]</span>}
+                        {tx.contactNo && <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{tx.contactNo}</div>}
                       </td>
-                      <td className="py-3 px-3 text-slate-600 max-w-xs truncate" title={tx.description}>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-300 max-w-xs truncate" title={tx.description}>
                         {tx.description || '---'}
                       </td>
                       <td className="py-3 px-3 text-right font-black font-mono whitespace-nowrap">
-                        <span className={isIncome ? 'text-emerald-700' : 'text-rose-700'}>
+                        <span className={isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}>
                           {isIncome ? '+' : '-'} ৳{isBn ? formatBanglaNumber(tx.amount) : tx.amount.toLocaleString()}
                         </span>
-                        <div className="text-[10px] text-slate-400 font-normal font-sans">
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal font-sans">
                           {tx.paymentMethod}
                         </div>
                       </td>
@@ -453,7 +460,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => onShowReceipt(tx)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 rounded-lg transition-colors"
                             title={isBn ? 'রসিদ প্রিন্ট করুন' : 'Print Voucher'}
                           >
                             <Printer className="w-4 h-4" />
@@ -492,6 +499,18 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
           onClose={() => setShowStatementModal(false)}
         />
       )}
+
+      {/* Delete Voucher Confirmation */}
+      <ConfirmDialog
+        isOpen={!!txToDelete}
+        onClose={() => setTxToDelete(null)}
+        onConfirm={confirmDelete}
+        title={isBn ? 'ভাউচার ডিলিট নিশ্চিতকরণ' : 'Confirm Voucher Deletion'}
+        message={txToDelete ? (isBn ? `আপনি কি নিশ্চিতভাবে ভাউচার নং ${txToDelete.voucher} মুছে ফেলতে চান?` : `Are you sure you want to delete voucher ${txToDelete.voucher}?`) : ''}
+        confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
     </div>
   );
 };

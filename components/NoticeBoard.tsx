@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 // =========================================================================
 // HELPER: Category & Priority Badges and Styles
@@ -731,6 +732,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [editingNotice, setEditingNotice] = useState<NoticeItem | null>(null);
+  const [noticeToDelete, setNoticeToDelete] = useState<NoticeItem | null>(null);
   const [selectedNoticeForModal, setSelectedNoticeForModal] = useState<NoticeItem | null>(null);
 
   // Form states
@@ -1124,11 +1126,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                         </button>
 
                         <button
-                          onClick={() => {
-                            if (window.confirm(isBn ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?')) {
-                              deleteNotice(notice.id);
-                            }
-                          }}
+                          onClick={() => setNoticeToDelete(notice)}
                           className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition cursor-pointer"
                           title={isBn ? 'মুছে ফেলুন' : 'Delete Notice'}
                         >
@@ -1374,6 +1372,25 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+
+
+      {/* Delete Notice Confirmation */}
+      <ConfirmDialog
+        isOpen={!!noticeToDelete}
+        onClose={() => setNoticeToDelete(null)}
+        onConfirm={() => {
+          if (noticeToDelete) {
+            deleteNotice(noticeToDelete.id);
+            setNoticeToDelete(null);
+          }
+        }}
+        title={isBn ? 'নোটিশ ডিলিট নিশ্চিতকরণ' : 'Confirm Notice Deletion'}
+        message={isBn ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?'}
+        highlightText={noticeToDelete ? noticeToDelete.title : undefined}
+        confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
 
     </div>
   );
