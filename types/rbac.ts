@@ -173,12 +173,6 @@ export interface InstitutionMember {
   phone?: string;
   password?: string; // Stored securely for fallback authentication
   roleId: string; // References CustomRole.id in the same institution
-  /**
-   * Multi-role support: additional CustomRole ids held alongside
-   * `roleId` (e.g. ['role_teacher'] for an accountant who also teaches).
-   * Optional — members without it are single-role, as before.
-   */
-  additionalRoleIds?: string[];
   requestedRole?: string; // Stored during initial sign up
   status: MemberStatus;
   assignedClasses?: string[];
@@ -289,13 +283,6 @@ export interface AuthorizationContext {
   institutionId?: string;
   member?: InstitutionMember | null;
   role?: CustomRole | null;
-  /**
-   * Multi-role support: the person's OTHER role documents. `permissions`
-   * already contains the union of `role` + `additionalRoles` grants;
-   * checkPermission also accepts a scope when ANY of these roles' scopes
-   * allows it. Absent/empty for single-role users (behaviour unchanged).
-   */
-  additionalRoles?: CustomRole[] | null;
   permissions: Set<string>;
   dataScopes: DataScope;
 }

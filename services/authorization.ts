@@ -149,23 +149,13 @@ export function checkPermission(
     return false;
   }
 
-  // Level 3: Data Scope check.
-  // Single-role: exactly the historical formula (the role's scopes
-  // merged with the member's overrides). Multi-role: the scope passes
-  // when ANY of the person's roles allows it — the scope-level twin of
-  // the permission union above.
-  const scopeRoles: Array<CustomRole | null | undefined> = [
-    authCtx.role,
-    ...(authCtx.additionalRoles || [])
-  ];
-  const rolesToCheck = scopeRoles.length > 0 ? scopeRoles : [null];
-  return rolesToCheck.some(roleDoc => {
-    const effectiveScope: DataScope = {
-      ...(roleDoc?.dataScopes || {}),
-      ...(authCtx.member?.dataScopes || {})
-    };
-    return evaluateDataScope(effectiveScope, scopeRequirements);
-  });
+  // Level 3: Data Scope check
+  const effectiveScope: DataScope = {
+    ...(authCtx.role?.dataScopes || {}),
+    ...(authCtx.member?.dataScopes || {})
+  };
+
+  return evaluateDataScope(effectiveScope, scopeRequirements);
 }
 
 /**
@@ -176,45 +166,27 @@ export function buildAuthorizationContext(
   claims: Record<string, any> | null,
   member: InstitutionMember | null,
   role: CustomRole | null,
-  currentInstitutionId?: string,
-  /**
-   * Multi-role support: the person's additional role documents. Their
-   * grants are UNIONED into the permission set, and checkPermission
-   * accepts a scope when any role's scope allows it. Omit (or pass an
-   * empty list) for single-role users — the resulting context is then
-   * identical to the historical single-role one.
-   */
-  additionalRoles?: CustomRole[] | null
+  currentInstitutionId?: string
 ): AuthorizationContext {
   const isSuper = isVerifiedSuperAdmin(user, claims);
   const email = user?.email || '';
   const uid = user?.uid || '';
 
-  const allRoles: CustomRole[] = [
-    ...(role ? [role] : []),
-    ...((additionalRoles || []).filter(Boolean) as CustomRole[])
-  ];
-
-  // Determine if this user is an admin of the specified institution.
-  // Multi-role: ANY held role can confer institution-admin status
-  // (for a single role this is the historical check, unchanged).
-  const isInstAdmin =
-    isSuper ||
+  // Determine if this user is an admin of the specified institution
+  const isInstAdmin = 
+    isSuper || 
     (claims?.institutionId === currentInstitutionId && claims?.role === 'institution_admin') ||
-    allRoles.some(r => r?.name === 'institution_admin' || r?.permissions?.includes('*')) ||
+    role?.name === 'institution_admin' ||
+    role?.permissions.includes('*') ||
     false;
 
   const permissionsSet = new Set<string>();
 
   if (isSuper || isInstAdmin) {
     permissionsSet.add('*');
-  } else {
-    for (const r of allRoles) {
-      if (r?.isActive && r.permissions) {
-        for (const p of r.permissions) {
-          permissionsSet.add(p);
-        }
-      }
+  } else if (role?.isActive && role.permissions) {
+    for (const p of role.permissions) {
+      permissionsSet.add(p);
     }
   }
 
@@ -237,7 +209,6 @@ export function buildAuthorizationContext(
     institutionId: currentInstitutionId || member?.institutionId,
     member,
     role,
-    additionalRoles: additionalRoles && additionalRoles.length > 0 ? additionalRoles : undefined,
     permissions: permissionsSet,
     dataScopes: effectiveDataScopes
   };
