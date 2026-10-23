@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
@@ -86,7 +87,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // RBAC Permission checks
-  const isOwner = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwner = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canView = isOwner || hasPermission('students.view');
   const canCreate = isOwner || hasPermission('students.create');
   const canEdit = isOwner || hasPermission('students.edit');

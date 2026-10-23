@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { RemarkRecord } from '../types';
@@ -16,7 +17,7 @@ interface AttendanceEntryProps {
 
 export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, initialMode = 'students' }) => {
   const { students, exams, classes, remarks, updateRemark, t, language, currentUser, isSuperAdmin, isAdmin, authUser } = useApp();
-  const isOwner = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwner = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
   // Mode: 'daily' (modern daily tracking) vs 'exam_remarks' (term exam rollup)
   const [mainTab, setMainTab] = useState<'daily' | 'exam_remarks'>('daily');

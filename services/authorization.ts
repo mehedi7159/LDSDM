@@ -15,7 +15,14 @@ import type {
   Permission 
 } from '../types/rbac';
 
-export const PLATFORM_SUPERADMIN_EMAIL = 'mehedihasansagor26@gmail.com';
+import { SUPER_ADMIN_EMAIL } from './appConfig';
+
+/**
+ * Single-sourced from services/appConfig.ts (env-overridable via
+ * VITE_SUPER_ADMIN_EMAIL, historical address as fallback). Kept under its
+ * existing name for backwards compatibility with existing imports.
+ */
+export const PLATFORM_SUPERADMIN_EMAIL = SUPER_ADMIN_EMAIL;
 
 /**
  * Verified Platform Super Admin Check

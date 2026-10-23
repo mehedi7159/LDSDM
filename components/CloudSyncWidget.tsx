@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -249,7 +250,7 @@ export const CloudSyncWidget: React.FC = () => {
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-xs font-mono backdrop-blur-xs border border-white/15">
                 <Mail size={14} className="text-emerald-400" />
-                <span className="text-slate-100 font-semibold">{adminEmail || authUser?.email || 'mehedihasansagor26@gmail.com'}</span>
+                <span className="text-slate-100 font-semibold">{adminEmail || authUser?.email || SUPER_ADMIN_EMAIL}</span>
               </div>
 
               {authUser ? (
@@ -358,7 +359,7 @@ export const CloudSyncWidget: React.FC = () => {
               </span>
               <div className="flex items-center gap-1.5 mt-1 text-xs font-bold text-slate-700 truncate">
                 <Mail size={13} className="text-blue-500 shrink-0" />
-                <span className="truncate">{adminEmail || 'mehedihasansagor26@gmail.com'}</span>
+                <span className="truncate">{adminEmail || SUPER_ADMIN_EMAIL}</span>
               </div>
             </div>
 

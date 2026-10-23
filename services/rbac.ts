@@ -12,7 +12,12 @@ import type {
   Permission 
 } from '../types/rbac';
 
-export const SUPER_ADMIN_EMAIL = 'mehedihasansagor26@gmail.com';
+/**
+ * The platform owner's email lives in exactly one place:
+ * services/appConfig.ts (env-overridable via VITE_SUPER_ADMIN_EMAIL).
+ * Re-exported here for backwards compatibility with existing imports.
+ */
+export { SUPER_ADMIN_EMAIL } from './appConfig';
 
 /**
  * Pre-defined Default Role Templates (Templates ONLY, never hardcoded global roles).
@@ -34,20 +39,13 @@ export const DEFAULT_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     displayNameBn: 'অধ্যক্ষ / সুপারিনটেনডেন্ট',
     displayNameEn: 'Principal / Superintendent',
     description: 'একাডেমিক কার্যক্রম, পরীক্ষার ফলাফল ও প্রাতিষ্ঠানিক রিপোর্ট তদারকি।',
-    permissions: [
-      'students.view', 'students.edit',
-      'teachers.view',
-      'classes.view',
-      'subjects.view',
-      'attendance.view',
-      'exams.view',
-      'marks.view',
-      'results.view', 'results.print',
-      'fees.view',
-      'finance.view',
-      'reports.view', 'reports.print',
-      'institution.settings.view'
-    ],
+    // Phase 6 (RBAC Option A): aligned to the canonical hardcoded behaviour
+    // in AppContext.hasPermission, which grants a principal EVERY permission
+    // except the two explicitly vetoed there ('system.backup' and
+    // 'system.audit' are denied at the hasPermission layer before this
+    // role's grants are consulted). The wildcard is the only faithful
+    // expression of "everything except the vetoed pair".
+    permissions: ['*'],
     defaultScopes: { allClasses: true, allSubjects: true }
   },
   {
@@ -56,14 +54,22 @@ export const DEFAULT_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     displayNameBn: 'সহকারী শিক্ষক / শিক্ষিকা',
     displayNameEn: 'Assistant Teacher / Faculty',
     description: 'বরাদ্দকৃত ক্লাসের হাজিরা গ্রহণ, নম্বর প্রদান ও মূল্যায়ন পরিচালনা।',
+    // Phase 6 (RBAC Option A): aligned to AppContext.hasPermission's teacher
+    // branch, which grants the attendance./marks./subjects. prefixes in
+    // full (any action) plus 'reports.view' and 'students.view'. The
+    // 'classes.view', 'exams.view' and 'results.view' keys were already
+    // granted through this template layer and are kept. NOTE: 'results.print'
+    // is granted by NEITHER the hardcoded branch nor the previous template,
+    // so it is deliberately NOT added.
     permissions: [
       'students.view',
       'classes.view',
-      'subjects.view',
-      'attendance.view', 'attendance.create', 'attendance.edit',
+      'subjects.*',
+      'attendance.*',
       'exams.view',
-      'marks.view', 'marks.create', 'marks.edit',
-      'results.view'
+      'marks.*',
+      'results.view',
+      'reports.view'
     ],
     defaultScopes: { allClasses: false, classes: [], allSubjects: false, subjects: [] }
   },
@@ -73,11 +79,17 @@ export const DEFAULT_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     displayNameBn: 'হিসাবরক্ষক / ক্যাশিয়ার',
     displayNameEn: 'Accountant / Cashier',
     description: 'বেতন, ফি আদায়, ভাউচার এন্ট্রি ও আর্থিক হিসাব ব্যবস্থাপনা।',
+    // Phase 6 (RBAC Option A): aligned to AppContext.hasPermission's
+    // accountant branch, which grants the finance./fees./payments. prefixes
+    // in full (any action — including e.g. 'fees.delete', which the previous
+    // enumerated list did not name) plus 'reports.view' and 'students.view'.
+    // 'reports.print' was already granted through this template layer and
+    // is kept.
     permissions: [
       'students.view',
-      'fees.view', 'fees.create', 'fees.edit',
-      'payments.view', 'payments.create', 'payments.edit',
-      'finance.view', 'finance.create', 'finance.edit',
+      'fees.*',
+      'payments.*',
+      'finance.*',
       'reports.view', 'reports.print'
     ],
     defaultScopes: { allClasses: true }
@@ -108,8 +120,50 @@ export const DEFAULT_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
       'reports.view'
     ],
     defaultScopes: { allClasses: true }
+  },
+  {
+    // Phase 6 (RBAC Option A): the guardian/parent role previously existed
+    // ONLY as a hardcoded branch in AppContext.hasPermission (granting
+    // students.view, marks.view, attendance.view, fees.view) with no
+    // template at all. This template mirrors that branch exactly so the
+    // CustomRole layer can represent the role; it adds no new grant.
+    templateKey: 'guardian',
+    defaultName: 'guardian',
+    displayNameBn: 'অভিভাবক',
+    displayNameEn: 'Guardian / Parent',
+    description: 'সন্তানের তথ্য, হাজিরা, নম্বর ও ফি বিবরণী পর্যবেক্ষণ।',
+    permissions: [
+      'students.view',
+      'marks.view',
+      'attendance.view',
+      'fees.view'
+    ],
+    defaultScopes: { allClasses: true }
   }
 ];
+
+/**
+ * Phase 6 (RBAC Option A): conservative template merge.
+ *
+ * Given a stored institution role, if it corresponds to a default template
+ * (matched by the seeded id `role_<templateKey>` or by exact template name),
+ * return a copy whose permission list is the UNION of the stored grants and
+ * the template's grants. This only ever ADDS template keys that a stored
+ * role is missing (e.g. roles seeded from an older template revision); it
+ * never removes a stored grant and never touches dataScopes. Roles that do
+ * not match a template are returned unchanged.
+ */
+export function mergeRolePermissionsWithTemplate(role: CustomRole): CustomRole {
+  if (!role) return role;
+  const template = DEFAULT_ROLE_TEMPLATES.find(
+    t => role.id === `role_${t.templateKey}` || role.name === t.defaultName
+  );
+  if (!template) return role;
+  const stored: string[] = Array.isArray(role.permissions) ? role.permissions : [];
+  const missing = template.permissions.filter(p => !stored.includes(p));
+  if (missing.length === 0) return role;
+  return { ...role, permissions: [...stored, ...missing] };
+}
 
 /**
  * Generate a unique custom role ID for an institution
@@ -131,7 +185,7 @@ export async function initializeInstitutionDefaultRoles(
   const existingSnap = await getDocs(rolesCol);
 
   if (!existingSnap.empty) {
-    return existingSnap.docs.map(d => d.data() as CustomRole);
+    return existingSnap.docs.map(d => mergeRolePermissionsWithTemplate(d.data() as CustomRole));
   }
 
   const createdRoles: CustomRole[] = [];
@@ -171,7 +225,7 @@ export async function getInstitutionRoles(institutionId: string): Promise<Custom
   try {
     const rolesCol = collection(db, 'institutions', institutionId, 'roles');
     const snap = await getDocs(rolesCol);
-    return snap.docs.map(d => d.data() as CustomRole);
+    return snap.docs.map(d => mergeRolePermissionsWithTemplate(d.data() as CustomRole));
   } catch (err) {
     console.warn(`[RBAC] Failed to fetch roles for institution ${institutionId}:`, err);
     return [];

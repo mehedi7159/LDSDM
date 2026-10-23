@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 /**
  * Comprehensive Firestore Rules Logic Evaluation Test Suite
  * 
@@ -5,7 +6,7 @@
  * - Verifies Least-Privilege access to `/institution/main_store`
  * - Verifies denial of unauthenticated access
  * - Verifies denial of ordinary authenticated users (teachers, guardians, staff)
- * - Verifies guaranteed non-lockout of authoritative Owner (mehedihasansagor26@gmail.com)
+ * - Verifies guaranteed non-lockout of authoritative Owner (SUPER_ADMIN_EMAIL)
  * - Verifies custom claims and database admin evaluations
  * - Verifies recursive wildcard catch-all default-deny behavior
  */
@@ -67,7 +68,7 @@ export class FirestoreRulesEvaluator {
     if (adminDoc && adminDoc.role === 'admin') return true;
 
     // 3. Authoritative Owner Email
-    if (auth.token.email && auth.token.email.toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase()) {
+    if (auth.token.email && auth.token.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
       return true;
     }
 
@@ -79,7 +80,7 @@ export class FirestoreRulesEvaluator {
     if (!this.isSignedIn(request)) return false;
     const auth = request.auth!;
     return (
-      (auth.token.email != null && auth.token.email.toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase()) ||
+      (auth.token.email != null && auth.token.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) ||
       auth.token.isSuperAdmin === true
     );
   }
@@ -249,7 +250,7 @@ const authoritativeOwnerRequest: RulesRequest = {
   auth: {
     uid: 'owner_uid_777',
     token: {
-      email: 'mehedihasansagor26@gmail.com'
+      email: SUPER_ADMIN_EMAIL
     }
   }
 };
@@ -350,11 +351,11 @@ runTest('TEST 15: Ordinary user CAN read institution roles /institutions/inst1/r
 // ============================================================================
 // Group 3: Authoritative Owner & Administrators (Must ALL be ALLOWED)
 // ============================================================================
-runTest('TEST 16: Authoritative Owner (mehedihasansagor26@gmail.com) CAN read /institution/main_store', () => {
+runTest('TEST 16: Authoritative Owner (' + SUPER_ADMIN_EMAIL + ') CAN read /institution/main_store', () => {
   assert.strictEqual(evaluator.evaluateRead('/institution/main_store', authoritativeOwnerRequest), true);
 });
 
-runTest('TEST 17: Authoritative Owner (mehedihasansagor26@gmail.com) CAN write to /institution/main_store', () => {
+runTest('TEST 17: Authoritative Owner (' + SUPER_ADMIN_EMAIL + ') CAN write to /institution/main_store', () => {
   assert.strictEqual(evaluator.evaluateWrite('/institution/main_store', authoritativeOwnerRequest), true);
 });
 

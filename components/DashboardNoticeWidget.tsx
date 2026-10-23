@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { NoticeItem, NoticeCategory, NoticePriority, NoticeTarget } from '../types';
@@ -25,7 +26,7 @@ interface DashboardNoticeWidgetProps {
 
 export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ onNavigateToNotices }) => {
   const { notices = [], addNotice, isAdmin, isSuperAdmin, authUser, language, classes = [] } = useApp();
-  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'urgent' | 'diary' | 'holiday'>('all');

@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { NoticeItem, NoticeCategory, NoticePriority, NoticeTarget } from '../types';
@@ -111,7 +112,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
   className = ''
 }) => {
   const { notices = [], language, isAdmin, isSuperAdmin, authUser, addNotice, classes = [] } = useApp();
-  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
   const isBn = language === 'bn';
 
@@ -723,7 +724,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
     schoolProfile 
   } = useApp();
 
-  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
   const isBn = language === 'bn';
 

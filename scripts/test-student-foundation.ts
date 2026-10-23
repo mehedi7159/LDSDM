@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import { 
   normalizeStudent, 
   filterStudents, 
@@ -305,8 +306,8 @@ assert(
 // TEST 9: Super Admin retains full student access
 // ============================================================================
 console.log('\n--- TEST 9: Super Admin Full Access ---');
-const superAdminUser = { uid: 'superadmin_uid_01', email: 'mehedihasansagor26@gmail.com' };
-const superAdminClaims = { role: 'admin', isSuperAdmin: true, email: 'mehedihasansagor26@gmail.com' };
+const superAdminUser = { uid: 'superadmin_uid_01', email: SUPER_ADMIN_EMAIL };
+const superAdminClaims = { role: 'admin', isSuperAdmin: true, email: SUPER_ADMIN_EMAIL };
 
 const isSuper = isVerifiedSuperAdmin(superAdminUser as any, superAdminClaims);
 const superAdminContext = buildAuthorizationContext(
@@ -330,7 +331,7 @@ assert(
   superCanEdit === true &&
   superCanDelete === true &&
   superCanArchive === true,
-  'TEST 9: Super Admin (mehedihasansagor26@gmail.com) retains full student management access'
+  'TEST 9: Super Admin (' + SUPER_ADMIN_EMAIL + ') retains full student management access'
 );
 
 // ============================================================================

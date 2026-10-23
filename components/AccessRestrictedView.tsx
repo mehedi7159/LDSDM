@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import { useApp } from '../context/AppContext';
 import { Lock, ShieldAlert, Sparkles, FileSpreadsheet } from 'lucide-react';
 import { AdminAuthModal } from './AdminAuthModal';
@@ -40,7 +41,7 @@ export const AccessRestrictedView: React.FC<AccessRestrictedViewProps> = ({ modu
             <span>{language === 'bn' ? 'অনুমোদিত এডমিন ইমেইল:' : 'Authorized Administrator:'}</span>
           </div>
           <p className="font-mono text-[11px] font-semibold text-blue-700 bg-white p-2 rounded-lg border border-slate-200 truncate">
-            mehedihasansagor26@gmail.com
+            {SUPER_ADMIN_EMAIL}
           </p>
         </div>
 

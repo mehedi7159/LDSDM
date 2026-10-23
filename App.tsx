@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from './services/appConfig';
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -108,7 +109,7 @@ const AppContent = () => {
 
   // Helper function to resolve tab authorization
   const isTabAllowedForUser = (tab: string): boolean => {
-    const isOwnerAdmin = isSuperAdmin || isAdmin || currentUser?.role === 'super_admin' || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+    const isOwnerAdmin = isSuperAdmin || isAdmin || currentUser?.role === 'super_admin' || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     if (isOwnerAdmin) return true;
 
     // Principal has administrative access to analytical and management tabs
@@ -263,7 +264,6 @@ const AppContent = () => {
   // States for Result switching
   const [resultMode, setResultMode] = useState<'individual' | 'class'>('individual');
   const [classViewConfig, setClassViewConfig] = useState({ classLevel: classes[0]?.name || '', examId: '' });
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // Verification modal for direct QR code scanning
   const [directVerifyData, setDirectVerifyData] = useState<{ student: any; exam: any } | null>(null);
@@ -306,128 +306,9 @@ const AppContent = () => {
     root.style.setProperty('--ui-font', `'Inter', '${uiFont}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif`);
   }, [schoolProfile.banglaFont, schoolProfile.banglaNumberFont, schoolProfile.uiFont]);
 
-  const handleDownloadTabulation = async () => {
-      const element = document.getElementById('tabulation-sheet');
-      if (!element) {
-          alert('Content not ready');
-          return;
-      }
-      
-      setIsGenerating(true);
-
-      // Dedicated off-screen stage at (0, 0)
-      const stage = document.createElement('div');
-      stage.id = 'tabulation-render-stage';
-      stage.style.position = 'fixed';
-      stage.style.left = '0';
-      stage.style.top = '0';
-      stage.style.zIndex = '-99999';
-
-      try {
-          if (typeof document !== 'undefined' && (document as any).fonts) {
-              await (document as any).fonts.ready.catch(() => {});
-          }
-
-          // Phase 5: the PDF libraries load on demand — only when a
-          // tabulation PDF is actually generated — not in the initial bundle.
-          const [{ jsPDF }, html2canvasModule] = await Promise.all([
-              import('jspdf'),
-              import('html2canvas')
-          ]);
-          const html2canvas = html2canvasModule.default;
-
-          // Measure natural table width
-          const tableEl = element.querySelector('table');
-          const minTargetWidth = 1123; // Exactly 297mm at 96 DPI
-          const contentWidth = Math.max(tableEl ? tableEl.scrollWidth + 32 : element.scrollWidth, minTargetWidth);
-
-          stage.style.width = `${contentWidth}px`;
-          stage.style.backgroundColor = '#ffffff';
-          stage.style.margin = '0';
-          stage.style.padding = '0';
-          stage.style.overflow = 'hidden';
-          stage.style.boxSizing = 'border-box';
-          document.body.appendChild(stage);
-
-          const clone = element.cloneNode(true) as HTMLElement;
-          clone.style.width = `${contentWidth}px`;
-          clone.style.maxWidth = 'none';
-          clone.style.margin = '0';
-          clone.style.boxShadow = 'none';
-          clone.style.backgroundColor = '#ffffff';
-
-          // Ensure all inner scrollers are fully expanded
-          clone.querySelectorAll('.overflow-x-auto').forEach((el: any) => {
-              el.style.overflow = 'visible';
-              el.style.width = '100%';
-              el.style.maxWidth = 'none';
-          });
-
-          // Strip any shadows or unwanted decorations
-          clone.querySelectorAll('*').forEach((el: any) => {
-              if (el.style) el.style.boxShadow = 'none';
-              el.classList.remove('shadow-2xl', 'shadow-xl', 'shadow-lg', 'shadow-md', 'shadow-sm', 'shadow');
-          });
-
-          stage.appendChild(clone);
-          await new Promise(resolve => setTimeout(resolve, 150));
-
-          const canvas = await html2canvas(stage, {
-              scale: 2.2, // Crisp high-res rendering
-              useCORS: true,
-              logging: false,
-              allowTaint: true,
-              backgroundColor: '#ffffff',
-              scrollX: 0,
-              scrollY: 0,
-              x: 0,
-              y: 0,
-              width: contentWidth,
-              height: stage.offsetHeight
-          });
-
-          // Standard A4 Landscape: 297mm x 210mm
-          const pdf = new jsPDF({
-              orientation: 'landscape',
-              unit: 'mm',
-              format: 'a4',
-              compress: true
-          });
-
-          const pageWidth = 297;
-          const pageHeight = 210;
-          const margin = 5; // 5mm uniform margin
-          const printableWidth = pageWidth - (margin * 2); // 287mm
-          const printableHeight = pageHeight - (margin * 2); // 200mm
-
-          // Strictly fit entire tabulation sheet on EXACTLY ONE page without leaving anything out
-          const scaleW = printableWidth / canvas.width;
-          const scaleH = printableHeight / canvas.height;
-          const fitScale = Math.min(scaleW, scaleH);
-
-          const renderWidth = canvas.width * fitScale;
-          const renderHeight = canvas.height * fitScale;
-          const xOffset = margin + Math.max(0, (printableWidth - renderWidth) / 2);
-          const yOffset = margin + Math.max(0, (printableHeight - renderHeight) / 2);
-
-          const imgData = canvas.toDataURL('image/jpeg', 0.96);
-          pdf.addImage(imgData, 'JPEG', xOffset, yOffset, renderWidth, renderHeight, undefined, 'FAST');
-
-          const examName = exams.find(e => e.id === classViewConfig.examId)?.name || 'Exam';
-          pdf.save(`Tabulation_${classViewConfig.classLevel}_${examName}.pdf`);
-      } catch (err) {
-          console.error('Error generating Tabulation PDF:', err);
-          alert('Error generating Tabulation PDF. Please try again.');
-      } finally {
-          if (document.body.contains(stage)) {
-              document.body.removeChild(stage);
-          }
-          setIsGenerating(false);
-      }
-  };
 
   const renderContent = () => {
-    const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+    const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
     switch (activeTab) {
       case 'dashboard': 

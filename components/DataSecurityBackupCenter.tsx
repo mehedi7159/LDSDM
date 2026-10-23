@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
@@ -309,7 +310,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 flex items-center gap-1.5">
                 <ShieldCheck size={13} className="text-indigo-400" />
-                অ্যাডমিন: {authUser?.email || adminEmail || 'mehedihasansagor26@gmail.com'}
+                অ্যাডমিন: {authUser?.email || adminEmail || SUPER_ADMIN_EMAIL}
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
@@ -434,7 +435,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                 <span>ক্লাউড ফায়ারবেস ডেটাবেসে সিঙ্ক করতে গুগল লগইন প্রয়োজন</span>
               </h4>
               <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                আপনার ডেটা বর্তমানে লোকাল মেমোরি ও স্থায়ী ব্রাউজার ভল্টে সম্পূর্ণ সুরক্ষিত আছে। তবে সরাসরি Google Firebase ক্লাউডে অটো-সেভ ও লাইভ সিঙ্ক করতে আপনার অ্যাডমিন জিমেইল (<strong>mehedihasansagor26@gmail.com</strong>) দিয়ে লগইন করুন।
+                আপনার ডেটা বর্তমানে লোকাল মেমোরি ও স্থায়ী ব্রাউজার ভল্টে সম্পূর্ণ সুরক্ষিত আছে। তবে সরাসরি Google Firebase ক্লাউডে অটো-সেভ ও লাইভ সিঙ্ক করতে আপনার অ্যাডমিন জিমেইল (<strong>{SUPER_ADMIN_EMAIL}</strong>) দিয়ে লগইন করুন।
               </p>
             </div>
           </div>

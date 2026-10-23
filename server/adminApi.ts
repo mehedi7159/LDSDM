@@ -1,10 +1,11 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import type { IncomingMessage, ServerResponse } from 'http';
 import fs from 'fs';
 import path from 'path';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
-const PRIMARY_OWNER_EMAIL = 'mehedihasansagor26@gmail.com';
+const PRIMARY_OWNER_EMAIL = SUPER_ADMIN_EMAIL;
 let adminAppInstance: App | null = null;
 
 function getServiceAccountCredential() {

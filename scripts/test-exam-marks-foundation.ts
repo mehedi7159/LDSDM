@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import {
   buildCreateExamPayload,
   buildUpdateExamPayload,
@@ -409,7 +410,7 @@ assert(
   'TEST 14: Regular teacher lacks exams.finalize permission'
 );
 
-const superAdminUser = { uid: 'usr_superadmin', email: 'mehedihasansagor26@gmail.com' } as any;
+const superAdminUser = { uid: 'usr_superadmin', email: SUPER_ADMIN_EMAIL } as any;
 const superAdminClaims = { role: 'admin' };
 const superAdminCtx = buildAuthorizationContext(
   superAdminUser,

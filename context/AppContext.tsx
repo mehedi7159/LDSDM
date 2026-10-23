@@ -43,6 +43,8 @@ import {
   approveInstitutionMember
 } from '../services/rbac';
 import { generateId, deriveRoleFromDesignation } from '../services/utils';
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
+import { buildMainStorePayload } from '../services/mainStorePayload';
 import { buildPublicPortalData } from '../services/publicPortal';
 import {
   dailyAttendanceService,
@@ -362,7 +364,7 @@ const defaultAppUsers: AppUser[] = [
     name: 'Mehedi Hasan Sagor',
     nameBn: 'মেহেদী হাসান সাগর',
     phone: '',
-    email: 'mehedihasansagor26@gmail.com',
+    email: SUPER_ADMIN_EMAIL,
     role: 'super_admin',
     designation: 'প্রতিষ্ঠাতা ও সুপার অ্যাডমিন',
     status: 'active',
@@ -727,7 +729,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authClaims, setAuthClaims] = useState<Record<string, any> | null>(null);
   const [authRole, setAuthRole] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState<string>('mehedihasansagor26@gmail.com');
+  const [adminEmail, setAdminEmail] = useState<string>(SUPER_ADMIN_EMAIL);
   const [mode, setModeState] = useState<AppMode>('viewer');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState<boolean>(false);
@@ -762,15 +764,33 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     permission: Permission, 
     scope?: { classId?: string; subjectId?: string; studentId?: string }
   ): boolean => {
-    const isOwner = (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+    const isOwner = (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     if (isSuperAdmin || isOwner || isAdmin || currentUser?.role === 'super_admin') {
       return true;
     }
 
     const effectiveRole = currentUser?.role || currentMember?.roleId?.replace('role_', '') || userRole;
 
+    // Phase 6 (RBAC Option A): the principal veto is a DENY, not a grant —
+    // it is evaluated before every grant layer, exactly as it was when the
+    // hardcoded branches ran first.
+    if (effectiveRole === 'principal' && (permission === 'system.backup' || permission === 'system.audit')) {
+      return false;
+    }
+
+    // Phase 6 (RBAC Option A): precedence flipped. The CustomRole layer
+    // (currentRole — template-aligned in services/rbac.ts and merged on
+    // load) is now consulted FIRST; the canonical hardcoded role branches
+    // below remain as the fallback for anything that layer does not grant.
+    // Both layers are pure grant checks, so "grant if either grants" keeps
+    // the outcome identical to the previous hardcoded-first order for every
+    // role × permission combination (proven by
+    // scripts/test-rbac-equivalence.ts).
+    if (checkPermission(authContext, permission, scope)) {
+      return true;
+    }
+
     if (effectiveRole === 'principal') {
-      if (permission === 'system.backup' || permission === 'system.audit') return false;
       return true;
     }
 
@@ -788,7 +808,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (permission === 'students.view' || permission === 'marks.view' || permission === 'attendance.view' || permission === 'fees.view') return true;
     }
 
-    return checkPermission(authContext, permission, scope);
+    return false;
   };
 
   const refreshInstitutionRoles = async () => {
@@ -971,7 +991,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const currentUser: AppUser | null = React.useMemo(() => {
     if (authUser) {
-      const isOwnerAccount = (authUser.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+      const isOwnerAccount = (authUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
       const realDisplayName = authUser.displayName || (isOwnerAccount ? 'Mehedi Hasan Sagor' : (authUser.email?.split('@')[0] || 'User'));
       const realDisplayNameBn = authUser.displayName || (isOwnerAccount ? 'মেহেদী হাসান সাগর' : (authUser.email?.split('@')[0] || 'ব্যবহারকারী'));
 
@@ -1226,7 +1246,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     } catch (e) {}
 
     // Role portal session
-    const isOwner = (user.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+    const isOwner = (user.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     const isAdministrative = user.role === 'super_admin' || user.role === 'principal' || isOwner;
     setAuthUser(null);
     setAdminEmail(user.email || '');
@@ -1307,7 +1327,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           setAdminEmail(user.email);
         }
 
-        const isOwnerAccount = (user.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+        const isOwnerAccount = (user.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
         const realName = user.displayName || (isOwnerAccount ? 'Mehedi Hasan Sagor' : (user.email?.split('@')[0] || 'User'));
         const realNameBn = user.displayName || (isOwnerAccount ? 'মেহেদী হাসান সাগর' : (user.email?.split('@')[0] || 'ব্যবহারকারী'));
 
@@ -1447,9 +1467,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // buildAuthorizationContext always received a null role, so the
   // checkPermission() fallback inside hasPermission always saw an empty
   // permission set and returned false. Wiring it up makes the RBAC layer
-  // live in exactly the fallback role it was designed for — the canonical
-  // grants (owner / super-admin short-circuit and the per-role branches in
-  // hasPermission, driven by users[].role) are unchanged and still win.
+  // live. Phase 6 (RBAC Option A) then flipped the precedence inside
+  // hasPermission: this CustomRole layer is consulted first and the
+  // canonical hardcoded per-role branches remain as its fallback — the
+  // grant outcomes are unchanged (see scripts/test-rbac-equivalence.ts).
   useEffect(() => {
     if (!institutionRoles || institutionRoles.length === 0) return;
     const roleAliases: Record<string, string> = { staff: 'office_staff', parent: 'guardian' };
@@ -1857,36 +1878,37 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     syncTimeoutRef.current = setTimeout(async () => {
       try {
-        const payload = {
-          schoolProfile,
-          students,
-          subjects,
-          teachers,
-          classSubjectAssignments,
-          teacherSubjectAssignments,
-          classTeacherAssignments,
-          exams,
-          examSubjectAssignments,
-          marks,
-          remarks,
-          classes,
-          academicYears,
-          sections,
-          transactions,
-          feeStructures,
-          trashBin,
-          promotionHistory,
-          users,
-          notices,
-          staffLeaves,
-          dailyStudentAttendance,
-          dailyStaffAttendance,
-          classRoutines,
-          syllabusItems,
-          calendarEvents,
-          updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user',
-          updatedAt: new Date().toISOString()
-        };
+        const payload = buildMainStorePayload(
+          {
+            schoolProfile,
+            students,
+            subjects,
+            teachers,
+            classSubjectAssignments,
+            teacherSubjectAssignments,
+            classTeacherAssignments,
+            exams,
+            examSubjectAssignments,
+            marks,
+            remarks,
+            classes,
+            academicYears,
+            sections,
+            transactions,
+            feeStructures,
+            trashBin,
+            promotionHistory,
+            users,
+            notices,
+            staffLeaves,
+            dailyStudentAttendance,
+            dailyStaffAttendance,
+            classRoutines,
+            syllabusItems,
+            calendarEvents
+          },
+          currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user'
+        );
 
         await setDoc(doc(db, 'institution', 'main_store'), payload, { merge: true });
 
@@ -2305,36 +2327,37 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const forcePushToCloud = async () => {
     setCloudStatus('syncing');
     try {
-      const payload = {
-        schoolProfile,
-        students,
-        subjects,
-        teachers,
-        classSubjectAssignments,
-        teacherSubjectAssignments,
-        classTeacherAssignments,
-        exams,
-        examSubjectAssignments,
-        marks,
-        remarks,
-        classes,
-        academicYears,
-        sections,
-        transactions,
-        feeStructures,
-        trashBin,
-        promotionHistory,
-        users,
-        notices,
-        staffLeaves,
-        dailyStudentAttendance,
-        dailyStaffAttendance,
-        classRoutines,
-        syllabusItems,
-        calendarEvents,
-        updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'mehedihasansagor26@gmail.com',
-        updatedAt: new Date().toISOString()
-      };
+      const payload = buildMainStorePayload(
+        {
+          schoolProfile,
+          students,
+          subjects,
+          teachers,
+          classSubjectAssignments,
+          teacherSubjectAssignments,
+          classTeacherAssignments,
+          exams,
+          examSubjectAssignments,
+          marks,
+          remarks,
+          classes,
+          academicYears,
+          sections,
+          transactions,
+          feeStructures,
+          trashBin,
+          promotionHistory,
+          users,
+          notices,
+          staffLeaves,
+          dailyStudentAttendance,
+          dailyStaffAttendance,
+          classRoutines,
+          syllabusItems,
+          calendarEvents
+        },
+        currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || SUPER_ADMIN_EMAIL
+      );
       await setDoc(doc(db, 'institution', 'main_store'), payload, { merge: true });
 
       // Phase 2 (public-data split): refresh the derived public portal
@@ -2406,7 +2429,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const tokenResult = await result.user.getIdTokenResult(true);
         const claims = tokenResult.claims || {};
         const role = typeof claims.role === 'string' ? claims.role : null;
-        const isOwnerAccount = (result.user.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+        const isOwnerAccount = (result.user.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
         const hasAdminAccess = role === 'admin' || isOwnerAccount;
 
         setAuthClaims(claims);
@@ -2449,7 +2472,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const tokenResult = await auth.currentUser.getIdTokenResult(true);
       const claims = tokenResult.claims || {};
       const role = typeof claims.role === 'string' ? claims.role : null;
-      const isOwnerAccount = (auth.currentUser.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+      const isOwnerAccount = (auth.currentUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
       const hasAdminAccess = role === 'admin' || isOwnerAccount;
 
       setAuthClaims(claims);
@@ -2470,7 +2493,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return { success: false, error: 'ইমেইল ও পাসওয়ার্ড প্রদান করুন।' };
     }
 
-    const isOwnerAccount = trimmedEmail.toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+    const isOwnerAccount = trimmedEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
     // 1. Try Firebase Auth
     try {
@@ -2493,7 +2516,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         if (firebaseErr?.code === 'auth/user-not-found') {
           return {
             success: false,
-            error: 'অ্যাডমিন অ্যাকাউন্টটি এখনও ফায়ারবেস অথেনটিকেশনে তৈরি করা হয়নি। ফায়ারবেস কনসোল (Firebase Console -> Authentication -> Users) থেকে "mehedihasansagor26@gmail.com" অ্যাকাউন্টটি তৈরি করুন অথবা অনুমোদিত গুগল সাইন-ইন ব্যবহার করুন।'
+            error: `অ্যাডমিন অ্যাকাউন্টটি এখনও ফায়ারবেস অথেনটিকেশনে তৈরি করা হয়নি। ফায়ারবেস কনসোল (Firebase Console -> Authentication -> Users) থেকে "${SUPER_ADMIN_EMAIL}" অ্যাকাউন্টটি তৈরি করুন অথবা অনুমোদিত গুগল সাইন-ইন ব্যবহার করুন।`
           };
         }
         return {
@@ -2540,7 +2563,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
 
       setActiveAppUserId(foundUser.id);
-      const isOwner = (foundUser.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+      const isOwner = (foundUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
       const isAdministrative = foundUser.role === 'super_admin' || foundUser.role === 'principal' || isOwner;
       setIsAdmin(isAdministrative);
       setAuthRole(foundUser.role);
@@ -2594,7 +2617,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return { success: false, error: 'ইমেইল ও পাসওয়ার্ড প্রদান করুন।' };
     }
 
-    const isOwnerAccount = trimmedEmail.toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+    const isOwnerAccount = trimmedEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     if (isOwnerAccount) {
       return {
         success: false,
@@ -2699,7 +2722,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   ) => {
     const demoConfigs: Record<string, { email: string; name: string; roleId: string; classes?: string[]; subjects?: string[] }> = {
       superadmin: {
-        email: 'mehedihasansagor26@gmail.com',
+        email: SUPER_ADMIN_EMAIL,
         name: 'অধ্যক্ষ / অ্যাডমিন (ডেমো ভিউ)',
         roleId: 'role_institution_admin'
       },
@@ -3861,7 +3884,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           notices: [],
           feeStructures: [],
           updatedAt: new Date().toISOString(),
-          updatedBy: authUser?.email || adminEmail || 'mehedihasansagor26@gmail.com'
+          updatedBy: authUser?.email || adminEmail || SUPER_ADMIN_EMAIL
         }, { merge: true });
       } catch (err) {
         console.warn('Cloud clear notice:', err);

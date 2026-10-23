@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -46,7 +47,7 @@ export const UserRoleManager: React.FC = () => {
   } = useApp();
 
   const safeUsers = Array.isArray(users) ? users : [];
-  const isOwner = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwner = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const ownerDisplayName = authUser?.displayName || (isOwner ? 'Mehedi Hasan Sagor' : (authUser?.email?.split('@')[0] || ''));
 
   const hasDemoUsers = safeUsers.some(u => 

@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -180,7 +181,7 @@ export const AdminReportView: React.FC = () => {
               <h4 className="text-xs font-bold text-slate-900">{language === 'bn' ? 'সুপার অ্যাডমিন সিকিউরিটি গার্ড' : 'Super Admin Policy'}</h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {language === 'bn'
-                  ? 'mehedihasansagor26@gmail.com এর জন্য প্ল্যাটফর্ম-লেভেল ইউনিভার্সাল সিকিউরিটি অথরিটি।'
+                  ? `${SUPER_ADMIN_EMAIL} এর জন্য প্ল্যাটফর্ম-লেভেল ইউনিভার্সাল সিকিউরিটি অথরিটি।`
                   : 'Cryptographically protected root authority.'}
               </p>
             </div>

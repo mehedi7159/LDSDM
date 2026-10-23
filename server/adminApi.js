@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig.ts';
 
-const PRIMARY_OWNER_EMAIL = 'mehedihasansagor26@gmail.com';
+// Single-sourced from services/appConfig.ts (env-overridable via
+// VITE_SUPER_ADMIN_EMAIL, historical address as fallback).
+const PRIMARY_OWNER_EMAIL = SUPER_ADMIN_EMAIL;
 let adminAppInstance = null;
 
 async function getAdminApp(explicitJson) {

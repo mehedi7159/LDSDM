@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -187,7 +188,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
     }
   };
 
-  const isOwnerEmail = authUser?.email?.toLowerCase() === (adminEmail || 'mehedihasansagor26@gmail.com').toLowerCase();
+  const isOwnerEmail = authUser?.email?.toLowerCase() === (adminEmail || SUPER_ADMIN_EMAIL).toLowerCase();
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -247,7 +248,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
               </span>
             </div>
             <p className="font-mono text-[11px] font-semibold text-blue-700 bg-white/90 p-2 rounded-xl border border-blue-200/60 truncate">
-              {adminEmail || 'mehedihasansagor26@gmail.com'}
+              {adminEmail || SUPER_ADMIN_EMAIL}
             </p>
           </div>
 
@@ -405,7 +406,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
                           </p>
                           <ol className="list-decimal list-inside space-y-1.5 text-slate-600 leading-relaxed">
                             <li>Firebase Console-এ যান: <span className="font-mono text-blue-600 select-all">console.firebase.google.com</span></li>
-                            <li><strong>Authentication ➜ Users</strong> ট্যাবে <span className="font-mono text-slate-800">mehedihasansagor26@gmail.com</span> অ্যাকাউন্টটি রয়েছে কিনা নিশ্চিত করুন।</li>
+                            <li><strong>Authentication ➜ Users</strong> ট্যাবে <span className="font-mono text-slate-800">{SUPER_ADMIN_EMAIL}</span> অ্যাকাউন্টটি রয়েছে কিনা নিশ্চিত করুন।</li>
                             <li>সার্ভার এনভায়রনমেন্ট ভ্যারিয়েবলে <span className="font-mono text-blue-700">FIREBASE_SERVICE_ACCOUNT</span> কনফিগার করুন (অথবা সার্ভার ফাইলে serviceAccountKey.json রাখুন)।</li>
                             <li>সার্ভার থেকে role কাস্টম ক্লেইম অ্যাসাইন হলে উপরের <strong>"ক্লেইমস রিফ্রেশ করুন"</strong> বাটনে ক্লিক করুন।</li>
                           </ol>

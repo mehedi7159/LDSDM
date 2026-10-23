@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -112,7 +113,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     logoutAdmin 
   } = useApp();
 
-  const isOwnerEmail = (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwnerEmail = (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const isOwner = isSuperAdmin || isOwnerEmail || (currentUser?.role === 'super_admin');
   const isPrincipal = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
   const canAccessMasterAi = isOwner || isPrincipal;
@@ -140,7 +141,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // Helper function: Strictly check if a navigation item should be visible to the current user's role
   const isItemVisible = (item: NavItem): boolean => {
 
-    // 1. Super Admin items only visible to Super Admin / mehedihasansagor26@gmail.com
+    // 1. Super Admin items only visible to Super Admin / SUPER_ADMIN_EMAIL
     if (item.isSuperAdminOnly) {
       return isSuperAdmin || isOwnerEmail;
     }
@@ -1323,10 +1324,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 {authUser && (
                   <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs">
                     <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-[11px] shrink-0">
-                      {(authUser.displayName || (authUser.email?.toLowerCase() === 'mehedihasansagor26@gmail.com' ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
+                      {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
                     </div>
                     <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
-                      {authUser.displayName || (authUser.email?.toLowerCase() === 'mehedihasansagor26@gmail.com' ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
+                      {authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
                     </span>
                   </div>
                 )}

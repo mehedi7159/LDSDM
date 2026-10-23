@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { NoticeItem, NoticeCategory, NoticePriority, NoticeTarget } from '../types';
@@ -29,7 +30,7 @@ import { NoticeBulkEmailModule } from './NoticeBulkEmailModule';
 
 export const NoticeBoardManager: React.FC = () => {
   const { notices = [], addNotice, updateNotice, deleteNotice, isAdmin, isSuperAdmin, authUser, language, classes = [], schoolProfile } = useApp();
-  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
 
   const [activeBoardTab, setActiveBoardTab] = useState<'notices' | 'bulk_email'>('notices');

@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../../services/appConfig';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -88,7 +89,7 @@ export const MasterPrincipalAiAdvisor: React.FC<MasterPrincipalAiAdvisorProps> =
     isSuperAdmin ||
     currentUser?.role === 'principal' ||
     currentMember?.roleId === 'role_principal' ||
-    currentUser?.email === 'mehedihasansagor26@gmail.com';
+    currentUser?.email === SUPER_ADMIN_EMAIL;
 
   // Dashboard dynamic mode state (persisted in localStorage)
   const [dashboardMode, setDashboardMode] = useState<string>(() => {

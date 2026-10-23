@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { MarkRecord, Subject } from '../types';
@@ -116,7 +117,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     adminEmail
   } = useApp();
 
-  const isOwnerAdmin = isSuperAdmin || (authUser?.email || adminEmail || '').toLowerCase() === 'mehedihasansagor26@gmail.com'.toLowerCase();
+  const isOwnerAdmin = isSuperAdmin || (authUser?.email || adminEmail || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');

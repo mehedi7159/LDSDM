@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import assert from 'node:assert';
 import { 
   isVerifiedSuperAdmin, 
@@ -100,7 +101,7 @@ function firestoreCanWriteMembers(auth: SimulatedAuth | null): boolean {
 test('TEST 1: Super Admin claim verified cryptographically (ID token claim + designated owner)', () => {
   const superAdminUser: any = {
     uid: 'super_uid_123',
-    email: 'mehedihasansagor26@gmail.com'
+    email: SUPER_ADMIN_EMAIL
   };
   const validClaims = {
     role: 'admin',
@@ -118,7 +119,7 @@ test('TEST 1: Super Admin claim verified cryptographically (ID token claim + des
   const simulatedAuth: SimulatedAuth = {
     uid: 'super_uid_123',
     token: {
-      email: 'mehedihasansagor26@gmail.com',
+      email: SUPER_ADMIN_EMAIL,
       role: 'admin',
       isSuperAdmin: true
     }
@@ -350,7 +351,7 @@ test('TEST 7: DataScope blocks unauthorized subject (Assigned subject allowed, u
 // TEST 8: Super Admin audit page is protected
 // ===========================================================================
 test('TEST 8: Super Admin audit page is strictly protected (Multi-layer guard)', () => {
-  const superAdminUser: any = { uid: 'uid_owner', email: 'mehedihasansagor26@gmail.com' };
+  const superAdminUser: any = { uid: 'uid_owner', email: SUPER_ADMIN_EMAIL };
   const superClaims = { role: 'admin', isSuperAdmin: true };
 
   const instAdminUser: any = { uid: 'uid_admin', email: 'principal@school.com' };
@@ -445,7 +446,7 @@ test('TEST 12: Existing Super Admin login remains 100% valid with backwards comp
   };
   const ownerUser: any = {
     uid: 'owner_uid_777',
-    email: 'mehedihasansagor26@gmail.com'
+    email: SUPER_ADMIN_EMAIL
   };
 
   // Backwards compatibility verification
@@ -470,7 +471,7 @@ test('TEST 12: Existing Super Admin login remains 100% valid with backwards comp
   const ownerAuthLegacy: SimulatedAuth = {
     uid: 'owner_uid_777',
     token: {
-      email: 'mehedihasansagor26@gmail.com',
+      email: SUPER_ADMIN_EMAIL,
       role: 'admin'
     }
   };

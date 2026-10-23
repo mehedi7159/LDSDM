@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import {
   buildCreateSubjectPayload,
   buildUpdateSubjectPayload,
@@ -593,7 +594,7 @@ assert(
   'TEST 16B: Teacher DataScope allows assigned Class 7 and blocks unassigned Class 8'
 );
 
-const superAdminUser = { uid: 'usr_superadmin', email: 'mehedihasansagor26@gmail.com' } as any;
+const superAdminUser = { uid: 'usr_superadmin', email: SUPER_ADMIN_EMAIL } as any;
 const superAdminClaims = { role: 'admin' };
 const superAdminCtx = buildAuthorizationContext(
   superAdminUser,

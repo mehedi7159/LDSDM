@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { fetchPlatformAuditLogs, logAuditEvent } from '../services/auditLog';
@@ -30,7 +31,7 @@ export const SuperAdminAuditPage: React.FC = () => {
 
   // Security Verification Guard
   const verifiedEmail = (authUser?.email || '').toLowerCase();
-  const isAuthorized = isSuperAdmin || verifiedEmail === 'mehedihasansagor26@gmail.com';
+  const isAuthorized = isSuperAdmin || verifiedEmail === SUPER_ADMIN_EMAIL;
 
   const loadLogs = async () => {
     if (!isAuthorized) return;
@@ -53,7 +54,7 @@ export const SuperAdminAuditPage: React.FC = () => {
         logAuditEvent({
           action: 'SUPERADMIN_AUDIT_ACCESSED',
           actorUid: authUser.uid,
-          actorEmail: authUser.email || 'mehedihasansagor26@gmail.com',
+          actorEmail: authUser.email || SUPER_ADMIN_EMAIL,
           actorRole: 'superadmin',
           institutionId: 'platform_root',
           institutionName: 'Platform Global',
@@ -82,12 +83,12 @@ export const SuperAdminAuditPage: React.FC = () => {
             </h2>
             <p className="text-xs text-slate-500 leading-relaxed">
               {language === 'bn'
-                ? 'এই প্ল্যাটফর্ম অডিট পেজটি কেবলমাত্র অনুমোদিত প্ল্যাটফর্ম ওনার (mehedihasansagor26@gmail.com) এর জন্য সংরক্ষিত। কোনো সাধারণ এডমিন বা শিক্ষক এটি দেখার অধিকার রাখেন না।'
+                ? `এই প্ল্যাটফর্ম অডিট পেজটি কেবলমাত্র অনুমোদিত প্ল্যাটফর্ম ওনার (${SUPER_ADMIN_EMAIL}) এর জন্য সংরক্ষিত। কোনো সাধারণ এডমিন বা শিক্ষক এটি দেখার অধিকার রাখেন না।`
                 : 'This platform security audit area is strictly restricted to the verified platform owner. Ordinary institution admins or staff have zero access.'}
             </p>
           </div>
           <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-left font-mono text-[11px] text-slate-600">
-            <div>Expected: <span className="font-bold text-slate-800">mehedihasansagor26@gmail.com</span></div>
+            <div>Expected: <span className="font-bold text-slate-800">{SUPER_ADMIN_EMAIL}</span></div>
             <div>Current: <span className="font-bold text-rose-700">{verifiedEmail || 'Unauthenticated'}</span></div>
           </div>
         </div>
