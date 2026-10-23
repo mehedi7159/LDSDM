@@ -43,6 +43,15 @@ import {
   approveInstitutionMember
 } from '../services/rbac';
 import { generateId, deriveRoleFromDesignation } from '../services/utils';
+import {
+  normalizeRoleKey,
+  bestDesignationRole,
+  pickAuthoritativeUser,
+  pickBestStaffRecord,
+  effectiveRoleKeys,
+  sanitizeAdditionalRoles,
+  roleKeyToRoleId
+} from '../services/roleResolution';
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import { buildMainStorePayload } from '../services/mainStorePayload';
 import { buildPublicPortalData } from '../services/publicPortal';
@@ -318,6 +327,13 @@ interface AppContextType extends AppState {
   authContext: AuthorizationContext;
   hasPermission: (permission: Permission, scope?: { classId?: string; subjectId?: string; studentId?: string }) => boolean;
   currentRole: CustomRole | null;
+  /**
+   * Multi-role support: the signed-in person's effective role keys —
+   * primary role first, then additionalRoles (from the account, the
+   * member document and the linked staff record), deduplicated.
+   * Permissions are the union over this set.
+   */
+  effectiveRoles: UserRole[];
   currentMember: InstitutionMember | null;
   institutionRoles: CustomRole[];
   refreshInstitutionRoles: () => Promise<void>;
@@ -747,69 +763,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   // Multi-Institution RBAC State
   const [institutionRoles, setInstitutionRoles] = useState<CustomRole[]>([]);
-  const [currentRole, setCurrentRole] = useState<CustomRole | null>(null);
   const [currentMember, setCurrentMember] = useState<InstitutionMember | null>(null);
 
   const isSuperAdmin = isVerifiedSuperAdmin(authUser, authClaims);
 
-  const authContext: AuthorizationContext = buildAuthorizationContext(
-    authUser,
-    authClaims,
-    currentMember,
-    currentRole,
-    'inst_madrasah_primary'
-  );
-
-  const hasPermission = (
-    permission: Permission, 
-    scope?: { classId?: string; subjectId?: string; studentId?: string }
-  ): boolean => {
-    const isOwner = (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-    if (isSuperAdmin || isOwner || isAdmin || currentUser?.role === 'super_admin') {
-      return true;
-    }
-
-    const effectiveRole = currentUser?.role || currentMember?.roleId?.replace('role_', '') || userRole;
-
-    // Phase 6 (RBAC Option A): the principal veto is a DENY, not a grant —
-    // it is evaluated before every grant layer, exactly as it was when the
-    // hardcoded branches ran first.
-    if (effectiveRole === 'principal' && (permission === 'system.backup' || permission === 'system.audit')) {
-      return false;
-    }
-
-    // Phase 6 (RBAC Option A): precedence flipped. The CustomRole layer
-    // (currentRole — template-aligned in services/rbac.ts and merged on
-    // load) is now consulted FIRST; the canonical hardcoded role branches
-    // below remain as the fallback for anything that layer does not grant.
-    // Both layers are pure grant checks, so "grant if either grants" keeps
-    // the outcome identical to the previous hardcoded-first order for every
-    // role × permission combination (proven by
-    // scripts/test-rbac-equivalence.ts).
-    if (checkPermission(authContext, permission, scope)) {
-      return true;
-    }
-
-    if (effectiveRole === 'principal') {
-      return true;
-    }
-
-    if (effectiveRole === 'accountant') {
-      if (permission.startsWith('finance.') || permission.startsWith('fees.') || permission.startsWith('payments.')) return true;
-      if (permission === 'reports.view' || permission === 'students.view') return true;
-    }
-
-    if (effectiveRole === 'teacher') {
-      if (permission.startsWith('attendance.') || permission.startsWith('marks.') || permission.startsWith('subjects.')) return true;
-      if (permission === 'reports.view' || permission === 'students.view') return true;
-    }
-
-    if (effectiveRole === 'guardian' || effectiveRole === 'parent') {
-      if (permission === 'students.view' || permission === 'marks.view' || permission === 'attendance.view' || permission === 'fees.view') return true;
-    }
-
-    return false;
-  };
+  // NOTE: `currentRole`, `authContext` and `hasPermission` are derived
+  // further below, immediately after `currentUser` is computed — role
+  // resolution must read the signed-in account (built from `users`
+  // state), and the account is authoritative over the member document
+  // (see services/roleResolution.ts for the precedence rules).
 
   const refreshInstitutionRoles = async () => {
     try {
@@ -995,7 +957,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const realDisplayName = authUser.displayName || (isOwnerAccount ? 'Mehedi Hasan Sagor' : (authUser.email?.split('@')[0] || 'User'));
       const realDisplayNameBn = authUser.displayName || (isOwnerAccount ? 'মেহেদী হাসান সাগর' : (authUser.email?.split('@')[0] || 'ব্যবহারকারী'));
 
-      const found = users.find(u => u.id === authUser.uid || (u.email && authUser.email && u.email.toLowerCase() === authUser.email.toLowerCase()));
+      // Among duplicate account records for the same person, the
+      // Firebase-uid-linked record wins; otherwise the authoritative
+      // (non-teacher-stamped) record wins — never plain array order, so
+      // a leftover teacher duplicate cannot shadow the real account
+      // (see services/roleResolution.ts).
+      const found =
+        users.find(u => u.id === authUser.uid) ||
+        pickAuthoritativeUser<AppUser>(
+          users.filter(u => u.email && authUser.email && u.email.toLowerCase() === authUser.email.toLowerCase())
+        );
       if (found) {
         if (found.name === 'Moulana Abdul Karim' || !found.name || isOwnerAccount) {
           return {
@@ -1031,6 +1002,162 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   }, [users, activeAppUserId, authUser, currentMember, isSuperAdmin, authRole]);
 
   const userRole: UserRole | null = currentUser?.role || (authRole as UserRole) || null;
+
+  // ------------------------------------------------------------------
+  // Role resolution — precedence (see services/roleResolution.ts):
+  //   (a) the logged-in account's own stored role is authoritative;
+  //   (b) then the member document's roleId;
+  //   (c) then the auth-claims role.
+  // The member document NO LONGER outranks the account: a stale
+  // 'role_teacher' member doc used to shadow an accountant account in
+  // the CustomRole layer (and in the mobile app's role pick).
+  //
+  // Multi-role: effectiveRoles = primary + additionalRoles gathered
+  // from the account, the member document and the linked staff record.
+  // Permissions below are the UNION over this set; a single-role user
+  // gets exactly the historical outcomes (scripts/test-rbac-multirole.ts
+  // proves it against the Phase-6 equivalence matrix).
+  // ------------------------------------------------------------------
+  const primaryRoleKey: UserRole | null =
+    normalizeRoleKey(currentUser?.role) ||
+    normalizeRoleKey(currentMember?.roleId) ||
+    normalizeRoleKey(authRole as string) ||
+    null;
+
+  // The staff record describing the signed-in person (id / userId /
+  // email / phone linkage — the same linkage the staff directory uses).
+  // When duplicates match, the record whose designation names the
+  // strongest (non-teacher) role wins.
+  const linkedStaffRecord = React.useMemo(() => {
+    const email = (currentUser?.email || authUser?.email || '').toLowerCase();
+    const phone = currentUser?.phone || currentMember?.phone || '';
+    const matches = teachers.filter(t =>
+      (currentUser?.id && (t.id === currentUser.id || t.userId === currentUser.id)) ||
+      (email !== '' && t.email && t.email.toLowerCase() === email) ||
+      (phone !== '' && t.phone && t.phone === phone)
+    );
+    return pickBestStaffRecord<AcademicTeacher>(matches);
+  }, [teachers, currentUser, currentMember, authUser]);
+
+  const effectiveRoles: UserRole[] = React.useMemo(
+    () =>
+      effectiveRoleKeys(primaryRoleKey, [
+        currentUser?.additionalRoles,
+        (currentMember?.additionalRoleIds || []).map(id => normalizeRoleKey(id)),
+        (linkedStaffRecord?.additionalRoles || []) as (string | null | undefined)[]
+      ]),
+    [primaryRoleKey, currentUser, currentMember, linkedStaffRecord]
+  );
+
+  const resolveRoleDocForKey = (key: UserRole | null): CustomRole | null => {
+    if (!key || institutionRoles.length === 0) return null;
+    const alias = key === 'staff' ? 'office_staff' : key === 'guardian' ? 'parent' : null;
+    return (
+      institutionRoles.find(r => r.id === roleKeyToRoleId(key)) ||
+      (alias ? institutionRoles.find(r => r.id === roleKeyToRoleId(alias)) : undefined) ||
+      institutionRoles.find(r => r.name === key || (alias !== null && r.name === alias)) ||
+      null
+    );
+  };
+
+  // The primary role's CustomRole document. Falls back to the member
+  // document's exact role id so institution-custom roles (whose ids do
+  // not follow the role_<key> pattern) keep resolving as before.
+  const currentRole: CustomRole | null = React.useMemo(() => {
+    const byAccount = resolveRoleDocForKey(primaryRoleKey);
+    if (byAccount) return byAccount;
+    if (currentMember?.roleId && institutionRoles.length > 0) {
+      return institutionRoles.find(r => r.id === currentMember.roleId) || null;
+    }
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [institutionRoles, primaryRoleKey, currentMember]);
+
+  const additionalRoleDocs: CustomRole[] = React.useMemo(() => {
+    const docs: CustomRole[] = [];
+    for (const key of effectiveRoles) {
+      if (key === primaryRoleKey) continue;
+      const doc = resolveRoleDocForKey(key);
+      if (doc && doc.id !== currentRole?.id && !docs.some(d => d.id === doc.id)) {
+        docs.push(doc);
+      }
+    }
+    return docs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveRoles, primaryRoleKey, institutionRoles, currentRole]);
+
+  const authContext: AuthorizationContext = buildAuthorizationContext(
+    authUser,
+    authClaims,
+    currentMember,
+    currentRole,
+    'inst_madrasah_primary',
+    additionalRoleDocs.length > 0 ? additionalRoleDocs : undefined
+  );
+
+  // The canonical hardcoded per-role grant branches (verbatim from the
+  // pre-multi-role hasPermission). Returns true only on a grant.
+  const hardcodedBranchGrants = (role: string | null | undefined, permission: Permission): boolean => {
+    const key = normalizeRoleKey(role) || role;
+    if (key === 'accountant') {
+      if (permission.startsWith('finance.') || permission.startsWith('fees.') || permission.startsWith('payments.')) return true;
+      if (permission === 'reports.view' || permission === 'students.view') return true;
+    }
+    if (key === 'teacher') {
+      if (permission.startsWith('attendance.') || permission.startsWith('marks.') || permission.startsWith('subjects.')) return true;
+      if (permission === 'reports.view' || permission === 'students.view') return true;
+    }
+    if (key === 'guardian') {
+      if (permission === 'students.view' || permission === 'marks.view' || permission === 'attendance.view' || permission === 'fees.view') return true;
+    }
+    return false;
+  };
+
+  const hasPermission = (
+    permission: Permission,
+    scope?: { classId?: string; subjectId?: string; studentId?: string }
+  ): boolean => {
+    const isOwner = (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    if (isSuperAdmin || isOwner || isAdmin || currentUser?.role === 'super_admin') {
+      return true;
+    }
+
+    // The historical primary-role expression (kept verbatim so the
+    // single-role path is untouched).
+    const effectiveRole = currentUser?.role || currentMember?.roleId?.replace('role_', '') || userRole;
+
+    // Phase 6 (RBAC Option A): the principal veto is a DENY, not a
+    // grant — evaluated before every grant layer. Multi-role: holding
+    // principal in ANY slot keeps the veto (system.backup /
+    // system.audit stay denied to principals), while the owner /
+    // super-admin short-circuit above still outranks it, as before.
+    if (
+      (effectiveRole === 'principal' || effectiveRoles.includes('principal')) &&
+      (permission === 'system.backup' || permission === 'system.audit')
+    ) {
+      return false;
+    }
+
+    // Phase 6 precedence: the CustomRole layer first — now built from
+    // the UNION of all effective roles' documents (for a single-role
+    // user this context is identical to the historical one).
+    if (checkPermission(authContext, permission, scope)) {
+      return true;
+    }
+
+    // Hardcoded fallback branches — granted when ANY effective role's
+    // branch grants (for a single-role user, just the primary branch,
+    // exactly as before; the principal branch grants everything that
+    // survived the veto).
+    const rolesToTry: Array<string | null | undefined> =
+      effectiveRoles.length > 0 ? effectiveRoles : [effectiveRole];
+    for (const roleKey of rolesToTry) {
+      if (normalizeRoleKey(roleKey) === 'principal') return true;
+      if (hardcodedBranchGrants(roleKey, permission)) return true;
+    }
+
+    return false;
+  };
 
   const signUpUser = async (data: {
     name: string;
@@ -1165,17 +1292,24 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const cleanId = identifier.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    let user = users.find(u => 
-      (u.phone && u.phone.trim() === cleanId) || 
+    // Duplicate-safe: when several account records match the identifier
+    // (a leftover teacher-stamped duplicate next to the real account),
+    // the authoritative non-teacher record wins — never plain array
+    // order (see services/roleResolution.ts).
+    let user = pickAuthoritativeUser<AppUser>(users.filter(u =>
+      (u.phone && u.phone.trim() === cleanId) ||
       (u.email && u.email.trim().toLowerCase() === cleanId)
-    );
+    ));
 
-    // If not found in users, check academic teachers (added by admin)
+    // If not found in users, check academic teachers (added by admin).
+    // Same duplicate rule for staff records: the record whose
+    // designation names a non-teacher role (e.g. the real Accountant
+    // record) beats a plain-teacher duplicate, in any order.
     if (!user) {
-      const teacher = teachers.find(t => 
-        (t.phone && t.phone.trim() === cleanId) || 
+      const teacher = pickBestStaffRecord<AcademicTeacher>(teachers.filter(t =>
+        (t.phone && t.phone.trim() === cleanId) ||
         (t.email && t.email.trim().toLowerCase() === cleanId)
-      );
+      ));
       if (teacher) {
         user = {
           id: teacher.id,
@@ -1185,6 +1319,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           email: teacher.email || undefined,
           password: teacher.password || '123456',
           role: deriveRoleFromDesignation(teacher.designation),
+          additionalRoles: sanitizeAdditionalRoles(teacher.additionalRoles, deriveRoleFromDesignation(teacher.designation)) as UserRole[],
           designation: teacher.designation || 'সহকারী শিক্ষক',
           assignedClasses: teacher.assignedClasses || [],
           assignedSubjects: teacher.assignedSubjects || [],
@@ -1260,6 +1395,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       email: user.email || `${user.phone}@madrasha.local`,
       displayName: user.nameBn || user.name,
       roleId: `role_${user.role}`,
+      additionalRoleIds: (user.additionalRoles || []).map(r => roleKeyToRoleId(r)),
       status: 'active',
       assignedClasses: user.assignedClasses || [],
       assignedSubjects: user.assignedSubjects || [],
@@ -1284,7 +1420,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         email: user.email,
         name: user.name,
         role: user.role,
-        roleId: `role_${user.role}`
+        roleId: `role_${user.role}`,
+        additionalRoleIds: memberRecord.additionalRoleIds
       }));
     } catch (e) {}
 
@@ -1456,41 +1593,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         .catch(err => console.warn('[RBAC] Member fetch notice:', err));
     } else {
       setInstitutionRoles([]);
-      setCurrentRole(null);
       setCurrentMember(null);
     }
   }, [authUser]);
 
-  // Resolve the signed-in user's CustomRole document from the loaded
-  // institution roles. Until now `currentRole` was never assigned (stayed
-  // null forever), which silently disabled the whole CustomRole layer:
-  // buildAuthorizationContext always received a null role, so the
-  // checkPermission() fallback inside hasPermission always saw an empty
-  // permission set and returned false. Wiring it up makes the RBAC layer
-  // live. Phase 6 (RBAC Option A) then flipped the precedence inside
-  // hasPermission: this CustomRole layer is consulted first and the
-  // canonical hardcoded per-role branches remain as its fallback — the
-  // grant outcomes are unchanged (see scripts/test-rbac-equivalence.ts).
-  useEffect(() => {
-    if (!institutionRoles || institutionRoles.length === 0) return;
-    const roleAliases: Record<string, string> = { staff: 'office_staff', parent: 'guardian' };
-    const wantedIds = new Set<string>();
-    if (currentMember?.roleId) wantedIds.add(currentMember.roleId);
-    if (currentUser?.role) {
-      wantedIds.add(`role_${currentUser.role}`);
-      const alias = roleAliases[currentUser.role];
-      if (alias) wantedIds.add(`role_${alias}`);
-    }
-    let match =
-      institutionRoles.find(r => wantedIds.has(r.id)) ||
-      (currentUser?.role
-        ? institutionRoles.find(
-            r => r.name === currentUser.role || r.name === roleAliases[currentUser.role as string]
-          )
-        : undefined) ||
-      null;
-    setCurrentRole(prev => (prev?.id === match?.id ? prev : match));
-  }, [institutionRoles, currentMember, currentUser]);
+  // The signed-in user's CustomRole document(s) are no longer resolved
+  // here — `currentRole` is now DERIVED next to `currentUser` above
+  // (account role first, member roleId as fallback), because the old
+  // effect collected BOTH ids into a set and returned whichever role
+  // document happened to sit first in the roles array — a stale
+  // 'role_teacher' member document could shadow the account's real
+  // role. History: until Phase 2 `currentRole` was never assigned at
+  // all (stayed null), which silently disabled the whole CustomRole
+  // layer; Phase 6 flipped hasPermission precedence (CustomRole layer
+  // first, hardcoded branches as fallback — outcomes unchanged, see
+  // scripts/test-rbac-equivalence.ts).
 
   // Helper: Atomically load remote data into both React state and localStorage cache
   const applyRemoteData = (data: any) => {
@@ -1615,16 +1732,40 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // accountant landed on the teacher portal). When the staff record's
       // designation clearly names a non-teacher role, trust the designation.
       // Only ever moves a 'teacher' stamp; deliberate roles stay untouched.
+      //
+      // Multi-match rule (the duplicate-record fix): a person can have
+      // SEVERAL staff records (e.g. a leftover plain-teacher duplicate
+      // next to the real Accountant record). The old code used
+      // staffList.find(...) — first match wins — so the duplicate could
+      // shadow the real record and the heal silently did nothing. Now
+      // ALL matching records are considered and a non-teacher
+      // designation always beats a plain teacher record, in any order
+      // (services/roleResolution.ts: bestDesignationRole).
       const staffList: any[] = Array.isArray(data.teachers) ? data.teachers : [];
       const healedUsers = cleanUsers.map(u => {
-        if (u.role !== 'teacher') return u;
-        const staffRec = staffList.find((t: any) =>
+        const matches = staffList.filter((t: any) =>
           t.id === u.id ||
           (u.email && t.email && t.email.toLowerCase() === u.email.toLowerCase()) ||
           (u.phone && t.phone && t.phone === u.phone)
         );
-        const derived = deriveRoleFromDesignation(staffRec?.designation || u.designation);
-        return derived !== 'teacher' ? { ...u, role: derived as UserRole } : u;
+        // Multi-role: adopt additionalRoles recorded on any matching
+        // staff record when the account itself does not carry them yet.
+        const staffAdditional = sanitizeAdditionalRoles(
+          matches.flatMap((t: any) => (Array.isArray(t.additionalRoles) ? t.additionalRoles : [])),
+          u.role
+        );
+        const withAdditional =
+          staffAdditional.length > 0 && !(Array.isArray(u.additionalRoles) && u.additionalRoles.length > 0)
+            ? { ...u, additionalRoles: staffAdditional as UserRole[] }
+            : u;
+        if (u.role !== 'teacher') return withAdditional;
+        const derived = bestDesignationRole([
+          ...matches,
+          { designation: u.designation }
+        ]);
+        return derived !== 'teacher'
+          ? { ...withAdditional, role: derived as UserRole }
+          : withAdditional;
       });
       setUsers(healedUsers);
       try { localStorage.setItem('madrasha_app_users', JSON.stringify(healedUsers)); } catch {}
@@ -2501,11 +2642,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (result.user) {
         setAuthUser(result.user);
         if (result.user.email) setAdminEmail(result.user.email);
+        // Session roleId follows the person's account record when one
+        // exists — it used to be hard-coded 'role_teacher' for every
+        // non-owner, which re-stamped an accountant as a teacher
+        // whenever this stored session was restored.
+        const matchedAccount = pickAuthoritativeUser<AppUser>(
+          users.filter(u => u.email && u.email.toLowerCase() === trimmedEmail.toLowerCase())
+        );
         localStorage.setItem('madrasha_active_auth_session', JSON.stringify({
           uid: result.user.uid,
           email: result.user.email,
           displayName: result.user.displayName,
-          roleId: isOwnerAccount ? 'role_institution_admin' : 'role_teacher'
+          roleId: isOwnerAccount
+            ? 'role_institution_admin'
+            : (matchedAccount ? roleKeyToRoleId(matchedAccount.role) : 'role_teacher'),
+          additionalRoleIds: (matchedAccount?.additionalRoles || []).map(r => roleKeyToRoleId(r))
         }));
         return { success: true };
       }
@@ -2538,10 +2689,27 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           return { success: false, error: 'ভুল পাসওয়ার্ড প্রদান করা হয়েছে।' };
         }
 
+        // The account record outranks the member document: if the
+        // member doc still carries a stale roleId (e.g. 'role_teacher'
+        // from signup) while the person's account says 'accountant',
+        // the session follows the ACCOUNT (see roleResolution.ts).
+        const account = pickAuthoritativeUser<AppUser>(users.filter(u =>
+          (u.email && u.email.toLowerCase() === trimmedEmail.toLowerCase()) ||
+          (member.phone && u.phone && u.phone === member.phone)
+        ));
+        const sessionMember: InstitutionMember =
+          account && normalizeRoleKey(member.roleId) !== account.role
+            ? {
+                ...member,
+                roleId: roleKeyToRoleId(account.role),
+                additionalRoleIds: (account.additionalRoles || []).map(r => roleKeyToRoleId(r))
+              }
+            : member;
+
         // Local portal session only (Never synthetic authUser for cloud operations)
-        setActiveAppUserId(member.uid);
-        setCurrentMember(member);
-        localStorage.setItem('madrasha_active_auth_session', JSON.stringify(member));
+        setActiveAppUserId(sessionMember.uid);
+        setCurrentMember(sessionMember);
+        localStorage.setItem('madrasha_active_auth_session', JSON.stringify(sessionMember));
         return { success: true };
       }
     } catch (dbErr) {
@@ -2549,10 +2717,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
 
     // 3. Check App Users (Admin, Principal, Teacher, Accountant, Guardian)
-    const foundUser = users.find(u => 
+    // Duplicate-safe pick: a non-teacher record beats a teacher-stamped
+    // duplicate of the same person (see services/roleResolution.ts).
+    const foundUser = pickAuthoritativeUser<AppUser>(users.filter(u =>
       (u.email && u.email.toLowerCase() === trimmedEmail.toLowerCase()) ||
       (u.phone && u.phone.trim() === trimmedEmail.trim())
-    );
+    ));
 
     if (foundUser) {
       if (foundUser.password && foundUser.password !== password) {
@@ -2575,6 +2745,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         email: foundUser.email || `${foundUser.phone}@madrasha.local`,
         displayName: foundUser.nameBn || foundUser.name,
         roleId: `role_${foundUser.role}`,
+        additionalRoleIds: (foundUser.additionalRoles || []).map(r => roleKeyToRoleId(r)),
         status: 'active',
         assignedClasses: foundUser.assignedClasses || [],
         assignedSubjects: foundUser.assignedSubjects || [],
@@ -2801,7 +2972,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setAuthClaims(null);
     setAuthRole(null);
     setCurrentMember(null);
-    setCurrentRole(null);
     setModeState('viewer');
     setIsAuthReady(true);
     setActiveTabState('dashboard');
@@ -3160,11 +3330,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const rawPassword = teacherData.password?.trim() || '123456';
       const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
       const cleanPhone = teacher.phone?.trim() || '';
+      // Multi-role: additional roles chosen in the staff form ride on
+      // teacherData.additionalRoles; they are written to the staff
+      // record, the login account and the member document together so
+      // the three never disagree.
+      const additionalRoles = sanitizeAdditionalRoles(teacherData.additionalRoles, effectiveRole);
 
       const teacherWithCredentials: AcademicTeacher = {
         ...teacher,
         password: rawPassword,
         email: cleanEmail,
+        additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
         status: teacherData.status || 'ACTIVE'
       };
 
@@ -3179,6 +3355,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         phone: cleanPhone,
         password: rawPassword,
         roleId: `role_${effectiveRole}`,
+        additionalRoleIds: additionalRoles.map(r => roleKeyToRoleId(r)),
         requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',
         status: 'active',
         assignedClasses: teacher.assignedClasses || [],
@@ -3197,6 +3374,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         email: cleanEmail,
         password: rawPassword,
         role: effectiveRole,
+        additionalRoles: additionalRoles.length > 0 ? [...additionalRoles] : undefined,
         designation: teacher.designation || 'মুয়াল্লিম / সহকারী শিক্ষক',
         assignedClasses: teacher.assignedClasses || [],
         status: 'active',
@@ -3267,12 +3445,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const rawPassword = updatedTeacher.password?.trim() || existing?.password || '123456';
     const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
     const cleanPhone = teacher.phone?.trim() || '';
+    // Multi-role: the form passes additionalRoles on updatedTeacher;
+    // when a caller does not mention them (e.g. quick-approve), keep
+    // the ones already stored on the record.
+    const additionalRoles = sanitizeAdditionalRoles(
+      updatedTeacher.additionalRoles ?? existing?.additionalRoles,
+      effectiveRole
+    );
 
     const teacherWithCredentials: AcademicTeacher = {
       ...teacher,
       password: rawPassword,
       email: cleanEmail,
       phone: cleanPhone,
+      additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
       status: updatedTeacher.status || teacher.status || 'ACTIVE'
     };
 
@@ -3290,6 +3476,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           password: rawPassword,
           designation: teacher.designation,
           role: effectiveRole,
+          additionalRoles: additionalRoles.length > 0 ? [...additionalRoles] : undefined,
           assignedClasses: teacher.assignedClasses || [],
           status: 'active'
         };
@@ -3306,6 +3493,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       phone: cleanPhone,
       password: rawPassword,
       roleId: `role_${effectiveRole}`,
+      additionalRoleIds: additionalRoles.map(r => roleKeyToRoleId(r)),
       requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',
       status: 'active',
       assignedClasses: teacher.assignedClasses || [],
@@ -4069,6 +4257,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       authContext,
       hasPermission,
       currentRole,
+      effectiveRoles,
       currentMember,
       institutionRoles,
       refreshInstitutionRoles,

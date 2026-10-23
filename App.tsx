@@ -69,6 +69,7 @@ const AppContent = () => {
     authUser,
     currentUser,
     userRole,
+    effectiveRoles,
     authClaims,
     authRole,
     currentMember,
@@ -112,8 +113,9 @@ const AppContent = () => {
     const isOwnerAdmin = isSuperAdmin || isAdmin || currentUser?.role === 'super_admin' || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     if (isOwnerAdmin) return true;
 
-    // Principal has administrative access to analytical and management tabs
-    if (currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal') {
+    // Principal has administrative access to analytical and management tabs.
+    // Multi-role: principal held as an ADDITIONAL role counts too (union).
+    if (currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal' || (effectiveRoles || []).includes('principal')) {
       if (tab === 'backup_recovery' || tab === 'superadmin_audit') return false;
       return true;
     }

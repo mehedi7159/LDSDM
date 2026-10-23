@@ -108,6 +108,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<AcademicTeacher | null>(null);
   const [formLoginRole, setFormLoginRole] = useState<UserRole>('teacher');
+  // Multi-role: extra roles held alongside the primary login role
+  // (e.g. an accountant who also teaches). Saved to the staff record,
+  // the linked login account and the member document together.
+  const [formAdditionalRoles, setFormAdditionalRoles] = useState<UserRole[]>([]);
   const [teacherFormData, setTeacherFormData] = useState<Partial<AcademicTeacher>>({
     name: '',
     nameBn: '',
@@ -198,6 +202,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           designation: u.designation || (u.role === 'principal' ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : u.role === 'accountant' ? 'হিসাবরক্ষক' : u.role === 'staff' ? 'অফিস কর্মী' : 'সহকারী শিক্ষক'),
           phone: u.phone,
           email: u.email,
+          additionalRoles: (u.additionalRoles || []) as string[],
           status: (u.status === 'pending') ? 'PENDING' : 'ACTIVE',
           assignedClasses: u.assignedClasses || []
         });
@@ -299,6 +304,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const handleOpenAddModal = () => {
     setEditingTeacher(null);
     setFormLoginRole('teacher');
+    setFormAdditionalRoles([]);
     setTeacherFormData({
       name: '',
       nameBn: '',
@@ -322,7 +328,13 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       (teacher.email && u.email?.toLowerCase() === teacher.email.toLowerCase()) ||
       (teacher.phone && u.phone === teacher.phone)
     );
-    setFormLoginRole((linkedUser?.role as UserRole) || deriveRoleFromDesignation(teacher.designation));
+    const primaryRole = (linkedUser?.role as UserRole) || deriveRoleFromDesignation(teacher.designation);
+    setFormLoginRole(primaryRole);
+    const storedAdditional =
+      (linkedUser?.additionalRoles && linkedUser.additionalRoles.length > 0)
+        ? linkedUser.additionalRoles
+        : ((teacher.additionalRoles || []) as UserRole[]);
+    setFormAdditionalRoles(storedAdditional.filter(r => r !== primaryRole));
     setTeacherFormData({
       ...teacher,
       password: teacher.password || '123'
@@ -340,13 +352,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
     const rawPassword = teacherFormData.password?.trim() || '123';
 
+    const additionalRoles = formAdditionalRoles.filter(r => r !== formLoginRole);
+
     if (editingTeacher) {
       updateTeacher({
         ...editingTeacher,
         ...teacherFormData,
         name: teacherFormData.name.trim(),
         nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
-        password: rawPassword
+        password: rawPassword,
+        additionalRoles
       } as AcademicTeacher, formLoginRole);
       showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
     } else {
@@ -359,6 +374,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         email: teacherFormData.email || '',
         password: rawPassword,
         status: teacherFormData.status || 'ACTIVE',
+        additionalRoles,
         assignedClasses: teacherFormData.assignedClasses || [],
         assignedSubjects: teacherFormData.assignedSubjects || []
       }, formLoginRole);
@@ -1269,6 +1285,43 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <option value="guardian">{isBn ? 'অভিভাবক (Guardian)' : 'Guardian'}</option>
                 </select>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। উপরের পদবি শুধু প্রদর্শনের জন্য।' : 'They will log in with this role and see that portal. Designation above is display-only.'}</p>
+              </div>
+
+              {/* Additional roles (multi-role): one person can hold two
+                  roles at once — e.g. principal + teacher, accountant +
+                  teacher. Access is the union of all their roles. */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'অতিরিক্ত রোল (যদি থাকে):' : 'Additional Role(s), if any:'}</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {([
+                    { key: 'teacher', bn: 'শিক্ষক (Teacher)', en: 'Teacher' },
+                    { key: 'accountant', bn: 'হিসাবরক্ষক / ক্যাশিয়ার (Accountant)', en: 'Accountant / Cashier' },
+                    { key: 'staff', bn: 'অফিস স্টাফ (Office Staff)', en: 'Office Staff' },
+                    { key: 'principal', bn: 'অধ্যক্ষ (Principal)', en: 'Principal' },
+                    { key: 'guardian', bn: 'অভিভাবক (Guardian)', en: 'Guardian' }
+                  ] as { key: UserRole; bn: string; en: string }[])
+                    .filter(opt => opt.key !== formLoginRole)
+                    .map(opt => {
+                      const isSelected = formAdditionalRoles.includes(opt.key);
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setFormAdditionalRoles(prev =>
+                            isSelected ? prev.filter(r => r !== opt.key) : [...prev, opt.key]
+                          )}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-teal-600 text-white shadow-xs'
+                              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isSelected ? '✓ ' : ''}{isBn ? opt.bn : opt.en}
+                        </button>
+                      );
+                    })}
+                </div>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'একজন একসাথে দুটি দায়িত্ব পালন করলে (যেমন হিসাবরক্ষক + শিক্ষক) অতিরিক্ত রোলটি টিক দিন — তিনি সব রোলের অ্যাক্সেসই পাবেন।' : 'If one person holds two duties at once (e.g. accountant + teacher), tick the extra role — they get the access of every role they hold.'}</p>
               </div>
 
               <div>

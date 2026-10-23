@@ -113,6 +113,14 @@ export interface AcademicTeacher {
   nameBn?: string;
   employeeCode?: string;
   designation?: string;
+  /**
+   * Multi-role support: extra login roles held alongside the primary
+   * role derived/chosen for this staff record (role keys, e.g.
+   * ['teacher'] for an accountant who also teaches). Kept in sync with
+   * the linked AppUser.additionalRoles and the member's
+   * additionalRoleIds by the AppContext add/update teacher paths.
+   */
+  additionalRoles?: string[];
   email?: string;
   phone?: string;
   password?: string;
