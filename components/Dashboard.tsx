@@ -1,5 +1,6 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
-import React, { useState, useEffect, useMemo, memo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, memo, Suspense } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { useApp } from '../context/AppContext';
 import { 
   Users, 
@@ -71,7 +72,7 @@ import { Phone, MessageCircle, LayoutDashboard, UserPlus } from 'lucide-react';
 
 // The AI Master advisor is embedded in the Action & Advice view — lazy,
 // exactly as in App.tsx, so the Overview view never pays its bundle cost.
-const MasterPrincipalAiAdvisor = lazy(() => import('./ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
+const MasterPrincipalAiAdvisor = lazyWithRetry(() => import('./ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
 
 // =========================================================================
 // TYPES FOR MEMOIZED SUB-COMPONENTS

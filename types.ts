@@ -489,6 +489,14 @@ export interface AppUser {
   phone?: string;
   password?: string;
   role: UserRole;
+  /**
+   * Multi-role support: extra roles this person holds on top of `role`
+   * (e.g. an accountant who also teaches has role 'accountant' and
+   * additionalRoles ['teacher']). Optional — existing records without
+   * the field behave exactly as single-role accounts. Effective access
+   * is the UNION of `role` + `additionalRoles`.
+   */
+  additionalRoles?: UserRole[];
   assignedClasses?: string[];
   assignedSubjects?: string[];
   studentId?: string; // Linked student for Guardian

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import { useApp } from '../../context/AppContext';
 import { 
   Award, 
@@ -36,9 +37,9 @@ import { MarksEntry } from '../MarksEntry';
 // Phase 5: the marksheet/result sub-views are the heaviest files in this
 // manager's tree (ResultView alone is ~190 KB) — load each on demand when
 // its sub-tab opens. Import-site change only; the files are untouched.
-const BlankMarksheetView = lazy(() => import('../BlankMarksheetView').then(m => ({ default: m.BlankMarksheetView })));
-const ResultGenerator = lazy(() => import('../ResultView').then(m => ({ default: m.ResultGenerator })));
-const ClassResultView = lazy(() => import('../ClassResultView').then(m => ({ default: m.ClassResultView })));
+const BlankMarksheetView = lazyWithRetry(() => import('../BlankMarksheetView').then(m => ({ default: m.BlankMarksheetView })));
+const ResultGenerator = lazyWithRetry(() => import('../ResultView').then(m => ({ default: m.ResultGenerator })));
+const ClassResultView = lazyWithRetry(() => import('../ClassResultView').then(m => ({ default: m.ClassResultView })));
 import { WebResultView } from '../WebResultView';
 import { ResultSmsNotificationModal } from '../ResultSmsNotificationModal';
 import { Button } from '../ui/Button';

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
 import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
+import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
@@ -79,6 +80,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     currentMember,
     currentRole,
     currentUser,
+    effectiveRoles,
     schoolProfile,
     students = [],
     classes = [],
@@ -102,19 +104,70 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const { accentTheme, setAccentTheme, darkMode, setDarkMode, toggleDarkMode } = useTheme();
   const isEn = language === 'en';
 
-  // 1. Determine current active role.
-  // Signal-based (not exact roleId match): institutions use CUSTOM roles
-  // with generated ids, so match on role id + role name + display name
-  // (English and Bangla), then fall back to the role's permissions —
-  // finance-entry without marks-entry means accounts work.
-  const userRole = useMemo<'teacher' | 'cashier' | 'parent' | 'staff'>(() => {
-    const roleId = String(currentMember?.roleId || currentUser?.role || '').toLowerCase();
-    const hay = `${roleId} ${String(currentRole?.name || '').toLowerCase()} ${String(currentRole?.displayName || '').toLowerCase()}`;
+  // 1. Determine the mobile home for this person.
+  //
+  // PRECEDENCE (the accountant→teacher fix; see services/roleResolution.ts):
+  //   (a) the logged-in ACCOUNT's own stored role is authoritative —
+  //       the old code read `currentMember?.roleId || currentUser?.role`,
+  //       so a stale 'role_teacher' member document (or a CustomRole
+  //       document resolved from it) shadowed the account and routed
+  //       an accountant to the teacher home;
+  //   (b) then the member document's roleId;
+  //   (c) then the CustomRole name/displayName signals (custom roles
+  //       with generated ids);
+  //   (d) then the role derived from the LINKED staff record's
+  //       designation — across ALL matching records, so a leftover
+  //       plain-teacher duplicate cannot beat the record whose
+  //       designation says "Accountant";
+  //   (e) then the permission fallback (finance-entry without
+  //       marks-entry means accounts work);
+  //   (f) default 'teacher'.
+  // 'teacher' is the weakest stamp at every step (it was the historical
+  // default written by older code), so a non-teacher signal found at a
+  // later step still beats a teacher stamp found earlier.
+  type MobileHome = 'teacher' | 'cashier' | 'parent' | 'staff';
+  const homeForRoleKey = (raw?: string | null): MobileHome | null => {
+    const key = normalizeRoleKey(raw);
+    if (key === 'accountant') return 'cashier';
+    if (key === 'teacher') return 'teacher';
+    if (key === 'guardian') return 'parent';
+    if (key === 'staff') return 'staff';
+    return null; // principal / super_admin have no dedicated mobile home
+  };
+
+  const primaryHome = useMemo<MobileHome>(() => {
+    // (a) account role, then (b) member roleId — non-teacher wins.
+    const accountHome = homeForRoleKey(currentUser?.role);
+    if (accountHome && accountHome !== 'teacher') return accountHome;
+    const memberHome = homeForRoleKey(currentMember?.roleId);
+    if (memberHome && memberHome !== 'teacher') return memberHome;
+
+    // (c) CustomRole name/displayName signals (English + Bangla).
+    const hay = `${String(currentRole?.name || '').toLowerCase()} ${String(currentRole?.displayName || '').toLowerCase()}`;
     if (hay.includes('account') || hay.includes('cashier') || hay.includes('হিসাব') || hay.includes('ক্যাশ')) return 'cashier';
     if (hay.includes('guardian') || hay.includes('parent') || hay.includes('অভিভাবক')) return 'parent';
     if (hay.includes('librarian') || hay.includes('গ্রন্থাগার')) return 'staff';
+
+    // (d) linked staff records' designations — best (non-teacher) wins.
+    const email = (currentUser?.email || authUser?.email || '').toLowerCase();
+    const phone = currentUser?.phone || currentMember?.phone || '';
+    const linked = teachers.filter(t =>
+      (currentUser?.id && (t.id === currentUser.id || t.userId === currentUser.id)) ||
+      (email !== '' && t.email && t.email.toLowerCase() === email) ||
+      (phone !== '' && t.phone && t.phone === phone)
+    );
+    if (linked.length > 0) {
+      const derivedHome = homeForRoleKey(bestDesignationRole(linked));
+      if (derivedHome && derivedHome !== 'teacher') return derivedHome;
+    }
+
+    // Remaining teacher signals from the old combined check.
     if (hay.includes('teacher') || hay.includes('শিক্ষক') || hay.includes('মৌলভী') || hay.includes('মাওলানা')) return 'teacher';
     if (hay.includes('staff') || hay.includes('office') || hay.includes('অফিস')) return 'staff';
+    if (accountHome) return accountHome; // the account's teacher stamp
+    if (memberHome) return memberHome;
+
+    // (e) permission fallback.
     try {
       if (typeof hasPermission === 'function') {
         const canFee = !!(hasPermission('fees.create' as any) || hasPermission('finance.create' as any) || hasPermission('payments.create' as any));
@@ -123,8 +176,27 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         if (canFee && !canMarks && !canAttend) return 'cashier';
       }
     } catch { /* keep default below */ }
-    return 'teacher'; // Default role for standard instructors
-  }, [currentMember, currentUser, currentRole, hasPermission]);
+    return 'teacher'; // (f) Default role for standard instructors
+  }, [currentMember, currentUser, currentRole, hasPermission, teachers, authUser]);
+
+  // Multi-role: every effective role that has a mobile home is offered
+  // in the switcher; the primary role's home comes first and is the
+  // default. Single-role users get exactly one home → no switcher,
+  // UI unchanged for them.
+  const availableHomes = useMemo<MobileHome[]>(() => {
+    const homes: MobileHome[] = [];
+    const add = (h: MobileHome | null) => {
+      if (h && !homes.includes(h)) homes.push(h);
+    };
+    add(primaryHome);
+    (effectiveRoles || []).forEach(k => add(homeForRoleKey(k)));
+    return homes;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primaryHome, effectiveRoles]);
+
+  const [homeOverride, setHomeOverride] = useState<MobileHome | null>(null);
+  const userRole: MobileHome =
+    homeOverride && availableHomes.includes(homeOverride) ? homeOverride : primaryHome;
 
   const [activeBottomNav, setActiveBottomNav] = useState<string>('home');
   const [activeSubModule, setActiveSubModule] = useState<string | null>(null);
@@ -638,16 +710,24 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // periods are matched by linked teacher record id first, then by name.
   const normalizeName = (s?: string | null) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
+  // The linkage is deliberately ROLE-AGNOSTIC: any linked staff record
+  // counts, whatever the person's login role is. A principal (or an
+  // accountant) who also teaches is matched through their staff record
+  // — by uid link, record id, email, or phone — never by requiring
+  // role === 'teacher'. (Multi-role: routine follows the staff record,
+  // not the primary role.)
   const myTeacherRecord = useMemo(() => {
     const uid = authUser?.uid;
     const email = (authUser?.email || currentUser?.email || '').toLowerCase();
+    const phone = currentUser?.phone || currentMember?.phone || '';
     return (
       teachers.find(t => uid && t.userId && t.userId === uid) ||
       teachers.find(t => currentUser?.id && t.id === currentUser.id) ||
       teachers.find(t => email && t.email && t.email.toLowerCase() === email) ||
+      teachers.find(t => phone && t.phone && t.phone === phone) ||
       null
     );
-  }, [teachers, authUser, currentUser]);
+  }, [teachers, authUser, currentUser, currentMember]);
 
   const myNameSet = useMemo(() => {
     return new Set(
@@ -2103,6 +2183,33 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 </span>
               ))}
             </div>
+
+            {/* Multi-role view switcher — only for people holding more
+                than one role with a mobile home (e.g. accountant +
+                teacher). Single-role users never see this. */}
+            {availableHomes.length > 1 && (
+              <div className="flex gap-1.5 mt-4 p-1 rounded-full bg-white/[0.16]">
+                {availableHomes.map(h => {
+                  const label =
+                    h === 'teacher' ? (isEn ? 'Teacher' : 'শিক্ষক') :
+                    h === 'cashier' ? (isEn ? 'Cashier' : 'হিসাবরক্ষক') :
+                    h === 'parent' ? (isEn ? 'Guardian' : 'অভিভাবক') :
+                    (isEn ? 'Office' : 'অফিস');
+                  const isActive = userRole === h;
+                  return (
+                    <button
+                      key={h}
+                      onClick={() => { setHomeOverride(h); goHome(); }}
+                      className={`flex-1 px-3 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        isActive ? 'bg-white text-[#1e2433] shadow-md' : 'text-white/85 active:bg-white/[0.14]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <p className="text-[11px] font-bold uppercase tracking-wider text-white/70 mt-5 mb-2.5">
               {isEn ? 'Quick actions' : 'দ্রুত কাজ'}

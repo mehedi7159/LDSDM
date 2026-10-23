@@ -1,5 +1,6 @@
 import { SUPER_ADMIN_EMAIL } from './services/appConfig';
-import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from './components/ui/ToastContainer';
@@ -24,20 +25,20 @@ import { SkeletonStatCard, SkeletonTable } from './components/ui/ShimmerSkeleton
 // portal path (LandingView / AuthPage / StudentProfileView /
 // VerifiedResultModal) so logged-out portal behaviour is byte-identical.
 // ---------------------------------------------------------------------------
-const StudentManager = lazy(() => import('./components/StudentManager').then(m => ({ default: m.StudentManager })));
-const FinanceManager = lazy(() => import('./components/FinanceManager').then(m => ({ default: m.FinanceManager })));
-const AcademicManager = lazy(() => import('./components/academic/AcademicManager').then(m => ({ default: m.AcademicManager })));
-const AttendanceManager = lazy(() => import('./components/attendance/AttendanceManager').then(m => ({ default: m.AttendanceManager })));
-const ExamResultsManager = lazy(() => import('./components/examination/ExamResultsManager').then(m => ({ default: m.ExamResultsManager })));
-const StaffManager = lazy(() => import('./components/staff/StaffManager').then(m => ({ default: m.StaffManager })));
-const ReportsSettingsManager = lazy(() => import('./components/settings/ReportsSettingsManager').then(m => ({ default: m.ReportsSettingsManager })));
-const PortalsServicesManager = lazy(() => import('./components/portals/PortalsServicesManager').then(m => ({ default: m.PortalsServicesManager })));
-const SpecializedServicesManager = lazy(() => import('./components/services/SpecializedServicesManager').then(m => ({ default: m.SpecializedServicesManager })));
-const InstitutionalOperationsManager = lazy(() => import('./components/operations/InstitutionalOperationsManager').then(m => ({ default: m.InstitutionalOperationsManager })));
-const MasterPrincipalAiAdvisor = lazy(() => import('./components/ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
-const StudentReportView = lazy(() => import('./components/StudentReportView').then(m => ({ default: m.StudentReportView })));
-const StudentIDCardGenerator = lazy(() => import('./components/StudentIDCardGenerator').then(m => ({ default: m.StudentIDCardGenerator })));
-const StaffMobileApp = lazy(() => import('./components/StaffMobileApp').then(m => ({ default: m.StaffMobileApp })));
+const StudentManager = lazyWithRetry(() => import('./components/StudentManager').then(m => ({ default: m.StudentManager })));
+const FinanceManager = lazyWithRetry(() => import('./components/FinanceManager').then(m => ({ default: m.FinanceManager })));
+const AcademicManager = lazyWithRetry(() => import('./components/academic/AcademicManager').then(m => ({ default: m.AcademicManager })));
+const AttendanceManager = lazyWithRetry(() => import('./components/attendance/AttendanceManager').then(m => ({ default: m.AttendanceManager })));
+const ExamResultsManager = lazyWithRetry(() => import('./components/examination/ExamResultsManager').then(m => ({ default: m.ExamResultsManager })));
+const StaffManager = lazyWithRetry(() => import('./components/staff/StaffManager').then(m => ({ default: m.StaffManager })));
+const ReportsSettingsManager = lazyWithRetry(() => import('./components/settings/ReportsSettingsManager').then(m => ({ default: m.ReportsSettingsManager })));
+const PortalsServicesManager = lazyWithRetry(() => import('./components/portals/PortalsServicesManager').then(m => ({ default: m.PortalsServicesManager })));
+const SpecializedServicesManager = lazyWithRetry(() => import('./components/services/SpecializedServicesManager').then(m => ({ default: m.SpecializedServicesManager })));
+const InstitutionalOperationsManager = lazyWithRetry(() => import('./components/operations/InstitutionalOperationsManager').then(m => ({ default: m.InstitutionalOperationsManager })));
+const MasterPrincipalAiAdvisor = lazyWithRetry(() => import('./components/ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
+const StudentReportView = lazyWithRetry(() => import('./components/StudentReportView').then(m => ({ default: m.StudentReportView })));
+const StudentIDCardGenerator = lazyWithRetry(() => import('./components/StudentIDCardGenerator').then(m => ({ default: m.StudentIDCardGenerator })));
+const StaffMobileApp = lazyWithRetry(() => import('./components/StaffMobileApp').then(m => ({ default: m.StaffMobileApp })));
 
 // Suspense fallback shown only while a lazy tab module is downloading.
 const TabLoadingFallback = () => (
@@ -69,6 +70,7 @@ const AppContent = () => {
     authUser,
     currentUser,
     userRole,
+    effectiveRoles,
     authClaims,
     authRole,
     currentMember,
@@ -112,8 +114,9 @@ const AppContent = () => {
     const isOwnerAdmin = isSuperAdmin || isAdmin || currentUser?.role === 'super_admin' || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     if (isOwnerAdmin) return true;
 
-    // Principal has administrative access to analytical and management tabs
-    if (currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal') {
+    // Principal has administrative access to analytical and management tabs.
+    // Multi-role: principal held as an ADDITIONAL role counts too (union).
+    if (currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal' || (effectiveRoles || []).includes('principal')) {
       if (tab === 'backup_recovery' || tab === 'superadmin_audit') return false;
       return true;
     }

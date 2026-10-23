@@ -109,13 +109,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     authUser,
     currentUser,
     userRole,
+    effectiveRoles,
     currentMember,
     logoutAdmin 
   } = useApp();
 
   const isOwnerEmail = (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const isOwner = isSuperAdmin || isOwnerEmail || (currentUser?.role === 'super_admin');
-  const isPrincipal = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
+  // Multi-role: principal held as an additional role counts as principal.
+  const isPrincipal = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || (effectiveRoles || []).includes('principal');
   const canAccessMasterAi = isOwner || isPrincipal;
 
   // Theme & Mobile Navigation Sheet states
@@ -165,7 +167,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     }
 
     // 5. For non-admin, non-principal roles: hide administrative operations and HR hubs
-    const isPrincipalUser = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal';
+    const isPrincipalUser = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal' || (effectiveRoles || []).includes('principal');
     if (!isAdmin && !isSuperAdmin && !isOwnerEmail && !isPrincipalUser) {
       if (['fixed_assets', 'store_inventory', 'house_system', 'fuzala_alumni', 'health_medical'].includes(item.id)) {
         return false;
@@ -174,7 +176,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         return false;
       }
       if (['sms_gateway', 'boarding_mess', 'islamic_welfare'].includes(item.id)) {
-        return userRole === 'accountant' || currentMember?.roleId === 'role_accountant';
+        // Multi-role: accountant held as an additional role counts too.
+        return userRole === 'accountant' || currentMember?.roleId === 'role_accountant' || (effectiveRoles || []).includes('accountant');
       }
       if (['student_tc', 'promotion', 'student_admission'].includes(item.id)) {
         return false;
