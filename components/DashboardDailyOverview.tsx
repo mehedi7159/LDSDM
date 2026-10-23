@@ -61,9 +61,16 @@ interface DashboardDailyOverviewProps {
   onSelectExamId?: (examId: string) => void;
   yearExams?: Array<{ id: string; name: string; nameBn?: string }>;
   onOpenRecoveryModal?: () => void;
+  /**
+   * 'hero' renders only the brand PageHeader; 'stats' renders only the
+   * sections below it; 'all' (default) renders the full legacy composition.
+   * The dashboard splits hero/stats so the Overview / Action-&-Advice view
+   * switcher can sit directly under the hero.
+   */
+  section?: 'all' | 'hero' | 'stats';
 }
 
-export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({ 
+export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
   onNavigate,
   selectedAcademicYear = '2026',
   onSelectAcademicYear,
@@ -71,8 +78,11 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
   selectedExamId,
   onSelectExamId,
   yearExams = [],
-  onOpenRecoveryModal
+  onOpenRecoveryModal,
+  section = 'all'
 }) => {
+  const showHero = section !== 'stats';
+  const showStats = section !== 'hero';
   const { 
     schoolProfile, 
     students = [], 
@@ -307,7 +317,10 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
 
   const activeNotices = useMemo(() => {
     return notices
-      .filter(n => n.isActive !== false)
+      // Urgent/cancellation notices are surfaced by the Dashboard's own
+      // urgent-notices card in the Overview view — exclude them here so a
+      // notice never appears twice on the dashboard.
+      .filter(n => n.isActive !== false && !(n.priority === 'urgent' || n.category === 'urgent' || n.category === 'cancellation'))
       .sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
@@ -389,6 +402,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
   return (
     <div className="space-y-6">
 
+      {showHero && (<>
       {/* =========================================================================
           SECTION 1: OVERVIEW / সারসংক্ষেপ (Brand Hero — PageHeader + quick tiles)
           ========================================================================= */}
@@ -462,7 +476,9 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
           </div>
         )}
       </PageHeader>
+      </>)}
 
+      {showStats && (<>
       {/* =========================================================================
           SECTIONS 2, 3, 4, 5: THE 4 CORE METRIC BENTO CARDS
           (আজকের উপস্থিতি | আজকের আয়–ব্যয় | শিক্ষার্থী ও কর্মী | বকেয়া ফি)
@@ -813,6 +829,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         </SectionCard>
 
       </div>
+      </>)}
 
     </div>
   );

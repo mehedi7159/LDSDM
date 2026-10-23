@@ -1,5 +1,5 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, memo, lazy, Suspense } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Users, 
@@ -46,7 +46,6 @@ import {
   ShieldCheck,
   Megaphone
 } from 'lucide-react';
-import { NoticeBoardAlertBanner } from './NoticeBoard';
 import { 
   BarChart, 
   Bar, 
@@ -66,6 +65,13 @@ import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
 import { SectionCard } from './ui/SectionCard';
 import { ProgressBar } from './ui/ProgressBar';
+import { calculateClassDuesSummary, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
+import { getAdmissionApplications } from '../services/admissionApplicationsService';
+import { Phone, MessageCircle, LayoutDashboard, UserPlus } from 'lucide-react';
+
+// The AI Master advisor is embedded in the Action & Advice view — lazy,
+// exactly as in App.tsx, so the Overview view never pays its bundle cost.
+const MasterPrincipalAiAdvisor = lazy(() => import('./ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
 
 // =========================================================================
 // TYPES FOR MEMOIZED SUB-COMPONENTS
@@ -321,18 +327,112 @@ const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
 ClassGrid.displayName = 'ClassGrid';
 
 // =========================================================================
+// 5B. URGENT NOTICES CARD (Overview view)
+// The old notice marquee banner that sat above the hero was deleted at the
+// owner's direction. Urgent/cancellation notices now live here — a compact
+// card inside the Overview view, rendered only when such notices exist.
+// =========================================================================
+interface UrgentNoticeItem {
+  id: string;
+  title: string;
+  category?: string;
+  priority?: string;
+  date?: string;
+  createdAt?: string;
+}
+
+const UrgentNoticesCard = memo<{ notices: UrgentNoticeItem[]; language: string; onOpenNoticeBoard: () => void }>(({
+  notices,
+  language,
+  onOpenNoticeBoard
+}) => {
+  if (notices.length === 0) return null;
+  const isBn = language === 'bn';
+  return (
+    <SectionCard
+      title={isBn ? 'জরুরি নোটিশ' : 'Urgent Notices'}
+      icon={AlertTriangle}
+      iconTone="rose"
+      bodyClassName="space-y-2"
+      action={
+        <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+          {toBanglaDigits(notices.length, language)} {isBn ? 'টি' : ''}
+        </span>
+      }
+    >
+      {notices.map(n => (
+        <button
+          key={n.id}
+          onClick={onOpenNoticeBoard}
+          className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all text-left cursor-pointer"
+        >
+          <span className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+            <span className="min-w-0">
+              <span className="font-bold text-xs text-slate-900 dark:text-white block truncate">{n.title}</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                {n.category} • {(n.date || n.createdAt || '').slice(0, 10)}
+              </span>
+            </span>
+          </span>
+          <ChevronRight size={14} className="text-rose-400 shrink-0" />
+        </button>
+      ))}
+    </SectionCard>
+  );
+});
+UrgentNoticesCard.displayName = 'UrgentNoticesCard';
+
+// =========================================================================
+// 5C. ACTION ROW (Action & Advice view) — one pending-task row
+// =========================================================================
+interface ActionRowProps {
+  icon: React.ElementType;
+  iconCls: string;
+  title: string;
+  detail?: string;
+  count: number;
+  language: string;
+  onClick: () => void;
+}
+
+const ActionRow = memo<ActionRowProps>(({ icon: Icon, iconCls, title, detail, count, language, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all text-left cursor-pointer"
+  >
+    <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconCls}`}>
+      <Icon size={18} />
+    </span>
+    <span className="flex-1 min-w-0">
+      <span className="font-bold text-sm text-slate-900 dark:text-white block truncate">{title}</span>
+      {detail && <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">{detail}</span>}
+    </span>
+    <span className="rounded-full px-2.5 py-1 text-xs font-black bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+      {toBanglaDigits(count, language)}
+    </span>
+    <ChevronRight size={16} className="text-slate-400 shrink-0" />
+  </button>
+));
+ActionRow.displayName = 'ActionRow';
+
+// =========================================================================
 // 6. MAIN DASHBOARD ORCHESTRATOR COMPONENT
 // =========================================================================
 export const Dashboard = () => {
-  const { 
-    students = [], 
-    subjects = [], 
-    marks = [], 
-    exams = [], 
-    classes = [], 
+  const {
+    students = [],
+    subjects = [],
+    marks = [],
+    exams = [],
+    classes = [],
     academicYears = [],
     schoolProfile,
     transactions = [],
+    feeStructures = [],
+    notices = [],
+    staffLeaves = [],
+    dailyStudentAttendance = [],
     teachers = [],
     currentUser,
     isOwnerAdmin,
@@ -352,6 +452,9 @@ export const Dashboard = () => {
 
   const [selectedExamId, setSelectedExamId] = useState<string>('All');
   const [selectedClass, setSelectedClass] = useState<string>('All');
+  // Top-level dashboard split (owner directive): 'overview' = whole-madrasa
+  // monitoring + reports; 'action' = AI Master advisor + live to-do list.
+  const [activeView, setActiveView] = useState<'overview' | 'action'>('overview');
   const [activeSectionTab, setActiveSectionTab] = useState<'overview' | 'student' | 'subjects' | 'merit'>('overview');
   const [meritSearchQuery, setMeritSearchQuery] = useState<string>('');
   const [dashboardMode, setDashboardMode] = useState<string>(() => {
@@ -722,6 +825,110 @@ export const Dashboard = () => {
     };
   }, [students, marks, subjects, classes, exams, yearExams, selectedAcademicYear, selectedExamId, selectedClass, language]);
 
+  // =========================================================================
+  // ACTION & ADVICE DATA — every count below comes from a live record set;
+  // nothing is estimated or invented.
+  // =========================================================================
+
+  // Urgent notices for the Overview card — the same predicate the deleted
+  // above-hero banner used (urgent priority/category + cancellations).
+  const urgentNotices = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return (notices || [])
+      .filter(n => {
+        if (!n || n.isActive === false) return false;
+        if (n.showAlertBanner === false) return false;
+        if (n.expiresAt && String(n.expiresAt).slice(0, 10) < todayStr) return false;
+        return n.priority === 'urgent' || n.category === 'urgent' || n.category === 'cancellation';
+      })
+      .sort((a, b) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))
+      .slice(0, 3);
+  }, [notices]);
+
+  const actionData = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Classes whose daily attendance has not been recorded today
+    //    (context dailyStudentAttendance mirrors the daily attendance service).
+    const recordedClasses = new Set(
+      (dailyStudentAttendance || []).filter(r => r && r.date === todayStr).map(r => r.classLevel)
+    );
+    const attendancePendingClasses = (classes || []).filter(c => {
+      if (!c || c.status === 'INACTIVE') return false;
+      const hasActiveStudents = (students || []).some(s => s && s.classLevel === c.name && s.status === 'Active' && !s.isFormer);
+      return hasActiveStudents && !recordedClasses.has(c.name);
+    });
+
+    // 2 + 6. Marks entry pending, and results complete but not yet finalized
+    //    (both read off the evaluation matrix computed above).
+    const marksPendingExams = (examEvaluationMatrix || []).filter(m => !m.isFinalized && m.pendingMarks > 0);
+    const totalPendingMarks = marksPendingExams.reduce((sum, m) => sum + (m.pendingMarks || 0), 0);
+    const readyToFinalizeExams = (examEvaluationMatrix || []).filter(m => !m.isFinalized && m.expectedMarks > 0 && m.progress >= 100);
+
+    // 3. Fee dues follow-up — the same calculator Finance and the staff
+    //    mobile app use (studentDuesService).
+    const activeStudents = (students || []).filter(s => s && s.status === 'Active' && !s.isFormer);
+    const duesSummary = calculateClassDuesSummary(activeStudents, feeStructures, transactions);
+    const dueProfiles = (duesSummary.profiles || [])
+      .filter(p => p.dueThisMonth > 0)
+      .sort((a, b) => b.dueThisMonth - a.dueThisMonth);
+
+    // 4. Admission applications awaiting a decision (canonical store).
+    let pendingAdmissions: ReturnType<typeof getAdmissionApplications> = [];
+    try {
+      pendingAdmissions = getAdmissionApplications().filter(a => a.status === 'pending' || a.status === 'interview_called');
+    } catch {
+      pendingAdmissions = [];
+    }
+
+    // 5. Staff leave applications awaiting approval.
+    const pendingLeaves = (staffLeaves || []).filter(l => l && l.status === 'PENDING');
+
+    // Badge on the Action & Advice button: total pending items across all
+    // categories (classes + exams + due students + applications + leaves
+    // + results awaiting finalize).
+    const badgeCount =
+      attendancePendingClasses.length +
+      marksPendingExams.length +
+      dueProfiles.length +
+      pendingAdmissions.length +
+      pendingLeaves.length +
+      readyToFinalizeExams.length;
+
+    return {
+      attendancePendingClasses,
+      marksPendingExams,
+      totalPendingMarks,
+      readyToFinalizeExams,
+      duesSummary,
+      dueProfiles,
+      topDueProfiles: dueProfiles.slice(0, 5),
+      pendingAdmissions,
+      pendingLeaves,
+      badgeCount
+    };
+    // activeView is a deliberate dep: admission applications live outside
+    // React state (canonical local store), so re-read them on view switches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes, students, dailyStudentAttendance, examEvaluationMatrix, feeStructures, transactions, staffLeaves, activeView]);
+
+  // WhatsApp fee-reminder link — the same pattern as StaffMobileApp.
+  const duesWhatsappLink = (profile: StudentDueProfile) => {
+    const phone = String(profile.student.guardianPhone || '').replace(/[^0-9]/g, '');
+    if (!phone) return null;
+    const intl = phone.startsWith('880') ? phone : '880' + phone.replace(/^0/, '');
+    const text = getDueReminderMessage(
+      profile.student.nameBn || profile.student.name,
+      profile.classLevel,
+      profile.dueThisMonth,
+      schoolProfile?.nameBn || schoolProfile?.name || ''
+    );
+    return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+  };
+
+  // Same visibility rule the removed AI promo card used.
+  const canSeeAdvisor = isOwnerAdmin || isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || currentUser?.email === SUPER_ADMIN_EMAIL;
+
   // Filtered top performers for search query
   const filteredTopStudents = useMemo(() => {
     if (!meritSearchQuery.trim()) return (topStudents || []).slice(0, 10);
@@ -738,80 +945,62 @@ export const Dashboard = () => {
 
   return (
     <div id="madrasha-executive-dashboard" className="space-y-6 pb-12">
-      
-      {/* 0. Top Live Notice Board Marquee & Emergency Notification Alert */}
-      <NoticeBoardAlertBanner onOpenNoticeBoard={() => setActiveTab('notice_board')} />
 
-      {/* 🌟 AI Master Principal Executive Briefing & Action Hub (Alluring, Smart, SaaS-level card) */}
-      {(isOwnerAdmin || isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || currentUser?.email === SUPER_ADMIN_EMAIL) && (
-        <div className="bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-900/60 rounded-3xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(79,70,229,0.06)] relative overflow-hidden transition-all group hover:border-indigo-400">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1.5 flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-amber-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-amber-500 animate-pulse" />
-                  <span>{language === 'bn' ? 'মাস্টার এআই প্রিন্সিপাল • দৈনিক প্রাতিষ্ঠানিক কমান্ড' : 'Master AI Principal • Executive Intelligence'}</span>
-                </span>
-                <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
-                  <span>{language === 'bn' ? 'সিস্টেম সক্রিয় ও নজরদারিতে' : 'Live & Active'}</span>
-                </span>
-              </div>
+      {/* HERO — brand PageHeader (school name, date/session, quick-action
+          tiles). Nothing renders above the hero anymore: the notice marquee
+          banner that used to sit here was deleted at the owner's direction;
+          urgent notices now appear as a compact card inside Overview. */}
+      <DashboardDailyOverview
+        section="hero"
+        onNavigate={setActiveTab}
+        selectedAcademicYear={selectedAcademicYear}
+        onSelectAcademicYear={setSelectedAcademicYear}
+        academicYears={academicYears}
+        selectedExamId={selectedExamId}
+        onSelectExamId={setSelectedExamId}
+        yearExams={yearExams}
+        onOpenRecoveryModal={() => setIsRecoveryModalOpen(true)}
+      />
 
-              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>{language === 'bn' ? 'আসসালামু আলাইকুম, প্রাতিষ্ঠানিক কমান্ড হাব প্রস্তুত' : 'Executive Command & AI Intelligence Hub'}</span>
-              </h3>
+      {/* VIEW SWITCHER — the two dashboard halves (owner directive):
+          Overview for whole-madrasa monitoring, Action & Advice for the
+          AI Master + live to-do list. Directly below the hero. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          onClick={() => setActiveView('overview')}
+          className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
+            activeView === 'overview'
+              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-indigo-300 dark:hover:border-indigo-700'
+          }`}
+        >
+          <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'overview' ? 'bg-white/15 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300'}`}>
+            <LayoutDashboard size={20} />
+          </span>
+          <span className="font-black text-base sm:text-lg">{language === 'bn' ? 'ওভারভিউ' : 'Overview'}</span>
+        </button>
 
-            </div>
+        <button
+          onClick={() => setActiveView('action')}
+          className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
+            activeView === 'action'
+              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-indigo-300 dark:hover:border-indigo-700'
+          }`}
+        >
+          <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'action' ? 'bg-white/15 text-white' : 'bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300'}`}>
+            <Sparkles size={20} />
+          </span>
+          <span className="font-black text-base sm:text-lg flex-1">{language === 'bn' ? 'কাজ ও পরামর্শ' : 'Action & Advice'}</span>
+          {actionData.badgeCount > 0 && (
+            <span className="rounded-full px-3 py-1 text-xs font-black bg-rose-500 text-white shadow shrink-0">
+              {toBanglaDigits(actionData.badgeCount, language)}
+            </span>
+          )}
+        </button>
+      </div>
 
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                onClick={() => setActiveTab('ai_principal_advisor')}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-indigo-600 dark:to-indigo-700 text-white font-bold text-xs shadow-lg hover:shadow-indigo-500/25 flex items-center gap-2 cursor-pointer transition active:scale-95 group-hover:from-indigo-950 group-hover:to-slate-900"
-              >
-                <Sparkles size={14} className="text-amber-400" />
-                <span>{language === 'bn' ? 'এআই মাস্টারে প্রবেশ করুন' : 'Open AI Master'}</span>
-                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Action Pills */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 mt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-            <button
-              onClick={() => setActiveTab('ai_principal_advisor')}
-              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
-            >
-              <span className="font-semibold truncate">🌙 {language === 'bn' ? 'রমজানের ছুটির নোটিশ' : 'Ramadan Notice'}</span>
-              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold ml-1">১-ক্লিক</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ai_principal_advisor')}
-              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
-            >
-              <span className="font-semibold truncate">🗓️ {language === 'bn' ? 'সংঘাতহীন ক্লাস রুটিন' : 'Class Timetable'}</span>
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold ml-1">স্টুডিও</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ai_principal_advisor')}
-              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
-            >
-              <span className="font-semibold truncate">💳 {language === 'bn' ? 'বকেয়া ফি তাগাদা বার্তা' : 'Fee Recovery SMS'}</span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-1">বাল্ক</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ai_principal_advisor')}
-              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:text-indigo-700 text-left transition flex items-center justify-between cursor-pointer group/pill"
-            >
-              <span className="font-semibold truncate">🎙️ {language === 'bn' ? 'ভয়েস কমান্ডে নির্দেশ' : 'Voice Command'}</span>
-              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold ml-1">লাইভ</span>
-            </button>
-          </div>
-        </div>
-      )}
+      {activeView === 'overview' && (<>
 
       {/* Dynamic Situational AI Mode Banner */}
       {dashboardMode !== 'standard' && (
@@ -859,7 +1048,16 @@ export const Dashboard = () => {
       )}
 
       {/* ধাপ ১ বাস্তবায়ন: প্রতিদিনের সামগ্রিক অবস্থা এক নজরে (Overview, আজকের উপস্থিতি, আজকের আয়–ব্যয়, শিক্ষার্থী ও জনবল, বকেয়া ফি, আসন্ন পরীক্ষা ও নোটিশ, সাম্প্রতিক কার্যক্রম) */}
-      <DashboardDailyOverview 
+      {/* Urgent notices — compact card inside Overview (the alert content of
+          the deleted above-hero banner lives here now; self-hides when none) */}
+      <UrgentNoticesCard
+        notices={urgentNotices}
+        language={language}
+        onOpenNoticeBoard={() => setActiveTab('notice_board')}
+      />
+
+      <DashboardDailyOverview
+        section="stats"
         onNavigate={setActiveTab}
         selectedAcademicYear={selectedAcademicYear}
         onSelectAcademicYear={setSelectedAcademicYear}
@@ -883,6 +1081,36 @@ export const Dashboard = () => {
         }}
         language={language}
       />
+
+      {/* REPORTS ACCESS — daily / weekly / monthly reporting lives in the
+          existing report modules; these are direct doors to them from the
+          Overview (no report engines rebuilt here). */}
+      <SectionCard
+        title={language === 'bn' ? 'প্রতিবেদন' : 'Reports'}
+        icon={FileSpreadsheet}
+        iconTone="indigo"
+        bodyClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5"
+      >
+        {[
+          { tab: 'admin_reports', bn: 'প্রাতিষ্ঠানিক রিপোর্ট', en: 'Institutional Reports', icon: Building2 },
+          { tab: 'finance_reports', bn: 'আর্থিক রিপোর্ট', en: 'Finance Reports', icon: Wallet },
+          { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck },
+          { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users },
+          { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen }
+        ].map(r => {
+          const RIcon = r.icon;
+          return (
+            <button
+              key={r.tab}
+              onClick={() => setActiveTab(r.tab)}
+              className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30 transition-all text-left cursor-pointer"
+            >
+              <RIcon size={16} className="text-indigo-600 dark:text-indigo-300 shrink-0" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{language === 'bn' ? r.bn : r.en}</span>
+            </button>
+          );
+        })}
+      </SectionCard>
 
       {/* 5. Navigation Switcher */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
@@ -1255,6 +1483,196 @@ export const Dashboard = () => {
           </div>
         </SectionCard>
       )}
+
+      </>)}
+
+      {activeView === 'action' && (<>
+
+        {/* AI MASTER — the advisor leads this view, embedded in place
+            (same visibility rule the old promo card used). */}
+        {canSeeAdvisor && (
+          <Suspense fallback={
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 animate-pulse">
+              <div className="h-5 w-48 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+              <div className="h-3 w-72 max-w-full bg-slate-100 dark:bg-slate-800/70 rounded-lg mt-3" />
+            </div>
+          }>
+            <MasterPrincipalAiAdvisor onNavigateTab={(tab) => setActiveTab(tab)} />
+          </Suspense>
+        )}
+
+        {/* TO-DO — pending work from live records only; a category with
+            nothing pending simply does not appear. */}
+        <SectionCard
+          title={language === 'bn' ? 'আজকের করণীয়' : "Today's To-Do"}
+          icon={ListChecks}
+          iconTone="amber"
+          bodyClassName="space-y-2.5"
+          action={actionData.badgeCount > 0 ? (
+            <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+              {toBanglaDigits(actionData.badgeCount, language)} {language === 'bn' ? 'টি বাকি' : 'pending'}
+            </span>
+          ) : undefined}
+        >
+          {actionData.attendancePendingClasses.length > 0 && (
+            <ActionRow
+              icon={UserCheck}
+              iconCls="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300"
+              title={language === 'bn' ? 'আজকের হাজিরা নেওয়া হয়নি' : "Today's attendance not taken"}
+              detail={
+                actionData.attendancePendingClasses.slice(0, 4).map(c => language === 'bn' ? (c.nameBn || c.name) : c.name).join(', ') +
+                (actionData.attendancePendingClasses.length > 4 ? ` +${toBanglaDigits(actionData.attendancePendingClasses.length - 4, language)}` : '')
+              }
+              count={actionData.attendancePendingClasses.length}
+              language={language}
+              onClick={() => setActiveTab('attendance')}
+            />
+          )}
+
+          {actionData.marksPendingExams.length > 0 && (
+            <ActionRow
+              icon={PenTool}
+              iconCls="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300"
+              title={language === 'bn' ? 'নম্বর এন্ট্রি বাকি' : 'Marks entry pending'}
+              detail={language === 'bn'
+                ? `মোট ${toBanglaDigits(actionData.totalPendingMarks, language)}টি নম্বর বাকি`
+                : `${actionData.totalPendingMarks} entries pending in total`}
+              count={actionData.marksPendingExams.length}
+              language={language}
+              onClick={() => {
+                const first = actionData.marksPendingExams[0];
+                if (first) setSelectedExamId(first.examId);
+                setActiveTab('marks');
+              }}
+            />
+          )}
+
+          {actionData.dueProfiles.length > 0 && (
+            <ActionRow
+              icon={Wallet}
+              iconCls="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300"
+              title={language === 'bn' ? 'বকেয়া ফি অনুসরণ' : 'Fee dues follow-up'}
+              detail={language === 'bn'
+                ? `মোট বকেয়া ৳${toBanglaDigits(actionData.duesSummary.totalDue.toLocaleString(), language)}`
+                : `Total due ৳${actionData.duesSummary.totalDue.toLocaleString()}`}
+              count={actionData.dueProfiles.length}
+              language={language}
+              onClick={() => setActiveTab('finance')}
+            />
+          )}
+
+          {actionData.pendingAdmissions.length > 0 && (
+            <ActionRow
+              icon={UserPlus}
+              iconCls="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300"
+              title={language === 'bn' ? 'ভর্তির আবেদন অপেক্ষমাণ' : 'Admission applications pending'}
+              count={actionData.pendingAdmissions.length}
+              language={language}
+              onClick={() => setActiveTab('admission_applications')}
+            />
+          )}
+
+          {actionData.pendingLeaves.length > 0 && (
+            <ActionRow
+              icon={Calendar}
+              iconCls="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300"
+              title={language === 'bn' ? 'ছুটির আবেদন অপেক্ষমাণ' : 'Leave applications pending'}
+              detail={
+                actionData.pendingLeaves.slice(0, 2).map(l => l.teacherName).join(', ') +
+                (actionData.pendingLeaves.length > 2 ? '…' : '')
+              }
+              count={actionData.pendingLeaves.length}
+              language={language}
+              onClick={() => setActiveTab('staff_leaves')}
+            />
+          )}
+
+          {actionData.readyToFinalizeExams.length > 0 && (
+            <ActionRow
+              icon={CheckCheck}
+              iconCls="bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-300"
+              title={language === 'bn' ? 'ফলাফল চূড়ান্ত করার অপেক্ষায়' : 'Results ready to finalize'}
+              detail={actionData.readyToFinalizeExams.map(m => language === 'bn' ? (m.examNameBn || m.examName) : m.examName).join(', ')}
+              count={actionData.readyToFinalizeExams.length}
+              language={language}
+              onClick={() => {
+                const first = actionData.readyToFinalizeExams[0];
+                if (first) setSelectedExamId(first.examId);
+                setActiveTab('results');
+              }}
+            />
+          )}
+
+          {actionData.badgeCount === 0 && (
+            <div className="text-center py-8 text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+              <CheckCircle2 size={18} />
+              <span>{language === 'bn' ? 'সব কাজ সম্পন্ন — আজ আর কিছু বাকি নেই।' : 'All clear — nothing pending today.'}</span>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* TOP DUES — the five largest follow-ups, with call / WhatsApp
+            (same reminder pattern as the staff mobile app). */}
+        {actionData.topDueProfiles.length > 0 && (
+          <SectionCard
+            title={language === 'bn' ? 'সর্বোচ্চ বকেয়া (শীর্ষ ৫)' : 'Top Fee Dues (Top 5)'}
+            icon={Wallet}
+            iconTone="rose"
+            bodyClassName="space-y-2"
+            action={
+              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                ৳{toBanglaDigits(actionData.duesSummary.totalDue.toLocaleString(), language)}
+              </span>
+            }
+          >
+            {actionData.topDueProfiles.map(p => {
+              const waLink = duesWhatsappLink(p);
+              const rawPhone = String(p.student.guardianPhone || '').replace(/[^0-9]/g, '');
+              return (
+                <div
+                  key={p.student.id}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 text-xs"
+                >
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 dark:text-white block truncate">
+                      {language === 'bn' ? p.student.nameBn || p.student.name : p.student.name}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {p.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(p.student.roll || '-', language)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-black text-rose-600 dark:text-rose-300">
+                      ৳{toBanglaDigits(p.dueThisMonth.toLocaleString(), language)}
+                    </span>
+                    {rawPhone && (
+                      <a
+                        href={`tel:${rawPhone}`}
+                        className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center justify-center"
+                        aria-label="Call guardian"
+                      >
+                        <Phone size={14} />
+                      </a>
+                    )}
+                    {waLink && (
+                      <a
+                        href={waLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center"
+                        aria-label="WhatsApp reminder"
+                      >
+                        <MessageCircle size={14} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </SectionCard>
+        )}
+
+      </>)}
 
     </div>
   );
