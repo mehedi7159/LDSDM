@@ -337,7 +337,10 @@ const defaultSchoolProfile: SchoolProfile = {
   showHeadmasterSignature: true,
   showGuardianSignature: true,
   banglaFont: 'Noto Sans Bengali',
-  banglaNumberFont: 'Noto Sans Bengali',
+  // Phase 3: Hind Siliguri default — its Bengali digits (১, ২…) stay legible
+  // in print where Noto Sans Bengali's digit forms were hard to read.
+  banglaNumberFont: 'Hind Siliguri',
+  uiFont: 'Hind Siliguri',
 };
 
 const defaultClasses: SchoolClass[] = [

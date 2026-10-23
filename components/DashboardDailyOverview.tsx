@@ -28,11 +28,16 @@ import {
   Receipt,
   UserPlus,
   PenTool,
-  AlertTriangle
+  AlertTriangle,
+  BookOpen,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { formatSafeDate, formatSafeTime } from '../services/utils';
 import { dailyAttendanceService } from '../services/dailyAttendanceService';
 import { CountUpNumber } from './ui/StatCard';
+import { PageHeader } from './ui/PageHeader';
+import { SectionCard } from './ui/SectionCard';
+import { ProgressBar } from './ui/ProgressBar';
 
 // Helper to convert English digits to Bengali
 const toBanglaDigits = (num: number | string | undefined | null, language: string = 'bn') => {
@@ -84,6 +89,20 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
   } = useApp();
 
   const isBn = language === 'bn';
+
+  // Quick-action tiles rendered inside the brand hero — the same targets
+  // as the former standalone Quick Launchpad (unified here in Phase 3).
+  const heroActions = [
+    { id: 'students', labelBn: 'শিক্ষার্থী ভর্তি', labelEn: 'Student Roster', icon: Users },
+    { id: 'promotion', labelBn: 'শ্রেণি প্রমোশন', labelEn: 'Class Advance', icon: GraduationCap },
+    { id: 'marks', labelBn: 'নম্বর এন্ট্রি', labelEn: 'Marks Entry', icon: PenTool },
+    { id: 'results', labelBn: 'ফলাফল কার্ড', labelEn: 'Report Cards', icon: FileSpreadsheet },
+    { id: 'attendance', labelBn: 'দৈনিক হাজিরা', labelEn: 'Attendance', icon: UserCheck },
+    { id: 'notice_board', labelBn: 'নোটিশ বোর্ড', labelEn: 'Notice Board', icon: Megaphone },
+    { id: 'finance', labelBn: 'ফি আদায়', labelEn: 'Fee Collection', icon: Wallet },
+    { id: 'subjects', labelBn: 'বিষয় বণ্টন', labelEn: 'Subject Setup', icon: BookOpen },
+    { id: 'settings', labelBn: 'সিস্টেম সেটিংস', labelEn: 'Settings', icon: SettingsIcon }
+  ];
 
   // Current Date formatting
   const todayDateStr = useMemo(() => {
@@ -244,9 +263,9 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         const classStructure = feeStructures.find(f => f.classLevel === s.classLevel);
         if (classStructure && classStructure.monthlyTuition) {
           monthlyExpectedTuition += Number(classStructure.monthlyTuition) || 0;
-        } else {
-          monthlyExpectedTuition += 500; // Average baseline
         }
+        // No override and no class fee structure: expected is 0 — aligned
+        // with services/studentDuesService so every surface shows one figure.
       }
     });
 
@@ -371,114 +390,79 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
     <div className="space-y-6">
 
       {/* =========================================================================
-          SECTION 1: OVERVIEW / সারসংক্ষেপ (Grand Institutional Executive Header)
+          SECTION 1: OVERVIEW / সারসংক্ষেপ (Brand Hero — PageHeader + quick tiles)
           ========================================================================= */}
-      <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden border border-indigo-500/20">
-        {/* Decorative background glow */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-xs font-bold text-amber-300 bg-amber-400/10 border border-amber-400/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
-                <Sparkles size={13} className="text-amber-400" />
-                <span>{isBn ? 'প্রতিদিনের সার্বিক অবস্থা এক নজরে' : 'Daily Institutional Command'}</span>
-              </span>
-              <span className="text-xs font-semibold text-emerald-300 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1 rounded-full flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{isBn ? 'সিস্টেম সক্রিয়' : 'Live Sync'}</span>
-              </span>
-              <span className="text-xs font-semibold text-indigo-200 bg-white/10 px-3 py-1 rounded-full">
-                {isBn ? `সেশন: ${toBanglaDigits(selectedAcademicYear, language)}` : `Session: ${selectedAcademicYear}`}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600/80 border border-indigo-400/30 flex items-center justify-center text-white shadow-md shrink-0">
-                <Building2 className="w-6 h-6 text-indigo-200" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight">
-                  {schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ম্যানেজমেন্ট সিস্টেম' : 'Madrasah Management')}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-300 font-medium flex items-center gap-2 mt-0.5">
-                  <Calendar size={14} className="text-indigo-400 shrink-0" />
-                  <span>{formattedToday}</span>
-                  {schoolProfile.address && (
-                    <span className="hidden sm:inline text-slate-400">• {schoolProfile.addressBn || schoolProfile.address}</span>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Action Navigation & Global Selectors */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
-            {/* Session selector */}
-            {onSelectAcademicYear && (
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl text-xs border border-white/20">
-                <span className="text-[11px] text-indigo-200 font-bold">{isBn ? 'সেশন:' : 'Session:'}</span>
-                <select
-                  value={selectedAcademicYear}
-                  onChange={(e) => onSelectAcademicYear(e.target.value)}
-                  className="bg-transparent text-white font-bold outline-none cursor-pointer text-xs"
+      <PageHeader
+        tone="brand"
+        icon={Building2}
+        eyebrow={isBn ? 'প্রতিদিনের সার্বিক অবস্থা এক নজরে' : 'Daily Institutional Command'}
+        title={schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ম্যানেজমেন্ট সিস্টেম' : 'Madrasah Management')}
+        subtitle={`${formattedToday}${schoolProfile.address ? ` • ${schoolProfile.addressBn || schoolProfile.address}` : ''}`}
+        footer={
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2 pt-5 mt-5 border-t border-white/15">
+            {heroActions.map((act) => {
+              const Icon = act.icon;
+              return (
+                <button
+                  key={act.id}
+                  onClick={() => onNavigate(act.id)}
+                  className="flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 px-1 bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all cursor-pointer active:scale-95"
                 >
-                  <option value="ALL" className="bg-slate-900 text-white">{isBn ? 'সকল সেশন' : 'All'}</option>
-                  {academicYears.map(y => (
-                    <option key={y.id} value={y.name} className="bg-slate-900 text-white">
-                      {toBanglaDigits(y.name, language)}
-                    </option>
-                  ))}
-                  {academicYears.length === 0 && (
-                    <option value={selectedAcademicYear} className="bg-slate-900 text-white">{toBanglaDigits(selectedAcademicYear, language)}</option>
-                  )}
-                </select>
-              </div>
-            )}
-
-            {/* Exam selector */}
-            {onSelectExamId && yearExams.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl text-xs border border-white/20">
-                <span className="text-[11px] text-indigo-200 font-bold">{isBn ? 'পরীক্ষা:' : 'Exam:'}</span>
-                <select
-                  value={selectedExamId || ''}
-                  onChange={(e) => onSelectExamId(e.target.value)}
-                  className="bg-transparent text-white font-bold outline-none cursor-pointer text-xs max-w-[120px] truncate"
-                >
-                  {yearExams.map(e => (
-                    <option key={e.id} value={e.id} className="bg-slate-900 text-white">
-                      {isBn ? (e.nameBn || e.name) : e.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <button
-              onClick={() => onNavigate('attendance')}
-              className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-            >
-              <UserCheck size={15} />
-              <span>{isBn ? 'আজকের হাজিরা' : 'Attendance'}</span>
-            </button>
-            <button
-              onClick={() => onNavigate('finance')}
-              className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-            >
-              <Receipt size={15} />
-              <span>{isBn ? 'ফি আদায়' : 'Fee Collect'}</span>
-            </button>
-            <button
-              onClick={() => onNavigate('students')}
-              className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer"
-            >
-              <UserPlus size={15} />
-              <span>{isBn ? 'নতুন ভর্তি' : 'New Admission'}</span>
-            </button>
+                  <Icon size={18} />
+                  <span className="text-[11px] font-semibold text-center leading-tight">
+                    {isBn ? act.labelBn : act.labelEn}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
+        }
+      >
+        <span className="text-xs font-semibold text-emerald-200 bg-white/10 border border-white/20 px-3 py-2 rounded-xl flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+          <span>{isBn ? 'সিস্টেম সক্রিয়' : 'Live Sync'}</span>
+        </span>
+
+        {/* Session selector */}
+        {onSelectAcademicYear && (
+          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl text-xs border border-white/20">
+            <span className="text-[11px] text-white/75 font-bold">{isBn ? 'সেশন:' : 'Session:'}</span>
+            <select
+              value={selectedAcademicYear}
+              onChange={(e) => onSelectAcademicYear(e.target.value)}
+              className="bg-transparent text-white font-bold outline-none cursor-pointer text-xs"
+            >
+              <option value="ALL" className="bg-slate-900 text-white">{isBn ? 'সকল সেশন' : 'All'}</option>
+              {academicYears.map(y => (
+                <option key={y.id} value={y.name} className="bg-slate-900 text-white">
+                  {toBanglaDigits(y.name, language)}
+                </option>
+              ))}
+              {academicYears.length === 0 && (
+                <option value={selectedAcademicYear} className="bg-slate-900 text-white">{toBanglaDigits(selectedAcademicYear, language)}</option>
+              )}
+            </select>
+          </div>
+        )}
+
+        {/* Exam selector */}
+        {onSelectExamId && yearExams.length > 0 && (
+          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl text-xs border border-white/20">
+            <span className="text-[11px] text-white/75 font-bold">{isBn ? 'পরীক্ষা:' : 'Exam:'}</span>
+            <select
+              value={selectedExamId || ''}
+              onChange={(e) => onSelectExamId(e.target.value)}
+              className="bg-transparent text-white font-bold outline-none cursor-pointer text-xs max-w-[120px] truncate"
+            >
+              {yearExams.map(e => (
+                <option key={e.id} value={e.id} className="bg-slate-900 text-white">
+                  {isBn ? (e.nameBn || e.name) : e.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </PageHeader>
 
       {/* =========================================================================
           SECTIONS 2, 3, 4, 5: THE 4 CORE METRIC BENTO CARDS
@@ -661,12 +645,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                   <CountUpNumber target={feeDuesMetrics.rate} suffix="%" />
                 </span>
               </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                <div 
-                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(5, feeDuesMetrics.rate))}%` }}
-                />
-              </div>
+              <ProgressBar value={feeDuesMetrics.rate} tone="emerald" size="md" />
               <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium tabular-nums font-mono">
                 <span>{isBn ? `আদায়: ৳${toBanglaDigits(feeDuesMetrics.collected.toLocaleString(), language)}` : `Collected: ৳${feeDuesMetrics.collected}`}</span>
                 <span>{isBn ? `প্রত্যাশিত: ৳${toBanglaDigits(feeDuesMetrics.expected.toLocaleString(), language)}` : `Target: ৳${feeDuesMetrics.expected}`}</span>
@@ -688,29 +667,22 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* 6. আসন্ন পরীক্ষা ও গুরুত্বপূর্ণ নোটিশ (Upcoming Exams & Important Notices) */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <Megaphone size={18} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  {isBn ? 'আসন্ন পরীক্ষা ও গুরুত্বপূর্ণ নোটিশ' : 'Upcoming Exams & Notices'}
-                </h3>
-                <span className="text-[11px] text-slate-400">
-                  {isBn ? 'চলমান নোটিশ এবং আসন্ন একাডেমিক টার্মসমূহ' : 'Active alerts & examination timetable'}
-                </span>
-              </div>
-            </div>
+        <SectionCard
+          title={isBn ? 'আসন্ন পরীক্ষা ও গুরুত্বপূর্ণ নোটিশ' : 'Upcoming Exams & Notices'}
+          subtitle={isBn ? 'চলমান নোটিশ এবং আসন্ন একাডেমিক টার্মসমূহ' : 'Active alerts & examination timetable'}
+          icon={Megaphone}
+          iconTone="indigo"
+          bodyClassName="space-y-4"
+          action={
             <button
               onClick={() => onNavigate('notice_board')}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
             >
               <span>{isBn ? 'সকল নোটিশ' : 'View All'}</span>
               <ChevronRight size={14} />
             </button>
-          </div>
+          }
+        >
 
           {/* Upcoming Exam Mini Cards */}
           <div className="space-y-2.5">
@@ -718,30 +690,30 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
               {isBn ? 'আসন্ন পরীক্ষা সূচি' : 'Scheduled Examinations'}
             </span>
             {upcomingExams.length === 0 ? (
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-400 text-center">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
                 {isBn ? 'বর্তমানে কোনো আসন্ন পরীক্ষা সূচি নির্ধারিত নেই' : 'No upcoming exams scheduled'}
               </div>
             ) : (
               upcomingExams.map(e => (
-                <div 
+                <div
                   key={e.id}
                   onClick={() => onNavigate('exam_settings')}
-                  className="p-3.5 rounded-xl bg-indigo-50/60 hover:bg-indigo-50 border border-indigo-100 transition-colors flex items-center justify-between cursor-pointer group"
+                  className="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 transition-colors flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
                       <Award size={16} />
                     </div>
                     <div>
-                      <span className="font-bold text-xs text-slate-900 block group-hover:text-indigo-600 transition-colors">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white block group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {isBn ? (e.nameBn || e.name) : e.name}
                       </span>
-                      <span className="text-[10px] text-indigo-700/80 font-medium">
+                      <span className="text-[10px] text-indigo-700/80 dark:text-indigo-300/80 font-medium">
                         {e.category} {e.startDate ? `• ${formatSafeDate(e.startDate, isBn ? 'bn-BD' : 'en-US')}` : ''}
                       </span>
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold text-indigo-600 bg-white px-2.5 py-1 rounded-lg border border-indigo-100 shrink-0">
+                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/50 shrink-0">
                     {e.status === 'ACTIVE' ? (isBn ? 'চলমান' : 'Active') : (isBn ? 'আসন্ন' : 'Upcoming')}
                   </span>
                 </div>
@@ -755,20 +727,20 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
               {isBn ? 'জরুরি প্রাতিষ্ঠানিক নোটিশ' : 'High Priority Notices'}
             </span>
             {activeNotices.length === 0 ? (
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-400 text-center">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
                 {isBn ? 'বর্তমানে কোনো নতুন নোটিশ নেই' : 'No active notices at this time'}
               </div>
             ) : (
               activeNotices.map(n => (
-                <div 
+                <div
                   key={n.id}
                   onClick={() => onNavigate('notice_board')}
-                  className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-colors flex items-center justify-between cursor-pointer"
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-colors flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5 overflow-hidden">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${n.priority === 'urgent' ? 'bg-rose-500 animate-ping' : 'bg-amber-500'}`} />
                     <div className="truncate">
-                      <span className="font-bold text-xs text-slate-900 block truncate">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white block truncate">
                         {n.title}
                       </span>
                       <span className="text-[10px] text-slate-400">
@@ -777,7 +749,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                     </div>
                   </div>
                   {n.isPinned && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md shrink-0 ml-2">
+                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 px-2 py-0.5 rounded-md shrink-0 ml-2">
                       {isBn ? 'পিন্ড' : 'Pinned'}
                     </span>
                   )}
@@ -785,29 +757,21 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
               ))
             )}
           </div>
-        </div>
+        </SectionCard>
 
         {/* 7. সাম্প্রতিক কার্যক্রম (Recent Activities Chronological Feed) */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <History size={18} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  {isBn ? 'সাম্প্রতিক কার্যক্রম' : 'Recent Institutional Activity'}
-                </h3>
-                <span className="text-[11px] text-slate-400">
-                  {isBn ? 'সর্বশেষ লেনদেন, ভর্তি, নোটিশ ও মূল্যায়ন আপডেট' : 'Live stream of operations and transactions'}
-                </span>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+        <SectionCard
+          title={isBn ? 'সাম্প্রতিক কার্যক্রম' : 'Recent Institutional Activity'}
+          subtitle={isBn ? 'সর্বশেষ লেনদেন, ভর্তি, নোটিশ ও মূল্যায়ন আপডেট' : 'Live stream of operations and transactions'}
+          icon={History}
+          iconTone="emerald"
+          bodyClassName="space-y-3"
+          action={
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
               {isBn ? 'রিয়েলটাইম' : 'Live'}
             </span>
-          </div>
-
+          }
+        >
           <div className="space-y-3">
             {recentActivities.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400">
@@ -816,13 +780,13 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
               </div>
             ) : (
               recentActivities.map((act, idx) => (
-                <div 
+                <div
                   key={act.id || idx}
                   onClick={() => onNavigate(act.navTarget)}
-                  className="p-3 rounded-xl bg-slate-50/80 hover:bg-slate-100/90 border border-slate-100 transition-colors flex items-center justify-between cursor-pointer group"
+                  className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100/90 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-colors flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shrink-0 group-hover:scale-105 transition-transform">
+                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 group-hover:scale-105 transition-transform">
                       {act.type === 'finance' && <Wallet size={15} className="text-emerald-600" />}
                       {act.type === 'notice' && <Megaphone size={15} className="text-amber-600" />}
                       {act.type === 'admission' && <UserPlus size={15} className="text-blue-600" />}
@@ -830,7 +794,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                       {act.type === 'system' && <ShieldCheck size={15} className="text-purple-600" />}
                     </div>
                     <div className="overflow-hidden">
-                      <span className="text-xs font-bold text-slate-800 block truncate group-hover:text-indigo-600 transition-colors">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {act.title}
                       </span>
                       <span className="text-[10px] text-slate-400 font-medium">
@@ -843,13 +807,13 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${act.badgeColor}`}>
                       {act.badgeText}
                     </span>
-                    <ChevronRight size={13} className="text-slate-400 group-hover:text-slate-700 transition-colors" />
+                    <ChevronRight size={13} className="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors" />
                   </div>
                 </div>
               ))
             )}
           </div>
-        </div>
+        </SectionCard>
 
       </div>
 

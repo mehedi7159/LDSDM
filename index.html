@@ -25,7 +25,7 @@
               sans: ['Inter', 'Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
               inter: ['Inter', 'sans-serif'],
               hind: ['Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
-              mono: ['Noto Sans Bengali', 'monospace']
+              mono: ['Inter', 'Hind Siliguri', 'Noto Sans Bengali', 'monospace']
             },
             boxShadow: {
               'soft': '0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.02)',
@@ -62,6 +62,11 @@
         --color-brand-ring: #6366f1;
         --bangla-font: 'Hind Siliguri', 'Noto Sans Bengali', 'Anek Bangla', sans-serif;
         --bangla-num-font: 'Noto Sans Bengali', 'Anek Bangla', sans-serif;
+        /* On-screen UI font (Phase 3): Latin from Inter; Bengali glyphs AND Bengali
+           digits fall through to Hind Siliguri (Inter has no Bengali coverage).
+           The print/result-card fonts stay profile-driven via --bangla-font /
+           --bangla-num-font above — do not route those through --ui-font. */
+        --ui-font: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
       }
 
       [data-theme="indigo"] {
@@ -117,7 +122,7 @@
       }
       
       body {
-        font-family: 'Noto Sans Bengali', 'Anek Bangla', 'Inter', var(--bangla-font), sans-serif;
+        font-family: var(--ui-font);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
@@ -127,11 +132,11 @@
       }
       
       select, option, input, textarea, button {
-        font-family: var(--bangla-font) !important;
+        font-family: var(--ui-font) !important;
       }
-      
+
       .font-mono {
-        font-family: 'Noto Sans Bengali', 'Anek Bangla', monospace !important;
+        font-family: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', monospace !important;
         font-variant-numeric: tabular-nums;
       }
 

@@ -64,6 +64,8 @@ import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
 import { CountUpNumber } from './ui/StatCard';
+import { SectionCard } from './ui/SectionCard';
+import { ProgressBar } from './ui/ProgressBar';
 
 // =========================================================================
 // TYPES FOR MEMOIZED SUB-COMPONENTS
@@ -540,63 +542,11 @@ const KpiGrid = memo<KpiGridProps>(({
 KpiGrid.displayName = 'KpiGrid';
 
 // =========================================================================
-// 3. MEMOIZED QUICK LAUNCHPAD COMPONENT
+// 3. QUICK LAUNCHPAD — removed in Phase 3 Batch 1: the same nine actions now
+// live in the brand hero footer of DashboardDailyOverview (PageHeader tiles),
+// so the dashboard opens with one unified Tutor-pattern header instead of
+// two stacked shortcut blocks. Navigation targets were identical.
 // =========================================================================
-interface QuickLaunchpadProps {
-  onNavigate: (tab: string) => void;
-  language: string;
-}
-
-const QuickLaunchpad = memo<QuickLaunchpadProps>(({ onNavigate, language }) => {
-  const actions = [
-    { id: 'students', labelBn: 'শিক্ষার্থী ভর্তি', labelEn: 'Student Roster', icon: Users, bg: 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
-    { id: 'promotion', labelBn: 'শ্রেণি প্রমোশন', labelEn: 'Class Advance', icon: GraduationCap, bg: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' },
-    { id: 'marks', labelBn: 'নম্বর এন্ট্রি', labelEn: 'Marks Entry', icon: PenTool, bg: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
-    { id: 'results', labelBn: 'ফলাফল কার্ড', labelEn: 'Report Cards', icon: FileSpreadsheet, bg: 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
-    { id: 'attendance', labelBn: 'দৈনিক হাজিরা', labelEn: 'Attendance', icon: UserCheck, bg: 'bg-amber-50 text-amber-600 hover:bg-amber-100' },
-    { id: 'notice_board', labelBn: 'নোটিশ বোর্ড', labelEn: 'Notice Board', icon: Megaphone, bg: 'bg-rose-50 text-rose-600 hover:bg-rose-100' },
-    { id: 'finance', labelBn: 'ফি আদায়', labelEn: 'Fee Collection', icon: Wallet, bg: 'bg-teal-50 text-teal-600 hover:bg-teal-100' },
-    { id: 'subjects', labelBn: 'বিষয় বণ্টন', labelEn: 'Subject Setup', icon: BookOpen, bg: 'bg-sky-50 text-sky-600 hover:bg-sky-100' },
-    { id: 'settings', labelBn: 'সিস্টেম সেটিংস', labelEn: 'Settings', icon: SettingsIcon, bg: 'bg-slate-100 text-slate-700 hover:bg-slate-200' }
-  ];
-
-  return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-indigo-600" />
-          <h2 className="text-sm font-bold text-slate-800">
-            {language === 'bn' ? 'দ্রুত কাজের শর্টকাট' : 'Quick Launchpad'}
-          </h2>
-        </div>
-        <span className="text-xs text-slate-400 hidden sm:inline">
-          {language === 'bn' ? 'সরাসরি যেকোনো মডিউলে প্রবেশ করুন' : 'Instant Module Routing'}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 sm:gap-3">
-        {actions.map((act) => {
-          const Icon = act.icon;
-          return (
-            <button
-              key={act.id}
-              onClick={() => onNavigate(act.id)}
-              className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/60 text-slate-700 border border-slate-200/70 hover:border-indigo-200 transition-all cursor-pointer group text-center active:scale-95"
-            >
-              <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${act.bg} flex items-center justify-center mb-1.5 sm:mb-2 transition-transform group-hover:scale-105 shrink-0`}>
-                <Icon size={17} className="sm:w-[18px] sm:h-[18px]" />
-              </div>
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-800 block truncate max-w-full">
-                {language === 'bn' ? act.labelBn : act.labelEn}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-});
-QuickLaunchpad.displayName = 'QuickLaunchpad';
 
 // =========================================================================
 // 4. MEMOIZED EVALUATION PIPELINE COMPONENT
@@ -619,41 +569,31 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
   if (matrix.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shrink-0">
-            <ListChecks size={18} />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-slate-800">
-              {language === 'bn' ? 'টার্ম ও পরীক্ষার মূল্যায়ন পাইপলাইন' : 'Marks Evaluation & Result Pipeline'}
-            </h2>
-            <p className="text-xs text-slate-500">
-              {language === 'bn' ? 'কোন শ্রেণির পরীক্ষার কত শতাংশ খাতা মূল্যায়ন ও নম্বর এন্ট্রি সম্পন্ন হয়েছে' : 'Real-time grading completion matrix per class and exam'}
-            </p>
-          </div>
-        </div>
-
+    <SectionCard
+      title={language === 'bn' ? 'টার্ম ও পরীক্ষার মূল্যায়ন পাইপলাইন' : 'Marks Evaluation & Result Pipeline'}
+      subtitle={language === 'bn' ? 'কোন শ্রেণির পরীক্ষার কত শতাংশ খাতা মূল্যায়ন ও নম্বর এন্ট্রি সম্পন্ন হয়েছে' : 'Real-time grading completion matrix per class and exam'}
+      icon={ListChecks}
+      iconTone="amber"
+      bodyClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+      action={
         <div className="flex items-center gap-2 text-xs">
-          <span className="font-medium text-slate-500">
+          <span className="font-medium text-slate-500 dark:text-slate-400">
             {language === 'bn' ? 'সেশন অগ্রগতি:' : 'Session Progress:'}
           </span>
-          <span className="rounded-full px-2.5 py-0.5 font-bold text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <span className="rounded-full px-2.5 py-0.5 font-bold text-xs bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
             {toBanglaDigits(progressPercent, language)}%
           </span>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      }
+    >
         {matrix.map((matrixExam) => (
-          <div 
+          <div
             key={matrixExam.examId}
-            className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 hover:border-slate-300 transition-all space-y-3"
+            className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 transition-all space-y-3"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="text-xs font-bold text-slate-800 truncate">
+                <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
                   {language === 'bn' ? matrixExam.examNameBn || matrixExam.examName : matrixExam.examName}
                 </h3>
                 <span className="text-[11px] text-slate-400 block">
@@ -662,13 +602,13 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
               </div>
 
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                matrixExam.isFinalized 
-                  ? 'bg-emerald-100 text-emerald-800'
+                matrixExam.isFinalized
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
                   : matrixExam.progress >= 100
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-amber-100 text-amber-800'
+                  ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                  : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
               }`}>
-                {matrixExam.isFinalized 
+                {matrixExam.isFinalized
                   ? (language === 'bn' ? 'ফাইনাল' : 'Final')
                   : matrixExam.progress >= 100
                   ? (language === 'bn' ? 'সম্পন্ন' : 'Ready')
@@ -679,36 +619,31 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
             {/* Progress Bar */}
             <div>
               <div className="flex items-center justify-between text-[11px] mb-1 font-medium">
-                <span className="text-slate-500">{language === 'bn' ? 'অগ্রগতি' : 'Progress'}</span>
-                <span className="text-slate-700 font-bold">{toBanglaDigits(matrixExam.progress, language)}%</span>
+                <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'অগ্রগতি' : 'Progress'}</span>
+                <span className="text-slate-700 dark:text-slate-200 font-bold">{toBanglaDigits(matrixExam.progress, language)}%</span>
               </div>
-              <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-500 rounded-full ${
-                    matrixExam.progress >= 100 ? 'bg-emerald-500' :
-                    matrixExam.progress >= 60 ? 'bg-indigo-500' : 'bg-amber-500'
-                  }`}
-                  style={{ width: `${Math.min(100, Math.max(0, matrixExam.progress))}%` }}
-                />
-              </div>
+              <ProgressBar
+                value={matrixExam.progress}
+                tone={matrixExam.progress >= 100 ? 'emerald' : matrixExam.progress >= 60 ? 'indigo' : 'amber'}
+              />
             </div>
 
             {/* Classes breakdown list */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-200 text-xs">
+            <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-700/60 text-xs">
               {matrixExam.classes.slice(0, 4).map((clsItem, cIdx) => (
                 <div key={cIdx} className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-700 font-medium truncate max-w-[120px]">
+                  <span className="text-slate-700 dark:text-slate-200 font-medium truncate max-w-[120px]">
                     {clsItem.className}
                   </span>
                   <div>
                     {clsItem.isCompleted ? (
-                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
                         <Check size={11} /> {language === 'bn' ? 'সম্পন্ন' : 'Done'}
                       </span>
                     ) : clsItem.expectedMarks === 0 ? (
                       <span className="text-slate-400">—</span>
                     ) : (
-                      <span className="text-amber-700 font-medium">
+                      <span className="text-amber-700 dark:text-amber-400 font-medium">
                         {toBanglaDigits(clsItem.pendingMarks, language)} {language === 'bn' ? 'বাকি' : 'left'}
                       </span>
                     )}
@@ -726,15 +661,14 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
               </button>
               <button
                 onClick={() => onSelectExamAndNavigate(matrixExam.examId, 'results')}
-                className="py-1.5 px-2.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold text-center transition cursor-pointer"
+                className="py-1.5 px-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold text-center transition cursor-pointer"
               >
                 {language === 'bn' ? 'রেজাল্ট' : 'Results'}
               </button>
             </div>
           </div>
         ))}
-      </div>
-    </div>
+    </SectionCard>
   );
 });
 EvaluationPipeline.displayName = 'EvaluationPipeline';
@@ -749,55 +683,45 @@ interface ClassGridProps {
 
 const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
   return (
-    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-200 shrink-0">
-            <GraduationCap size={18} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-800">
-              {language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী ও পারফরম্যান্স খতিয়ান' : 'Class Enrolment & Performance Grid'}
-            </h3>
-            <p className="text-xs text-slate-500">
-              {language === 'bn' ? 'প্রতিটি ক্লাসের বর্তমান ছাত্র-ছাত্রী সংখ্যা, পাসের হার ও গড় জিপিএ' : 'Live student count, pass percentage, and average GPA per class'}
-            </p>
-          </div>
-        </div>
-        <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200">
+    <SectionCard
+      title={language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী ও পারফরম্যান্স খতিয়ান' : 'Class Enrolment & Performance Grid'}
+      subtitle={language === 'bn' ? 'প্রতিটি ক্লাসের বর্তমান ছাত্র-ছাত্রী সংখ্যা, পাসের হার ও গড় জিপিএ' : 'Live student count, pass percentage, and average GPA per class'}
+      icon={GraduationCap}
+      iconTone="purple"
+      bodyClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"
+      action={
+        <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800">
           {toBanglaDigits(classCards.length, language)} {language === 'bn' ? 'শ্রেণি' : 'Classes'}
         </span>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+      }
+    >
         {classCards.map(clsCard => (
-          <div 
+          <div
             key={clsCard.id}
-            className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300 transition-all space-y-2.5"
+            className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all space-y-2.5"
           >
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-slate-800">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
                 {clsCard.name}
               </h4>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300">
                 {toBanglaDigits(clsCard.studentCount, language)} {language === 'bn' ? 'জন' : 'students'}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-              <div className="bg-white p-2 rounded-lg border border-slate-100">
+              <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-slate-400 block text-[10px] font-medium">{language === 'bn' ? 'পাস' : 'Pass'}</span>
-                <span className="font-bold text-emerald-700 text-xs">{toBanglaDigits(clsCard.passRate, language)}%</span>
+                <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">{toBanglaDigits(clsCard.passRate, language)}%</span>
               </div>
-              <div className="bg-white p-2 rounded-lg border border-slate-100">
+              <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-slate-400 block text-[10px] font-medium">{language === 'bn' ? 'গড় GPA' : 'Avg GPA'}</span>
-                <span className="font-bold text-indigo-700 text-xs">{toBanglaDigits(clsCard.averageGpa.toFixed(2), language)}</span>
+                <span className="font-bold text-indigo-700 dark:text-indigo-300 text-xs">{toBanglaDigits(clsCard.averageGpa.toFixed(2), language)}</span>
               </div>
             </div>
           </div>
         ))}
-      </div>
-    </div>
+    </SectionCard>
   );
 });
 ClassGrid.displayName = 'ClassGrid';
@@ -1303,10 +1227,10 @@ export const Dashboard = () => {
       {/* Dynamic Situational AI Mode Banner */}
       {dashboardMode !== 'standard' && (
         <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in ${
-          dashboardMode === 'exam' ? 'bg-amber-500/10 border-amber-300 text-amber-950' :
-          dashboardMode === 'fee_collection' ? 'bg-emerald-500/10 border-emerald-300 text-emerald-950' :
-          dashboardMode === 'attendance_crisis' ? 'bg-rose-500/10 border-rose-300 text-rose-950' :
-          'bg-indigo-500/10 border-indigo-300 text-indigo-950'
+          dashboardMode === 'exam' ? 'bg-amber-500/10 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100' :
+          dashboardMode === 'fee_collection' ? 'bg-emerald-500/10 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100' :
+          dashboardMode === 'attendance_crisis' ? 'bg-rose-500/10 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100' :
+          'bg-indigo-500/10 border-indigo-300 dark:border-indigo-800 text-indigo-950 dark:text-indigo-100'
         }`}>
           <div className="flex items-center gap-2.5">
             <Sparkles size={18} className={
@@ -1340,7 +1264,7 @@ export const Dashboard = () => {
                 localStorage.setItem('ai_dashboard_mode', 'standard');
                 setDashboardMode('standard');
               }}
-              className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer"
             >
               {language === 'bn' ? 'স্বাভাবিক মোডে ফিরুন' : 'Reset to Standard'}
             </button>
@@ -1360,11 +1284,7 @@ export const Dashboard = () => {
         onOpenRecoveryModal={() => setIsRecoveryModalOpen(true)}
       />
 
-      {/* 3. Memoized Quick Launchpad */}
-      <QuickLaunchpad 
-        onNavigate={setActiveTab}
-        language={language}
-      />
+      {/* 3. Quick shortcuts now live in the DailyOverview brand hero (Phase 3) */}
 
       {/* 4. Memoized Evaluation Pipeline */}
       <EvaluationPipeline 
@@ -1379,14 +1299,14 @@ export const Dashboard = () => {
       />
 
       {/* 5. Navigation Switcher */}
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 overflow-x-auto">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/70 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
           <button
             onClick={() => setActiveSectionTab('overview')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'overview' 
-                ? 'bg-white text-indigo-600 shadow-xs' 
-                : 'text-slate-600 hover:text-slate-900'
+              activeSectionTab === 'overview'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {language === 'bn' ? 'সার্বিক ওভারভিউ' : 'Overview'}
@@ -1394,9 +1314,9 @@ export const Dashboard = () => {
           <button
             onClick={() => setActiveSectionTab('student')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'student' 
-                ? 'bg-white text-indigo-600 shadow-xs' 
-                : 'text-slate-600 hover:text-slate-900'
+              activeSectionTab === 'student'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {language === 'bn' ? 'শিক্ষার্থীর ট্র্যাকিং' : 'Student Trajectory'}
@@ -1404,9 +1324,9 @@ export const Dashboard = () => {
           <button
             onClick={() => setActiveSectionTab('subjects')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'subjects' 
-                ? 'bg-white text-indigo-600 shadow-xs' 
-                : 'text-slate-600 hover:text-slate-900'
+              activeSectionTab === 'subjects'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {language === 'bn' ? 'বিষয়ভিত্তিক বিশ্লেষণ' : 'Subject Analytics'}
@@ -1414,19 +1334,19 @@ export const Dashboard = () => {
           <button
             onClick={() => setActiveSectionTab('merit')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'merit' 
-                ? 'bg-white text-indigo-600 shadow-xs' 
-                : 'text-slate-600 hover:text-slate-900'
+              activeSectionTab === 'merit'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {language === 'bn' ? 'মেধা তালিকা' : 'Merit List'}
           </button>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium shrink-0">
+        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium shrink-0">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
           <span>{language === 'bn' ? 'নির্বাচিত সেশন:' : 'Session:'}</span>
-          <span className="text-slate-800 font-bold">{toBanglaDigits(selectedAcademicYear, language)}</span>
+          <span className="text-slate-800 dark:text-slate-100 font-bold">{toBanglaDigits(selectedAcademicYear, language)}</span>
         </div>
       </div>
 
@@ -1440,23 +1360,12 @@ export const Dashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Grade Tier Chart Card */}
-            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-200 shrink-0">
-                    <BarChart3 size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">
-                      {language === 'bn' ? 'গ্রেডভিত্তিক ফলাফল বিন্যাস' : 'Grade Distribution'}
-                    </h3>
-                    <span className="text-xs text-slate-400">
-                      {language === 'bn' ? 'A+ থেকে F পর্যন্ত গ্রেড পরিসংখ্যান' : 'Student counts across grade tiers'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
+            <SectionCard
+              title={language === 'bn' ? 'গ্রেডভিত্তিক ফলাফল বিন্যাস' : 'Grade Distribution'}
+              subtitle={language === 'bn' ? 'A+ থেকে F পর্যন্ত গ্রেড পরিসংখ্যান' : 'Student counts across grade tiers'}
+              icon={BarChart3}
+              iconTone="indigo"
+            >
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={gradeTiers} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
@@ -1475,28 +1384,22 @@ export const Dashboard = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </SectionCard>
 
             {/* Pass vs Fail Ratio Card */}
-            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shrink-0">
-                    <PieIcon size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">
-                      {language === 'bn' ? 'পাস বনাম ফেল অনুপাত' : 'Pass vs Fail Ratio'}
-                    </h3>
-                    <span className="text-xs text-slate-400">
-                      {language === 'bn' ? 'সার্বিক প্রাতিষ্ঠানিক পাসের অনুপাত' : 'Overall institutional pass rate'}
-                    </span>
-                  </div>
-                </div>
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <SectionCard
+              title={language === 'bn' ? 'পাস বনাম ফেল অনুপাত' : 'Pass vs Fail Ratio'}
+              subtitle={language === 'bn' ? 'সার্বিক প্রাতিষ্ঠানিক পাসের অনুপাত' : 'Overall institutional pass rate'}
+              icon={PieIcon}
+              iconTone="emerald"
+              className="flex flex-col justify-between"
+              bodyClassName="space-y-4 flex flex-col justify-between flex-1"
+              action={
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {toBanglaDigits(academicHealth.passRate, language)}% {language === 'bn' ? 'পাস' : 'Pass'}
                 </span>
-              </div>
+              }
+            >
 
               <div className="h-52 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1522,21 +1425,21 @@ export const Dashboard = () => {
                 </ResponsiveContainer>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-center">
-                <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
-                  <span className="text-[11px] font-semibold text-emerald-700 block">{language === 'bn' ? 'পাসকৃত' : 'Passed'}</span>
-                  <span className="text-base font-bold text-emerald-950">
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
+                  <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 block">{language === 'bn' ? 'পাসকৃত' : 'Passed'}</span>
+                  <span className="text-base font-bold text-emerald-950 dark:text-emerald-100">
                     {toBanglaDigits(statusData.find(d => d.name === 'Passed' || d.name === 'পাস')?.value || 0, language)} {language === 'bn' ? 'জন' : ''}
                   </span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-100">
-                  <span className="text-[11px] font-semibold text-rose-700 block">{language === 'bn' ? 'ফেল' : 'Failed'}</span>
-                  <span className="text-base font-bold text-rose-950">
+                <div className="p-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
+                  <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 block">{language === 'bn' ? 'ফেল' : 'Failed'}</span>
+                  <span className="text-base font-bold text-rose-950 dark:text-rose-100">
                     {toBanglaDigits(statusData.find(d => d.name === 'Failed' || d.name === 'ফেল')?.value || 0, language)} {language === 'bn' ? 'জন' : ''}
                   </span>
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
           </div>
 
@@ -1544,47 +1447,38 @@ export const Dashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Top 5 Merit Performers */}
-            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shrink-0">
-                    <Award size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">
-                      {language === 'bn' ? 'শীর্ষ মেধা তালিকা (টপ ৫)' : 'Top 5 Honor Roll'}
-                    </h3>
-                    <span className="text-xs text-slate-400">
-                      {language === 'bn' ? 'সর্বোচ্চ জিপিএ ও মোট নম্বরের ভিত্তিতে' : 'Highest GPA and marks achievers'}
-                    </span>
-                  </div>
-                </div>
+            <SectionCard
+              title={language === 'bn' ? 'শীর্ষ মেধা তালিকা (টপ ৫)' : 'Top 5 Honor Roll'}
+              subtitle={language === 'bn' ? 'সর্বোচ্চ জিপিএ ও মোট নম্বরের ভিত্তিতে' : 'Highest GPA and marks achievers'}
+              icon={Award}
+              iconTone="amber"
+              bodyClassName="space-y-2"
+              action={
                 <button
                   onClick={() => setActiveSectionTab('merit')}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
                 >
                   <span>{language === 'bn' ? 'সম্পূর্ণ তালিকা' : 'View All'}</span>
                   <ChevronRight size={13} />
                 </button>
-              </div>
-
-              <div className="space-y-2">
+              }
+            >
                 {topStudents.slice(0, 5).map((st, idx) => (
-                  <div 
+                  <div
                     key={st.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/70 hover:bg-slate-100/70 transition-all text-xs"
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-all text-xs"
                   >
                     <div className="flex items-center gap-3 truncate">
                       <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs ${
                         idx === 0 ? 'bg-amber-400 text-amber-950' :
                         idx === 1 ? 'bg-slate-300 text-slate-900' :
-                        idx === 2 ? 'bg-amber-600/30 text-amber-900' :
-                        'bg-slate-200 text-slate-700'
+                        idx === 2 ? 'bg-amber-600/30 text-amber-900 dark:text-amber-200' :
+                        'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                       }`}>
                         {toBanglaDigits(idx + 1, language)}
                       </span>
                       <div className="truncate">
-                        <span className="font-bold text-slate-900 block truncate">
+                        <span className="font-bold text-slate-900 dark:text-white block truncate">
                           {language === 'bn' ? st.nameBn || st.name : st.name}
                         </span>
                         <span className="text-[11px] text-slate-400">
@@ -1594,7 +1488,7 @@ export const Dashboard = () => {
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="font-bold text-indigo-700 block">
+                      <span className="font-bold text-indigo-700 dark:text-indigo-300 block">
                         GPA {toBanglaDigits(st.gpa.toFixed(2), language)}
                       </span>
                       <span className="text-[11px] text-slate-400">
@@ -1603,47 +1497,37 @@ export const Dashboard = () => {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
+            </SectionCard>
 
             {/* At-Risk Students Panel */}
-            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200 shrink-0">
-                    <AlertTriangle size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">
-                      {language === 'bn' ? 'বিশেষ যত্ন প্রয়োজন (ঝুঁকিপূর্ণ)' : 'At-Risk Students'}
-                    </h3>
-                    <span className="text-xs text-slate-400">
-                      {language === 'bn' ? 'এক বা একাধিক বিষয়ে অকৃতকার্য শিক্ষার্থী' : 'Students failing in 1 or more subjects'}
-                    </span>
-                  </div>
-                </div>
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            <SectionCard
+              title={language === 'bn' ? 'বিশেষ যত্ন প্রয়োজন (ঝুঁকিপূর্ণ)' : 'At-Risk Students'}
+              subtitle={language === 'bn' ? 'এক বা একাধিক বিষয়ে অকৃতকার্য শিক্ষার্থী' : 'Students failing in 1 or more subjects'}
+              icon={AlertTriangle}
+              iconTone="rose"
+              bodyClassName="space-y-2"
+              action={
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                   {toBanglaDigits(atRiskStudents.length, language)} {language === 'bn' ? 'জন' : 'Students'}
                 </span>
-              </div>
-
-              <div className="space-y-2">
+              }
+            >
                 {atRiskStudents.slice(0, 5).map((st) => (
-                  <div 
+                  <div
                     key={st.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-rose-50/40 border border-rose-200/60 hover:bg-rose-50/70 transition-all text-xs"
+                    className="flex items-center justify-between p-3 rounded-xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 hover:bg-rose-50/70 dark:hover:bg-rose-950/30 transition-all text-xs"
                   >
                     <div className="truncate pr-2">
-                      <span className="font-bold text-slate-900 block truncate">
+                      <span className="font-bold text-slate-900 dark:text-white block truncate">
                         {language === 'bn' ? st.nameBn || st.name : st.name}
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
                         {st.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(st.roll || '-', language)}
                       </span>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="rounded-full px-2.5 py-0.5 bg-rose-100 text-rose-800 font-bold text-xs">
+                      <span className="rounded-full px-2.5 py-0.5 bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold text-xs">
                         {toBanglaDigits(st.failCount, language)} {language === 'bn' ? 'বিষয়ে ফেল' : 'fails'}
                       </span>
                     </div>
@@ -1651,13 +1535,12 @@ export const Dashboard = () => {
                 ))}
 
                 {atRiskStudents.length === 0 && (
-                  <div className="text-center py-8 text-emerald-600 text-xs font-semibold flex items-center justify-center gap-1.5">
+                  <div className="text-center py-8 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center gap-1.5">
                     <CheckCircle2 size={16} />
                     <span>{language === 'bn' ? 'আলহামদুলিল্লাহ! কোনো শিক্ষার্থী ঝুঁকিপূর্ণ তালিকায় নেই।' : 'No at-risk students recorded.'}</span>
                   </div>
                 )}
-              </div>
-            </div>
+            </SectionCard>
 
           </div>
 
@@ -1666,19 +1549,19 @@ export const Dashboard = () => {
 
       {/* TAB B: STUDENT TRAJECTORY */}
       {activeSectionTab === 'student' && (
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <StudentPerformanceCard 
+        <SectionCard bodyClassName="space-y-4">
+          <StudentPerformanceCard
             initialStudentId={topStudents[0]?.id}
             studentId={topStudents[0]?.id}
             initialClass={selectedClass !== 'All' ? selectedClass : undefined}
           />
-        </div>
+        </SectionCard>
       )}
 
       {/* TAB C: SUBJECT ANALYTICS */}
       {activeSectionTab === 'subjects' && (
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <SubjectPerformanceAnalytics 
+        <SectionCard bodyClassName="space-y-4">
+          <SubjectPerformanceAnalytics
             subjects={subjects}
             students={students}
             marks={marks}
@@ -1697,18 +1580,18 @@ export const Dashboard = () => {
               return classLevel;
             }}
           />
-        </div>
+        </SectionCard>
       )}
 
       {/* TAB D: MERIT LIST */}
       {activeSectionTab === 'merit' && (
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <SectionCard bodyClassName="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-800">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">
                 {language === 'bn' ? 'প্রাতিষ্ঠানিক পূর্ণাঙ্গ মেধা তালিকা' : 'Institutional Merit Standings'}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {language === 'bn' ? 'জিপিএ, মোট নম্বর ও রোল অনুযায়ী মেধা ক্রম' : 'Official merit ranking by GPA, Total Marks, and Roll'}
               </p>
             </div>
@@ -1720,7 +1603,7 @@ export const Dashboard = () => {
                 value={meritSearchQuery}
                 onChange={(e) => setMeritSearchQuery(e.target.value)}
                 placeholder={language === 'bn' ? 'নাম বা আইডি দিয়ে খুঁজুন...' : 'Search student...'}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -1728,7 +1611,7 @@ export const Dashboard = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 uppercase text-[11px] font-semibold border-b border-slate-200">
+                <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-200 dark:border-slate-700">
                   <th className="p-3 text-center w-12">{language === 'bn' ? 'র‌্যাংক' : 'Rank'}</th>
                   <th className="p-3">{language === 'bn' ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
                   <th className="p-3 text-center">{language === 'bn' ? 'শ্রেণি' : 'Class'}</th>
@@ -1739,21 +1622,21 @@ export const Dashboard = () => {
                   <th className="p-3 text-center">{language === 'bn' ? 'অবস্থা' : 'Status'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
                 {filteredTopStudents.map((st, idx) => (
-                  <tr key={st.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={st.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="p-3 text-center font-bold">
                       <span className={`inline-block w-6 h-6 rounded-md leading-6 text-center ${
                         idx === 0 ? 'bg-amber-400 text-amber-950 font-bold' :
                         idx === 1 ? 'bg-slate-300 text-slate-900 font-bold' :
-                        idx === 2 ? 'bg-amber-600/30 text-amber-900 font-bold' :
-                        'text-slate-600'
+                        idx === 2 ? 'bg-amber-600/30 text-amber-900 dark:text-amber-200 font-bold' :
+                        'text-slate-600 dark:text-slate-300'
                       }`}>
                         {toBanglaDigits(idx + 1, language)}
                       </span>
                     </td>
                     <td className="p-3">
-                      <span className="font-bold text-slate-900 block">
+                      <span className="font-bold text-slate-900 dark:text-white block">
                         {language === 'bn' ? st.nameBn || st.name : st.name}
                       </span>
                       <span className="text-[11px] text-slate-400">{st.studentId}</span>
@@ -1761,26 +1644,26 @@ export const Dashboard = () => {
                     <td className="p-3 text-center font-semibold">{st.classLevel}</td>
                     <td className="p-3 text-center">{toBanglaDigits(st.roll || '-', language)}</td>
                     <td className="p-3 text-center font-bold">{toBanglaDigits(st.totalMarks, language)}</td>
-                    <td className="p-3 text-center font-bold text-indigo-700">
+                    <td className="p-3 text-center font-bold text-indigo-700 dark:text-indigo-300">
                       {toBanglaDigits(st.gpa.toFixed(2), language)}
                     </td>
                     <td className="p-3 text-center">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        st.grade === 'A+' ? 'bg-emerald-100 text-emerald-800' :
-                        st.grade === 'A' ? 'bg-blue-100 text-blue-800' :
-                        st.grade === 'F' ? 'bg-rose-100 text-rose-800' :
-                        'bg-slate-100 text-slate-800'
+                        st.grade === 'A+' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' :
+                        st.grade === 'A' ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300' :
+                        st.grade === 'F' ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300' :
+                        'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                       }`}>
                         {st.grade}
                       </span>
                     </td>
                     <td className="p-3 text-center">
                       {st.isFail ? (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                           {language === 'bn' ? 'ফেল' : 'Fail'}
                         </span>
                       ) : (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                           {language === 'bn' ? 'উত্তীর্ণ' : 'Passed'}
                         </span>
                       )}
@@ -1790,7 +1673,7 @@ export const Dashboard = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </SectionCard>
       )}
 
     </div>

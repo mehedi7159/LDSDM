@@ -288,11 +288,17 @@ const AppContent = () => {
   useEffect(() => {
     const root = document.documentElement;
     const font = schoolProfile.banglaFont || 'Noto Sans Bengali';
-    const numFont = schoolProfile.banglaNumberFont || 'Noto Sans Bengali';
-    
+    // Unset number font falls back to Hind Siliguri (legible print digits);
+    // a deliberately stored profile value always wins.
+    const numFont = schoolProfile.banglaNumberFont || 'Hind Siliguri';
+    const uiFont = schoolProfile.uiFont || 'Hind Siliguri';
+
     root.style.setProperty('--bangla-font', `'${font}', 'Noto Sans Bengali', 'Anek Bangla', sans-serif`);
     root.style.setProperty('--bangla-num-font', `'${numFont}', 'Noto Sans Bengali', 'Anek Bangla', sans-serif`);
-  }, [schoolProfile.banglaFont, schoolProfile.banglaNumberFont]);
+    // On-screen UI font (Phase 3 font settings): Inter keeps Latin text;
+    // Bengali glyphs + Bengali digits render in the chosen UI font.
+    root.style.setProperty('--ui-font', `'Inter', '${uiFont}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif`);
+  }, [schoolProfile.banglaFont, schoolProfile.banglaNumberFont, schoolProfile.uiFont]);
 
   const handleDownloadTabulation = async () => {
       const element = document.getElementById('tabulation-sheet');

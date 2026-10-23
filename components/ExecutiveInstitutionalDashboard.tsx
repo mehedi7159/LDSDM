@@ -30,6 +30,7 @@ import {
   Percent
 } from 'lucide-react';
 import { DashboardNoticeWidget } from './DashboardNoticeWidget';
+import { PageHeader } from './ui/PageHeader';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 
 interface ExecutiveDashboardProps {
@@ -213,31 +214,17 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* 1. Grand Executive Header Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-500/20">
-        {/* Subtle decorative glow */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider">
-              <Building2 size={16} className="text-amber-400" />
-              <span>{language === 'bn' ? 'এক নজরে প্রতিষ্ঠান নিয়ন্ত্রণ কেন্দ্র' : 'Executive Command Center'}</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 font-bold">{language === 'bn' ? 'সিস্টেম সক্রিয়' : 'Live'}</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <span>{schoolProfile?.name || 'মাদ্রাসা ম্যানেজমেন্ট'}</span>
-            </h1>
-
-            <p className="text-xs sm:text-sm text-indigo-100/80 font-medium max-w-2xl">
-              {language === 'bn'
-                ? `অধ্যক্ষ ও প্রশাসনের নিয়ন্ত্রণ প্যানেল • ${formattedToday} • শিক্ষাবর্ষ: ${schoolProfile?.academicYear || '২০২৬'}`
-                : `Principal & Administrative Dashboard • ${formattedToday} • Academic Session: ${schoolProfile?.academicYear || '2026'}`}
-            </p>
-          </div>
-
+      {/* 1. Executive Header — PageHeader brand hero (Phase 3 Batch 1);
+          controls below are unchanged, only the outer frame is aligned. */}
+      <PageHeader
+        tone="brand"
+        icon={Building2}
+        eyebrow={language === 'bn' ? 'এক নজরে প্রতিষ্ঠান নিয়ন্ত্রণ কেন্দ্র • সিস্টেম সক্রিয়' : 'Executive Command Center • Live'}
+        title={schoolProfile?.name || 'মাদ্রাসা ম্যানেজমেন্ট'}
+        subtitle={language === 'bn'
+          ? `অধ্যক্ষ ও প্রশাসনের নিয়ন্ত্রণ প্যানেল • ${formattedToday} • শিক্ষাবর্ষ: ${schoolProfile?.academicYear || '২০২৬'}`
+          : `Principal & Administrative Dashboard • ${formattedToday} • Academic Session: ${schoolProfile?.academicYear || '2026'}`}
+      >
           {/* Exam Switcher on Top */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <div className="bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/15 flex items-center gap-2">
@@ -268,8 +255,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
               <span>{language === 'bn' ? 'গ্রাফিক্যাল রিপোর্ট' : 'Deep Analytics'}</span>
             </button>
           </div>
-        </div>
-      </div>
+      </PageHeader>
 
       {/* 2. Bento Grid: 4 Core Institutional KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

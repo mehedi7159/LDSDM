@@ -38,8 +38,9 @@ import {
   FileText, 
   Check, 
   X, 
-  Sliders, 
-  HelpCircle 
+  Sliders,
+  HelpCircle,
+  Type
 } from 'lucide-react';
 import { formatNumber, formatSafeDateTime } from '../../services/utils';
 import { NoticeBoard } from '../NoticeBoard';
@@ -773,6 +774,97 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </div>
             </div>
 
+          </div>
+
+          {/* Font Settings (Phase 3) — UI font + print fonts, live previews.
+              Saved with the profile via the same Save button above; values
+              sync through main_store like every other profile field. */}
+          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6">
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Type size={16} className="text-indigo-600 dark:text-indigo-400" />
+                <span>{isBn ? 'ফন্ট সেটিংস (Font)' : 'Font Settings'}</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 normal-case tracking-normal">
+                {isBn
+                  ? 'স্ক্রিনের ফন্ট এবং ছাপানো রেজাল্ট কার্ড/মার্কশিটের ফন্ট বেছে নিন। প্রতিটি ফন্টের লাইভ প্রিভিউতে বাংলা লেখা ও সব সংখ্যা দেখে নিন — বিশেষ করে ১ ও ২ স্পষ্ট পড়া যাচ্ছে কিনা।'
+                  : 'Choose the on-screen font and the printed result-card/marksheet fonts. Each preview shows a Bangla sentence and every digit — check that ১ and ২ read clearly.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {([
+                {
+                  field: 'uiFont' as const,
+                  fallback: 'Hind Siliguri',
+                  label: isBn ? 'স্ক্রিনের UI ফন্ট' : 'On-screen UI Font',
+                  hint: isBn ? 'ড্যাশবোর্ড, মেনু, মোবাইল অ্যাপ — পুরো সিস্টেমের স্ক্রিনে' : 'Dashboard, menus and the mobile app — the whole on-screen system'
+                },
+                {
+                  field: 'banglaFont' as const,
+                  fallback: 'Noto Sans Bengali',
+                  label: isBn ? 'ছাপার বাংলা ফন্ট' : 'Print Bangla Font',
+                  hint: isBn ? 'রেজাল্ট কার্ড ও মার্কশিটের বাংলা লেখায়' : 'Bangla text on printed result cards & marksheets'
+                },
+                {
+                  field: 'banglaNumberFont' as const,
+                  fallback: 'Hind Siliguri',
+                  label: isBn ? 'ছাপার সংখ্যার ফন্ট' : 'Print Number Font',
+                  hint: isBn ? 'রেজাল্ট কার্ড ও মার্কশিটের নম্বর/সংখ্যায়' : 'Digits & marks on printed result cards & marksheets'
+                }
+              ]).map(({ field, fallback, label, hint }) => {
+                const selected = profileData[field] || fallback;
+                return (
+                  <div key={field} className="space-y-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-1.5">
+                        {label}
+                      </label>
+                      <select
+                        name={field}
+                        value={selected}
+                        onChange={handleProfileChange}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
+                      >
+                        {['Hind Siliguri', 'Noto Sans Bengali', 'Baloo Da 2', 'Tiro Bangla'].map(f => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{hint}</p>
+                    </div>
+
+                    {/* Live preview in the selected font */}
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                      <p
+                        className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed"
+                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif` }}
+                      >
+                        আমার সোনার বাংলা, আমি তোমায় ভালোবাসি।
+                      </p>
+                      <p
+                        className="text-slate-800 dark:text-slate-100"
+                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif` }}
+                      >
+                        <span className="text-[26px] leading-none font-bold align-middle">১ ২</span>
+                        <span className="text-base font-semibold ml-3">০ ১ ২ ৩ ৪ ৫ ৬ ৭ ৮ ৯</span>
+                      </p>
+                      <p
+                        className="text-xs text-slate-500 dark:text-slate-400"
+                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif` }}
+                      >
+                        মোট নম্বর ১২৫ • রোল ২১ • জিপিএ ৫.০০
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              {isBn
+                ? 'নোট: উপরের "প্রোফাইল সেভ করুন" বোতামে সেভ করলেই ফন্টগুলো সব ডিভাইসে কার্যকর হবে। চারটি ফন্টই আগে থেকে লোড করা থাকে, তাই বদলাতে দেরি হয় না।'
+                : 'Note: press the "Save Profile" button above to apply — the fonts then take effect on every device. All four fonts are preloaded, so switching is instant.'}
+            </p>
           </div>
         </form>
       )}

@@ -20,6 +20,8 @@ export interface SchoolProfile {
   resultCardTemplate?: 'Classic' | 'Monthly' | 'Term' | 'BW_Term' | 'Premium_Dakhil' | 'Premium_Colored' | 'Premium_Royal';
   banglaFont?: string;
   banglaNumberFont?: string;
+  /** On-screen UI Bengali font (Phase 3 font settings). Drives --ui-font. */
+  uiFont?: string;
   gradingSystem?: GradingSystem[];
 }
 
