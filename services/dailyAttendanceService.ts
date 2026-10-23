@@ -48,8 +48,66 @@ class DailyAttendanceService {
   private studentRecords: Record<string, DailyStudentAttendanceRecord> = {};
   private staffRecords: Record<string, DailyStaffAttendanceRecord> = {};
 
+  // Cloud-sync bridge (Phase 2): AppContext subscribes to writes so the
+  // records can be mirrored into shared state and synced through the
+  // Firestore main_store payload + backups. The service itself stays the
+  // UI-facing API and keeps its localStorage keys as the local mirror.
+  private listeners = new Set<() => void>();
+  private suppressNotify = false;
+
   constructor() {
     this.loadFromStorage();
+  }
+
+  /** Subscribe to data changes (every save). Returns an unsubscribe fn. */
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emitChange() {
+    if (this.suppressNotify) return;
+    this.listeners.forEach(fn => {
+      try { fn(); } catch {}
+    });
+  }
+
+  /** All student attendance records as a list (for context/payload use). */
+  public getAllStudentRecords(): DailyStudentAttendanceRecord[] {
+    return Object.values(this.studentRecords);
+  }
+
+  /** All staff attendance records as a list (for context/payload use). */
+  public getAllStaffRecords(): DailyStaffAttendanceRecord[] {
+    return Object.values(this.staffRecords);
+  }
+
+  /**
+   * Replace the student records wholesale (cloud hydration / restore).
+   * Persists to the localStorage mirror WITHOUT notifying subscribers,
+   * so hydration never echoes back into the sync pipeline.
+   */
+  public replaceStudentRecords(records: DailyStudentAttendanceRecord[]) {
+    const map: Record<string, DailyStudentAttendanceRecord> = {};
+    (records || []).forEach(r => {
+      if (r && r.date && r.studentId) map[`${r.date}_${r.studentId}`] = r;
+    });
+    this.studentRecords = map;
+    this.suppressNotify = true;
+    try { this.saveToStorage(); } finally { this.suppressNotify = false; }
+  }
+
+  /** Staff counterpart of replaceStudentRecords (silent hydration). */
+  public replaceStaffRecords(records: DailyStaffAttendanceRecord[]) {
+    const map: Record<string, DailyStaffAttendanceRecord> = {};
+    (records || []).forEach(r => {
+      if (r && r.date && r.staffId) map[`${r.date}_${r.staffId}`] = r;
+    });
+    this.staffRecords = map;
+    this.suppressNotify = true;
+    try { this.saveToStorage(); } finally { this.suppressNotify = false; }
   }
 
   private loadFromStorage() {
@@ -77,6 +135,7 @@ class DailyAttendanceService {
     } catch (e) {
       console.error('Error saving attendance to storage:', e);
     }
+    this.emitChange();
   }
 
   private seedInitialStudentAttendance() {

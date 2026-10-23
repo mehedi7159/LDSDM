@@ -33,6 +33,7 @@ import {
   DEFAULT_SMS_TEMPLATES, 
   saveSmsDispatchLogs, 
   getSmsDispatchLogs, 
+  dispatchSmsViaGateway,
   SmsDispatchLog,
   SmsGatewayConfig
 } from '../services/smsNotificationService';
@@ -83,6 +84,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
   const [copiedSuccess, setCopiedSuccess] = useState<boolean>(false);
   const [copiedTextSuccess, setCopiedTextSuccess] = useState<boolean>(false);
   const [dispatchSuccessMessage, setDispatchSuccessMessage] = useState<string | null>(null);
+  const [dispatchErrorMessage, setDispatchErrorMessage] = useState<string | null>(null);
 
   // Gateway Config state (stored in localStorage)
   const [gatewayConfig, setGatewayConfig] = useState<SmsGatewayConfig>(() => {
@@ -247,12 +249,17 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
     const smsUrl = `sms:${phones}?body=${sampleBody}`;
     window.location.href = smsUrl;
 
-    // Log the event
-    recordLogs(targetItems, 'Direct Mobile App (sms:)');
+    // Log the handoff honestly: the message was handed to the device's own
+    // SMS app ('sent' from this app) — it is never marked 'delivered'.
+    recordLogs(targetItems, 'Direct Mobile App (sms:)', 'sent');
   };
 
-  // Automated Gateway / Server Simulation Dispatch
-  const handleGatewayDispatch = () => {
+  // Automated Gateway Dispatch — goes through the shared gateway path in
+  // smsNotificationService. HONEST by design: no SMS gateway integration is
+  // connected in this build, so when nothing can actually be sent the user
+  // sees a clear "not sent" message and the attempt is logged as 'failed' —
+  // never as 'delivered' with a fake success banner (the old behaviour).
+  const handleGatewayDispatch = async () => {
     const targetItems = dispatchMode === 'individual'
       ? (activeStudentSmsData ? [activeStudentSmsData] : [])
       : smsItems.filter(item => selectedStudentIds.has(item.studentId) && item.isValidPhone);
@@ -260,30 +267,43 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
     if (targetItems.length === 0) return;
 
     setIsSending(true);
-    setSendingProgress(10);
+    setSendingProgress(35);
     setDispatchSuccessMessage(null);
+    setDispatchErrorMessage(null);
 
-    let progress = 10;
-    const interval = setInterval(() => {
-      progress += 25;
-      setSendingProgress(Math.min(progress, 95));
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsSending(false);
-          setSendingProgress(100);
-          recordLogs(targetItems, gatewayConfig.provider.toUpperCase());
-          setDispatchSuccessMessage(
-            language === 'bn'
-              ? `আলহামদুলিল্লাহ! ${targetItems.length} জন শিক্ষার্থীর ফলাফল এসএমএস সফলভাবে প্রেরণ করা হয়েছে।`
-              : `Result SMS alerts successfully dispatched to ${targetItems.length} parents!`
-          );
-        }, 400);
+    try {
+      const result = await dispatchSmsViaGateway(
+        gatewayConfig,
+        targetItems.map(item => ({ phone: item.phone, message: item.message }))
+      );
+
+      if (result.success) {
+        recordLogs(targetItems, gatewayConfig.provider.toUpperCase(), 'sent');
+        setDispatchSuccessMessage(
+          language === 'bn'
+            ? `আলহামদুলিল্লাহ! ${targetItems.length} জন শিক্ষার্থীর ফলাফল এসএমএস গেটওয়ের মাধ্যমে পাঠানো হয়েছে।`
+            : `Result SMS alerts sent via gateway to ${targetItems.length} parents!`
+        );
+      } else {
+        // Nothing left the device — say so plainly and log the attempt as
+        // failed so the history stays truthful.
+        recordLogs(targetItems, gatewayConfig.provider.toUpperCase(), 'failed');
+        setDispatchErrorMessage(language === 'bn' ? result.messageBn : result.messageEn);
       }
-    }, 250);
+    } catch (err) {
+      recordLogs(targetItems, gatewayConfig.provider.toUpperCase(), 'failed');
+      setDispatchErrorMessage(
+        language === 'bn'
+          ? 'এসএমএস পাঠানো যায়নি — গেটওয়ে সংযোগে সমস্যা হয়েছে। কোনো এসএমএস প্রেরণ হয়নি।'
+          : 'SMS could not be sent — the gateway request failed. No SMS was sent.'
+      );
+    } finally {
+      setIsSending(false);
+      setSendingProgress(0);
+    }
   };
 
-  const recordLogs = (items: typeof smsItems, gatewayName: string) => {
+  const recordLogs = (items: typeof smsItems, gatewayName: string, status: 'sent' | 'failed' = 'sent') => {
     const newLogs: SmsDispatchLog[] = items.map(item => ({
       id: `sms_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       sentAt: new Date().toLocaleString(),
@@ -295,7 +315,10 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
       examName: exam.name,
       gpa: item.gpa,
       grade: item.grade,
-      status: 'delivered',
+      // Only real outcomes are recorded: 'sent' (handed to the device SMS
+      // app or accepted by a real gateway) or 'failed'. Never 'delivered' —
+      // this app cannot confirm handset delivery.
+      status,
       gateway: gatewayName
     }));
 
@@ -398,6 +421,14 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
             <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-3 animate-in fade-in">
               <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
               <div className="flex-1 text-xs font-bold leading-relaxed">{dispatchSuccessMessage}</div>
+            </div>
+          )}
+
+          {/* Error / Not-Sent Banner (e.g. SMS gateway not configured) */}
+          {dispatchErrorMessage && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex items-center gap-3 animate-in fade-in">
+              <AlertCircle size={20} className="text-amber-600 shrink-0" />
+              <div className="flex-1 text-xs font-bold leading-relaxed">{dispatchErrorMessage}</div>
             </div>
           )}
 

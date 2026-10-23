@@ -428,6 +428,49 @@ const INITIAL_SYLLABUS_ITEMS: SyllabusItem[] = [
 
 class AcademicScheduleService {
   // -------------------------------------------------------------
+  // CLOUD-SYNC BRIDGE (Phase 2)
+  // AppContext subscribes to writes so routines / syllabus / calendar can
+  // be mirrored into shared state and synced through the Firestore
+  // main_store payload + backups. This service stays the UI-facing API
+  // and its localStorage keys stay the local mirror.
+  // -------------------------------------------------------------
+  private listeners = new Set<() => void>();
+  private suppressNotify = false;
+
+  /** Subscribe to data changes (every save). Returns an unsubscribe fn. */
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emitChange() {
+    if (this.suppressNotify) return;
+    this.listeners.forEach(fn => {
+      try { fn(); } catch {}
+    });
+  }
+
+  /** Silent wholesale replacement used by cloud hydration / restore. */
+  public replaceRoutines(items: ClassRoutineItem[]): void {
+    this.suppressNotify = true;
+    try { this.saveRoutines(items || []); } finally { this.suppressNotify = false; }
+  }
+
+  /** Silent wholesale replacement used by cloud hydration / restore. */
+  public replaceSyllabusItems(items: SyllabusItem[]): void {
+    this.suppressNotify = true;
+    try { this.saveSyllabusItems(items || []); } finally { this.suppressNotify = false; }
+  }
+
+  /** Silent wholesale replacement used by cloud hydration / restore. */
+  public replaceCalendarEvents(events: AcademicCalendarEvent[]): void {
+    this.suppressNotify = true;
+    try { this.saveCalendarEvents(events || []); } finally { this.suppressNotify = false; }
+  }
+
+  // -------------------------------------------------------------
   // ROUTINE ENGINE
   // -------------------------------------------------------------
   getRoutines(): ClassRoutineItem[] {
@@ -448,6 +491,7 @@ class AcademicScheduleService {
     } catch (e) {
       console.error('Error saving routines:', e);
     }
+    this.emitChange();
   }
 
   getRoutineByClass(classLevel: string, sectionName?: string): ClassRoutineItem[] {
@@ -556,6 +600,7 @@ class AcademicScheduleService {
     } catch (e) {
       console.error('Error saving syllabus:', e);
     }
+    this.emitChange();
   }
 
   getSyllabusByClassAndSubject(classLevel: string, subjectId?: string, termName?: string): SyllabusItem[] {
@@ -627,6 +672,7 @@ class AcademicScheduleService {
     } catch (e) {
       console.error('Error saving calendar:', e);
     }
+    this.emitChange();
   }
 
   saveCalendarEvent(event: AcademicCalendarEvent): AcademicCalendarEvent {

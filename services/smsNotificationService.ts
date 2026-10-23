@@ -177,3 +177,103 @@ export function getSmsDispatchLogs(): SmsDispatchLog[] {
     return [];
   }
 }
+
+// ----------------------------------------------------------------------------
+// SMS Gateway dispatch — HONEST implementation (Phase 2)
+// ----------------------------------------------------------------------------
+// There is currently NO working SMS gateway integration in the browser
+// build: no provider API is called from here. Earlier UI code simulated a
+// dispatch (progress bar, then a 'delivered' log entry and a success
+// banner) although no message ever left the device. That behaviour is
+// removed. `dispatchSmsViaGateway` is the single code path every SMS send
+// action must go through; it reports the truth today and is the one place
+// a real provider integration plugs into later (server-side, so gateway
+// credentials never ship in the browser bundle).
+
+export const SMS_GATEWAY_CONFIG_KEY = 'madrasha_sms_gateway_config';
+
+export const DEFAULT_SMS_GATEWAY_CONFIG: SmsGatewayConfig = {
+  provider: 'direct_device',
+  apiKey: '',
+  senderId: 'MADRASAH',
+  apiUrl: '',
+  isEnabled: true,
+  autoSendOnPublish: false
+};
+
+/** Read the saved gateway configuration (same store the settings UI uses). */
+export function getSmsGatewayConfig(): SmsGatewayConfig {
+  try {
+    const saved = localStorage.getItem(SMS_GATEWAY_CONFIG_KEY);
+    if (saved) {
+      return { ...DEFAULT_SMS_GATEWAY_CONFIG, ...JSON.parse(saved) };
+    }
+  } catch {}
+  return { ...DEFAULT_SMS_GATEWAY_CONFIG };
+}
+
+/**
+ * A gateway counts as configured only when a real web provider is chosen,
+ * the gateway is enabled, and an API key is present (plus an API URL for
+ * the custom webhook provider). The built-in 'direct_device' option is NOT
+ * a gateway — it hands messages to the phone's own SMS app instead.
+ */
+export function isSmsGatewayConfigured(config: SmsGatewayConfig): boolean {
+  if (!config) return false;
+  if (config.provider === 'direct_device') return false;
+  if (config.isEnabled === false) return false;
+  if (!config.apiKey || !config.apiKey.trim()) return false;
+  if (config.provider === 'custom_webhook' && !(config.apiUrl || '').trim()) return false;
+  return true;
+}
+
+export interface SmsDispatchRecipient {
+  phone: string;
+  message: string;
+}
+
+export interface SmsDispatchResult {
+  success: boolean;
+  /** Why nothing was sent, when success is false. */
+  reason?: 'not_configured' | 'gateway_not_connected';
+  dispatchedCount: number;
+  messageBn: string;
+  messageEn: string;
+}
+
+/**
+ * The single gateway dispatch entry point.
+ *
+ * Today this NEVER reports success: without a configured gateway there is
+ * nothing to send through, and even with one, real provider dispatch is
+ * not wired into the browser build yet (it belongs server-side). Callers
+ * must surface the returned message and must not log 'delivered'/'sent'
+ * unless a future implementation returns success: true.
+ */
+export async function dispatchSmsViaGateway(
+  config: SmsGatewayConfig,
+  recipients: SmsDispatchRecipient[]
+): Promise<SmsDispatchResult> {
+  const count = (recipients || []).length;
+
+  if (!isSmsGatewayConfigured(config)) {
+    return {
+      success: false,
+      reason: 'not_configured',
+      dispatchedCount: 0,
+      messageBn: `এসএমএস গেটওয়ে কনফিগার করা নেই — কোনো এসএমএস পাঠানো হয়নি। ওয়েব গেটওয়ে (প্রোভাইডার + API Key) সেট করতে "এসএমএস গেটওয়ে সেটিংস" ট্যাবে যান, অথবা "ডিভাইস এসএমএস অ্যাপ" বোতাম দিয়ে নিজের ফোন থেকে পাঠান।`,
+      messageEn: `SMS gateway is not configured — no SMS was sent. Add a web gateway (provider + API key) in the "SMS Gateway Settings" tab, or use the "Open in SMS App" button to send from your own phone.`
+    };
+  }
+
+  // A gateway IS configured, but real provider dispatch is intentionally
+  // not performed from the browser build yet. Be explicit instead of
+  // simulating delivery.
+  return {
+    success: false,
+    reason: 'gateway_not_connected',
+    dispatchedCount: 0,
+    messageBn: `গেটওয়ে সেটিংস সংরক্ষিত আছে, তবে এই সংস্করণে সরাসরি গেটওয়ে প্রেরণ এখনো সংযুক্ত হয়নি — কোনো এসএমএস পাঠানো হয়নি (${count} জন প্রাপক)। আপাতত "ডিভাইস এসএমএস অ্যাপ" দিয়ে পাঠান।`,
+    messageEn: `Gateway settings are saved, but direct gateway dispatch is not connected in this build yet — no SMS was sent (${count} recipients). Please use "Open in SMS App" for now.`
+  };
+}

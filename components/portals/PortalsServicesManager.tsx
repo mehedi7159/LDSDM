@@ -49,6 +49,7 @@ import {
   toBengali,
   shortenSubjectName
 } from '../../services/utils';
+import { dispatchSmsViaGateway, SmsGatewayConfig } from '../../services/smsNotificationService';
 import { ResultVerificationQR } from '../ResultVerificationQR';
 import { VerifiedResultModal } from '../VerifiedResultModal';
 import { Student } from '../../types';
@@ -359,6 +360,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
   });
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [smsSuccessMsg, setSmsSuccessMsg] = useState('');
+  const [smsErrorMsg, setSmsErrorMsg] = useState('');
 
   // Character calculation
   const smsCharCount = smsText.length;
@@ -370,41 +372,89 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     setSmsText(prev => prev + tag);
   };
 
-  const handleSendBroadcastSms = () => {
+  const handleSendBroadcastSms = async () => {
+    let targetList = students;
+    if (smsTarget === 'class') {
+      targetList = students.filter(s => s.classLevel === smsTargetClass);
+    }
+    const recipients = targetList
+      .filter(s => (s.guardianPhone || '').trim())
+      .map(s => ({
+        phone: (s.guardianPhone || '').trim(),
+        message: smsText
+          .split('{STUDENT_NAME}').join(s.nameBn || s.name || '')
+          .split('{ROLL}').join(s.roll || '')
+          .split('{MADRASAH_NAME}').join(schoolProfile.nameBn || schoolProfile.name || '')
+      }));
+
     setIsSendingSms(true);
-    setTimeout(() => {
-      let recipientCount = 0;
-      let targetList = students;
-      if (smsTarget === 'class') {
-        targetList = students.filter(s => s.classLevel === smsTargetClass);
-      }
-      recipientCount = targetList.length || 1;
+    setSmsSuccessMsg('');
+    setSmsErrorMsg('');
 
-      const newLog = {
-        id: `sms-${Date.now()}`,
-        time: formatSafeDateTime(new Date()),
-        recipient: `${recipientCount} জন অভিভাবক (${smsTarget === 'class' ? smsTargetClass : 'সার্বিক'})`,
-        phone: targetList[0]?.guardianPhone || '01XXXXXXXXX',
-        message: smsText.slice(0, 80) + '...',
-        status: 'delivered'
+    // HONEST dispatch (Phase 2): routed through the shared gateway path in
+    // smsNotificationService. No gateway integration is connected in this
+    // build, so unless a real gateway accepts the messages the result is
+    // "not sent" — the previous behaviour (fake delay, a 'delivered' log
+    // entry and a success banner although nothing was sent) is removed.
+    const providerMap: Record<string, SmsGatewayConfig['provider']> = {
+      greenweb: 'greenweb',
+      bulksmsbd: 'bulksmsbd',
+      ssl: 'sslwireless',
+      alpha: 'alpha',
+      device_intent: 'direct_device'
+    };
+
+    let result;
+    try {
+      result = await dispatchSmsViaGateway(
+        {
+          provider: providerMap[smsProvider] || 'direct_device',
+          apiKey: smsApiKey,
+          senderId: smsSenderId,
+          apiUrl: '',
+          isEnabled: true,
+          autoSendOnPublish: false
+        },
+        recipients
+      );
+    } catch (e) {
+      result = {
+        success: false,
+        dispatchedCount: 0,
+        messageBn: 'এসএমএস পাঠানো যায়নি — গেটওয়ে সংযোগে সমস্যা হয়েছে। কোনো এসএমএস প্রেরণ হয়নি।',
+        messageEn: 'SMS could not be sent — the gateway request failed. No SMS was sent.'
       };
+    }
 
-      const updated = [newLog, ...smsLogs.slice(0, 19)];
-      setSmsLogs(updated);
-      try {
-        localStorage.setItem(STORAGE_SMS_LOGS_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+    const recipientCount = recipients.length;
+    const newLog = {
+      id: `sms-${Date.now()}`,
+      time: formatSafeDateTime(new Date()),
+      recipient: `${recipientCount} জন অভিভাবক (${smsTarget === 'class' ? smsTargetClass : 'সার্বিক'})`,
+      phone: recipients[0]?.phone || '',
+      message: smsText.slice(0, 80) + '...',
+      status: result.success ? 'sent' : 'not_sent'
+    };
 
-      setIsSendingSms(false);
+    const updated = [newLog, ...smsLogs.slice(0, 19)];
+    setSmsLogs(updated);
+    try {
+      localStorage.setItem(STORAGE_SMS_LOGS_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+
+    setIsSendingSms(false);
+    if (result.success) {
       setSmsSuccessMsg(
-        isBn 
-          ? `সফলভাবে ${formatNumber(recipientCount, language)} জন অভিভাবকের কাছে এসএমএস প্রেরণ করা হয়েছে!` 
+        isBn
+          ? `সফলভাবে ${formatNumber(recipientCount, language)} জন অভিভাবকের কাছে এসএমএস প্রেরণ করা হয়েছে!`
           : `SMS broadcast sent successfully to ${recipientCount} guardians!`
       );
       setTimeout(() => setSmsSuccessMsg(''), 4000);
-    }, 900);
+    } else {
+      setSmsErrorMsg(isBn ? result.messageBn : result.messageEn);
+    }
   };
 
   // ----------------------------------------------------
@@ -1454,6 +1504,13 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
               <CheckCircle2 size={16} className="text-emerald-600" />
               <span>{smsSuccessMsg}</span>
+            </div>
+          )}
+
+          {smsErrorMsg && (
+            <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl text-xs font-bold flex items-center gap-2">
+              <AlertCircle size={16} className="text-amber-600 shrink-0" />
+              <span>{smsErrorMsg}</span>
             </div>
           )}
 

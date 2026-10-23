@@ -44,6 +44,13 @@ import {
 } from '../services/rbac';
 import { generateId, deriveRoleFromDesignation } from '../services/utils';
 import { buildPublicPortalData } from '../services/publicPortal';
+import {
+  dailyAttendanceService,
+  DailyStudentAttendanceRecord,
+  DailyStaffAttendanceRecord
+} from '../services/dailyAttendanceService';
+import { academicScheduleService } from '../services/academicScheduleService';
+import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../types/academic';
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
@@ -230,6 +237,14 @@ interface AppContextType extends AppState {
   archiveTeacher: (id: string) => void;
   staffLeaves: StaffLeaveRecord[];
   setStaffLeaves: React.Dispatch<React.SetStateAction<StaffLeaveRecord[]>>;
+  // Daily attendance + academic schedule slices. The local services
+  // (dailyAttendanceService / academicScheduleService) remain the UI-facing
+  // API; these mirrors exist so the data syncs via main_store and backups.
+  dailyStudentAttendance: DailyStudentAttendanceRecord[];
+  dailyStaffAttendance: DailyStaffAttendanceRecord[];
+  classRoutines: ClassRoutineItem[];
+  syllabusItems: SyllabusItem[];
+  calendarEvents: AcademicCalendarEvent[];
   setTeachers: (teachers: AcademicTeacher[]) => void;
   assignSubjectToClass: (assignment: Omit<ClassSubjectAssignment, 'id'>) => void;
   updateClassSubjectAssignment: (assignment: ClassSubjectAssignment) => void;
@@ -458,6 +473,72 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed.filter((l: any) => l?.id !== 'leave_1');
+      }
+    } catch {}
+    return [];
+  });
+
+  // Daily attendance records (student + staff). Previously these lived ONLY
+  // in dailyAttendanceService's localStorage on a single device — never in
+  // the Firestore payload, never in backups. They are now mirrored here so
+  // they sync through main_store like every other collection. The service
+  // remains the write API for all attendance UI; a subscription effect
+  // below keeps this state in step with every service write, and cloud
+  // hydration pushes remote data back into the service (silently).
+  const [dailyStudentAttendance, setDailyStudentAttendance] = useState<DailyStudentAttendanceRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('madrasah_daily_student_attendance');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return Object.values(parsed);
+      }
+    } catch {}
+    return [];
+  });
+
+  const [dailyStaffAttendance, setDailyStaffAttendance] = useState<DailyStaffAttendanceRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('madrasah_daily_staff_attendance');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return Object.values(parsed);
+      }
+    } catch {}
+    return [];
+  });
+
+  // Academic schedule slices (class routines, syllabus/lesson plans, annual
+  // calendar). Same story as attendance: academicScheduleService kept them
+  // in single-device localStorage only. Mirrored here for cloud sync; this
+  // is also the data foundation for the future teacher routine view.
+  const [classRoutines, setClassRoutines] = useState<ClassRoutineItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('madrasha_academic_routines_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const [syllabusItems, setSyllabusItems] = useState<SyllabusItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('madrasha_academic_syllabus_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const [calendarEvents, setCalendarEvents] = useState<AcademicCalendarEvent[]>(() => {
+    try {
+      const saved = localStorage.getItem('madrasha_academic_calendar_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     return [];
@@ -1427,6 +1508,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setStaffLeaves(data.staffLeaves);
       try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(data.staffLeaves)); } catch {}
     }
+    // Attendance + schedule hydration also pushes the data into the local
+    // services (silently — their replace* methods persist to the service
+    // localStorage keys without notifying the sync bridge).
+    if (data.dailyStudentAttendance && Array.isArray(data.dailyStudentAttendance)) {
+      setDailyStudentAttendance(data.dailyStudentAttendance);
+      dailyAttendanceService.replaceStudentRecords(data.dailyStudentAttendance);
+    }
+    if (data.dailyStaffAttendance && Array.isArray(data.dailyStaffAttendance)) {
+      setDailyStaffAttendance(data.dailyStaffAttendance);
+      dailyAttendanceService.replaceStaffRecords(data.dailyStaffAttendance);
+    }
+    if (data.classRoutines && Array.isArray(data.classRoutines)) {
+      setClassRoutines(data.classRoutines);
+      academicScheduleService.replaceRoutines(data.classRoutines);
+    }
+    if (data.syllabusItems && Array.isArray(data.syllabusItems)) {
+      setSyllabusItems(data.syllabusItems);
+      academicScheduleService.replaceSyllabusItems(data.syllabusItems);
+    }
+    if (data.calendarEvents && Array.isArray(data.calendarEvents)) {
+      setCalendarEvents(data.calendarEvents);
+      academicScheduleService.replaceCalendarEvents(data.calendarEvents);
+    }
     if (data.classSubjectAssignments && Array.isArray(data.classSubjectAssignments)) {
       setClassSubjectAssignments(data.classSubjectAssignments);
       try { localStorage.setItem('madrasha_class_subject_assignments', JSON.stringify(data.classSubjectAssignments)); } catch {}
@@ -1742,6 +1846,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           users,
           notices,
           staffLeaves,
+          dailyStudentAttendance,
+          dailyStaffAttendance,
+          classRoutines,
+          syllabusItems,
+          calendarEvents,
           updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user',
           updatedAt: new Date().toISOString()
         };
@@ -1773,7 +1882,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, trashBin, promotionHistory, users, notices, staffLeaves, currentUser, isAdmin, authUser, adminEmail]);
+  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, trashBin, promotionHistory, users, notices, staffLeaves, dailyStudentAttendance, dailyStaffAttendance, classRoutines, syllabusItems, calendarEvents, currentUser, isAdmin, authUser, adminEmail]);
 
   // Offline LocalStorage updates
   useEffect(() => {
@@ -1823,6 +1932,39 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   useEffect(() => {
     try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(staffLeaves)); } catch {}
   }, [staffLeaves]);
+
+  // Sync bridge for the local-first services: whenever attendance or
+  // schedule data is written through dailyAttendanceService /
+  // academicScheduleService (all existing UI uses those services), mirror
+  // the new data into shared state. That single state change is what makes
+  // the debounced Firestore auto-sync above carry attendance, routines,
+  // syllabus and calendar to the cloud — and into backups. Reads here use
+  // the raw storage values so the bridge never triggers the services'
+  // first-run seed data as a side effect.
+  useEffect(() => {
+    const readStoredArray = (key: string): any[] => {
+      try {
+        const saved = localStorage.getItem(key);
+        const parsed = saved ? JSON.parse(saved) : null;
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    };
+    const pullFromServices = () => {
+      setDailyStudentAttendance(dailyAttendanceService.getAllStudentRecords());
+      setDailyStaffAttendance(dailyAttendanceService.getAllStaffRecords());
+      setClassRoutines(readStoredArray('madrasha_academic_routines_v1'));
+      setSyllabusItems(readStoredArray('madrasha_academic_syllabus_v1'));
+      setCalendarEvents(readStoredArray('madrasha_academic_calendar_v1'));
+    };
+    const unsubscribeAttendance = dailyAttendanceService.subscribe(pullFromServices);
+    const unsubscribeSchedule = academicScheduleService.subscribe(pullFromServices);
+    return () => {
+      unsubscribeAttendance();
+      unsubscribeSchedule();
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('classSubjectAssignments', JSON.stringify(classSubjectAssignments));
@@ -1884,6 +2026,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         if (Array.isArray(p.classTeacherAssignments)) setClassTeacherAssignments(p.classTeacherAssignments);
         if (Array.isArray(p.examSubjectAssignments)) setExamSubjectAssignments(p.examSubjectAssignments);
         if (Array.isArray(p.promotionHistory)) setPromotionHistory(p.promotionHistory);
+        if (Array.isArray(p.staffLeaves)) setStaffLeaves(p.staffLeaves);
+        if (Array.isArray(p.users)) setUsers(p.users);
+        if (Array.isArray(p.notices)) setNotices(p.notices);
+        if (Array.isArray(p.dailyStudentAttendance)) {
+          setDailyStudentAttendance(p.dailyStudentAttendance);
+          dailyAttendanceService.replaceStudentRecords(p.dailyStudentAttendance);
+        }
+        if (Array.isArray(p.dailyStaffAttendance)) {
+          setDailyStaffAttendance(p.dailyStaffAttendance);
+          dailyAttendanceService.replaceStaffRecords(p.dailyStaffAttendance);
+        }
+        if (Array.isArray(p.classRoutines)) {
+          setClassRoutines(p.classRoutines);
+          academicScheduleService.replaceRoutines(p.classRoutines);
+        }
+        if (Array.isArray(p.syllabusItems)) {
+          setSyllabusItems(p.syllabusItems);
+          academicScheduleService.replaceSyllabusItems(p.syllabusItems);
+        }
+        if (Array.isArray(p.calendarEvents)) {
+          setCalendarEvents(p.calendarEvents);
+          academicScheduleService.replaceCalendarEvents(p.calendarEvents);
+        }
         console.log('[Data Guardian] Auto-Resurrection complete:', res.messageEn);
       }
     }).catch(err => console.warn('[Data Guardian] Startup check notice:', err));
@@ -1911,7 +2076,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           teacherSubjectAssignments,
           classTeacherAssignments,
           examSubjectAssignments,
-          promotionHistory
+          promotionHistory,
+          users,
+          notices,
+          staffLeaves,
+          dailyStudentAttendance,
+          dailyStaffAttendance,
+          classRoutines,
+          syllabusItems,
+          calendarEvents
         }, 'auto_interval').catch(err => console.warn('[IndexedDB Vault] Background sync notice:', err));
       }
     }, 1500);
@@ -1935,7 +2108,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     teacherSubjectAssignments,
     classTeacherAssignments,
     examSubjectAssignments,
-    promotionHistory
+    promotionHistory,
+    users,
+    notices,
+    staffLeaves,
+    dailyStudentAttendance,
+    dailyStaffAttendance,
+    classRoutines,
+    syllabusItems,
+    calendarEvents
   ]);
 
   // 3. Periodic 15-minute background rolling snapshot timer
@@ -1960,7 +2141,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           teacherSubjectAssignments,
           classTeacherAssignments,
           examSubjectAssignments,
-          promotionHistory
+          promotionHistory,
+          users,
+          notices,
+          staffLeaves,
+          dailyStudentAttendance,
+          dailyStaffAttendance,
+          classRoutines,
+          syllabusItems,
+          calendarEvents
         }, 'auto_interval', '১৫ মিনিট পর্যায়ক্রমিক অটো ব্যাকআপ', '15-min Periodic Checkpoint').catch(() => {});
       }
     }, 15 * 60 * 1000);
@@ -1984,7 +2173,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     teacherSubjectAssignments,
     classTeacherAssignments,
     examSubjectAssignments,
-    promotionHistory
+    promotionHistory,
+    users,
+    notices,
+    staffLeaves,
+    dailyStudentAttendance,
+    dailyStaffAttendance,
+    classRoutines,
+    syllabusItems,
+    calendarEvents
   ]);
 
   // 4. Background Google Drive Periodic Auto-Backup
@@ -2016,7 +2213,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           teacherSubjectAssignments,
           classTeacherAssignments,
           examSubjectAssignments,
-          promotionHistory
+          promotionHistory,
+          users,
+          notices,
+          staffLeaves,
+          dailyStudentAttendance,
+          dailyStaffAttendance,
+          classRoutines,
+          syllabusItems,
+          calendarEvents
         }, {
           backupType: 'auto_interval',
           label: 'অটো ড্রাইভ ব্যাকআপ',
@@ -2052,7 +2257,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     teacherSubjectAssignments,
     classTeacherAssignments,
     examSubjectAssignments,
-    promotionHistory
+    promotionHistory,
+    users,
+    notices,
+    staffLeaves,
+    dailyStudentAttendance,
+    dailyStaffAttendance,
+    classRoutines,
+    syllabusItems,
+    calendarEvents
   ]);
 
   // Force Push/Pull functions
@@ -2080,6 +2293,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         promotionHistory,
         users,
         notices,
+        staffLeaves,
+        dailyStudentAttendance,
+        dailyStaffAttendance,
+        classRoutines,
+        syllabusItems,
+        calendarEvents,
         updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'mehedihasansagor26@gmail.com',
         updatedAt: new Date().toISOString()
       };
@@ -3714,6 +3933,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       deleteTeacher,
       staffLeaves,
       setStaffLeaves,
+      dailyStudentAttendance,
+      dailyStaffAttendance,
+      classRoutines,
+      syllabusItems,
+      calendarEvents,
       setTeachers,
       assignSubjectToClass,
       updateClassSubjectAssignment,

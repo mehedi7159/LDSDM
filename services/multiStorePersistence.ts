@@ -19,9 +19,21 @@ import type {
   ClassTeacherAssignment,
   ExamSubjectAssignment,
   PromotionHistoryRecord,
-  GradingSystem
+  GradingSystem,
+  AppUser,
+  StaffLeaveRecord,
+  NoticeItem
 } from '../types';
 import { DEFAULT_GRADING_SYSTEM } from '../types';
+import type {
+  DailyStudentAttendanceRecord,
+  DailyStaffAttendanceRecord
+} from './dailyAttendanceService';
+import type {
+  ClassRoutineItem,
+  SyllabusItem,
+  AcademicCalendarEvent
+} from '../types/academic';
 
 /**
  * ============================================================================
@@ -63,6 +75,29 @@ export interface SystemDataPayload {
   promotionHistory?: PromotionHistoryRecord[];
   gradingSystem?: GradingSystem[];
   institutionMembers?: any[];
+  // Slices that live in the Firestore main_store payload / AppContext but
+  // were missing from backups (Phase 2 completion): user accounts, notices
+  // and staff leaves must survive a restore too.
+  users?: AppUser[];
+  notices?: NoticeItem[];
+  staffLeaves?: StaffLeaveRecord[];
+  // Daily attendance (Phase 2): synced via main_store, so it is backed up
+  // and restored exactly like the core collections.
+  dailyStudentAttendance?: DailyStudentAttendanceRecord[];
+  dailyStaffAttendance?: DailyStaffAttendanceRecord[];
+  // Academic schedule (Phase 2): routines, syllabus/lesson plans, calendar.
+  classRoutines?: ClassRoutineItem[];
+  syllabusItems?: SyllabusItem[];
+  calendarEvents?: AcademicCalendarEvent[];
+  /**
+   * Raw snapshots of satellite modules that keep their data in their own
+   * localStorage stores outside AppContext (library, transport, admission
+   * applications, boarding, welfare, institutional operations, class
+   * section details, AI advisor chat). Keyed by localStorage key. Restored
+   * back to localStorage only — deliberately kept OUT of the Firestore
+   * main_store document on restore.
+   */
+  extraLocalStores?: Record<string, any>;
 }
 
 export interface SystemDataCounts {
@@ -187,6 +222,54 @@ export function extractSystemCounts(payload: SystemDataPayload): SystemDataCount
   };
 }
 
+/**
+ * localStorage keys of satellite modules that live outside AppContext
+ * state. A full backup snapshots them verbatim so a restore brings those
+ * modules back too. Deliberately EXCLUDED: SMS gateway config (contains an
+ * API key — never export credentials), SMS/email logs (history, not data),
+ * session markers and sync fingerprints.
+ */
+export const LOCAL_STORE_BACKUP_KEYS: string[] = [
+  'madrasah_books_catalog',
+  'madrasah_book_issues',
+  'madrasah_transport_vehicles',
+  'madrasah_transport_roster',
+  'madrasah_mahfil_events',
+  'madrasah_cocurricular_clubs',
+  'madrasah_admission_applications',
+  'mms_online_admissions_v1',
+  'mms_boarding_configs_v1',
+  'mms_welfare_beneficiaries_v1',
+  'madrasha_welfare_v1',
+  'madrasha_class_sections_v1',
+  'madrasha_ops_v1_assets',
+  'madrasha_ops_v1_store',
+  'madrasha_ops_v1_movements',
+  'madrasha_ops_v1_houses',
+  'madrasha_ops_v1_house_logs',
+  'madrasha_ops_v1_alumni',
+  'madrasha_ops_v1_health',
+  'ai_principal_messages'
+];
+
+function readExtraLocalStores(): Record<string, any> {
+  const out: Record<string, any> = {};
+  if (typeof window === 'undefined' || !window.localStorage) return out;
+  for (const key of LOCAL_STORE_BACKUP_KEYS) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null && raw !== undefined) {
+        try {
+          out[key] = JSON.parse(raw);
+        } catch {
+          out[key] = raw;
+        }
+      }
+    } catch {}
+  }
+  return out;
+}
+
 export function readCurrentLocalStoragePayload(): SystemDataPayload {
   const safeParse = <T>(key: string, fallback: T): T => {
     try {
@@ -231,7 +314,20 @@ export function readCurrentLocalStoragePayload(): SystemDataPayload {
     examSubjectAssignments: safeParse<ExamSubjectAssignment[]>('examSubjectAssignments', []),
     promotionHistory: safeParse<PromotionHistoryRecord[]>('madrasha_promotion_history', []),
     gradingSystem: safeParse<GradingSystem[]>('gradingSystem', DEFAULT_GRADING_SYSTEM),
-    institutionMembers: safeParse<any[]>('madrasha_institution_members', [])
+    institutionMembers: safeParse<any[]>('madrasha_institution_members', []),
+    users: safeParse<AppUser[]>('madrasha_app_users', []),
+    notices: safeParse<NoticeItem[]>('madrasha_notices', []),
+    staffLeaves: safeParse<StaffLeaveRecord[]>('madrasah_staff_leaves', []),
+    dailyStudentAttendance: Object.values(
+      safeParse<Record<string, DailyStudentAttendanceRecord>>('madrasah_daily_student_attendance', {})
+    ),
+    dailyStaffAttendance: Object.values(
+      safeParse<Record<string, DailyStaffAttendanceRecord>>('madrasah_daily_staff_attendance', {})
+    ),
+    classRoutines: safeParse<ClassRoutineItem[]>('madrasha_academic_routines_v1', []),
+    syllabusItems: safeParse<SyllabusItem[]>('madrasha_academic_syllabus_v1', []),
+    calendarEvents: safeParse<AcademicCalendarEvent[]>('madrasha_academic_calendar_v1', []),
+    extraLocalStores: readExtraLocalStores()
   };
 }
 
@@ -258,6 +354,42 @@ export function writePayloadToLocalStorage(payload: SystemDataPayload): void {
   if (Array.isArray(payload.promotionHistory)) localStorage.setItem('madrasha_promotion_history', JSON.stringify(payload.promotionHistory));
   if (Array.isArray(payload.institutionMembers) && payload.institutionMembers.length > 0) {
     localStorage.setItem('madrasha_institution_members', JSON.stringify(payload.institutionMembers));
+  }
+  if (Array.isArray(payload.gradingSystem)) localStorage.setItem('gradingSystem', JSON.stringify(payload.gradingSystem));
+  if (Array.isArray(payload.users)) localStorage.setItem('madrasha_app_users', JSON.stringify(payload.users));
+  if (Array.isArray(payload.notices)) localStorage.setItem('madrasha_notices', JSON.stringify(payload.notices));
+  if (Array.isArray(payload.staffLeaves)) localStorage.setItem('madrasah_staff_leaves', JSON.stringify(payload.staffLeaves));
+  // Attendance is stored by dailyAttendanceService as a map keyed
+  // `${date}_${studentId}` / `${date}_${staffId}` — rebuild that shape.
+  if (Array.isArray(payload.dailyStudentAttendance)) {
+    const map: Record<string, DailyStudentAttendanceRecord> = {};
+    payload.dailyStudentAttendance.forEach(r => {
+      if (r && r.date && r.studentId) map[`${r.date}_${r.studentId}`] = r;
+    });
+    localStorage.setItem('madrasah_daily_student_attendance', JSON.stringify(map));
+  }
+  if (Array.isArray(payload.dailyStaffAttendance)) {
+    const map: Record<string, DailyStaffAttendanceRecord> = {};
+    payload.dailyStaffAttendance.forEach(r => {
+      if (r && r.date && r.staffId) map[`${r.date}_${r.staffId}`] = r;
+    });
+    localStorage.setItem('madrasah_daily_staff_attendance', JSON.stringify(map));
+  }
+  if (Array.isArray(payload.classRoutines)) localStorage.setItem('madrasha_academic_routines_v1', JSON.stringify(payload.classRoutines));
+  if (Array.isArray(payload.syllabusItems)) localStorage.setItem('madrasha_academic_syllabus_v1', JSON.stringify(payload.syllabusItems));
+  if (Array.isArray(payload.calendarEvents)) localStorage.setItem('madrasha_academic_calendar_v1', JSON.stringify(payload.calendarEvents));
+  // Satellite module stores: only keys actually present in the backup are
+  // written back, so restoring an OLD backup (without this section) leaves
+  // the current satellite data untouched.
+  if (payload.extraLocalStores && typeof payload.extraLocalStores === 'object') {
+    for (const key of LOCAL_STORE_BACKUP_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(payload.extraLocalStores, key)) {
+        try {
+          const value = payload.extraLocalStores[key];
+          localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+        } catch {}
+      }
+    }
   }
 }
 
@@ -628,6 +760,17 @@ export function validateFullSystemBackup(jsonContent: string): BackupValidationI
 }
 
 /**
+ * Payload copy that is safe to write into the Firestore main_store
+ * document: satellite local stores are device-local data and must not
+ * bloat (or leak into) the cloud document.
+ */
+function toCloudStorePayload(payload: SystemDataPayload): Record<string, any> {
+  const copy: Record<string, any> = { ...(payload as any) };
+  delete copy.extraLocalStores;
+  return copy;
+}
+
+/**
  * Execute safe full system restore (writes to LocalStorage, IndexedDB Vault, and Cloud)
  */
 export async function executeFullSystemRestore(
@@ -648,7 +791,7 @@ export async function executeFullSystemRestore(
   try {
     const docRef = doc(db, 'institution', 'main_store');
     await setDoc(docRef, {
-      ...payload,
+      ...toCloudStorePayload(payload),
       updatedAt: new Date().toISOString(),
       updatedBy: adminEmail || 'admin',
       version: '3.0.0-permanent-vault'
@@ -972,7 +1115,7 @@ export async function restoreFromCloudSnapshotPackage(
     try {
       const docRef = doc(db, 'institution', 'main_store');
       await setDoc(docRef, {
-        ...payload,
+        ...toCloudStorePayload(payload),
         updatedAt: new Date().toISOString(),
         updatedBy: adminEmail || snapshotPkg.exportedBy || 'admin',
         version: '3.0.0-cloud-snapshot-restored',
