@@ -18,7 +18,8 @@ import {
   PromotionHistoryRecord,
   NoticeItem,
   AppUser,
-  UserRole
+  UserRole,
+  StaffLeaveRecord
 } from '../types';
 import { recordPromotionAuditEvent } from '../services/promotionService';
 import type { 
@@ -222,9 +223,12 @@ interface AppContextType extends AppState {
   updateSubject: (subject: Subject) => void;
   archiveSubject: (id: string) => void;
   deleteSubject: (id: string) => void;
-  addTeacher: (teacher: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => void;
+  addTeacher: (teacher: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => { success: boolean; message?: string };
   updateTeacher: (teacher: AcademicTeacher, loginRole?: UserRole) => void;
+  deleteTeacher: (teacherId: string) => Promise<{ success: boolean; message?: string }>;
   archiveTeacher: (id: string) => void;
+  staffLeaves: StaffLeaveRecord[];
+  setStaffLeaves: React.Dispatch<React.SetStateAction<StaffLeaveRecord[]>>;
   setTeachers: (teachers: AcademicTeacher[]) => void;
   assignSubjectToClass: (assignment: Omit<ClassSubjectAssignment, 'id'>) => void;
   updateClassSubjectAssignment: (assignment: ClassSubjectAssignment) => void;
@@ -441,6 +445,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
       } catch {}
     }
+    return [];
+  });
+
+  // Staff leave records live in the shared store (and main_store) so every
+  // device/admin sees the same data — previously they were kept only in one
+  // browser's localStorage inside the Staff screen and never synced.
+  const [staffLeaves, setStaffLeaves] = useState<StaffLeaveRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('madrasah_staff_leaves');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter((l: any) => l?.id !== 'leave_1');
+      }
+    } catch {}
     return [];
   });
 
@@ -1018,7 +1036,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const deleteAppUser = async (userId: string): Promise<{ success: boolean; message?: string }> => {
+    const targetUser = users.find(u => u.id === userId);
+    const email = (targetUser?.email || '').toLowerCase();
+    const phone = targetUser?.phone || '';
     setUsers(prev => prev.filter(u => u.id !== userId));
+    // Remove the linked staff record too — otherwise the login fallback
+    // rebuilds this account from the teachers list on the next sign-in.
+    setTeachers(prev => prev.filter(t =>
+      t.id !== userId &&
+      !(email !== '' && (t.email || '').toLowerCase() === email) &&
+      !(phone !== '' && t.phone === phone)
+    ));
     try {
       deleteInstitutionMember('inst_madrasah_primary', userId).catch(() => {});
     } catch (e) {}
@@ -1390,6 +1418,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setTeachers(data.teachers);
       try { localStorage.setItem('madrasha_teachers', JSON.stringify(data.teachers)); } catch {}
     }
+    if (data.staffLeaves && Array.isArray(data.staffLeaves)) {
+      setStaffLeaves(data.staffLeaves);
+      try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(data.staffLeaves)); } catch {}
+    }
     if (data.classSubjectAssignments && Array.isArray(data.classSubjectAssignments)) {
       setClassSubjectAssignments(data.classSubjectAssignments);
       try { localStorage.setItem('madrasha_class_subject_assignments', JSON.stringify(data.classSubjectAssignments)); } catch {}
@@ -1576,6 +1608,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           promotionHistory,
           users,
           notices,
+          staffLeaves,
           updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user',
           updatedAt: new Date().toISOString()
         };
@@ -1596,7 +1629,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, trashBin, promotionHistory, users, notices, currentUser, isAdmin, authUser, adminEmail]);
+  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, trashBin, promotionHistory, users, notices, staffLeaves, currentUser, isAdmin, authUser, adminEmail]);
 
   // Offline LocalStorage updates
   useEffect(() => {
@@ -1642,6 +1675,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('teachers', JSON.stringify(teachers));
   }, [teachers]);
+
+  useEffect(() => {
+    try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(staffLeaves)); } catch {}
+  }, [staffLeaves]);
 
   useEffect(() => {
     localStorage.setItem('classSubjectAssignments', JSON.stringify(classSubjectAssignments));
@@ -2679,9 +2716,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   // Academic Teacher handlers
-  const addTeacher = (teacherData: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => {
+  const addTeacher = (teacherData: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole): { success: boolean; message?: string } => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { teacher } = buildCreateTeacherPayload(teacherData, 'inst_madrasah_primary', actor, teachers);
+    const { teacher, error } = buildCreateTeacherPayload(teacherData, 'inst_madrasah_primary', actor, teachers);
+    if (!teacher) {
+      // Validation failed (e.g. duplicate employee code) — surface it instead
+      // of silently doing nothing while the UI shows a success toast.
+      return { success: false, message: error || 'তথ্য যাচাইয়ে সমস্যা হয়েছে।' };
+    }
     if (teacher) {
       // The login role comes from the explicit role chosen in the staff form;
       // without one it is derived from the designation — never hard-coded,
@@ -2750,6 +2792,38 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         });
       }
     }
+    return { success: true };
+  };
+
+  // Permanently remove a staff member everywhere at once: the staff record,
+  // the linked login account and the institution-member entry. Deleting only
+  // one of these used to leave the others behind, so the person kept showing
+  // up in the directory and could even log back in via the teachers fallback.
+  const deleteTeacher = async (teacherId: string): Promise<{ success: boolean; message?: string }> => {
+    const target = teachers.find(t => t.id === teacherId);
+    const linkedUser = users.find(u => u.id === teacherId);
+    const email = (target?.email || linkedUser?.email || '').toLowerCase();
+    const phone = target?.phone || linkedUser?.phone || '';
+    const matches = (x: { id: string; email?: string; phone?: string }) =>
+      x.id === teacherId ||
+      (email !== '' && (x.email || '').toLowerCase() === email) ||
+      (phone !== '' && x.phone === phone);
+
+    const matchedUsers = users.filter(matches);
+    if (matchedUsers.some(u => u.role === 'super_admin')) {
+      return { success: false, message: 'প্রধান অ্যাডমিনের অ্যাকাউন্ট এখান থেকে মোছা যাবে না।' };
+    }
+
+    setTeachers(prev => prev.filter(t => !matches(t)));
+    setUsers(prev => prev.filter(u => !matches(u)));
+    try {
+      const uids = new Set<string>([teacherId, ...matchedUsers.map(u => u.id)]);
+      for (const uid of uids) {
+        await deleteInstitutionMember('inst_madrasah_primary', uid).catch(() => {});
+      }
+    } catch {}
+    try { await refreshPendingMembers(); } catch {}
+    return { success: true, message: 'শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট সম্পূর্ণভাবে মুছে ফেলা হয়েছে।' };
   };
 
   const updateTeacher = (updatedTeacher: AcademicTeacher, loginRole?: UserRole) => {
@@ -3484,6 +3558,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       addTeacher,
       updateTeacher,
       archiveTeacher,
+      deleteTeacher,
+      staffLeaves,
+      setStaffLeaves,
       setTeachers,
       assignSubjectToClass,
       updateClassSubjectAssignment,

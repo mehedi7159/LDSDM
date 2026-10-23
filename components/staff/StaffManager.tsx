@@ -12,8 +12,10 @@ import {
   Printer, 
   Phone, 
   Mail, 
-  Edit2, 
-  Trash2, 
+  Edit2,
+  Trash2,
+  Eye,
+  EyeOff,
   Search, 
   Filter, 
   CheckCircle2, 
@@ -40,7 +42,7 @@ import { DailyAttendanceHub } from '../attendance/DailyAttendanceHub';
 import { TeacherSalaryEntry } from '../finance/TeacherSalaryEntry';
 import { dailyAttendanceService, DailyStaffAttendanceRecord } from '../../services/dailyAttendanceService';
 import { AcademicTeacher } from '../../types/academic';
-import { FinanceTransaction, UserRole } from '../../types';
+import { FinanceTransaction, UserRole, StaffLeaveRecord } from '../../types';
 import { deriveRoleFromDesignation } from '../../services/utils';
 
 export type StaffSubTab = 
@@ -53,27 +55,15 @@ export type StaffSubTab =
   | 'id_cards' 
   | 'analytics';
 
-export interface StaffLeaveRecord {
-  id: string;
-  teacherId: string;
-  teacherName: string;
-  designation: string;
-  leaveType: 'CASUAL' | 'SICK' | 'HAJJ_UMRAH' | 'SPECIAL' | 'MATERNITY';
-  startDate: string;
-  endDate: string;
-  daysCount: number;
-  reason: string;
-  status: 'APPROVED' | 'PENDING' | 'REJECTED';
-  appliedAt: string;
-  approvedBy?: string;
-}
+// StaffLeaveRecord is defined in ../../types (shared with AppContext,
+// which keeps the records in the cloud-synced store).
 
 interface StaffManagerProps {
   initialSubTab?: StaffSubTab;
   onNavigateTab?: (tab: string) => void;
 }
 
-const STORAGE_KEY_LEAVES = 'madrasah_staff_leaves';
+// Leave records are stored centrally in AppContext (staffLeaves).
 
 export const StaffManager: React.FC<StaffManagerProps> = ({
   initialSubTab = 'directory',
@@ -82,8 +72,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const { 
     teachers = [], 
     setTeachers,
-    addTeacher, 
-    updateTeacher, 
+    addTeacher,
+    updateTeacher,
+    deleteTeacher,
+    staffLeaves = [],
+    setStaffLeaves,
     users = [], 
     setUsers,
     pendingMembers = [],
@@ -108,7 +101,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Search and filter for Directory
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'ARCHIVED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING' | 'INACTIVE'>('ALL');
 
   // Add/Edit Teacher Modal
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -127,19 +120,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     assignedSubjects: []
   });
 
-  // Leave Management State
-  const [leaves, setLeaves] = useState<StaffLeaveRecord[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_LEAVES);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(l => l?.id !== 'leave_1');
-        }
-      }
-    } catch (e) {}
-    return [];
-  });
+  // Leave Management State — records live in the shared, cloud-synced store
+  // (AppContext staffLeaves) so they survive across devices and admins.
+  const leaves = staffLeaves;
+  const setLeaves = setStaffLeaves;
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [newLeaveData, setNewLeaveData] = useState<Partial<StaffLeaveRecord>>({
@@ -151,13 +135,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     reason: '',
     status: 'APPROVED'
   });
-
-  // Save leaves on update
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_LEAVES, JSON.stringify(leaves));
-    } catch (e) {}
-  }, [leaves]);
 
   // ID Card Generation Selection
   const [selectedTeacherForIdCard, setSelectedTeacherForIdCard] = useState<AcademicTeacher | null>(null);
@@ -178,6 +155,25 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Receipt Modal State for Salary
   const [salaryReceiptTx, setSalaryReceiptTx] = useState<FinanceTransaction | null>(null);
 
+  // Staff removal (confirm dialog) + per-card password reveal
+  const [staffToDelete, setStaffToDelete] = useState<AcademicTeacher | null>(null);
+  const [isDeletingStaff, setIsDeletingStaff] = useState(false);
+  const [revealedPwId, setRevealedPwId] = useState<string | null>(null);
+
+  const handleDeleteStaff = async () => {
+    if (!staffToDelete || isDeletingStaff) return;
+    setIsDeletingStaff(true);
+    try {
+      const res = await deleteTeacher(staffToDelete.id);
+      showToast(res.message || (res.success
+        ? (isBn ? 'সফলভাবে মুছে ফেলা হয়েছে' : 'Removed successfully')
+        : (isBn ? 'মুছতে সমস্যা হয়েছে' : 'Could not remove')));
+      if (res.success) setStaffToDelete(null);
+    } finally {
+      setIsDeletingStaff(false);
+    }
+  };
+
   // Today's staff attendance data
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const todayStaffAttendance = useMemo(() => {
@@ -189,7 +185,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     const list: AcademicTeacher[] = [...teachers];
     // If teachers are empty or users have staff not in teachers, complement
     users.forEach(u => {
-      if ((u.role === 'teacher' || u.role === 'staff' || u.role === 'accountant' || u.role === 'principal') && !list.some(t => t.id === u.id || t.userId === u.id)) {
+      if ((u.role === 'teacher' || u.role === 'staff' || u.role === 'accountant' || u.role === 'principal') && !list.some(t =>
+        t.id === u.id || t.userId === u.id ||
+        (u.email && t.email?.toLowerCase() === u.email.toLowerCase()) ||
+        (u.phone && t.phone === u.phone)
+      )) {
         list.push({
           id: u.id,
           name: u.name,
@@ -233,12 +233,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Real-time KPI Calculations
   const kpis = useMemo(() => {
     const totalStaffCount = unifiedStaffList.length;
-    const teachersOnlyCount = unifiedStaffList.filter(s => 
-      s.designation?.includes('মুয়াল্লিম') || 
-      s.designation?.includes('শিক্ষক') || 
-      s.designation?.includes('উস্তাদ') || 
-      s.designation?.includes('ক্বারী') ||
-      !s.designation
+    const teachersOnlyCount = unifiedStaffList.filter(s =>
+      deriveRoleFromDesignation(s.designation) === 'teacher'
     ).length;
 
     const officeStaffCount = totalStaffCount - teachersOnlyCount;
@@ -246,9 +242,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     // Attendance rate
     const recordedAttendance = todayStaffAttendance.length;
     const presentStaff = todayStaffAttendance.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
-    const staffAttendanceRate = recordedAttendance > 0 
-      ? Math.round((presentStaff / recordedAttendance) * 100) 
-      : 95; // Default healthy baseline
+    const staffAttendanceRate = recordedAttendance > 0
+      ? Math.round((presentStaff / recordedAttendance) * 100)
+      : 0;
 
     // Salary disbursed this month
     const currentMonth = todayStr.substring(0, 7);
@@ -271,6 +267,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       teachersOnlyCount,
       officeStaffCount,
       staffAttendanceRate,
+      attendanceRecorded: recordedAttendance > 0,
+      presentToday: presentStaff,
       totalDisbursed,
       leavesTodayCount
     };
@@ -286,10 +284,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         (s.phone && s.phone.includes(searchQuery)) ||
         (s.designation && s.designation.includes(searchQuery));
       
-      const matchStatus = statusFilter === 'ALL' || s.status === statusFilter;
-      const matchRole = roleFilter === 'ALL' || 
-        (roleFilter === 'TEACHER' && (s.designation?.includes('শিক্ষক') || s.designation?.includes('মুয়াল্লিম'))) ||
-        (roleFilter === 'OFFICE' && (s.designation?.includes('অফিস') || s.designation?.includes('হিসাব')));
+      const matchStatus = statusFilter === 'ALL' || (s.status || 'ACTIVE').toUpperCase() === statusFilter;
+      const derivedRole = deriveRoleFromDesignation(s.designation);
+      const matchRole = roleFilter === 'ALL' ||
+        (roleFilter === 'TEACHER' && derivedRole === 'teacher') ||
+        (roleFilter === 'OFFICE' && derivedRole !== 'teacher');
 
       return matchSearch && matchStatus && matchRole;
     });
@@ -350,7 +349,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       } as AcademicTeacher, formLoginRole);
       showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
     } else {
-      addTeacher({
+      const addRes = addTeacher({
         name: teacherFormData.name.trim(),
         nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
         employeeCode: teacherFormData.employeeCode || `MDR-T${Date.now().toString().slice(-3)}`,
@@ -362,6 +361,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         assignedClasses: teacherFormData.assignedClasses || [],
         assignedSubjects: teacherFormData.assignedSubjects || []
       }, formLoginRole);
+      if (addRes && !addRes.success) {
+        showToast(addRes.message || (isBn ? 'যুক্ত করা যায়নি — তথ্য যাচাই করুন' : 'Could not add — please check the information'));
+        return;
+      }
       showToast(isBn ? 'নতুন শিক্ষক/কর্মচারী ও লগইন অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে' : 'New staff member and login account added successfully');
     }
 
@@ -457,7 +460,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       labelBn: '৪. শিক্ষক-কর্মচারী দৈনিক হাজিরা', 
       labelEn: '4. Staff Daily Attendance', 
       icon: CalendarCheck,
-      badge: `${kpis.staffAttendanceRate}%`
+      badge: kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'
     },
     { 
       id: 'payroll' as StaffSubTab, 
@@ -529,7 +532,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
             >
               <UserPlus size={14} className="text-teal-300" />
-              <span>{isBn ? '+ শিক্ষক/কর্মী যুক্ত' : 'Add Staff'}</span>
+              <span>{isBn ? '+ নতুন শিক্ষক যুক্ত' : 'Add Staff'}</span>
             </button>
             <button
               type="button"
@@ -566,8 +569,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের স্টাফ উপস্থিতি' : 'Attendance Today'}</div>
-            <div className="text-xl font-black text-emerald-300 mt-0.5">{kpis.staffAttendanceRate}%</div>
-            <div className="text-[10px] text-emerald-400/90 font-medium">{isBn ? 'ডিজিটাল লগ সম্পন্ন' : 'Digital Log Active'}</div>
+            <div className="text-xl font-black text-emerald-300 mt-0.5">{kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'}</div>
+            <div className="text-[10px] text-emerald-400/90 font-medium">{kpis.attendanceRecorded ? (isBn ? 'ডিজিটাল লগ সম্পন্ন' : 'Digital Log Active') : (isBn ? 'আজ হাজিরা নেওয়া হয়নি' : 'Not recorded today')}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -709,7 +712,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 >
                   <option value="ALL">{isBn ? 'সকল স্ট্যাটাস' : 'All Status'}</option>
                   <option value="ACTIVE">{isBn ? 'সক্রিয় (Active)' : 'Active'}</option>
-                  <option value="ARCHIVED">{isBn ? 'সাবেক / আর্কাইভ' : 'Archived'}</option>
+                  <option value="PENDING">{isBn ? 'অপেক্ষমাণ (Pending)' : 'Pending'}</option>
+                  <option value="INACTIVE">{isBn ? 'নিষ্ক্রিয় / সাবেক' : 'Inactive'}</option>
                 </select>
 
                 <button
@@ -754,9 +758,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                             </button>
                           </div>
                         ) : (
+                          <>
                           <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200/80">
                             {staff.designation || 'সহকারী শিক্ষক'}
                           </span>
+                          {(staff.status || '').toUpperCase() === 'INACTIVE' && (
+                            <span className="inline-block mt-0.5 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              {isBn ? 'নিষ্ক্রিয়' : 'Inactive'}
+                            </span>
+                          )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -769,6 +780,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         title={isBn ? 'সম্পাদনা করুন' : 'Edit'}
                       >
                         <Edit2 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStaffToDelete(staff)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                        title={isBn ? 'স্থায়ীভাবে মুছে ফেলুন' : 'Remove permanently'}
+                      >
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
@@ -800,7 +819,17 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     {staff.password && (
                       <div className="flex items-center justify-between">
                         <span className="text-slate-400 font-medium">{isBn ? 'লগইন পাসওয়ার্ড:' : 'Login Password:'}</span>
-                        <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{staff.password}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{revealedPwId === staff.id ? staff.password : '••••••'}</span>
+                          <button
+                            type="button"
+                            onClick={() => setRevealedPwId(revealedPwId === staff.id ? null : staff.id)}
+                            className="text-slate-400 hover:text-teal-700 transition-colors"
+                            title={isBn ? 'দেখুন/লুকান' : 'Show/hide'}
+                          >
+                            {revealedPwId === staff.id ? <EyeOff size={12} /> : <Eye size={12} />}
+                          </button>
+                        </span>
                       </div>
                     )}
                   </div>
@@ -869,7 +898,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     {isBn ? 'কোনো শিক্ষক বা কর্মচারীর তথ্য পাওয়া যায়নি' : 'No staff records found'}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
-                    {isBn ? 'নতুন শিক্ষক যোগ করতে "+ শিক্ষক/কর্মী যুক্ত" বাটনে ক্লিক করুন।' : 'Click "+ Add Staff" to register a new teacher.'}
+                    {isBn ? 'নতুন শিক্ষক যোগ করতে "+ নতুন শিক্ষক যুক্ত" বাটনে ক্লিক করুন।' : 'Click "+ Add Staff" to register a new teacher.'}
                   </p>
                 </div>
               )}
@@ -1004,6 +1033,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       <th className="py-3 px-4">{isBn ? 'ছুটির কারণ' : 'Reason'}</th>
                       <th className="py-3 px-4 text-center">{isBn ? 'স্ট্যাটাস' : 'Status'}</th>
                       <th className="py-3 px-4 text-right">{isBn ? 'অনুমোদনকারী' : 'Approved By'}</th>
+                      <th className="py-3 px-4 text-right">{isBn ? 'অ্যাকশন' : 'Action'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
@@ -1041,6 +1071,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         </td>
                         <td className="py-3.5 px-4 text-right text-slate-600 font-medium">
                           {l.approvedBy || (isBn ? 'অধ্যক্ষ' : 'Principal')}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => { setLeaves(prev => prev.filter(x => x.id !== l.id)); showToast(isBn ? 'ছুটির রেকর্ড মুছে ফেলা হয়েছে' : 'Leave record removed'); }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                            title={isBn ? 'রেকর্ড মুছুন' : 'Delete record'}
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1179,7 +1219,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-600">{isBn ? 'গড় স্টাফ উপস্থিতি হার:' : 'Avg Attendance Rate:'}</span>
-                    <span className="font-bold text-teal-700">{kpis.staffAttendanceRate}%</span>
+                    <span className="font-bold text-teal-700">{kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'}</span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-600">{isBn ? 'অনুমোদিত মোট ছুটি (মাসিক):' : 'Total Leaves This Month:'}</span>
@@ -1187,7 +1227,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   </div>
                   <div className="flex justify-between py-1.5">
                     <span className="text-slate-600">{isBn ? 'আজ উপস্থিত কর্মী:' : 'Present Today:'}</span>
-                    <span className="font-bold text-emerald-600">{formatNumber(Math.round(kpis.totalStaffCount * (kpis.staffAttendanceRate / 100)), 'bn')} জন</span>
+                    <span className="font-bold text-emerald-600">{kpis.attendanceRecorded ? `${formatNumber(kpis.presentToday, 'bn')} জন` : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -1264,6 +1304,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <option value="guardian">{isBn ? 'অভিভাবক (Guardian)' : 'Guardian'}</option>
                 </select>
                 <p className="text-[11px] text-slate-400 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। উপরের পদবি শুধু প্রদর্শনের জন্য।' : 'They will log in with this role and see that portal. Designation above is display-only.'}</p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'স্ট্যাটাস (Status):' : 'Status:'}</label>
+                <select
+                  value={teacherFormData.status || 'ACTIVE'}
+                  onChange={(e) => setTeacherFormData({ ...teacherFormData, status: e.target.value as AcademicTeacher['status'] })}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
+                >
+                  <option value="ACTIVE">{isBn ? 'সক্রিয় (Active)' : 'Active'}</option>
+                  <option value="INACTIVE">{isBn ? 'নিষ্ক্রিয় / সাবেক (Inactive)' : 'Inactive'}</option>
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">{isBn ? 'নিষ্ক্রিয় করলে উনি তালিকায় থাকবেন কিন্তু সাবেক হিসেবে চিহ্নিত হবেন। পুরোপুরি সরাতে কার্ডের মুছে-ফেলুন বাটন ব্যবহার করুন।' : 'Inactive keeps the record, marked as former. Use the card delete button to remove permanently.'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1365,6 +1418,46 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Staff Confirm Modal */}
+      {staffToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">{isBn ? 'স্থায়ীভাবে মুছে ফেলবেন?' : 'Remove permanently?'}</h3>
+                <p className="text-xs text-slate-500">{isBn ? 'এই কাজটি আর ফেরত নেওয়া যাবে না' : 'This action cannot be undone'}</p>
+              </div>
+            </div>
+            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3.5 text-xs text-slate-700 space-y-1">
+              <p className="font-bold text-slate-900 text-sm">{staffToDelete.nameBn || staffToDelete.name}</p>
+              <p>{staffToDelete.designation || (isBn ? 'সহকারী শিক্ষক' : 'Assistant Teacher')}{staffToDelete.phone ? ` · ${staffToDelete.phone}` : ''}</p>
+              <p className="text-slate-500 pt-1">{isBn ? 'তার স্টাফ রেকর্ড, লগইন অ্যাকাউন্ট ও অ্যাক্সেস — সব একসাথে মুছে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record, login account and access will all be removed together. Past salary and attendance records stay untouched.'}</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStaffToDelete(null)}
+                className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold text-xs"
+              >
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteStaff}
+                disabled={isDeletingStaff}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs flex items-center gap-1.5 text-xs disabled:opacity-60"
+              >
+                <Trash2 size={13} />
+                <span>{isDeletingStaff ? (isBn ? 'মোছা হচ্ছে...' : 'Removing...') : (isBn ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, remove')}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

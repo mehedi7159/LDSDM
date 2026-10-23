@@ -464,6 +464,21 @@ export interface TrashItem {
 
 export type UserRole = 'super_admin' | 'principal' | 'teacher' | 'accountant' | 'staff' | 'guardian';
 
+export interface StaffLeaveRecord {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  designation: string;
+  leaveType: 'CASUAL' | 'SICK' | 'HAJJ_UMRAH' | 'SPECIAL' | 'MATERNITY';
+  startDate: string;
+  endDate: string;
+  daysCount: number;
+  reason: string;
+  status: 'APPROVED' | 'PENDING' | 'REJECTED';
+  appliedAt: string;
+  approvedBy?: string;
+}
+
 export interface AppUser {
   id: string;
   name: string;
