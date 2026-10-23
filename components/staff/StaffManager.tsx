@@ -40,7 +40,8 @@ import { DailyAttendanceHub } from '../attendance/DailyAttendanceHub';
 import { TeacherSalaryEntry } from '../finance/TeacherSalaryEntry';
 import { dailyAttendanceService, DailyStaffAttendanceRecord } from '../../services/dailyAttendanceService';
 import { AcademicTeacher } from '../../types/academic';
-import { FinanceTransaction } from '../../types';
+import { FinanceTransaction, UserRole } from '../../types';
+import { deriveRoleFromDesignation } from '../../services/utils';
 
 export type StaffSubTab = 
   | 'directory' 
@@ -112,6 +113,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Add/Edit Teacher Modal
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<AcademicTeacher | null>(null);
+  const [formLoginRole, setFormLoginRole] = useState<UserRole>('teacher');
   const [teacherFormData, setTeacherFormData] = useState<Partial<AcademicTeacher>>({
     name: '',
     nameBn: '',
@@ -296,6 +298,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Handle open add modal
   const handleOpenAddModal = () => {
     setEditingTeacher(null);
+    setFormLoginRole('teacher');
     setTeacherFormData({
       name: '',
       nameBn: '',
@@ -314,6 +317,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Handle open edit modal
   const handleOpenEditModal = (teacher: AcademicTeacher) => {
     setEditingTeacher(teacher);
+    const linkedUser = (users || []).find(u =>
+      u.id === teacher.id ||
+      (teacher.email && u.email?.toLowerCase() === teacher.email.toLowerCase()) ||
+      (teacher.phone && u.phone === teacher.phone)
+    );
+    setFormLoginRole((linkedUser?.role as UserRole) || deriveRoleFromDesignation(teacher.designation));
     setTeacherFormData({
       ...teacher,
       password: teacher.password || '123'
@@ -338,7 +347,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         name: teacherFormData.name.trim(),
         nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
         password: rawPassword
-      } as AcademicTeacher);
+      } as AcademicTeacher, formLoginRole);
       showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
     } else {
       addTeacher({
@@ -352,7 +361,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         status: teacherFormData.status || 'ACTIVE',
         assignedClasses: teacherFormData.assignedClasses || [],
         assignedSubjects: teacherFormData.assignedSubjects || []
-      });
+      }, formLoginRole);
       showToast(isBn ? 'নতুন শিক্ষক/কর্মচারী ও লগইন অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে' : 'New staff member and login account added successfully');
     }
 
@@ -363,7 +372,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const handleQuickApproveStaff = async (staff: AcademicTeacher) => {
     try {
       if (approveMember) {
-        await approveMember(staff.id, 'role_teacher', staff.assignedClasses || [], staff.assignedSubjects || []);
+        await approveMember(staff.id, `role_${deriveRoleFromDesignation(staff.designation)}`, staff.assignedClasses || [], staff.assignedSubjects || []);
       }
       updateTeacher({ ...staff, status: 'ACTIVE' });
       setUsers(prev => prev.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u));
@@ -1239,6 +1248,22 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     className="w-full border border-slate-200 rounded-xl p-2.5 font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">{isBn ? 'লগইন রোল (Login Role):' : 'Login Role:'}</label>
+                <select
+                  value={formLoginRole}
+                  onChange={(e) => setFormLoginRole(e.target.value as UserRole)}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
+                >
+                  <option value="teacher">{isBn ? 'শিক্ষক (Teacher)' : 'Teacher'}</option>
+                  <option value="accountant">{isBn ? 'হিসাবরক্ষক / ক্যাশিয়ার (Accountant)' : 'Accountant / Cashier'}</option>
+                  <option value="staff">{isBn ? 'অফিস স্টাফ (Office Staff)' : 'Office Staff'}</option>
+                  <option value="principal">{isBn ? 'অধ্যক্ষ (Principal)' : 'Principal'}</option>
+                  <option value="guardian">{isBn ? 'অভিভাবক (Guardian)' : 'Guardian'}</option>
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। উপরের পদবি শুধু প্রদর্শনের জন্য।' : 'They will log in with this role and see that portal. Designation above is display-only.'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

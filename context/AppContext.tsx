@@ -41,7 +41,7 @@ import {
   deleteInstitutionMember,
   approveInstitutionMember
 } from '../services/rbac';
-import { generateId } from '../services/utils';
+import { generateId, deriveRoleFromDesignation } from '../services/utils';
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
@@ -222,8 +222,8 @@ interface AppContextType extends AppState {
   updateSubject: (subject: Subject) => void;
   archiveSubject: (id: string) => void;
   deleteSubject: (id: string) => void;
-  addTeacher: (teacher: Omit<AcademicTeacher, 'id'>) => void;
-  updateTeacher: (teacher: AcademicTeacher) => void;
+  addTeacher: (teacher: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => void;
+  updateTeacher: (teacher: AcademicTeacher, loginRole?: UserRole) => void;
   archiveTeacher: (id: string) => void;
   setTeachers: (teachers: AcademicTeacher[]) => void;
   assignSubjectToClass: (assignment: Omit<ClassSubjectAssignment, 'id'>) => void;
@@ -936,6 +936,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       };
     }
 
+    // Also block signups that collide with an admin-created staff record —
+    // otherwise the same person ends up with two parallel accounts
+    // (one in users, one in teachers) and login picks whichever matches first.
+    const existingStaff = teachers.find(t =>
+      (cleanPhone && t.phone && t.phone.trim() === cleanPhone) ||
+      (cleanEmail && t.email && t.email.trim().toLowerCase() === cleanEmail)
+    );
+    if (existingStaff) {
+      return {
+        success: false,
+        message: 'এই মোবাইল নম্বর অথবা ইমেইল দিয়ে স্টাফ তালিকায় ইতোমধ্যে একটি অ্যাকাউন্ট আছে। নতুন সাইনআপ না করে অ্যাডমিনের সাথে যোগাযোগ করুন।'
+      };
+    }
+
     const newUser: AppUser = {
       id: 'usr_' + generateId(),
       name: data.name.trim(),
@@ -1037,7 +1051,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           phone: teacher.phone || '',
           email: teacher.email || undefined,
           password: teacher.password || '123456',
-          role: 'teacher',
+          role: deriveRoleFromDesignation(teacher.designation),
           designation: teacher.designation || 'সহকারী শিক্ষক',
           assignedClasses: teacher.assignedClasses || [],
           assignedSubjects: teacher.assignedSubjects || [],
@@ -1401,8 +1415,24 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         !u.id.startsWith('user_principal_') &&
         !Boolean(u.email && u.email.includes('madrasha.local'))
       );
-      setUsers(cleanUsers);
-      try { localStorage.setItem('madrasha_app_users', JSON.stringify(cleanUsers)); } catch {}
+      // One-way role heal: accounts created through the staff directory used
+      // to be stamped role 'teacher' no matter the designation (the
+      // accountant landed on the teacher portal). When the staff record's
+      // designation clearly names a non-teacher role, trust the designation.
+      // Only ever moves a 'teacher' stamp; deliberate roles stay untouched.
+      const staffList: any[] = Array.isArray(data.teachers) ? data.teachers : [];
+      const healedUsers = cleanUsers.map(u => {
+        if (u.role !== 'teacher') return u;
+        const staffRec = staffList.find((t: any) =>
+          t.id === u.id ||
+          (u.email && t.email && t.email.toLowerCase() === u.email.toLowerCase()) ||
+          (u.phone && t.phone && t.phone === u.phone)
+        );
+        const derived = deriveRoleFromDesignation(staffRec?.designation || u.designation);
+        return derived !== 'teacher' ? { ...u, role: derived as UserRole } : u;
+      });
+      setUsers(healedUsers);
+      try { localStorage.setItem('madrasha_app_users', JSON.stringify(healedUsers)); } catch {}
     }
     if (data.notices && Array.isArray(data.notices)) {
       const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
@@ -2649,10 +2679,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   // Academic Teacher handlers
-  const addTeacher = (teacherData: Omit<AcademicTeacher, 'id'>) => {
+  const addTeacher = (teacherData: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
     const { teacher } = buildCreateTeacherPayload(teacherData, 'inst_madrasah_primary', actor, teachers);
     if (teacher) {
+      // The login role comes from the explicit role chosen in the staff form;
+      // without one it is derived from the designation — never hard-coded,
+      // otherwise every staff member (e.g. the accountant) becomes a teacher.
+      const effectiveRole: UserRole = loginRole ?? deriveRoleFromDesignation(teacher.designation);
       const rawPassword = teacherData.password?.trim() || '123456';
       const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
       const cleanPhone = teacher.phone?.trim() || '';
@@ -2674,7 +2708,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         displayName: teacher.nameBn || teacher.name,
         phone: cleanPhone,
         password: rawPassword,
-        roleId: 'role_teacher',
+        roleId: `role_${effectiveRole}`,
         requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',
         status: 'active',
         assignedClasses: teacher.assignedClasses || [],
@@ -2692,7 +2726,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         phone: cleanPhone,
         email: cleanEmail,
         password: rawPassword,
-        role: 'teacher',
+        role: effectiveRole,
         designation: teacher.designation || 'মুয়াল্লিম / সহকারী শিক্ষক',
         assignedClasses: teacher.assignedClasses || [],
         status: 'active',
@@ -2718,8 +2752,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
-  const updateTeacher = (updatedTeacher: AcademicTeacher) => {
+  const updateTeacher = (updatedTeacher: AcademicTeacher, loginRole?: UserRole) => {
     const existing = teachers.find(t => t.id === updatedTeacher.id);
+    // Keep the login role in step with the staff form's role choice;
+    // without an explicit choice, derive it from the designation.
+    const effectiveRole: UserRole = loginRole ?? deriveRoleFromDesignation(updatedTeacher.designation);
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
     const { teacher } = existing
       ? buildUpdateTeacherPayload(existing, updatedTeacher, actor, teachers)
@@ -2750,6 +2787,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           phone: cleanPhone,
           password: rawPassword,
           designation: teacher.designation,
+          role: effectiveRole,
           assignedClasses: teacher.assignedClasses || [],
           status: 'active'
         };
@@ -2765,7 +2803,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       displayName: teacher.nameBn || teacher.name,
       phone: cleanPhone,
       password: rawPassword,
-      roleId: 'role_teacher',
+      roleId: `role_${effectiveRole}`,
       requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',
       status: 'active',
       assignedClasses: teacher.assignedClasses || [],

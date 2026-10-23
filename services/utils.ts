@@ -184,6 +184,27 @@ export const generateId = (): string => {
   return Math.random().toString(36).substr(2, 9);
 };
 
+export type DesignationRole = 'teacher' | 'accountant' | 'staff' | 'principal' | 'guardian';
+
+/**
+ * Derive a login role from a free-text staff designation.
+ * Designations are typed by hand (e.g. 'হিসাবরক্ষক / ক্যাশিয়ার (Accountant)'),
+ * so match on strong English/Bangla keywords. Anything teaching-related
+ * or unrecognised falls back to 'teacher'.
+ */
+export const deriveRoleFromDesignation = (designation?: string | null): DesignationRole => {
+  const d = (designation || '').toLowerCase();
+  if (!d.trim()) return 'teacher';
+  if (d.includes('account') || d.includes('cashier') || d.includes('হিসাব') || d.includes('ক্যাশ')) return 'accountant';
+  if (d.includes('principal') || d.includes('অধ্যক্ষ') || d.includes('সুপারিনটেনডেন্ট') || d.includes('superintendent')) return 'principal';
+  if (d.includes('guardian') || d.includes('parent') || d.includes('অভিভাবক')) return 'guardian';
+  if (
+    d.includes('office') || d.includes('অফিস') || d.includes('staff') || d.includes('কর্মচারী') ||
+    d.includes('librar') || d.includes('লাইব্রের') || d.includes('clerk') || d.includes('কেরানি') || d.includes('কেরাণী')
+  ) return 'staff';
+  return 'teacher';
+};
+
 export const toBengali = (num: number | string | undefined | null): string => {
   if (num === undefined || num === null) return '';
   const str = String(num);
