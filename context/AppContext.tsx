@@ -43,6 +43,7 @@ import {
   approveInstitutionMember
 } from '../services/rbac';
 import { generateId, deriveRoleFromDesignation } from '../services/utils';
+import { buildPublicPortalData } from '../services/publicPortal';
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
@@ -1201,6 +1202,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const isRemoteUpdateRef = useRef(false);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasLoadedRemoteRef = useRef(false);
+  // Phase 2 (public-data split): which Firestore document currently feeds
+  // this session — 'main' (institution/main_store, signed-in) or 'public'
+  // (institution/public_portal, anonymous portal visitors).
+  const feedKindRef = useRef<'none' | 'main' | 'public'>('none');
 
   // Monitor Firebase Auth changes and authoritatively verify Custom Claims (role: "admin") or designated Owner
   useEffect(() => {
@@ -1528,45 +1533,166 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   }, []);
 
-  // Load from and Listen to Firebase Firestore in real-time
+  // Load from and Listen to Firebase Firestore in real-time.
+  //
+  // Phase 2 (public-data split): sessions with a real login read the full
+  // `institution/main_store` exactly as before. Anonymous sessions (the
+  // public portal: landing page, result search, student profile by ID)
+  // read the derived, public-safe `institution/public_portal` document
+  // instead — with a graceful fallback to main_store whenever the public
+  // document does not exist yet (i.e. before the first signed-in sync
+  // creates it), so the portal keeps working at every step of the rollout.
   useEffect(() => {
-    const docRef = doc(db, 'institution', 'main_store');
-    
     setCloudStatus('syncing');
 
-    // Immediate direct getDoc load to guarantee instant data availability on boot
-    getDoc(docRef)
-      .then((snap) => {
-        if (snap.exists()) {
-          applyRemoteData(snap.data());
-        }
-      })
-      .catch((err) => {
-        console.warn('Initial direct getDoc load notice:', err?.message || err);
-      });
+    let cancelled = false;
+    let activeUnsubscribe: (() => void) | null = null;
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          applyRemoteData(snapshot.data());
-        } else {
-          setCloudStatus('connected');
-          setCloudLastSynced('No Cloud Data Found');
-        }
-      },
-      (error) => {
-        console.warn('Firestore snapshot listener notice:', error?.message || error);
-        if (error?.code === 'permission-denied') {
-          console.warn('[Firestore] Permission denied');
-          setCloudStatus('error');
-        } else {
-          setCloudStatus('offline');
-        }
+    const stopActiveFeed = () => {
+      if (activeUnsubscribe) {
+        try { activeUnsubscribe(); } catch {}
+        activeUnsubscribe = null;
       }
-    );
+    };
 
-    return () => unsubscribe();
+    const startMainStoreFeed = () => {
+      if (cancelled) return;
+      stopActiveFeed();
+      feedKindRef.current = 'main';
+      const docRef = doc(db, 'institution', 'main_store');
+
+      // Immediate direct getDoc load to guarantee instant data availability on boot
+      getDoc(docRef)
+        .then((snap) => {
+          if (!cancelled && snap.exists()) {
+            applyRemoteData(snap.data());
+          }
+        })
+        .catch((err) => {
+          console.warn('Initial direct getDoc load notice:', err?.message || err);
+        });
+
+      activeUnsubscribe = onSnapshot(
+        docRef,
+        (snapshot) => {
+          if (cancelled) return;
+          if (snapshot.exists()) {
+            applyRemoteData(snapshot.data());
+          } else {
+            setCloudStatus('connected');
+            setCloudLastSynced('No Cloud Data Found');
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Firestore snapshot listener notice:', error?.message || error);
+          if (error?.code === 'permission-denied') {
+            console.warn('[Firestore] Permission denied');
+            setCloudStatus('error');
+          } else {
+            setCloudStatus('offline');
+          }
+        }
+      );
+    };
+
+    const startPublicFeed = () => {
+      if (cancelled) return;
+      stopActiveFeed();
+      feedKindRef.current = 'public';
+      const publicDocRef = doc(db, 'institution', 'public_portal');
+      let fellBack = false;
+
+      // If the public document is missing (not created yet) or unreadable,
+      // fall back to the previous behaviour so the portal never breaks.
+      const fallbackToMainStore = () => {
+        if (cancelled || fellBack) return;
+        fellBack = true;
+        startMainStoreFeed();
+      };
+
+      getDoc(publicDocRef)
+        .then((snap) => {
+          if (cancelled) return;
+          if (snap.exists()) {
+            applyRemoteData(snap.data());
+          } else {
+            fallbackToMainStore();
+          }
+        })
+        .catch((err) => {
+          console.warn('Public portal getDoc load notice:', err?.message || err);
+          fallbackToMainStore();
+        });
+
+      activeUnsubscribe = onSnapshot(
+        publicDocRef,
+        (snapshot) => {
+          if (cancelled) return;
+          if (snapshot.exists()) {
+            applyRemoteData(snapshot.data());
+          } else {
+            fallbackToMainStore();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Public portal snapshot listener notice:', error?.message || error);
+          if (error?.code === 'permission-denied') {
+            fallbackToMainStore();
+          } else {
+            setCloudStatus('offline');
+          }
+        }
+      );
+    };
+
+    // A saved app-level session (Firebase or local portal login) counts as
+    // signed in for data purposes — those users keep the full store feed.
+    const hasLocalAppSession = () => {
+      try {
+        return !!(
+          localStorage.getItem('madrasha_active_auth_session') ||
+          localStorage.getItem('madrasha_active_app_user_id')
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const startInitialFeed = () => {
+      if (cancelled || feedKindRef.current !== 'none') return;
+      if (hasLocalAppSession()) {
+        startMainStoreFeed();
+      } else {
+        startPublicFeed();
+      }
+    };
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (cancelled) return;
+      if (user) {
+        // Signed in at boot, or signing in after an anonymous start:
+        // switch to (or stay on) the full store feed.
+        if (feedKindRef.current !== 'main') {
+          startMainStoreFeed();
+        }
+      } else {
+        startInitialFeed();
+      }
+    });
+
+    // Safety net: if Firebase Auth state never resolves, start with the
+    // same decision a logged-out visitor would get; a later sign-in still
+    // switches the feed via the auth listener above.
+    const safetyTimer = setTimeout(startInitialFeed, 3000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(safetyTimer);
+      unsubscribeAuth();
+      stopActiveFeed();
+    };
   }, []);
 
   // Background debounced auto-sync to Firebase Firestore on local state changes
@@ -1578,6 +1704,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     // CRITICAL EMPTY DATA PROTECTION: Never overwrite cloud data with empty local state
     if (students.length === 0 && marks.length === 0) {
+      return;
+    }
+
+    // Phase 2 (public-data split): an anonymous session holds ONLY the
+    // public subset in state. It must never write that partial state back
+    // over the full store. Signed-in sessions sync exactly as before.
+    if (feedKindRef.current === 'public' && !auth.currentUser) {
       return;
     }
 
@@ -1614,6 +1747,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         };
 
         await setDoc(doc(db, 'institution', 'main_store'), payload, { merge: true });
+
+        // Phase 2 (public-data split): keep the derived public portal
+        // document in step with the store. Written as a full replace (no
+        // merge) so records deleted from the store also disappear from
+        // the public document. A failure here never fails the main sync.
+        try {
+          await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData(payload));
+        } catch (pubErr: any) {
+          console.warn('Public portal sync notice:', pubErr?.message || pubErr);
+        }
+
         setCloudStatus('connected');
         setCloudLastSynced(new Date().toLocaleTimeString());
       } catch (err: any) {
@@ -1940,6 +2084,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         updatedAt: new Date().toISOString()
       };
       await setDoc(doc(db, 'institution', 'main_store'), payload, { merge: true });
+
+      // Phase 2 (public-data split): refresh the derived public portal
+      // document alongside the manual push as well.
+      try {
+        await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData(payload));
+      } catch (pubErr: any) {
+        console.warn('Public portal sync notice:', pubErr?.message || pubErr);
+      }
+
       setCloudStatus('connected');
       setCloudLastSynced(new Date().toLocaleTimeString());
     } catch (e: any) {
