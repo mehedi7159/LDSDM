@@ -35,6 +35,14 @@ export interface Section {
   name: string;
   displayName?: string;
   capacity?: number;
+  /** Room / shift / class-teacher detail — previously kept only in the
+   *  ClassSectionSetupView's private localStorage map
+   *  (`madrasha_class_sections_v1`); now part of the canonical record so
+   *  it syncs with the rest of main_store. All optional: older records
+   *  without them remain valid. */
+  room?: string;
+  shift?: string;
+  teacherId?: string;
   status: AcademicEntityStatus;
   createdAt?: string;
   createdBy?: string;

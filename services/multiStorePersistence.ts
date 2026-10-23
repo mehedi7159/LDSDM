@@ -236,6 +236,7 @@ export const LOCAL_STORE_BACKUP_KEYS: string[] = [
   'madrasah_transport_roster',
   'madrasah_mahfil_events',
   'madrasah_cocurricular_clubs',
+  'mms_admission_applications_v1',
   'madrasah_admission_applications',
   'mms_online_admissions_v1',
   'mms_boarding_configs_v1',

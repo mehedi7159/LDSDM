@@ -21,8 +21,9 @@ The application is a single-page React 19 + TypeScript + Vite application design
 1. **Large Component Monoliths**:
    - `components/ResultView.tsx` (~3,180 lines) contains multiple card templates. Any card styling changes must preserve existing print boundary coordinates (`210mm x 297mm`) and QR rendering.
    - `components/FinanceManager.tsx` (~840 lines) hosts multiple modal states and sub-views. Refactoring must keep top-level navigation intuitive and prevent cross-view state leaks.
-2. **Dual Fee Architecture**:
-   - Both `student.monthlyFees` (legacy embedded array) and `Transaction` records (ledger-based) exist. Changes to Finance must ensure reconciliation calculations in `services/utils.ts` continue matching both structures without breaking historical records.
+2. **Fee Architecture (unified — updated Phase 2 Batch 2)**:
+   - The legacy `student.monthlyFees` embedded array no longer exists anywhere in the code (verified by repo-wide grep). The `Transaction` ledger is the single money record.
+   - All dues figures must come from the ONE canonical calculator, `services/studentDuesService.ts` (`calculateSingleStudentDue` / `calculateClassDuesSummary`): expected = per-student `monthlyFee` override if recorded, otherwise the class fee structure's `monthlyTuition + boardingFee`; due = expected − this month's recorded INCOME transactions for that student. Finance overview, fee collection and the staff mobile app all use it — do not reintroduce local dues formulas.
 3. **Print & PDF Layout Staging**:
    - Print & PDF exports rely on off-screen staging DOM elements with strict DPI sizing to avoid blank page or clipping issues. Changes to CSS / Tailwind classes must preserve `@media print` rules in `index.html`.
 4. **Security & Permissions**:

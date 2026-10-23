@@ -1,7 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Student } from '../../types';
 import { formatNumber, formatSafeDate } from '../../services/utils';
+import {
+  getAdmissionApplications,
+  saveAdmissionApplications,
+  subscribeAdmissionApplications,
+  toOfficeApplication,
+  fromOfficeApplication,
+  updateAdmissionApplicationStatus,
+  OfficeAdmissionApplication
+} from '../../services/admissionApplicationsService';
 import { Button } from '../ui/Button';
 import { 
   FileText, 
@@ -21,27 +30,13 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-export interface AdmissionApplication {
-  id: string;
-  applicationNo: string;
-  applicantName: string;
-  applicantNameBn?: string;
-  gender: 'male' | 'female' | 'other';
-  dateOfBirth: string;
-  desiredClass: string;
-  fatherName: string;
-  fatherNameBn?: string;
-  motherName: string;
-  guardianPhone: string;
-  guardianEmail?: string;
-  previousSchool?: string;
-  address: string;
-  appliedDate: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  notes?: string;
-}
-
-const STORAGE_KEY = 'madrasah_admission_applications';
+/**
+ * The office shape is now defined by the canonical admission service —
+ * this screen and the Online Admissions tracker share ONE store
+ * (services/admissionApplicationsService.ts). The type is re-exported
+ * under its historical name for existing importers (StudentManager).
+ */
+export type AdmissionApplication = OfficeAdmissionApplication;
 
 export const AdmissionApplicationManager: React.FC<{
   onEnrollStudent?: (app: AdmissionApplication) => void;
@@ -49,21 +44,10 @@ export const AdmissionApplicationManager: React.FC<{
   const { classes, addStudent, language } = useApp();
   const isBn = language === 'bn';
 
-  // Stored applications
-  const [applications, setApplications] = useState<AdmissionApplication[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(a => !a?.id?.startsWith('app-'));
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse saved applications:', e);
-    }
-    return [];
-  });
+  // Stored applications — read from the canonical unified store
+  const [applications, setApplications] = useState<AdmissionApplication[]>(() =>
+    getAdmissionApplications().map(toOfficeApplication)
+  );
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState('All');
@@ -88,14 +72,22 @@ export const AdmissionApplicationManager: React.FC<{
     notes: ''
   });
 
-  // Save to local storage
+  // Persist every change to the canonical store, and pick up changes made
+  // from the Online Admissions tracker (same underlying records).
+  const isFirstRender = useRef(true);
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
-    } catch (e) {
-      console.error('Failed to save applications:', e);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
+    saveAdmissionApplications(applications.map(fromOfficeApplication));
   }, [applications]);
+
+  useEffect(() => {
+    return subscribeAdmissionApplications(() => {
+      setApplications(getAdmissionApplications().map(toOfficeApplication));
+    });
+  }, []);
 
   const handleCreateApplication = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,8 +162,11 @@ export const AdmissionApplicationManager: React.FC<{
       isFormer: false
     });
 
-    // 2. Mark application status as APPROVED
+    // 2. Mark application status as APPROVED (shown as APPROVED on this
+    // screen; the canonical store records the truthful terminal state
+    // 'admitted' so the Online Admissions tracker shows it as admitted too)
     setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'APPROVED' } : a));
+    updateAdmissionApplicationStatus(app.id, 'admitted');
 
     if (onEnrollStudent) {
       onEnrollStudent(app);

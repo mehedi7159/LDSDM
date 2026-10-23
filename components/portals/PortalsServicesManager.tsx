@@ -50,6 +50,14 @@ import {
   shortenSubjectName
 } from '../../services/utils';
 import { dispatchSmsViaGateway, SmsGatewayConfig } from '../../services/smsNotificationService';
+import {
+  getAdmissionApplications,
+  saveAdmissionApplications,
+  subscribeAdmissionApplications,
+  toOnlineApplication,
+  fromOnlineApplication,
+  OnlineAdmissionApplication
+} from '../../services/admissionApplicationsService';
 import { ResultVerificationQR } from '../ResultVerificationQR';
 import { VerifiedResultModal } from '../VerifiedResultModal';
 import { Student } from '../../types';
@@ -67,23 +75,10 @@ interface PortalsServicesManagerProps {
   onNavigateTab?: (tab: string) => void;
 }
 
-// Online Admission Application Model
-interface AdmissionApplication {
-  id: string;
-  applicantName: string;
-  applicantNameBn?: string;
-  fatherName: string;
-  motherName?: string;
-  phone: string;
-  desiredClass: string;
-  previousSchool?: string;
-  dateOfBirth?: string;
-  gender: 'male' | 'female';
-  isResidential: boolean;
-  status: 'pending' | 'interview_called' | 'approved' | 'rejected' | 'admitted';
-  appliedDate: string;
-  notes?: string;
-}
+// Online Admission Application Model — this screen now shares ONE canonical
+// store with the office Admission Application Manager
+// (services/admissionApplicationsService.ts); the local shape is unchanged.
+type AdmissionApplication = OnlineAdmissionApplication;
 
 // Boarding Mess Record
 interface BoardingStudentConfig {
@@ -107,7 +102,10 @@ interface WelfareBeneficiary {
   notes?: string;
 }
 
-const STORAGE_ADMISSIONS_KEY = 'mms_online_admissions_v1';
+// NOTE: admissions no longer live under a portals-only key — the canonical
+// store is services/admissionApplicationsService.ts (shared with the office
+// Admission Application Manager). The old 'mms_online_admissions_v1' key is
+// absorbed into it on load by the service's migration.
 const STORAGE_BOARDING_KEY = 'mms_boarding_configs_v1';
 const STORAGE_WELFARE_KEY = 'mms_welfare_beneficiaries_v1';
 const STORAGE_SMS_LOGS_KEY = 'mms_sms_dispatch_logs_v1';
@@ -228,29 +226,22 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
   // ----------------------------------------------------
   // SUB-TAB 2: ONLINE ADMISSIONS TRACKER STATE
   // ----------------------------------------------------
-  const [admissions, setAdmissions] = useState<AdmissionApplication[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_ADMISSIONS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(a => !a?.id?.startsWith('adm-'));
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
-  });
+  const [admissions, setAdmissions] = useState<AdmissionApplication[]>(() =>
+    getAdmissionApplications().map(toOnlineApplication)
+  );
 
   const saveAdmissions = (list: AdmissionApplication[]) => {
     setAdmissions(list);
-    try {
-      localStorage.setItem(STORAGE_ADMISSIONS_KEY, JSON.stringify(list));
-    } catch (e) {
-      console.error(e);
-    }
+    saveAdmissionApplications(list.map(fromOnlineApplication));
   };
+
+  // Pick up applications entered/updated from the office Admission
+  // Application Manager (same canonical store).
+  useEffect(() => {
+    return subscribeAdmissionApplications(() => {
+      setAdmissions(getAdmissionApplications().map(toOnlineApplication));
+    });
+  }, []);
 
   const [admissionFilterStatus, setAdmissionFilterStatus] = useState<string>('all');
   const [admissionFilterClass, setAdmissionFilterClass] = useState<string>('all');

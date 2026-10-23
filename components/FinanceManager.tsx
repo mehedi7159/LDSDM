@@ -38,6 +38,7 @@ import { VoucherPrintModal } from './finance/VoucherPrintModal';
 import { HighImpactSummaryCards } from './finance/HighImpactSummaryCards';
 import { FinanceReportView } from './FinanceReportView';
 import { formatNumber } from '../services/utils';
+import { calculateSingleStudentDue } from '../services/studentDuesService';
 
 interface FinanceManagerProps {
   initialTab?: FinanceTab;
@@ -110,11 +111,15 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
     const netBalance = totalIncome - totalExpense;
 
-    // Approximate pending dues from students
+    // Pending dues — computed by the ONE canonical dues service (the same
+    // calculation the fee-collection screen and the staff mobile app use:
+    // class fee structure − this month's recorded payments). This replaces
+    // the old placeholder formula (per-student monthlyFee × 0.35) which was
+    // disconnected from both the fee structures and the transaction ledger.
     let totalDues = 0;
     students.forEach(st => {
       if (st.status === 'Active' && !st.isFormer) {
-        totalDues += Number(st.monthlyFee || 0) * 0.35;
+        totalDues += calculateSingleStudentDue(st, feeStructures, transactions).dueThisMonth;
       }
     });
 
@@ -126,7 +131,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       totalDues: Math.round(totalDues),
       totalTransactions: transactions.length
     };
-  }, [transactions, students]);
+  }, [transactions, students, feeStructures]);
 
   const navTabs: { 
     id: FinanceTab; 

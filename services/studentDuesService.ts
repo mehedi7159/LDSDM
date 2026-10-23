@@ -36,8 +36,13 @@ export function calculateSingleStudentDue(
 
   // Find fee structure for student's class
   const struct = feeStructures.find(f => f.classLevel === student.classLevel);
+  // An explicit per-student monthly fee recorded on the student record
+  // (legacy field, still honoured where present) overrides the class rate.
+  const perStudentOverride = Number((student as any).monthlyFee) || 0;
   // Default expected tuition if no structure is configured is 0 or base rate
-  const monthlyExpected = struct ? (struct.monthlyTuition || 0) + (struct.boardingFee || 0) : 0;
+  const monthlyExpected = perStudentOverride > 0
+    ? perStudentOverride
+    : struct ? (struct.monthlyTuition || 0) + (struct.boardingFee || 0) : 0;
 
   // Filter transactions for this student
   let paidThisMonth = 0;

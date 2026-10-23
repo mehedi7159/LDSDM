@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SchoolClass, Section } from '../../types';
 import { formatNumber } from '../../services/utils';
@@ -20,55 +20,102 @@ import {
 } from 'lucide-react';
 
 export const ClassSectionSetupView: React.FC = () => {
-  const { 
-    classes = [], 
-    sections = [], 
-    teachers = [], 
-    students = [], 
+  const {
+    classes = [],
+    sections = [],
+    teachers = [],
+    students = [],
     classTeacherAssignments = [],
     assignClassTeacher,
     addClass,
     updateClass,
     deleteClass,
-    language 
+    addSection,
+    updateSection,
+    deleteSection,
+    language
   } = useApp();
   const isBn = language === 'bn';
 
   const [selectedClassId, setSelectedClassId] = useState<string>(classes[0]?.id || '');
   const selectedClass = classes.find(c => c.id === selectedClassId) || classes[0];
 
-  // Local Section State (persists to local storage for instant responsiveness)
-  const [localSections, setLocalSections] = useState<Record<string, { id: string; name: string; capacity: number; room: string; shift: string; teacherId?: string }[]>>(() => {
+  // Sections now live in the canonical AppContext store (`sections`, synced
+  // through main_store). Previously this view kept its own detail map in
+  // localStorage (`madrasha_class_sections_v1`) that never synced and was
+  // seeded with invented sections. One-time migration: absorb any entries
+  // from that legacy map into the context store (dedupe by class + name),
+  // then never read it again. The legacy key itself is left untouched.
+  const migrationDoneRef = useRef(false);
+  useEffect(() => {
+    if (migrationDoneRef.current || classes.length === 0) return;
     try {
+      if (localStorage.getItem('madrasha_class_sections_v1_migrated') === '1') {
+        migrationDoneRef.current = true;
+        return;
+      }
       const raw = localStorage.getItem('madrasha_class_sections_v1');
-      if (raw) return JSON.parse(raw);
+      if (!raw) {
+        localStorage.setItem('madrasha_class_sections_v1_migrated', '1');
+        migrationDoneRef.current = true;
+        return;
+      }
+      const legacyMap = JSON.parse(raw);
+      if (!legacyMap || typeof legacyMap !== 'object') {
+        migrationDoneRef.current = true;
+        return;
+      }
+      let allRepresented = true;
+      Object.entries(legacyMap as Record<string, any[]>).forEach(([key, list]) => {
+        const cls = classes.find(c => c.id === key || c.name === key);
+        // Unresolvable class key: keep the legacy data untouched rather
+        // than dropping it — completion simply waits.
+        if (!cls) {
+          allRepresented = false;
+          return;
+        }
+        if (!Array.isArray(list)) return;
+        list.forEach(entry => {
+          if (!entry || !entry.name) return;
+          const exists = sections.some(
+            s => s.classId === cls.id && (s.name || '').trim() === String(entry.name).trim()
+          );
+          if (!exists) {
+            allRepresented = false;
+            if (addSection) {
+              addSection({
+                classId: cls.id,
+                name: String(entry.name),
+                capacity: entry.capacity !== undefined ? Number(entry.capacity) : undefined,
+                room: entry.room || undefined,
+                shift: entry.shift || undefined,
+                teacherId: entry.teacherId || undefined,
+                status: 'ACTIVE'
+              });
+            }
+          }
+        });
+      });
+      // Completion is only marked once every legacy entry is verifiably
+      // present in the canonical store; the legacy map is then emptied so
+      // a section deleted later can never be resurrected from it. The
+      // records themselves live on in the synced context store.
+      if (allRepresented) {
+        localStorage.setItem('madrasha_class_sections_v1', '{}');
+        localStorage.setItem('madrasha_class_sections_v1_migrated', '1');
+        migrationDoneRef.current = true;
+      }
     } catch {}
-    // Seed default sections
-    const initial: Record<string, { id: string; name: string; capacity: number; room: string; shift: string; teacherId?: string }[]> = {};
-    classes.forEach(c => {
-      initial[c.id || c.name] = [
-        { id: `sec_${c.id}_1`, name: 'ক (শাখা ১)', capacity: 45, room: '১০১', shift: 'দিবা', teacherId: teachers[0]?.id },
-        { id: `sec_${c.id}_2`, name: 'খ (শাখা ২)', capacity: 45, room: '১০২', shift: 'দিবা', teacherId: teachers[1]?.id }
-      ];
-    });
-    return initial;
-  });
-
-  const saveSections = (data: Record<string, any>) => {
-    setLocalSections(data);
-    try {
-      localStorage.setItem('madrasha_class_sections_v1', JSON.stringify(data));
-    } catch {}
-  };
+  }, [classes, sections, addSection]);
 
   // Modal State for Class
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
   const [classForm, setClassForm] = useState({ name: '', order: 1 });
 
-  // Modal State for Section
+  // Modal State for Section (holds the canonical section id being edited)
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
-  const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [sectionForm, setSectionForm] = useState({
     name: 'ক',
     capacity: 40,
@@ -77,11 +124,13 @@ export const ClassSectionSetupView: React.FC = () => {
     teacherId: ''
   });
 
-  // Current class sections
+  // Current class sections — from the canonical context store
   const currentSections = useMemo(() => {
     if (!selectedClass) return [];
-    return localSections[selectedClass.id] || localSections[selectedClass.name] || [];
-  }, [localSections, selectedClass]);
+    return sections.filter(
+      s => s.classId === selectedClass.id && (s.status || 'ACTIVE') !== 'ARCHIVED'
+    );
+  }, [sections, selectedClass]);
 
   // Handle Class Add/Edit
   const handleSaveClass = (e: React.FormEvent) => {
@@ -104,30 +153,32 @@ export const ClassSectionSetupView: React.FC = () => {
     setIsClassModalOpen(false);
   };
 
-  // Handle Section Add/Edit
+  // Handle Section Add/Edit — writes go to the canonical context store,
+  // so sections sync to every device through main_store.
   const handleSaveSection = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClass) return;
 
-    const classKey = selectedClass.id;
-    const list = [...(localSections[classKey] || [])];
+    const payload = {
+      name: sectionForm.name,
+      capacity: Number(sectionForm.capacity),
+      room: sectionForm.room || undefined,
+      shift: sectionForm.shift || undefined,
+      teacherId: sectionForm.teacherId || undefined
+    };
 
-    if (editingSectionIndex !== null && editingSectionIndex >= 0) {
-      list[editingSectionIndex] = {
-        ...list[editingSectionIndex],
-        ...sectionForm,
-        capacity: Number(sectionForm.capacity)
-      };
-    } else {
-      list.push({
-        id: `sec_${Date.now()}`,
-        ...sectionForm,
-        capacity: Number(sectionForm.capacity)
+    if (editingSectionId) {
+      const existing = sections.find(s => s.id === editingSectionId);
+      if (existing && updateSection) {
+        updateSection({ ...existing, ...payload });
+      }
+    } else if (addSection) {
+      addSection({
+        classId: selectedClass.id,
+        status: 'ACTIVE',
+        ...payload
       });
     }
-
-    const updated = { ...localSections, [classKey]: list };
-    saveSections(updated);
 
     // If teacher selected, also sync with AppContext classTeacherAssignment if available
     if (sectionForm.teacherId && assignClassTeacher) {
@@ -143,12 +194,10 @@ export const ClassSectionSetupView: React.FC = () => {
     setIsSectionModalOpen(false);
   };
 
-  const handleDeleteSection = (index: number) => {
+  const handleDeleteSection = (sectionId: string) => {
     if (!selectedClass) return;
     if (confirm(isBn ? 'এই শাখাটি মুছে ফেলতে চান?' : 'Delete this section?')) {
-      const classKey = selectedClass.id;
-      const list = (localSections[classKey] || []).filter((_, i) => i !== index);
-      saveSections({ ...localSections, [classKey]: list });
+      if (deleteSection) deleteSection(sectionId);
     }
   };
 
@@ -257,7 +306,7 @@ export const ClassSectionSetupView: React.FC = () => {
 
               <Button
                 onClick={() => {
-                  setEditingSectionIndex(null);
+                  setEditingSectionId(null);
                   setSectionForm({
                     name: 'ক',
                     capacity: 45,
@@ -283,12 +332,12 @@ export const ClassSectionSetupView: React.FC = () => {
                   <p className="text-[11px] text-slate-400 mt-1">{isBn ? 'উপরের বাটনে ক্লিক করে শাখা যুক্ত করুন।' : 'Click above to add a section.'}</p>
                 </div>
               ) : (
-                currentSections.map((sec, idx) => {
+                currentSections.map((sec) => {
                   const teacher = teachers.find(t => t.id === sec.teacherId);
 
                   return (
-                    <div 
-                      key={sec.id || idx}
+                    <div
+                      key={sec.id}
                       className="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 space-y-3 relative group hover:border-teal-300 transition-all"
                     >
                       <div className="flex justify-between items-start">
@@ -296,13 +345,13 @@ export const ClassSectionSetupView: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-black text-slate-800">{sec.name}</span>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
-                              {sec.shift} শিফট
+                              {sec.shift || 'দিবা'} শিফট
                             </span>
                           </div>
                           <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
                             <span className="flex items-center gap-1">
                               <DoorClosed size={12} className="text-slate-400" />
-                              <span>রুম: {sec.room}</span>
+                              <span>রুম: {sec.room || '—'}</span>
                             </span>
                             <span>•</span>
                             <span>ধারণক্ষমতা: {formatNumber(sec.capacity, 'bn')} জন</span>
@@ -313,7 +362,7 @@ export const ClassSectionSetupView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setEditingSectionIndex(idx);
+                              setEditingSectionId(sec.id);
                               setSectionForm({
                                 name: sec.name,
                                 capacity: sec.capacity || 40,
@@ -330,7 +379,7 @@ export const ClassSectionSetupView: React.FC = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteSection(idx)}
+                            onClick={() => handleDeleteSection(sec.id)}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
                             title="মুছে ফেলুন"
                           >
@@ -421,7 +470,7 @@ export const ClassSectionSetupView: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-teal-700 text-white px-5 py-4 flex justify-between items-center">
               <h3 className="font-bold text-sm">
-                {editingSectionIndex !== null ? (isBn ? 'শাখা সম্পাদনা' : 'Edit Section') : (isBn ? 'নতুন শাখা যোগ করুন' : 'Add Section')}
+                {editingSectionId !== null ? (isBn ? 'শাখা সম্পাদনা' : 'Edit Section') : (isBn ? 'নতুন শাখা যোগ করুন' : 'Add Section')}
               </h3>
               <button type="button" onClick={() => setIsSectionModalOpen(false)} className="text-white/80 hover:text-white">
                 <X size={18} />

@@ -1438,6 +1438,36 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   }, [authUser]);
 
+  // Resolve the signed-in user's CustomRole document from the loaded
+  // institution roles. Until now `currentRole` was never assigned (stayed
+  // null forever), which silently disabled the whole CustomRole layer:
+  // buildAuthorizationContext always received a null role, so the
+  // checkPermission() fallback inside hasPermission always saw an empty
+  // permission set and returned false. Wiring it up makes the RBAC layer
+  // live in exactly the fallback role it was designed for — the canonical
+  // grants (owner / super-admin short-circuit and the per-role branches in
+  // hasPermission, driven by users[].role) are unchanged and still win.
+  useEffect(() => {
+    if (!institutionRoles || institutionRoles.length === 0) return;
+    const roleAliases: Record<string, string> = { staff: 'office_staff', parent: 'guardian' };
+    const wantedIds = new Set<string>();
+    if (currentMember?.roleId) wantedIds.add(currentMember.roleId);
+    if (currentUser?.role) {
+      wantedIds.add(`role_${currentUser.role}`);
+      const alias = roleAliases[currentUser.role];
+      if (alias) wantedIds.add(`role_${alias}`);
+    }
+    let match =
+      institutionRoles.find(r => wantedIds.has(r.id)) ||
+      (currentUser?.role
+        ? institutionRoles.find(
+            r => r.name === currentUser.role || r.name === roleAliases[currentUser.role as string]
+          )
+        : undefined) ||
+      null;
+    setCurrentRole(prev => (prev?.id === match?.id ? prev : match));
+  }, [institutionRoles, currentMember, currentUser]);
+
   // Helper: Atomically load remote data into both React state and localStorage cache
   const applyRemoteData = (data: any) => {
     if (!data) return;
