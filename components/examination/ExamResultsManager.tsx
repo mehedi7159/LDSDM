@@ -301,19 +301,10 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
 
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <div className="flex items-center gap-2 text-indigo-300 font-black text-xs uppercase tracking-wider mb-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{isBn ? 'ধাপ ৬ • পরীক্ষা ও ফলাফল ব্যবস্থাপনা হাব' : 'Step 6 • Exams & Results Suite'}</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
               <span>🏆</span>
               <span>{isBn ? 'পরীক্ষা, নম্বর মূল্যায়ন ও ডিজিটাল ফলাফল কেন্দ্র' : 'Examination & Results Hub'}</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-              {isBn 
-                ? 'টার্ম ও পরীক্ষা শিডিউল, শিক্ষক নম্বর এন্ট্রি, ব্লাঙ্ক মার্কশিট প্রিন্ট, স্বয়ংক্রিয় গ্রেডিং ও জিপিএ, প্রাতিষ্ঠানিক মেধাতালিকা ও কিউআর ভেরিফাইড সনদ।'
-                : 'Comprehensive exam terms setup, continuous marks evaluation, blank marksheets, automated GPA calculation, merit tabulation, and QR-authenticated report cards.'}
-            </p>
           </div>
 
           <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
@@ -367,7 +358,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'জিপিএ ৫.০০ (মুমতাজ)' : 'GPA 5.0 (A+)'}</div>
             <div className="text-xl font-black text-amber-300 mt-0.5">{formatNumber(kpis.gpa5Count, 'bn')} জন</div>
-            <div className="text-[10px] text-amber-200/90 font-medium">{isBn ? 'গোল্ডেন / সর্বোচ্চ গ্রেড' : 'Highest Grade'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -376,7 +366,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
               <ShieldCheck size={18} className="text-cyan-400" />
               <span>{isBn ? 'সক্রিয়' : 'Active'}</span>
             </div>
-            <div className="text-[10px] text-cyan-300/80 font-medium">{isBn ? 'জালিয়াতি মুক্ত কিউআর' : 'Anti-Tamper Hash'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -385,7 +374,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
               <MessageSquare size={18} className="text-rose-400" />
               <span>{isBn ? 'রেডি' : 'Ready'}</span>
             </div>
-            <div className="text-[10px] text-rose-200/80 font-medium">{isBn ? 'বাংলা এসএমএস টেমপ্লেট' : 'Bangla SMS Support'}</div>
           </div>
         </div>
       </div>
@@ -536,11 +524,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                     <MessageSquare size={18} className="text-rose-500" />
                     <span>{isBn ? 'অভিভাবকদের ফলাফল SMS প্রেরণ কনসোল' : 'Parent Result SMS Dispatch Console'}</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {isBn 
-                      ? 'শিক্ষার্থীর প্রাপ্ত মোট নম্বর, জিপিএ, প্রাপ্ত গ্রেড ও মেধা অবস্থান সহ অভিভাবকদের সরাসরি মোবাইল মেসেজ পাঠান।'
-                      : 'Dispatch individualized student marks, GPA, overall letter grade, and merit rank directly to guardian phone numbers.'}
-                  </p>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -611,9 +594,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   {isBn ? `${smsClass} শ্রেণির শিক্ষার্থীদের ফলাফল ও এসএমএস স্ট্যাটাস` : `Student Result & SMS List for ${smsClass}`}
                 </h4>
-                <span className="text-xs text-slate-500">
-                  {isBn ? 'এক ক্লিকে এসএমএস ড্রাফট ও ফোন নম্বর ডায়াল' : 'One click to dial or compose SMS'}
-                </span>
               </div>
 
               <div className="overflow-x-auto">
@@ -755,11 +735,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 </div>
               </div>
 
-              <div className="text-right">
-                <span className="text-xs text-slate-500 font-medium">
-                  {isBn ? 'স্বয়ংক্রিয়ভাবে সংরক্ষিত নম্বর থেকে সংকলিত' : 'Compiled live from verified mark records'}
-                </span>
-              </div>
             </div>
 
             {/* Class Pass Rate Comparison Grid */}
@@ -820,9 +795,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                     <h4 className="text-sm font-bold text-slate-900">
                       {isBn ? 'শীর্ষ ১০ মেধাবী শিক্ষার্থী (Top 10 Achievers Leaderboard)' : 'Top 10 Achievers Leaderboard'}
                     </h4>
-                    <p className="text-[11px] text-slate-500">
-                      {isBn ? 'জিপিএ ও মোট নম্বরের ভিত্তিতে সর্বোচ্চ মেধানুক্রম' : 'Ranked by highest GPA and cumulative marks'}
-                    </p>
                   </div>
                 </div>
               </div>

@@ -190,16 +190,8 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              {isBn ? 'ডায়নামিক বাজেট ভিজ্যুয়ালাইজার (আয় ও ব্যয় ডোনাট চার্ট)' : 'Dynamic Budget Breakdown Donut Charts'}
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                Recharts
-              </span>
+              {isBn ? 'আয় ও ব্যয় ডোনাট চার্ট' : 'Income & Expense Donut Charts'}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              {isBn 
-                ? 'আয়ের উৎস (ছাত্র ফি বনাম দান) এবং ব্যয়ের খাত (শিক্ষক বেতন বনাম উন্নয়ন) এর আনুপাতিক চিত্র' 
-                : 'Budget visibility: Student Fees vs Donations and Teacher Salary vs Madrasah Development'}
-            </p>
           </div>
         </div>
 

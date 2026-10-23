@@ -967,9 +967,6 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   <h3 className="text-sm font-bold text-slate-900">
                     {language === 'bn' ? 'মাসভিত্তিক দিনভিত্তিক হাজিরা ক্যালেন্ডার' : 'Daily Attendance Calendar'}
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    {language === 'bn' ? 'প্রতিটি কার্যদিবসের ব্যক্তিগত হাজিরা স্থিতি' : 'Day-by-day attendance status for selected month'}
-                  </p>
                 </div>
               </div>
 
@@ -1080,9 +1077,6 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 <h3 className="text-sm font-bold text-slate-900">
                   {language === 'bn' ? 'পরীক্ষা নির্বাচন করুন' : 'Select Examination'}
                 </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'bn' ? 'যে পরীক্ষার ফলাফল ও মার্কশিট দেখতে চান' : 'Select exam to view results and marksheet'}
-                </p>
               </div>
             </div>
 
@@ -1320,9 +1314,6 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   <h4 className="text-sm font-bold text-slate-900">
                     {language === 'bn' ? 'টার্মভিত্তিক ফলাফল ও অগ্রগতির ধারা' : 'Term-by-Term Academic Progress'}
                   </h4>
-                  <p className="text-xs text-slate-500">
-                    {language === 'bn' ? 'বিভিন্ন পরীক্ষার জিপিএ এবং নম্বরের তুলনামূলক বিশ্লেষণ' : 'Comparison of GPA and total marks across academic terms'}
-                  </p>
                 </div>
               </div>
 

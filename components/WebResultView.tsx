@@ -258,11 +258,6 @@ export const WebResultView: React.FC = () => {
           <h1 className="text-2xl font-black tracking-tight">
             {language === 'bn' ? 'অনলাইন ফলাফল ও মেধা তালিকা' : 'Online Results & Merit Rankings'}
           </h1>
-          <p className="text-xs text-indigo-100/80 mt-1 max-w-xl">
-            {language === 'bn'
-              ? 'ওয়েবসাইটের মাধ্যমেই শিক্ষার্থীর বিষয়ভিত্তিক নম্বর, জিপিএ ও মেধা অবস্থান সরাসরি দেখুন।'
-              : 'Directly browse interactive digital scorecards and class-wise merit rankings.'}
-          </p>
         </div>
 
         {/* Protection / Web-Only Badge */}
@@ -513,7 +508,6 @@ export const WebResultView: React.FC = () => {
                       <BookOpen size={16} className="text-indigo-600" />
                       <span>{language === 'bn' ? 'বিষয়ভিত্তিক বিস্তারিত নম্বরপত্র' : 'Subject-wise Detailed Marks'}</span>
                     </h3>
-                    <p className="text-xs text-slate-400">{language === 'bn' ? 'প্রতিটি বিষয়ের প্রাপ্ত নম্বর, জিপিএ ও গ্রেড বিবরণী' : 'Scores and grade points for all assigned subjects'}</p>
                   </div>
                 </div>
 

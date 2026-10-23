@@ -112,19 +112,10 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
 
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <div className="flex items-center gap-2 text-teal-300 font-black text-xs uppercase tracking-wider mb-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{isBn ? 'ধাপ ৪ • উপস্থিতি ও ট্র্যাকিং ব্যবস্থাপনা' : 'Step 4 • Attendance & Tracking Suite'}</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
               <span>📅</span>
               <span>{isBn ? 'ডিজিটাল হাজিরা ও অটোমেশন কেন্দ্র' : 'Digital Attendance & Automation Hub'}</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-              {isBn 
-                ? 'শিক্ষার্থী ও শিক্ষক দৈনিক ডিজিটাল হাজিরা, অনুপস্থিত অভিভাবকদের স্বয়ংক্রিয় SMS অ্যালার্ট, মাসিক রেজিস্টার শিট ও পরীক্ষার মার্কশিটে ১-ক্লিক অটো সিঙ্ক।'
-                : 'Real-time student & staff attendance, instant absentee SMS alerts, monthly ledger registers, and 1-click exam marksheet rollup.'}
-            </p>
           </div>
 
           <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
@@ -158,7 +149,6 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের অনুপস্থিত' : 'Absentees Today'}</div>
             <div className="text-xl font-black text-rose-300 mt-0.5">{formatNumber(kpis.absentCount, 'bn')} জন</div>
-            <div className="text-[10px] text-slate-400 font-medium">{isBn ? 'SMS অ্যালার্ট প্রস্তুত' : 'Alerts ready'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -182,7 +172,6 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'তারিখ' : 'Date'}</div>
             <div className="text-xs font-black text-white mt-1 font-mono">{formatSafeDate(selectedDate, isBn)}</div>
-            <div className="text-[10px] text-slate-400 font-medium">{isBn ? 'লাইভ সেশন' : 'Live Session'}</div>
           </div>
         </div>
       </div>

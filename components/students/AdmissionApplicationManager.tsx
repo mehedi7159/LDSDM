@@ -224,17 +224,14 @@ export const AdmissionApplicationManager: React.FC<{
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-2xs bg-amber-50/30">
           <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase">{isBn ? 'অপেক্ষমাণ আবেদন' : 'Pending'}</p>
           <p className="text-2xl font-black text-amber-900 dark:text-amber-200 mt-1">{formatNumber(pendingCount, language)}</p>
-          <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">{isBn ? 'যাচাই ও সিদ্ধান্ত বাকি' : 'Needs Verification'}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/30">
           <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">{isBn ? 'অনুমোদিত ও ভর্তি সম্পন্ন' : 'Enrolled / Approved'}</p>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1">{formatNumber(approvedCount, language)}</p>
-          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">{isBn ? 'সরাসরি শিক্ষার্থী হয়েছে' : 'Active Students'}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-2xs bg-rose-50/30">
           <p className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase">{isBn ? 'বাতিলকৃত' : 'Rejected'}</p>
           <p className="text-2xl font-black text-rose-900 dark:text-rose-200 mt-1">{formatNumber(rejectedCount, language)}</p>
-          <span className="text-[11px] text-rose-700 dark:text-rose-400 font-semibold">{isBn ? 'অযোগ্য বা বাতিল' : 'Not Eligible'}</span>
         </div>
       </div>
 
@@ -410,7 +407,6 @@ export const AdmissionApplicationManager: React.FC<{
                 </div>
                 <div>
                   <h3 className="text-lg font-bold">{isBn ? 'নতুন ভর্তি আবেদন ফরম' : 'New Admission Intake Form'}</h3>
-                  <p className="text-xs text-teal-200">{isBn ? 'আবেদনকারীর তথ্য পূরণ করে সংরক্ষণ করুন' : 'Fill applicant details'}</p>
                 </div>
               </div>
               <button 

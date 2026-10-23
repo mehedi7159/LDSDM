@@ -128,9 +128,6 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
               <h2 className="text-lg font-black text-slate-900 dark:text-white">
                 {isBn ? 'দান, সদকা, যাকাত ও অনুদান কাউন্টার' : 'Donations, Sadaqa & Grants Counter'}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
-                {isBn ? 'সাধারণ দান, যাকাত, চামড়া ও দাতা সদস্যদের হাদিয়া এন্ট্রি ও রসিদ' : 'Record donations with instant printable receipt'}
-              </p>
             </div>
           </div>
         </div>
@@ -366,8 +363,8 @@ export const DonationEntry: React.FC<DonationEntryProps> = ({
 
           <p className="mt-3 text-sm text-emerald-100/90 leading-relaxed font-medium">
             {isBn 
-              ? 'মাদ্রাসার সাধারণ, ছাত্রকল্যাণ ও উন্নয়ন ফান্ড সম্পূর্ণ আলাদাভাবে সংরক্ষিত হয়। প্রতিটি দানের জন্য অফিস কপি ও দাতা কপি সহ রসিদ তৈরি হয়।'
-              : 'Every donation is tagged with dedicated fund segregation and audited receipts.'}
+              ? 'প্রতিটি দানের জন্য অফিস কপি ও দাতা কপি সহ রসিদ তৈরি হয়।'
+              : 'An office copy and a donor copy receipt are generated for every donation.'}
           </p>
 
           <div className="mt-4 pt-4 border-t border-emerald-700/80 space-y-3 text-sm font-medium">

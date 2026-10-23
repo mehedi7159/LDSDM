@@ -193,9 +193,7 @@ export const AcademicCalendarView: React.FC = () => {
       {/* Top Header */}
       <PageHeader
         icon={Calendar}
-        eyebrow={isBn ? 'বাৎসরিক একাডেমিক ও ছুটির দিনপঞ্জি' : 'Annual Academic & Holiday Calendar'}
         title={isBn ? 'একাডেমিক ক্যালেন্ডার ও ছুটির তালিকা' : 'Academic Calendar & Holidays'}
-        subtitle={isBn ? 'ইসলামিক ও জাতীয় সাধারণ ছুটি, সাময়িক ও বার্ষিক পরীক্ষার সময়রেখা এবং প্রাতিষ্ঠানিক অনুষ্ঠানসূচি।' : 'Official holidays, Islamic dates, examination timeline and institutional events.'}
       >
 
         <div className="flex items-center gap-2 flex-wrap">

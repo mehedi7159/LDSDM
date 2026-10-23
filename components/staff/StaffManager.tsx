@@ -508,21 +508,17 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         tone="brand"
         className="print:hidden"
         icon={Users}
-        eyebrow={isBn ? 'ধাপ ৭ • শিক্ষক ও কর্মচারী ব্যবস্থাপনা হাব' : 'Step 7 • Staff & HR Management Suite'}
         title={isBn ? 'শিক্ষক, কর্মচারী ও মানবসম্পদ (HR) কেন্দ্র' : 'Staff, Faculty & HR Hub'}
-        subtitle={isBn ? 'উস্তাদ ও কর্মকর্তা ডিরেক্টরি, দায়িত্ব বণ্টন, ডিজিটাল দৈনিক হাজিরা, মাসিক বেতন ও রসিদ, নৈমিত্তিক ছুটি এবং প্রাতিষ্ঠানিক আইডি কার্ড ও প্রত্যয়নপত্র।' : 'Complete faculty and staff directory, teaching assignments, daily attendance logs, monthly salary disbursements, leave ledger, and printable ID cards.'}
         footer={
 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট শিক্ষক ও উস্তাদ' : 'Total Teachers'}</div>
             <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.teachersOnlyCount, 'bn')} জন</div>
-            <div className="text-[10px] text-teal-300 font-medium">{isBn ? 'মাদরাসার পাঠদানকারী' : 'Teaching Staff'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'কর্মচারী ও অফিস স্টাফ' : 'Office & Staff'}</div>
             <div className="text-xl font-black text-cyan-300 mt-0.5">{formatNumber(kpis.officeStaffCount, 'bn')} জন</div>
-            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'প্রশাসনিক জনবল' : 'Support Personnel'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -534,13 +530,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মাসিক বেতন বিতরণ' : 'Monthly Payroll'}</div>
             <div className="text-xl font-black text-amber-300 mt-0.5">৳ {formatBanglaNumber(kpis.totalDisbursed)}</div>
-            <div className="text-[10px] text-amber-200/90 font-medium">{isBn ? 'চলতি মাসে প্রদেয়' : 'Current Month'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের অনুমোদিত ছুটি' : 'Staff on Leave'}</div>
             <div className="text-xl font-black text-rose-300 mt-0.5">{formatNumber(kpis.leavesTodayCount, 'bn')} জন</div>
-            <div className="text-[10px] text-rose-200/80 font-medium">{isBn ? 'নৈমিত্তিক/অসুস্থতা' : 'Approved Leaves'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -549,7 +543,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <Award size={18} className="text-indigo-400" />
               <span>{isBn ? 'রেডি' : 'Ready'}</span>
             </div>
-            <div className="text-[10px] text-indigo-300/80 font-medium">{isBn ? 'কিউআর সহ প্রিন্ট' : 'Print Ready'}</div>
           </div>
         </div>
         }
@@ -636,9 +629,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         <span>অনুমোদনের অপেক্ষায় থাকা শিক্ষক ও কর্মী ({pendingStaffApprovals.length} জন)</span>
                         <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">অনুমোদন প্রয়োজন</span>
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                        নিবন্ধিত এই শিক্ষকরা অনুমোদনের অপেক্ষায় আছেন। এখানে এক ক্লিকে অনুমোদন ও সক্রিয় করুন।
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -883,9 +873,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <p className="font-bold text-sm text-slate-700 dark:text-slate-200">
                     {isBn ? 'কোনো শিক্ষক বা কর্মচারীর তথ্য পাওয়া যায়নি' : 'No staff records found'}
                   </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    {isBn ? 'নতুন শিক্ষক যোগ করতে "+ নতুন শিক্ষক যুক্ত" বাটনে ক্লিক করুন।' : 'Click "+ Add Staff" to register a new teacher.'}
-                  </p>
                 </div>
               )}
             </div>
@@ -989,11 +976,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <Clock size={18} className="text-teal-600 dark:text-teal-400" />
                   <span>{isBn ? 'শিক্ষক ও কর্মচারী ছুটি রেজিস্টার' : 'Staff Leave & Absence Ledger'}</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {isBn 
-                    ? 'নৈমিত্তিক ছুটি, অসুস্থতাজনিত ছুটি ও বিশেষ ছুটির হিসাব এবং অনুমোদন ট্র্যাকিং।' 
-                    : 'Track staff leave applications, casual and medical leaves, and approval workflows.'}
-                </p>
               </div>
 
               <button
@@ -1087,9 +1069,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <Award size={18} className="text-teal-600" />
                   <span>{isBn ? 'শিক্ষক ও কর্মচারী ডিজিটাল আইডি কার্ড' : 'Faculty & Staff Identity Cards'}</span>
                 </h3>
-                <p className="text-xs text-slate-500">
-                  {isBn ? 'প্রাতিষ্ঠানিক সিল, কিউআর কোড ও পদবিযুক্ত প্রিন্ট-রেডি কার্ড' : 'Printable identity cards with QR authentication and institutional badge'}
-                </p>
               </div>
 
               <button
@@ -1347,9 +1326,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   onChange={(e) => setTeacherFormData({ ...teacherFormData, password: e.target.value })}
                   className="w-full border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 font-mono text-sm font-bold bg-white dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
-                <p className="text-[11px] text-teal-800 dark:text-teal-300">
-                  {isBn ? '💡 শিক্ষক এই পাসওয়ার্ড ও মোবাইল নম্বর/ইমেইল দিয়ে সিস্টেমে সরাসরি লগইন করতে পারবেন।' : 'Teacher will use this password and phone/email to log in.'}
-                </p>
+
               </div>
 
               {/* Assigned Classes */}

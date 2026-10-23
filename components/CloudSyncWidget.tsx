@@ -22,7 +22,6 @@ import {
   LifeBuoy,
   Camera,
   Trash2,
-  Sparkles,
   ArrowDownToLine,
   ShieldAlert
 } from 'lucide-react';
@@ -233,10 +232,6 @@ export const CloudSyncWidget: React.FC = () => {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-semibold">
-              <Sparkles size={13} className="text-blue-300" />
-              <span>{language === 'bn' ? 'জিরো ডাটা লস গ্যারান্টি (Firebase Cloud Firestore)' : 'Zero Data Loss Guarantee'}</span>
-            </div>
 
             <h3 className="text-xl font-bold tracking-tight">
               {language === 'bn' 
@@ -246,8 +241,8 @@ export const CloudSyncWidget: React.FC = () => {
 
             <p className="text-xs text-slate-300 leading-relaxed">
               {language === 'bn'
-                ? 'আপনার মাদ্রাসার সমস্ত তথ্য (ছাত্র-ছাত্রী, বিষয়, নম্বর, হিসাব) স্বয়ংক্রিয়ভাবে Google Firebase ক্লাউডে সুরক্ষিত থাকে। ব্রাউজার ক্যাশ ক্লিয়ার হলে বা নতুন যেকোনো ডিভাইস থেকে আপনার Gmail দিয়ে লগইন করলেই সবকিছু সাথে সাথে চলে আসবে।'
-                : 'All your madrasah records (students, exams, marks, finance) are permanently saved to Firebase Cloud. Signing in with your Gmail restores everything instantly on any device.'}
+                ? 'সব তথ্য স্বয়ংক্রিয়ভাবে Firebase ক্লাউডে সেভ হয়। নতুন ডিভাইসে Gmail দিয়ে লগইন করলেই সব ফিরে আসে।'
+                : 'All records auto-save to Firebase Cloud. Sign in with Gmail on any device to restore everything.'}
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -317,11 +312,6 @@ export const CloudSyncWidget: React.FC = () => {
                   Firebase Firestore
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {language === 'bn' 
-                  ? 'প্রতিটি নম্বর ও শিক্ষার্থীর পরিবর্তন সাথে সাথে ক্লাউডে স্বয়ংক্রিয়ভাবে সেভ হয়।' 
-                  : 'Real-time synchronization enabled via Firebase Cloud Firestore'}
-              </p>
             </div>
           </div>
 
@@ -441,11 +431,6 @@ export const CloudSyncWidget: React.FC = () => {
               <h4 className="text-sm font-bold text-slate-900">
                 {language === 'bn' ? 'ক্লাউড স্ন্যাপশট ও টাইম-মেশিন রিস্টোর' : 'Cloud Snapshots & Time-Machine History'}
               </h4>
-              <p className="text-xs text-slate-500">
-                {language === 'bn' 
-                  ? 'পূর্বে তৈরি করা যেকোনো ব্যাকআপের অবস্থায় ১-ক্লিকে মাদ্রাসার ডাটা ফিরিয়ে আনুন।' 
-                  : 'Restore your entire institution database to any previous point in time.'}
-              </p>
             </div>
           </div>
 
@@ -461,9 +446,6 @@ export const CloudSyncWidget: React.FC = () => {
         {cloudSnapshots.length === 0 ? (
           <div className="p-8 text-center bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 text-slate-500 text-xs">
             <p className="font-semibold">{language === 'bn' ? 'এখনো কোনো ক্লাউড স্ন্যাপশট ব্যাকআপ তৈরি করা হয়নি।' : 'No cloud snapshots saved yet.'}</p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              {language === 'bn' ? 'উপরের "নতুন ক্লাউড স্ন্যাপশট ব্যাকআপ" বাটনে ক্লিক করে একটি ব্যাকআপ পয়েন্ট সেভ করে রাখুন।' : 'Click "+ Create Backup" above to create your first safe restore point.'}
-            </p>
           </div>
         ) : (
           <div className="overflow-x-auto border border-slate-200/70 rounded-2xl">
@@ -600,9 +582,6 @@ export const CloudSyncWidget: React.FC = () => {
                 <h3 className="text-base font-bold text-slate-900">
                   {language === 'bn' ? 'ক্লাউড স্ন্যাপশট ব্যাকআপ' : 'Save Cloud Snapshot'}
                 </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'bn' ? 'বর্তমান অবস্থার একটি স্থায়ী ক্লাউড ব্যাকআপ রাখুন' : 'Save an immutable cloud checkpoint'}
-                </p>
               </div>
             </div>
 

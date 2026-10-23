@@ -161,9 +161,6 @@ export const ExamManager = () => {
       <PageHeader
         icon={Calendar}
         title={language === 'bn' ? 'পরীক্ষা ব্যবস্থাপনা ও সিডিউল' : 'Exam Management & Scheduling'}
-        subtitle={language === 'bn'
-          ? 'টার্ম ও মডেল পরীক্ষা তৈরি, বিষয় সিডিউল এবং ফলাফল চূড়ান্তকরণ'
-          : 'Configure examination terms, subject schedules, and lock finalized grades.'}
       >
         <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700">
           <label className="text-xs font-bold text-gray-600 dark:text-slate-300">শিক্ষাবর্ষ:</label>
@@ -449,9 +446,6 @@ export const ExamManager = () => {
                   <Layers className="text-blue-600 dark:text-blue-400" size={20} />
                   {schedulingExam.nameBn || schedulingExam.name} - বিষয় সিডিউল
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-slate-400">
-                  {language === 'bn' ? 'এই পরীক্ষায় কোন কোন বিষয়ের পরীক্ষা অনুষ্ঠিত হবে তা নির্ধারণ করুন' : 'Schedule subjects and configure exam mark breakdown.'}
-                </p>
               </div>
               <button onClick={() => setSchedulingExam(null)} className="text-gray-400 dark:text-slate-500 hover:text-gray-600 cursor-pointer">
                 <X size={20} />

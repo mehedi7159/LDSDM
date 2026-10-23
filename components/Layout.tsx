@@ -826,9 +826,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 <span className="font-bold text-sm block truncate text-white">
                   {schoolProfile.nameBn || schoolProfile.name}
                 </span>
-                <span className="text-[11px] text-slate-400 block truncate">
-                  {language === 'bn' ? 'ম্যানেজমেন্ট সিস্টেম' : 'Management System'}
-                </span>
               </div>
             </div>
             <button 

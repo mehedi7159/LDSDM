@@ -396,9 +396,6 @@ export const UserRoleManager: React.FC = () => {
               <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                 মাদ্রাসা ইউজার ও রোল পারমিশন ব্যবস্থাপনা
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                মুয়াল্লিম, স্টাফ, হিসাবরক্ষক ও অভিভাবকদের ইউজার আইডি, মোবাইল নম্বর ও পাসওয়ার্ড নিয়ন্ত্রণ করুন।
-              </p>
             </div>
           </div>
 
@@ -425,9 +422,6 @@ export const UserRoleManager: React.FC = () => {
                   <span>অপেক্ষমাণ অ্যাকাউন্ট অনুমোদন ({pendingApprovals.length} জন)</span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">অনুমোদন প্রয়োজন</span>
                 </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                  যেসব শিক্ষক বা কর্মচারী একাউন্ট খোলার পর অপেক্ষমাণ আছেন, তাদের এক ক্লিকে অনুমোদন ও সক্রিয় করুন।
-                </p>
               </div>
             </div>
           </div>

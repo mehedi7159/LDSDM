@@ -436,11 +436,6 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
               <h2 className="text-lg sm:text-xl font-black tracking-tight">
                 {language === 'bn' ? 'শিক্ষার্থীর ধারাবাহিক পারফরম্যান্স ও গতিপথ বিশ্লেষণ' : 'Individual Student Performance & Trajectory'}
               </h2>
-              <p className="text-xs text-slate-300 font-normal">
-                {language === 'bn'
-                  ? 'সকল পরীক্ষার ফলাফল, উন্নতির বা অবনতির ধারা (Trajectory), এবং বিষয়ভিত্তিক শক্তি ও দুর্বলতা।'
-                  : 'Multi-exam progression tracking, progress vs decline diagnosis, and strengths & weaknesses breakdown.'}
-              </p>
             </div>
           </div>
         </div>
@@ -716,9 +711,6 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                     <BarChart3 className="h-4 w-4 text-indigo-600" />
                     {language === 'bn' ? 'পরীক্ষাসমূহের ফলাফলের ধারা ও গ্রাফিক্যাল ট্রেন্ড' : 'Exam Performance Progression Graph'}
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    {language === 'bn' ? 'সকল পরীক্ষায় প্রাপ্ত জিপিএ ও মোট নম্বরের শতকরার তুলনামূলক চিত্র' : 'Comparative trend of GPA & Total Percentage across all examinations'}
-                  </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
                   <span className="flex items-center gap-1.5">

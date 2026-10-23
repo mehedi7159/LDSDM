@@ -71,9 +71,6 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               {isBn ? 'শ্রেণিভিত্তিক নির্ধারিত ফি কাঠামো কনফিগারেশন' : 'Class-wise Standard Fee Structure'}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              {isBn ? 'প্রতিটি জামাতের মাসিক বেতন, খাবার ফি ও পরীক্ষার ফি সেট করে রাখুন' : 'Set standard default fee rates per jamat / class'}
-            </p>
           </div>
         </div>
       </div>

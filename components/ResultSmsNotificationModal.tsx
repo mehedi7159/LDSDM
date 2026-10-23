@@ -353,11 +353,6 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
                   {classLevel} • {exam.name}
                 </span>
               </div>
-              <p className="text-xs text-slate-300">
-                {language === 'bn' 
-                  ? 'শিক্ষার্থী প্রোফাইলে থাকা অভিভাবক নম্বরে সরাসরি ফলাফলের স্বয়ংক্রিয় এসএমএস পাঠান' 
-                  : 'Trigger automated SMS alerts to parents using recorded student contact numbers'}
-              </p>
             </div>
           </div>
 

@@ -585,15 +585,7 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
                   {language === 'bn' ? '১০. কিতাব ও লাইব্রেরি, পরিবহন ও মাহফিল হাব' : '10. Library, Transport & Events Hub'}
                 </h1>
-                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  {language === 'bn' ? 'ধাপ ১০ সক্রিয়' : 'Step 10 Active'}
-                </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                {language === 'bn'
-                  ? 'কিতাব ক্যাটালগ ও ধার রেজিস্টার, পরিবহন বহর ও রুট, বার্ষিক মাহফিল/জলসা ও সহশিক্ষা ক্লাব ব্যবস্থাপনা'
-                  : 'Kitab Bank, Book Lending, Transport Fleet, Annual Mahfil, Conferences & Co-Curricular Club Suite'}
-              </p>
             </div>
           </div>
 
@@ -1014,11 +1006,6 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
               <h2 className="text-base sm:text-lg font-bold text-slate-800">
                 {language === 'bn' ? 'পরিবহন বহর ও ছাত্র বাস রুট' : 'Transport Fleet & Student Routes'}
               </h2>
-              <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'মাদরাসা/স্কুলের যানবাহন, ড্রাইভার, পিকআপ স্টপেজ ও শিক্ষার্থীদের মাসিক যাতায়াত তালিকা'
-                  : 'Manage vehicle fleet, drivers, pick-up stoppages and monthly student transport allocations'}
-              </p>
             </div>
             <button
               onClick={() => setShowAddVehicleModal(true)}
@@ -1163,11 +1150,6 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
               <h2 className="text-base sm:text-lg font-bold text-slate-800">
                 {language === 'bn' ? 'বার্ষিক মাহফিল, জলসা ও সমাবেশ ব্যবস্থাপনা' : 'Annual Mahfil & Institutional Events'}
               </h2>
-              <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'বার্ষিক মাহফিল, খতমে কুরআন, দস্তারবন্দী, বক্তা তালিকা, স্বেচ্ছাসেবক ও আর্থিক বাজেট ট্র্যাকিং'
-                  : 'Manage annual gatherings, speakers, volunteer committees, and event collection/expense budgets'}
-              </p>
             </div>
             <button
               onClick={() => setShowAddEventModal(true)}
@@ -1288,11 +1270,6 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
               <h2 className="text-base sm:text-lg font-bold text-slate-800">
                 {language === 'bn' ? 'সহশিক্ষা ও ছাত্র ক্লাব ফোরাম' : 'Co-Curricular Clubs & Student Societies'}
               </h2>
-              <p className="text-xs text-slate-500">
-                {language === 'bn'
-                  ? 'হুসনুল কিরাত ফোরাম, আরবি/বাংলা দেয়ালিকা সাহিত্য সংসদ, বিতর্ক ক্লাব ও প্রতিযোগিতা'
-                  : 'Manage Quran recitation, literary societies, debate forums, and student competitions'}
-              </p>
             </div>
           </div>
 

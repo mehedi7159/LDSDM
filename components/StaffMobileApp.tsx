@@ -352,7 +352,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         stat2Value: toBn(classStudents.length) + ' জন', stat2Label: 'শ্রেণির শিক্ষার্থী', stat2Icon: Users, stat2Cls: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300',
         stat3Value: '৳' + toBn(classDuesSummary.totalDue.toLocaleString()), stat3Label: 'শ্রেণির বকেয়া', stat3Icon: Wallet, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
         nextTaskTime: 'আজকের কাজ',
-        nextTaskDesc: `${selectedClass} — দৈনিক হাজিরা গ্রহণ ও বকেয়া ফি পর্যবেক্ষণ`
       };
     } else if (userRole === 'cashier') {
       return {
@@ -360,7 +359,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         stat2Value: toBn(cashierFigures.todayReceipts) + 'টি', stat2Label: 'আজকের রসিদ', stat2Icon: Receipt, stat2Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
         stat3Value: '৳' + toBn(allDuesSummary.totalDue.toLocaleString()), stat3Label: 'মোট বকেয়া', stat3Icon: TrendingUp, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
         nextTaskTime: 'ক্যাশিয়ার ডেস্ক',
-        nextTaskDesc: 'চলতি মাসের বেতন আদায় ও ফি রসিদ তৈরি'
       };
     } else if (userRole === 'parent') {
       return {
@@ -368,7 +366,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         stat2Value: exams.length > 0 ? (exams[0].name || 'পরীক্ষা') : 'সাময়িক', stat2Label: 'চলমান পরীক্ষা', stat2Icon: Award, stat2Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
         stat3Value: '৳' + toBn(classDuesSummary.totalDue.toLocaleString()), stat3Label: 'বকেয়া ফি', stat3Icon: Wallet, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
         nextTaskTime: 'অভিভাবক ডায়েরি',
-        nextTaskDesc: 'সন্তানের লেখাপড়া ও মাদরাসা নোটিশ'
       };
     }
     return {
@@ -376,7 +373,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       stat2Value: toBn(classes.length) + 'টি', stat2Label: 'মোট শ্রেণি', stat2Icon: GraduationCap, stat2Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
       stat3Value: toBn(notices.length) + 'টি', stat3Label: 'সক্রিয় নোটিশ', stat3Icon: Bell, stat3Cls: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300',
       nextTaskTime: 'অফিস প্রশাসন',
-      nextTaskDesc: 'শিক্ষার্থী তথ্য যাচাই ও সনদপত্র প্রিন্ট'
     };
   }, [userRole, teacherClasses, classStudents, classDuesSummary, allDuesSummary, cashierFigures, students, exams, notices, selectedClass, attendanceStats]);
 
@@ -400,32 +396,32 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const roleActions = useMemo(() => {
     if (userRole === 'teacher') {
       return [
-        { id: 'attendance', title: 'দৈনিক হাজিরা গ্রহণ', subtitle: `${selectedClass}-এর উপস্থিতি নিন — এক ক্লিকে সবাই উপস্থিত`, icon: CheckSquare, moduleKey: 'teacher_attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'students_dues', title: 'আমার ক্লাসের ছাত্র ও বকেয়া', subtitle: 'ছাত্র তালিকা, অভিভাবকের মোবাইল ও কার কত বাকি', icon: Users, moduleKey: 'teacher_students_dues', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
-        { id: 'marks', title: 'পরীক্ষার নম্বর এন্ট্রি', subtitle: `${selectedClass}-এর বিষয়ভিত্তিক নম্বর এন্ট্রি`, icon: PenTool, moduleKey: 'teacher_marks', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-        { id: 'routine', title: 'আমার রুটিন', subtitle: 'সপ্তাহের কোন দিন কোন ক্লাসে পড়াবেন', icon: CalendarDays, moduleKey: 'teacher_routine', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
-        { id: 'notices', title: 'মাদরাসা নোটিশ বোর্ড', subtitle: 'জরুরি সার্কুলার ও প্রাতিষ্ঠানিক নির্দেশনা', icon: Bell, moduleKey: 'teacher_notices', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+        { id: 'attendance', title: 'দৈনিক হাজিরা গ্রহণ', subtitle: `${selectedClass}`, icon: CheckSquare, moduleKey: 'teacher_attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+        { id: 'students_dues', title: 'আমার ক্লাসের ছাত্র ও বকেয়া', icon: Users, moduleKey: 'teacher_students_dues', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
+        { id: 'marks', title: 'পরীক্ষার নম্বর এন্ট্রি', subtitle: `${selectedClass}`, icon: PenTool, moduleKey: 'teacher_marks', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'routine', title: 'আমার রুটিন', icon: CalendarDays, moduleKey: 'teacher_routine', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
+        { id: 'notices', title: 'মাদরাসা নোটিশ বোর্ড', icon: Bell, moduleKey: 'teacher_notices', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
       ];
     } else if (userRole === 'cashier') {
       return [
-        { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', subtitle: 'বেতন, ভর্তি ফি ও বকেয়া সংগ্রহ করে রসিদ দিন', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance_expense', title: 'দৈনিক খরচ এন্ট্রি', subtitle: 'মাদরাসার প্রতিদিনের ব্যয়ের ভাউচার যুক্ত করুন', icon: Receipt, moduleKey: 'finance', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-        { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া খতিয়ান', subtitle: 'সকল ক্লাসের বকেয়া ও অভিভাবকের মোবাইল', icon: Users, moduleKey: 'students', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
-        { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', subtitle: 'দৈনিক ও মাসিক ক্যাশ জমার বিবরণী', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
+        { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+        { id: 'finance_expense', title: 'দৈনিক খরচ এন্ট্রি', icon: Receipt, moduleKey: 'finance', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া খতিয়ান', subtitle: 'সকল ক্লাস', icon: Users, moduleKey: 'students', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
+        { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
       ];
     } else if (userRole === 'parent') {
       return [
-        { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', subtitle: 'সন্তানের জিপিএ, গ্রেড ও বিষয়ভিত্তিক নম্বর', icon: Award, moduleKey: 'results', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-        { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', subtitle: 'প্রতিদিনের উপস্থিতি ও ছুটির রেকর্ড', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance', title: 'বেতন ও ফি বিবরণী', subtitle: 'পরিশোধিত ফি এবং বর্তমান বকেয়া', icon: Wallet, moduleKey: 'finance', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
-        { id: 'notices', title: 'মাদরাসার নোটিশ ও ডায়রি', subtitle: 'ছুটির ঘোষণা ও গুরুত্বপূর্ণ নোটিশ', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+        { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'results', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+        { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'finance', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
+        { id: 'notices', title: 'মাদরাসার নোটিশ ও ডায়রি', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
       ];
     }
     return [
-      { id: 'students', title: 'নতুন শিক্ষার্থী ভর্তি ও তালিকা', subtitle: 'ভর্তি ফরম, এন্ট্রি ও তথ্য আপডেট', icon: Users, moduleKey: 'students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
-      { id: 'id_cards', title: 'আইডি কার্ড ও সনদপত্র', subtitle: 'আইডি কার্ড, প্রশংসাপত্র ও প্রত্যয়নপত্র তৈরি', icon: CreditCard, moduleKey: 'student_id_cards', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-      { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', subtitle: 'দৈনিক হাজিরা এন্ট্রি ও প্রিন্ট কপি', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-      { id: 'notices', title: 'নোটিশ বোর্ড ম্যানেজমেন্ট', subtitle: 'নোটিশ ও সার্কুলার প্রকাশ', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+      { id: 'students', title: 'নতুন শিক্ষার্থী ভর্তি ও তালিকা', icon: Users, moduleKey: 'students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
+      { id: 'id_cards', title: 'আইডি কার্ড ও সনদপত্র', icon: CreditCard, moduleKey: 'student_id_cards', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+      { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+      { id: 'notices', title: 'নোটিশ বোর্ড ম্যানেজমেন্ট', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
     ];
   }, [userRole, selectedClass]);
 
@@ -986,7 +982,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-[#5b6478] dark:text-slate-400">শিক্ষার্থী ({toBn(classStudents.length)} জন)</span>
-                  <span className="text-[11px] text-[#8a93a8]">বাটনে ট্যাপ করে হাজিরা দিন</span>
                 </div>
 
                 {classStudents.length === 0 ? (
@@ -1396,7 +1391,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       </span>
                       <div>
                         <h2 className="text-sm font-bold">{classResultReport.exam.name}</h2>
-                        <p className="text-[11px] text-[#8a93a8]">{isEn ? 'Class result summary' : 'শ্রেণির ফলাফল সারাংশ'} • {selectedClass}</p>
+                        <p className="text-[11px] text-[#8a93a8]">{selectedClass}</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-center">
@@ -1508,15 +1503,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     {isEn ? 'Weekly' : 'সাপ্তাহিক'}
                   </span>
                 </div>
-                <p className="text-[11px] text-[#5b6478] dark:text-slate-400 leading-relaxed">
-                  {routineIsClassFallback
-                    ? (isEn
-                        ? 'No period is assigned to you by name yet — showing the routine of your class(es).'
-                        : 'আপনার নামে এখনো সরাসরি কোনো ঘণ্টা বরাদ্দ নেই — আপনার ক্লাসের রুটিন দেখানো হচ্ছে।')
-                    : (isEn
-                        ? 'The periods you teach each day, from the synced class routine.'
-                        : 'সিঙ্ক হওয়া ক্লাস রুটিন থেকে — প্রতিদিন আপনার পড়ানোর ঘণ্টাগুলো।')}
-                </p>
+                {routineIsClassFallback && (
+                  <p className="text-[11px] text-[#5b6478] dark:text-slate-400 leading-relaxed">
+                    {isEn
+                      ? 'No period is assigned to you by name yet — showing the routine of your class(es).'
+                      : 'আপনার নামে এখনো সরাসরি কোনো ঘণ্টা বরাদ্দ নেই — আপনার ক্লাসের রুটিন দেখানো হচ্ছে।'}
+                  </p>
+                )}
 
                 {/* Weekday selector — today highlighted */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -1791,9 +1784,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       </span>
                       <h2 className="text-sm font-bold">{isEn ? 'Collect Fee' : 'ফি আদায়'}</h2>
                     </div>
-                    <p className="text-[11px] text-[#5b6478] dark:text-slate-400 leading-relaxed">
-                      {isEn ? 'Pick a student to collect this month’s fee and save a receipt.' : 'শিক্ষার্থী বেছে চলতি মাসের ফি আদায় করে রসিদ সংরক্ষণ করুন।'}
-                    </p>
                   </div>
 
                   <div className="relative">
@@ -1993,7 +1983,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               </span>
               <div>
                 <p className="text-xs font-bold">{isEn ? 'Install App' : 'অ্যাপ ইনস্টল করুন'}</p>
-                <p className="text-[11px] text-[#8a93a8]">{isEn ? 'Add to home screen for quick access' : 'হোম স্ক্রিনে যোগ করে দ্রুত খুলুন'}</p>
               </div>
             </div>
             <PWAInstallButton />
@@ -2263,7 +2252,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${monthlyAttendance.rate}%` }} />
                 </div>
                 <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
-                  {isEn ? 'School days' : 'কর্মদিবস'} {toBn(monthlyAttendance.schoolDays)} {isEn ? 'days • tap for student-wise report' : 'দিন • ছাত্রভিত্তিক দেখতে ট্যাপ করুন'}
+                  {isEn ? 'School days' : 'কর্মদিবস'} {toBn(monthlyAttendance.schoolDays)} {isEn ? 'days' : 'দিন'}
                 </p>
               </button>
 
@@ -2426,7 +2415,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           </span>
           <div className="min-w-0">
             <p className="text-[13px] font-bold">{roleStats.nextTaskTime}</p>
-            <p className="text-xs text-[#5b6478] dark:text-slate-400 leading-snug">{roleStats.nextTaskDesc}</p>
           </div>
         </section>
 

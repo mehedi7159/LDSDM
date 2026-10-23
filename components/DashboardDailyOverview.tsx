@@ -395,7 +395,6 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
       <PageHeader
         tone="brand"
         icon={Building2}
-        eyebrow={isBn ? 'প্রতিদিনের সার্বিক অবস্থা এক নজরে' : 'Daily Institutional Command'}
         title={schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ম্যানেজমেন্ট সিস্টেম' : 'Madrasah Management')}
         subtitle={`${formattedToday}${schoolProfile.address ? ` • ${schoolProfile.addressBn || schoolProfile.address}` : ''}`}
         footer={
@@ -669,7 +668,6 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 6. আসন্ন পরীক্ষা ও গুরুত্বপূর্ণ নোটিশ (Upcoming Exams & Important Notices) */}
         <SectionCard
           title={isBn ? 'আসন্ন পরীক্ষা ও গুরুত্বপূর্ণ নোটিশ' : 'Upcoming Exams & Notices'}
-          subtitle={isBn ? 'চলমান নোটিশ এবং আসন্ন একাডেমিক টার্মসমূহ' : 'Active alerts & examination timetable'}
           icon={Megaphone}
           iconTone="indigo"
           bodyClassName="space-y-4"
@@ -762,7 +760,6 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 7. সাম্প্রতিক কার্যক্রম (Recent Activities Chronological Feed) */}
         <SectionCard
           title={isBn ? 'সাম্প্রতিক কার্যক্রম' : 'Recent Institutional Activity'}
-          subtitle={isBn ? 'সর্বশেষ লেনদেন, ভর্তি, নোটিশ ও মূল্যায়ন আপডেট' : 'Live stream of operations and transactions'}
           icon={History}
           iconTone="emerald"
           bodyClassName="space-y-3"

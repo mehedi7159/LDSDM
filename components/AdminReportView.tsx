@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Shield, 
-  ShieldCheck, 
   Database, 
   Activity, 
   Clock, 
@@ -59,18 +58,9 @@ export const AdminReportView: React.FC = () => {
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div>
-          <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider mb-1">
-            <ShieldCheck size={16} />
-            <span>{language === 'bn' ? 'সিস্টেম ও অডিট বিশ্লেষণ' : 'System Security & Governance'}</span>
-          </div>
           <h1 className="text-2xl font-black tracking-tight">
             {language === 'bn' ? 'প্রশাসনিক রিপোর্ট ও সিস্টেম বিবরণী' : 'Administrative & System Report'}
           </h1>
-          <p className="text-xs text-purple-200/80 mt-1 max-w-xl">
-            {language === 'bn'
-              ? 'নিরাপত্তা কনফিগারেশন, সক্রিয় ভূমিকা, ক্লাউড ডাটাবেজ স্থিতি এবং ব্যাকআপ অডিট।'
-              : 'Security status, database integrity, user role distributions, and cloud backup records.'}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -143,11 +133,6 @@ export const AdminReportView: React.FC = () => {
             <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white">{language === 'bn' ? 'কাস্টম রোল পারমিশন ইঞ্জিন (RBAC)' : 'Multi-Level RBAC'}</h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {language === 'bn'
-                  ? 'ব্যবহারকারীর রোল ও ক্লাসরুম স্কোপ অনুযায়ী সুরক্ষিত ডাটা রিড/রাইট নিরাপত্তা নিশ্চিত।'
-                  : 'Enforces granular permissions and data scopes.'}
-              </p>
             </div>
           </div>
 
@@ -155,11 +140,6 @@ export const AdminReportView: React.FC = () => {
             <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white">{language === 'bn' ? 'ক্লাউড ফায়ারস্টোর ডাটাবেজ ও অফলাইন ব্যাকআপ' : 'Cloud Firestore & Offline Vault'}</h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {language === 'bn'
-                  ? 'স্বয়ংক্রিয় ক্লাউড সিঙ্ক এবং লোকাল ব্যাকআপ রিকভারি এনাবল করা আছে।'
-                  : 'Automatic real-time sync with local snapshot recovery enabled.'}
-              </p>
             </div>
           </div>
 

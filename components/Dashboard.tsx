@@ -167,7 +167,6 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
   return (
     <SectionCard
       title={language === 'bn' ? 'টার্ম ও পরীক্ষার মূল্যায়ন পাইপলাইন' : 'Marks Evaluation & Result Pipeline'}
-      subtitle={language === 'bn' ? 'কোন শ্রেণির পরীক্ষার কত শতাংশ খাতা মূল্যায়ন ও নম্বর এন্ট্রি সম্পন্ন হয়েছে' : 'Real-time grading completion matrix per class and exam'}
       icon={ListChecks}
       iconTone="amber"
       bodyClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
@@ -281,7 +280,6 @@ const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
   return (
     <SectionCard
       title={language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী ও পারফরম্যান্স খতিয়ান' : 'Class Enrolment & Performance Grid'}
-      subtitle={language === 'bn' ? 'প্রতিটি ক্লাসের বর্তমান ছাত্র-ছাত্রী সংখ্যা, পাসের হার ও গড় জিপিএ' : 'Live student count, pass percentage, and average GPA per class'}
       icon={GraduationCap}
       iconTone="purple"
       bodyClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"
@@ -764,11 +762,6 @@ export const Dashboard = () => {
                 <span>{language === 'bn' ? 'আসসালামু আলাইকুম, প্রাতিষ্ঠানিক কমান্ড হাব প্রস্তুত' : 'Executive Command & AI Intelligence Hub'}</span>
               </h3>
 
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                {language === 'bn'
-                  ? 'আপনার মাদ্রাসার শিক্ষার্থী হাজিরা, শিক্ষক রুটিন, বকেয়া ফি ও পরীক্ষার অগ্রগতি সার্বক্ষণিক প্রস্তুত রয়েছে। এক ক্লিকে অফিশিয়াল নোটিশ ড্রাফট করুন অথবা মুখে নির্দেশ দিয়ে কাজ বাস্তবায়ন করুন।'
-                  : 'Automated conflict-free scheduling, 1-click official notice drafting, and fee recovery SMS campaigns ready for executive approval.'}
-              </p>
             </div>
 
             <div className="flex items-center gap-2.5 shrink-0">
@@ -842,9 +835,6 @@ export const Dashboard = () => {
                 {dashboardMode === 'attendance_crisis' && (language === 'bn' ? 'হাজিরা সংকট ও জরুরি অ্যালার্ট' : 'Attendance & Crisis Monitoring')}
                 {dashboardMode === 'admission' && (language === 'bn' ? 'নতুন ভর্তি সেশন' : 'Admission Season')}
               </strong>
-              <span className="text-[11px] opacity-80">
-                {language === 'bn' ? 'বর্তমান প্রাতিষ্ঠানিক প্রয়োজন অনুসারে ড্যাশবোর্ডের মেট্রিক্স এবং অগ্রাধিকার পুনর্সজ্জিত করা হয়েছে।' : 'Metrics and priorities are reordered based on real-time institutional needs.'}
-              </span>
             </div>
           </div>
 
@@ -958,7 +948,6 @@ export const Dashboard = () => {
             {/* Grade Tier Chart Card */}
             <SectionCard
               title={language === 'bn' ? 'গ্রেডভিত্তিক ফলাফল বিন্যাস' : 'Grade Distribution'}
-              subtitle={language === 'bn' ? 'A+ থেকে F পর্যন্ত গ্রেড পরিসংখ্যান' : 'Student counts across grade tiers'}
               icon={BarChart3}
               iconTone="indigo"
             >
@@ -985,7 +974,6 @@ export const Dashboard = () => {
             {/* Pass vs Fail Ratio Card */}
             <SectionCard
               title={language === 'bn' ? 'পাস বনাম ফেল অনুপাত' : 'Pass vs Fail Ratio'}
-              subtitle={language === 'bn' ? 'সার্বিক প্রাতিষ্ঠানিক পাসের অনুপাত' : 'Overall institutional pass rate'}
               icon={PieIcon}
               iconTone="emerald"
               className="flex flex-col justify-between"
@@ -1045,7 +1033,6 @@ export const Dashboard = () => {
             {/* Top 5 Merit Performers */}
             <SectionCard
               title={language === 'bn' ? 'শীর্ষ মেধা তালিকা (টপ ৫)' : 'Top 5 Honor Roll'}
-              subtitle={language === 'bn' ? 'সর্বোচ্চ জিপিএ ও মোট নম্বরের ভিত্তিতে' : 'Highest GPA and marks achievers'}
               icon={Award}
               iconTone="amber"
               bodyClassName="space-y-2"
@@ -1187,9 +1174,6 @@ export const Dashboard = () => {
               <h3 className="text-sm font-bold text-slate-800 dark:text-white">
                 {language === 'bn' ? 'প্রাতিষ্ঠানিক পূর্ণাঙ্গ মেধা তালিকা' : 'Institutional Merit Standings'}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {language === 'bn' ? 'জিপিএ, মোট নম্বর ও রোল অনুযায়ী মেধা ক্রম' : 'Official merit ranking by GPA, Total Marks, and Roll'}
-              </p>
             </div>
 
             <div className="relative w-full sm:w-64">

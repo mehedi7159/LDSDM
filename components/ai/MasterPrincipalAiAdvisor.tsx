@@ -700,7 +700,6 @@ ${madrasahName}`
             {/* Tagline Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 text-xs font-bold tracking-wide">
               <Sparkles size={14} className="text-amber-500 animate-pulse shrink-0" />
-              <span>{isBn ? 'মাস্টার এআই প্রিন্সিপাল • প্রাতিষ্ঠানিক কমান্ড হাব' : 'Master AI Principal • Executive Intelligence'}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">{isBn ? '৯৮.৪% স্বাস্থ্য সূচক' : '98.4% Optimal'}</span>
             </div>
@@ -712,11 +711,6 @@ ${madrasahName}`
               <span>{isBn ? 'ডিজিটাল প্রিন্সিপাল ও প্রাতিষ্ঠানিক মাস্টার এআই' : 'Digital Principal & Executive AI Advisor'}</span>
             </h1>
 
-            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              {isBn
-                ? 'মাদ্রাসার সম্পূর্ণ তথ্যভান্ডার বিশ্লেষণ করে ১-ক্লিকে অফিসিয়াল নোটিশ প্রণয়ন, সংঘাতহীন ক্লাস রুটিন তৈরি, বকেয়া ফি তাগাদা এসএমএস বার্তা প্রস্তুত ও প্রাতিষ্ঠানিক সিদ্ধান্ত গ্রহণের স্বয়ংক্রিয় পাওয়ারহাউস।'
-                : 'Instant 1-click notice drafting, conflict-free timetable generation, fee recovery SMS engine, and live institutional cockpit.'}
-            </p>
           </div>
 
           {/* Quick Situation Mode Switcher & User Pill */}
@@ -1059,11 +1053,6 @@ ${madrasahName}`
                 <Compass size={18} className="text-indigo-600 dark:text-indigo-400" />
                 <span>{isBn ? 'জরুরি নির্দেশনামূলক প্রম্পট' : 'Quick Executive Commands'}</span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                {isBn
-                  ? 'নিচের যে কোনো কমান্ডে ক্লিক করে তাৎক্ষণিক রুটিন তৈরি, নোটিশ প্রকাশ বা ড্যাশবোর্ড নিয়ন্ত্রণ করুন:'
-                  : 'Click any command to instantly generate routines, notices, or change dashboard state:'}
-              </p>
 
               <div className="space-y-2 pt-1">
                 {[
@@ -1152,9 +1141,6 @@ ${madrasahName}`
                   <Megaphone size={18} className="text-indigo-600 dark:text-indigo-400" />
                   <span>{isBn ? 'নোটিশ টেমপ্লেট নির্বাচন' : 'Notice Templates'}</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {isBn ? 'নিচের বিষয়গুলোর যে কোনোটিতে ক্লিক করে তাৎক্ষণিক পরিপত্র তৈরি করুন:' : 'Choose a ready notice category to draft:'}
-                </p>
 
                 <div className="space-y-2 pt-1">
                   {[
@@ -1317,11 +1303,6 @@ ${madrasahName}`
                   <CalendarDays size={22} className="text-indigo-600 dark:text-indigo-400" />
                   <span>{isBn ? 'ইন্টেলিজেন্ট ক্লাস রুটিন জেনারেটর ও পাবলিশার' : 'Intelligent Routine Generator'}</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {isBn
-                    ? 'শিক্ষকদের বিষয় বণ্টন ও সময়ের তথ্য নিয়ে সংঘাতহীন সাপ্তাহিক ক্লাস রুটিন তৈরি করুন এবং ১-ক্লিকে প্রকাশ করুন।'
-                    : 'Generate and publish conflict-free timetables across all classes.'}
-                </p>
               </div>
 
               <div className="flex items-center gap-3">
@@ -1464,7 +1445,7 @@ ${madrasahName}`
                   ৳{formatNumber(metrics.totalDue, language)}
                 </span>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-                  {isBn ? 'অ্যাকাডেমিক সেশনের বকেয়া বেতন ও পরীক্ষার ফি আদায়ে অভিভাবক এসএমএস প্রস্তুত করুন।' : 'Generate SMS notifications for fee defaulters.'}
+                  {isBn ? 'বকেয়া ফি আদায়ে অভিভাবকদের এসএমএস প্রস্তুত করুন।' : 'Prepare guardian SMS for fee dues.'}
                 </p>
               </div>
 
@@ -1575,9 +1556,6 @@ ${madrasahName}`
                       v2.5 Live
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-300">
-                    {isBn ? 'মুখে কথা বলে সরাসরি রিপোর্ট, রুটিন প্রস্তুত এবং প্রশাসনিক নোটিশ জারি করুন' : 'Speak to trigger institutional reports and commands'}
-                  </p>
                 </div>
               </div>
 
@@ -1673,11 +1651,6 @@ ${madrasahName}`
                 <Sliders size={22} className="text-indigo-600 dark:text-indigo-400" />
                 <span>{isBn ? 'পরিস্থিতিভিত্তিক ড্যাশবোর্ড রূপান্তর কনসোল' : 'Situational Dashboard Director'}</span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {isBn
-                  ? 'মাদ্রাসার বর্তমান প্রয়োজন অনুযায়ী ড্যাশবোর্ডের ফোকাস ও মেট্রিক্স এক ক্লিকে রূপান্তর করুন:'
-                  : 'Reorder dashboard widgets and themes dynamically based on institutional situations:'}
-              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
@@ -1768,7 +1741,7 @@ ${madrasahName}`
                   <span>{isBn ? 'এআই অনুমোদিত কার্যাবলীর অডিট ট্রেইল' : 'Execution & Audit History'}</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {isBn ? 'অধ্যক্ষ ও অ্যাডমিন কর্তৃক অনুমোদিত প্রতিটি কাজের অপরিবর্তনীয় রেকর্ড।' : 'Verified log of all executed institutional decisions.'}
+                  {isBn ? 'অনুমোদিত প্রতিটি কাজের রেকর্ড।' : 'Log of all approved actions.'}
                 </p>
               </div>
               {executedLogs.length > 0 && (

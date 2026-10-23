@@ -318,7 +318,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
               ডাটা সুরক্ষা, ব্যাকআপ ও রিস্টোর কেন্দ্র
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              আপনার মাদ্রাসার শিক্ষার্থীদের ভর্তি, পরীক্ষার ফলাফল এবং আর্থিক লেনদেনের সমস্ত তথ্য এক ক্লিকে ব্যাকআপ ফাইল আকারে সংরক্ষণ করুন এবং প্রয়োজন অনুযায়ী রিস্টোর করুন।
+              সব তথ্য এক ক্লিকে ব্যাকআপ বা রিস্টোর করুন।
             </p>
           </div>
 
@@ -758,9 +758,6 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                       {trashBin.length}
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    ভুলবশত মুছে যাওয়া ডেটা যেকোনো সময় অক্ষত অবস্থায় পুনরুদ্ধার করুন
-                  </p>
                 </div>
               </div>
               <button
@@ -806,9 +803,6 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                     <CheckCircle2 size={24} className="text-emerald-500 dark:text-emerald-400" />
                   </div>
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">রিসাইকেল বিন সম্পূর্ণ ফাঁকা</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 max-w-sm">
-                    কোনো তথ্য মুছে ফেলা হয়নি। সিস্টেমের সকল শিক্ষার্থী, বিষয়, ফলাফল ও লেনদেন সুরক্ষিত আছে।
-                  </p>
                 </div>
               ) : (
                 trashBin

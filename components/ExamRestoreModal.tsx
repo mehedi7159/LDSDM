@@ -243,11 +243,6 @@ export const ExamRestoreModal: React.FC<ExamRestoreModalProps> = ({
               <h3 className="font-bold text-lg text-white">
                 {language === 'bn' ? 'পরীক্ষাওয়ারী নম্বর রিস্টোর হাব' : 'Exam-wise Marks Restore Hub'}
               </h3>
-              <p className="text-xs text-purple-200">
-                {language === 'bn' 
-                  ? 'নিরাপদে নির্দিষ্ট পরীক্ষার নম্বর যাচাই ও রিস্টোর করুন' 
-                  : 'Safely inspect, map and restore marks for a specific exam'}
-              </p>
             </div>
           </div>
           <button 

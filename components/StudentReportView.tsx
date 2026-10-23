@@ -140,18 +140,9 @@ export const StudentReportView: React.FC = () => {
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div>
-          <div className="flex items-center gap-2 text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">
-            <Users size={16} />
-            <span>{language === 'bn' ? 'শিক্ষার্থী অ্যানালিটিক্স ও ডেমোগ্রাফিকস' : 'Student Analytics & Demographics'}</span>
-          </div>
           <h1 className="text-2xl font-black tracking-tight">
             {language === 'bn' ? 'শিক্ষার্থী রিপোর্ট ও পরিসংখ্যান' : 'Student Comprehensive Report'}
           </h1>
-          <p className="text-xs text-blue-100/80 mt-1 max-w-xl">
-            {language === 'bn'
-              ? 'সকল ক্লাসের শিক্ষার্থীদের সামগ্রিক পরিসংখ্যান, আবাসিক/অনাবাসিক অনুপাত এবং বিস্তারিত তালিকা।'
-              : 'Detailed breakdown of student enrollments, residential distributions, and demographic metrics.'}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -178,7 +169,6 @@ export const StudentReportView: React.FC = () => {
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</p>
             <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{toBanglaDigits(totalCount)}</h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{language === 'bn' ? 'সর্বমোট নথিভুক্ত' : 'Total Enrolled'}</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
             <Users size={24} />
@@ -235,7 +225,6 @@ export const StudentReportView: React.FC = () => {
                 <BarChart3 size={18} className="text-indigo-600 dark:text-indigo-400" />
                 <span>{language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী সংখ্যা' : 'Students per Class'}</span>
               </h3>
-              <p className="text-xs text-slate-400 dark:text-slate-500">{language === 'bn' ? 'প্রতিটি শ্রেণিতে শিক্ষার্থী বন্টন' : 'Class-wise student distribution'}</p>
             </div>
           </div>
           <div className="h-64 w-full">
@@ -260,7 +249,6 @@ export const StudentReportView: React.FC = () => {
               <PieIcon size={18} className="text-cyan-600 dark:text-cyan-400" />
               <span>{language === 'bn' ? 'আবাসিক অনুপাত' : 'Residential Ratio'}</span>
             </h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">{language === 'bn' ? 'আবাসিক ও ডে-স্কলার ভাগ' : 'Hostel vs Day scholars'}</p>
           </div>
           <div className="h-52 w-full my-auto">
             <ResponsiveContainer width="100%" height="100%">

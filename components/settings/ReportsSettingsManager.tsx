@@ -334,10 +334,6 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
 
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              <Settings size={14} className="text-indigo-400" />
-              <span>{isBn ? 'ধাপ ৮ • সার্বিক রিপোর্ট, নোটিশ ও সেটিংস হাব' : 'Step 8 • Institutional Reports, Notices & Settings Hub'}</span>
-            </div>
 
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
               <span>{schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ব্যবস্থাপনা সিস্টেম' : 'Madrasah Management')}</span>
@@ -350,11 +346,6 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               )}
             </h1>
 
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              {isBn 
-                ? 'বিজ্ঞপ্তি প্রকাশ, প্রাতিষ্ঠানিক প্রশাসনিক রিপোর্ট, প্রোফাইল তথ্য, সিল-স্বাক্ষর ব্র্যান্ডিং, ডাটাবেজ ব্যাকআপ ও সিকিউরিটি অডিট ট্রেইল পরিচালনা করুন।'
-                : 'Manage official notices, consolidated institutional reports, madrasah profile, official stamps, cloud backup vault, and security audit trails.'}
-            </p>
           </div>
 
           {/* Quick Action Buttons */}
@@ -574,11 +565,6 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                 <Building2 size={22} className="text-indigo-600 dark:text-indigo-400" />
                 <span>{isBn ? 'মাদ্রাসা প্রোফাইল ও প্রাতিষ্ঠানিক তথ্য' : 'Madrasah Profile & Institutional Details'}</span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {isBn 
-                  ? 'মাদ্রাসার নাম, ঠিকানা, যোগাযোগ নম্বর, শিক্ষাবর্ষ এবং অধ্যক্ষ / প্রধানের তথ্য আপডেট করুন।'
-                  : 'Update institution name in Bengali and English, EIIN, contact info, and principal credentials.'}
-              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -890,11 +876,6 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                 <Sliders size={22} className="text-indigo-600 dark:text-indigo-400" />
                 <span>{isBn ? 'ব্র্যান্ডিং, অফিসিয়াল সিল ও প্রিন্ট কনফিগারেশন' : 'Official Branding, Stamps & Print Customization'}</span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {isBn
-                  ? 'মাদ্রাসার লোগো, ওয়াটারমার্ক, অধ্যক্ষের ডিজিটাল স্বাক্ষর এবং ফলাফল কার্ডের থিম কাস্টমাইজ করুন।'
-                  : 'Customize logo, watermarks, principal digital signatures, and certificate templates.'}
-              </p>
             </div>
 
             <button
@@ -1144,8 +1125,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {isBn 
-                  ? 'ডাটাবেজের রেকর্ড সংখ্যা, মেমরি কোটা এবং ক্লাউড সিঙ্ক্রোনাইজেশনের রিয়েল-টাইম তথ্য।'
-                  : 'Real-time record census across all 9 core collections and memory storage analysis.'}
+                  ? '৯টি মূল কালেকশনের রেকর্ড সংখ্যা।'
+                  : 'Record counts across all 9 core collections.'}
               </p>
             </div>
 

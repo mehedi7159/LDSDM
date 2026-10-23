@@ -632,10 +632,6 @@ export const InstitutionalOperationsManager: React.FC<InstitutionalOperationsMan
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-500/30">
-              <Boxes className="w-3.5 h-3.5" />
-              <span>{language === 'bn' ? 'ধাপ ১১ • প্রাতিষ্ঠানিক সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব' : 'Step 11 • Institutional Operations Hub'}</span>
-            </div>
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
               <Package className="w-8 h-8 text-indigo-400" />
               <span>
@@ -644,11 +640,6 @@ export const InstitutionalOperationsManager: React.FC<InstitutionalOperationsMan
                   : 'Assets, Store, House Wings & Alumni Suite'}
               </span>
             </h1>
-            <p className="text-slate-300 text-xs md:text-sm max-w-2xl leading-relaxed">
-              {language === 'bn'
-                ? 'মাদ্রাসার স্থায়ী সম্পদ, স্টোর ইনভেন্টরি ও রিকুইজিশন, হাউজ সিস্টেমের প্রতিযোগিতা ও পয়েন্ট লিডারবোর্ড, প্রাক্তন শিক্ষার্থী (অ্যালামনাই) নেটওয়ার্ক এবং স্বাস্থ্যসেবা রেজিস্টার।'
-                : 'Centralized registry for institutional fixed assets, store consumables, hostel houses/wings scoring, alumni council directory, and student medical first-aid logs.'}
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

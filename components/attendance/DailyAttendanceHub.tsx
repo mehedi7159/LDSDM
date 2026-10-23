@@ -394,11 +394,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 <h2 className="text-2xl font-black text-slate-800 tracking-tight font-bangla">
                   {isBn ? '৪. দৈনিক উপস্থিতি ব্যবস্থাপনা' : '4. Daily Attendance Management'}
                 </h2>
-                <p className="text-slate-500 text-xs font-semibold mt-0.5">
-                  {isBn 
-                    ? 'শিক্ষার্থী ও শিক্ষক-কর্মচারীর দৈনিক ডিজিটাল হাজিরা ও পরীক্ষার রেজাল্টে স্বয়ংক্রিয় সিঙ্ক' 
-                    : 'Daily Student & Staff Attendance Tracking and Exam Marksheet Sync'}
-                </p>
               </div>
             </div>
           </div>
@@ -460,7 +455,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 shadow-2xs bg-emerald-50/20">
           <span className="text-[11px] font-bold text-emerald-700 uppercase">{isBn ? 'উপস্থিত' : 'Present'}</span>
           <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{formatNumber(summary.present, language)}</p>
-          <span className="text-[10px] text-emerald-700 font-semibold">{isBn ? 'সময়মতো উপস্থিত' : 'On Time'}</span>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-rose-200 shadow-2xs bg-rose-50/20">
           <span className="text-[11px] font-bold text-rose-700 uppercase">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
@@ -470,7 +464,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         <div className="bg-white p-3.5 rounded-2xl border border-amber-200 shadow-2xs bg-amber-50/20">
           <span className="text-[11px] font-bold text-amber-700 uppercase">{isBn ? 'বিলম্বিত' : 'Late'}</span>
           <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{formatNumber(summary.late, language)}</p>
-          <span className="text-[10px] text-amber-700 font-semibold">{isBn ? 'দেরিতে এসেছে' : 'Late Arrival'}</span>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-indigo-200 shadow-2xs bg-indigo-50/20">
           <span className="text-[11px] font-bold text-indigo-700 uppercase">{isBn ? 'ছুটি / মার্জিত' : 'Leave'}</span>
@@ -480,7 +473,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         <div className="bg-white p-3.5 rounded-2xl border border-teal-200 shadow-2xs bg-teal-50/30">
           <span className="text-[11px] font-bold text-teal-700 uppercase">{isBn ? 'উপস্থিতির হার' : 'Rate'}</span>
           <p className="text-2xl font-black text-teal-900 mt-1 font-bangla">{formatNumber(summary.percentage, language)}%</p>
-          <span className="text-[10px] text-teal-700 font-semibold">{isBn ? 'আজকের সার্বিক গড়' : 'Class Average'}</span>
         </div>
       </div>
 
@@ -590,9 +582,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 {selectedClass} • {formatSafeDate(selectedDate, isBn)} ({formatNumber(filteredStudents.length, language)} {isBn ? 'জন শিক্ষার্থী' : 'students'})
               </h3>
             </div>
-            <span className="text-xs text-slate-500 font-semibold">
-              {isBn ? 'একটি ক্লিকে স্ট্যাটাস পরিবর্তন করুন' : 'Click status button to toggle'}
-            </span>
           </div>
 
           <div className="overflow-x-auto">
@@ -897,7 +886,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-emerald-700 font-bold">
                       <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-600" />
-                      <p>{isBn ? 'আলহামদুলিল্লাহ! এই শ্রেণিতে আজকের দিনে কোনো শিক্ষার্থী অনুপস্থিত নেই।' : 'No absentees in this class today!'}</p>
+                      <p>{isBn ? 'কোনো শিক্ষার্থী অনুপস্থিত নেই।' : 'No absentees in this class today!'}</p>
                     </td>
                   </tr>
                 ) : (
@@ -1038,9 +1027,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                   <Award size={16} className="text-teal-700" />
                   <span>{isBn ? 'পরীক্ষার মার্কশিট হাজিরা ও শিক্ষক মন্তব্য এডিটর' : 'Exam Attendance & Remarks Editor'}</span>
                 </h4>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  {isBn ? 'ইনপুট দেওয়ার সাথে সাথে সরাসরি ডাটাবেজে সংরক্ষিত হয়।' : 'Values auto-save instantly to Firestore remarks store.'}
-                </p>
               </div>
 
               <div className="text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200">

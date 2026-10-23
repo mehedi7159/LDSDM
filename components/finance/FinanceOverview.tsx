@@ -163,7 +163,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <span className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100">
-            {isBn ? 'আয় ও ব্যয় অনুপাত এবং প্রবাহ বিশ্লেষণ (Cash Flow Distribution)' : 'Inflow vs Outflow Ratio'}
+            {isBn ? 'আয় ও ব্যয় অনুপাত' : 'Inflow vs Outflow Ratio'}
           </span>
           <div className="flex items-center gap-4 text-xs sm:text-sm font-bold">
             <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
@@ -200,9 +200,6 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               <Sparkles className="w-5 h-5 text-amber-500" />
               {isBn ? 'মাদ্রাসার প্রধান ৪টি আর্থিক খাত (Core Financial Pillars)' : 'Core Financial Streams'}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
-              {isBn ? 'ছাত্র ফি, দান-সদকা, উস্তাদদের হাদিয়া ও মাদ্রাসা উন্নয়নের ডেডিকেটেড সারসংক্ষেপ' : 'Quick access and analytics for primary inflow and expense channels'}
-            </p>
           </div>
         </div>
 
@@ -303,9 +300,6 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                 {isBn ? 'উস্তাদদের হাদিয়া ও বেতন' : 'Teacher Salary'}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium">
-                {isBn ? 'উস্তাদ ও কর্মচারীদের মাসিক হাদিয়া/বেতন' : 'Monthly Teacher & Staff Salaries'}
-              </p>
               
               <div className="mt-4">
                 <div className="text-2xl sm:text-3xl font-black text-rose-950 dark:text-rose-200 font-mono">
@@ -381,9 +375,6 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               <Layers className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               {isBn ? 'মাদ্রাসা বিশেষায়িত তহবিল ও ফান্ডের বিস্তারিত স্থিতি' : 'Fund Balances (Segregated Accounting)'}
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
-              {isBn ? 'শরীয়াহ অনুযায়ী প্রতিটি ফান্ডের আলাদা জমা-খরচের স্বচ্ছ হিসাব' : 'Strict Shariah-compliant fund segregation'}
-            </p>
           </div>
           <Button 
             onClick={() => onNavigateTab('general-entry')} 

@@ -146,9 +146,6 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               {isBn ? 'সাধারণ ও অন্যান্য খাতের আয়/ব্যয় ভাউচার' : 'General Voucher Entry (All Categories)'}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              {isBn ? 'মেস বাজার, বিদ্যুৎ বিল, স্টেশনারি ও বিবিধ খরচের পূর্ণাঙ্গ ভাউচার এন্ট্রি' : 'Comprehensive ledger entry for all general income and operational expenses'}
-            </p>
           </div>
         </div>
 

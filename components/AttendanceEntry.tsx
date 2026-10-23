@@ -204,7 +204,6 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">{t('attendance')} & {t('comments')}</h2>
-              <p className="text-gray-500 dark:text-slate-400 text-sm">{language === 'bn' ? 'শিক্ষার্থীদের কর্মদিবস, উপস্থিতি এবং মন্তব্য লিখুন (স্বয়ংক্রিয়ভাবে সেভ হয়)।' : 'Enter working days, attendance, and remarks for students (Auto-saved).'}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
                 <Button
@@ -362,12 +361,6 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
           </div>
           
           <div className="bg-gray-50/70 dark:bg-slate-800/60/70 px-6 py-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Sparkles size={14} className="text-indigo-500 dark:text-indigo-400" />
-              {language === 'bn' 
-                ? 'উপস্থিতি ও মন্তব্য লেখার সাথে সাথে স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।' 
-                : 'Attendance and remarks are auto-saved in real-time as you type.'}
-            </span>
             <span className="font-mono text-gray-400 dark:text-slate-500">
               Total {enrolledStudents.length} {language === 'bn' ? 'শিক্ষার্থী' : 'students'}
             </span>
@@ -379,8 +372,8 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
             icon={Users}
             title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো শিক্ষার্থী নেই` : `No students enrolled in ${selectedClass}`}
             description={language === 'bn' 
-              ? 'দৈনিক হাজিরা ও আচরণিক মন্তব্য লিপিবদ্ধ করার জন্য প্রথমে এই শ্রেণিতে শিক্ষার্থী ভর্তি বা তালিকাভুক্ত করুন।' 
-              : 'Enroll students into this class to begin tracking daily attendance and remarks.'}
+              ? 'প্রথমে শিক্ষার্থী ভর্তি করুন।' 
+              : 'Enroll a student first.'}
             actionLabel={language === 'bn' ? 'শিক্ষার্থী ভর্তি করুন' : 'Add First Student'}
             actionIcon={UserPlus}
             onAction={() => onNavigate ? onNavigate('students') : null}

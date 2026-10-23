@@ -213,11 +213,6 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
               <h2 className="text-base sm:text-lg font-black tracking-tight">
                 {language === 'bn' ? 'শিক্ষার্থী শ্রেণি প্রমোশন (Student Promotion)' : 'Student Promotion & Year Transition'}
               </h2>
-              <p className="text-xs text-indigo-200 font-medium">
-                {language === 'bn' 
-                  ? 'শিক্ষাবর্ষ শেষে এক শ্রেণি থেকে পরবর্তী শ্রেণিতে শিক্ষার্থীদের স্বয়ংক্রিয় প্রমোশন দিন' 
-                  : 'Batch promote students to the next grade level for the upcoming academic session'}
-              </p>
             </div>
           </div>
           <button

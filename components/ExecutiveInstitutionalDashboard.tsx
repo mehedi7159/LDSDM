@@ -26,8 +26,7 @@ import {
   Clock,
   ExternalLink,
   ChevronRight,
-  Layers,
-  Percent
+  Layers
 } from 'lucide-react';
 import { DashboardNoticeWidget } from './DashboardNoticeWidget';
 import { PageHeader } from './ui/PageHeader';
@@ -219,11 +218,11 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
       <PageHeader
         tone="brand"
         icon={Building2}
-        eyebrow={language === 'bn' ? 'এক নজরে প্রতিষ্ঠান নিয়ন্ত্রণ কেন্দ্র • সিস্টেম সক্রিয়' : 'Executive Command Center • Live'}
+        eyebrow={language === 'bn' ? 'সিস্টেম সক্রিয়' : 'Live'}
         title={schoolProfile?.name || 'মাদ্রাসা ম্যানেজমেন্ট'}
         subtitle={language === 'bn'
-          ? `অধ্যক্ষ ও প্রশাসনের নিয়ন্ত্রণ প্যানেল • ${formattedToday} • শিক্ষাবর্ষ: ${schoolProfile?.academicYear || '২০২৬'}`
-          : `Principal & Administrative Dashboard • ${formattedToday} • Academic Session: ${schoolProfile?.academicYear || '2026'}`}
+          ? `${formattedToday} • শিক্ষাবর্ষ: ${schoolProfile?.academicYear || '২০২৬'}`
+          : `${formattedToday} • Academic Session: ${schoolProfile?.academicYear || '2026'}`}
       >
           {/* Exam Switcher on Top */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
@@ -307,10 +306,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
               <h3 className="text-3xl font-black text-slate-900 tracking-tight flex items-baseline gap-1">
                 <span>{toBanglaDigits(attendanceStats.rate)}%</span>
               </h3>
-              <p className="text-[11px] text-blue-700 font-bold mt-0.5 flex items-center gap-1">
-                <Percent size={12} />
-                <span>{language === 'bn' ? 'সন্তোষজনক দৈনিক উপস্থিতি' : 'Normal attendance rhythm'}</span>
-              </p>
             </div>
           </div>
           <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
@@ -389,9 +384,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
               {language === 'bn' ? 'দ্রুত কার্যক্রম লঞ্চপ্যাড' : 'Instant Operations Launchpad'}
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
-            {language === 'bn' ? 'এক ক্লিকেই প্রয়োজনীয় মডিউলে প্রবেশ করুন' : 'Single-click navigation'}
-          </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -405,7 +397,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">{language === 'bn' ? 'নতুন ভর্তি' : 'New Admission'}</span>
-              <span className="text-[10px] text-emerald-700/80 font-medium">{language === 'bn' ? 'শিক্ষার্থী নিবন্ধন' : 'Register student'}</span>
             </div>
           </button>
 
@@ -419,7 +410,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">{language === 'bn' ? 'নম্বর এন্ট্রি' : 'Marks Entry'}</span>
-              <span className="text-[10px] text-blue-700/80 font-medium">{language === 'bn' ? 'পরীক্ষার নম্বর প্রদান' : 'Input exam scores'}</span>
             </div>
           </button>
 
@@ -433,7 +423,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">{language === 'bn' ? 'দৈনিক হাজিরা' : 'Attendance'}</span>
-              <span className="text-[10px] text-indigo-700/80 font-medium">{language === 'bn' ? 'হাজিরা ও মন্তব্য' : 'Daily register'}</span>
             </div>
           </button>
 
@@ -447,7 +436,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">{language === 'bn' ? 'ফি আদায়' : 'Fee Receipt'}</span>
-              <span className="text-[10px] text-purple-700/80 font-medium">{language === 'bn' ? 'বেতন ও খোরাকি' : 'Tuition & vouchers'}</span>
             </div>
           </button>
 
@@ -461,7 +449,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">{language === 'bn' ? 'নোটিশ বোর্ড' : 'Notice Board'}</span>
-              <span className="text-[10px] text-amber-700/80 font-medium">{language === 'bn' ? 'ঘোষণা ও ডায়েরি' : 'Post announcement'}</span>
             </div>
           </button>
 
@@ -475,7 +462,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">{language === 'bn' ? 'ফলাফল পোর্টাল' : 'Web Results'}</span>
-              <span className="text-[10px] text-teal-700/80 font-medium">{language === 'bn' ? 'ডিজিটাল স্কোরকার্ড' : 'Scorecard view'}</span>
             </div>
           </button>
         </div>
@@ -494,7 +480,6 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
                 <Layers size={16} className="text-indigo-600" />
                 <span>{language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী শক্তি ও বণ্টন' : 'Class Strength Distribution'}</span>
               </h3>
-              <p className="text-xs text-slate-400">{language === 'bn' ? 'প্রতিটি জামাত বা শ্রেণির বর্তমান শিক্ষার্থী সংখ্যা' : 'Current active student count per class'}</p>
             </div>
             <button
               onClick={() => onNavigate('students')}

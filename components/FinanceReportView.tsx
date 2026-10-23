@@ -133,18 +133,9 @@ export const FinanceReportView: React.FC = () => {
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-violet-800 via-indigo-900 to-slate-950 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div>
-          <div className="flex items-center gap-2 text-violet-200 text-xs font-bold uppercase tracking-wider mb-1">
-            <Wallet size={16} />
-            <span>{language === 'bn' ? 'আর্থিক হিসাব ও বিবরণী' : 'Financial Statement & Audit Reports'}</span>
-          </div>
           <h1 className="text-2xl font-black tracking-tight">
             {language === 'bn' ? 'আর্থিক রিপোর্ট ও আয়-ব্যয় বিবরণী' : 'Financial Reports & Statements'}
           </h1>
-          <p className="text-xs text-violet-100/80 mt-1 max-w-xl">
-            {language === 'bn'
-              ? 'মাদ্রাসার সামগ্রিক তহবিল, খাতভিত্তিক আয় ও ব্যয়ের সুনির্দিষ্ট অডিট লেজার ও ক্যাশ বিবরণী।'
-              : 'Complete financial health overview, ledger audit records, and category breakdown.'}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">

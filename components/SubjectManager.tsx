@@ -288,11 +288,6 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
             <BookOpen className="text-blue-600 dark:text-blue-400" size={26} />
             {language === 'bn' ? 'একাডেমিক বিষয় ও শিক্ষক বণ্টন' : 'Academic Subjects & Teacher Assignment'}
           </h2>
-          <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">
-            {language === 'bn' 
-              ? 'স্কুল ও মাদ্রাসার বিষয় তালিকা, শ্রেণীভিত্তিক বণ্টন এবং শিক্ষক নিয়োগ ব্যবস্থাপনা' 
-              : 'Manage subjects catalog, class curriculums, and teacher academic assignments.'}
-          </p>
         </div>
 
         <div className="bg-gray-100 dark:bg-slate-800 p-1.5 rounded-xl flex flex-wrap gap-1 w-full md:w-auto">
@@ -411,7 +406,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                     {filteredSubjects.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-gray-400 dark:text-slate-500">
-                          {language === 'bn' ? 'কোন বিষয় পাওয়া যায়নি। ডানদিকের ফর্ম থেকে নতুন বিষয় যোগ করুন।' : 'No subjects found. Add a new subject using the form.'}
+                          {language === 'bn' ? 'কোন বিষয় পাওয়া যায়নি।' : 'No subjects found.'}
                         </td>
                       </tr>
                     ) : (
@@ -727,9 +722,6 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                 <Layers className="text-blue-600 dark:text-blue-400" size={20} />
                 {language === 'bn' ? 'শ্রেণীতে বিষয় নির্ধারণ' : 'Class-Subject Assignment'}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
-                {language === 'bn' ? 'নির্বাচিত শিক্ষাবর্ষ ও শ্রেণীর জন্য পাঠ্য বিষয়াবলী নির্ধারণ করুন' : 'Assign active subjects to specific classes and curriculum for the academic year.'}
-              </p>
             </div>
 
             <div className="flex flex-wrap gap-3 items-center">
@@ -839,11 +831,6 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                 <UserCheck className="text-blue-600 dark:text-blue-400" size={20} />
                 {language === 'bn' ? 'শিক্ষক দায়িত্ব ও শ্রেণী শিক্ষক বণ্টন' : 'Teacher Academic Assignment'}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
-                {language === 'bn' 
-                  ? 'প্রতিটি বিষয়ে পাঠদানকারী শিক্ষক ও প্রধান শ্রেণী শিক্ষক নির্ধারণ করুন' 
-                  : 'Assign subject teachers and class/section in-charge teachers.'}
-              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -1029,7 +1016,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-400 dark:text-slate-500 text-sm">
-                  কোনো শিক্ষক পাওয়া যায়নি। উপরে 'Add Teacher' বাটনে ক্লিক করে শিক্ষক যোগ করুন।
+                  কোনো শিক্ষক পাওয়া যায়নি।
                 </div>
               )}
             </div>
@@ -1048,9 +1035,6 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                 <Calendar className="text-blue-600 dark:text-blue-400" size={20} />
                 {language === 'bn' ? 'পরীক্ষায় বিষয় নির্ধারণ' : 'Assign Subjects to Exam'}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
-                {language === 'bn' ? 'পরীক্ষা অনুযায়ী কোন কোন বিষয়ে পরীক্ষা অনুষ্ঠিত হবে তা সিলেক্ট করুন' : 'Select subjects included in this examination schedule.'}
-              </p>
             </div>
 
             <div className="flex flex-wrap gap-3 items-center">

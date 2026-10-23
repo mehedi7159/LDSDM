@@ -459,8 +459,8 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
         </h4>
         <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
           {language === 'bn'
-            ? 'নির্বাচিত শ্রেণী বা পরীক্ষার জন্য এখনো পর্যাপ্ত নম্বর এন্ট্রি করা হয়নি। নম্বর এন্ট্রি সম্পন্ন হলে এখানে শিক্ষার্থীদের ধারাবাহিক সাফল্য ও দুর্বলতার বিষয়ভিত্তিক প্রেজেন্টেশন চার্ট প্রদর্শিত হবে।'
-            : 'No evaluation marks recorded yet for the selected scope. Once marks are entered, comparative subject strength and weakness analytics will automatically appear here.'}
+            ? 'নির্বাচিত শ্রেণী বা পরীক্ষার জন্য এখনো নম্বর এন্ট্রি করা হয়নি।'
+            : 'No evaluation marks recorded yet for the selected scope.'}
         </p>
       </div>
     );
@@ -486,11 +486,6 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                 : 'Subject-wise Performance & Longitudinal Matrix'}
             </h3>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            {language === 'bn'
-              ? 'সকল শ্রেণীতে শিক্ষার্থীরা যেসব বিষয়ে বারবার চমৎকার ফলাফল করেছে এবং যেসব বিষয়ে ধারাবাহিক দুর্বলতা রয়েছে'
-              : 'Identification of subjects where students consistently excel vs where recurring weaknesses occur across classes'}
-          </p>
         </div>
 
         {/* View Mode & Scope Controls */}
@@ -598,11 +593,6 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                 <h4 className="text-base font-extrabold text-emerald-950">
                   {language === 'bn' ? 'ধারাবাহিক শীর্ষ সাফল্য অর্জনকারী বিষয়সমূহ' : 'Consistently Top-Performing Subjects'}
                 </h4>
-                <p className="text-xs text-emerald-700 font-medium">
-                  {language === 'bn' 
-                    ? 'শিক্ষার্থীরা যেসব বিষয়ে বারবার সর্বোচ্চ নম্বর ও সর্বোচ্চ পাসের হার অর্জন করেছে' 
-                    : 'Subjects where students repeatedly score high with top pass rates'}
-                </p>
               </div>
             </div>
             <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black">
@@ -682,11 +672,6 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                 <h4 className="text-base font-extrabold text-rose-950">
                   {language === 'bn' ? 'পুনরাবৃত্ত দুর্বলতা ও বিশেষ যত্ন প্রয়োজন' : 'Recurring Weakness & At-Risk Subjects'}
                 </h4>
-                <p className="text-xs text-rose-700 font-medium">
-                  {language === 'bn' 
-                    ? 'শিক্ষার্থীরা যেসব বিষয়ে বিভিন্ন শ্রেণীতে বারবার অকৃতকার্য হয়েছে বা কম নম্বর পেয়েছে' 
-                    : 'Subjects with recurring failures or low scores across classes'}
-                </p>
               </div>
             </div>
             <span className="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-black">
@@ -767,11 +752,6 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                 ? 'বিষয়ভিত্তিক তুলনামূলক ফলাফল: গড় নম্বর বনাম ফেলের হার' 
                 : 'Comparative Subject Analytics: Average Score vs. Failure Rate'}
             </h4>
-            <p className="text-xs text-slate-500">
-              {language === 'bn' 
-                ? 'উচ্চ গড় নম্বর সম্পন্ন সফল বিষয় এবং উচ্চ ফেলের হার বিশিষ্ট দুর্বল বিষয়সমূহের চাক্ষুষ চিত্র' 
-                : 'Side-by-side visualization of student mastery vs. struggle rates across subjects'}
-            </p>
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
             <span className="flex items-center gap-1.5 text-slate-700">

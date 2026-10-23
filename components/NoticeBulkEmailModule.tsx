@@ -205,18 +205,9 @@ export const NoticeBulkEmailModule: React.FC = () => {
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
         <div>
-          <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">
-            <Mail size={16} className="text-amber-400" />
-            <span>{language === 'bn' ? 'বাল্ক ইমেইল ও ডিজিটাল নোটিশ বার্তা' : 'Bulk Email & Parent Notice Dispatch'}</span>
-          </div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight">
             {language === 'bn' ? 'শ্রেণিভিত্তিক বাল্ক ইমেইল ব্রডকাস্ট' : 'Class-based Bulk Email Dispatcher'}
           </h2>
-          <p className="text-xs text-indigo-200 mt-1 max-w-xl">
-            {language === 'bn' 
-              ? 'শিক্ষার্থী প্রোফাইলে সংরক্ষিত ইমেইল অ্যাড্রেস ব্যবহার করে সরাসরি অভিভাবক ও শিক্ষার্থীদের নোটিশ ও বিজ্ঞপ্তি ইমেইল করুন।' 
-              : 'Broadcast notices and announcements directly to guardians and students using recorded profile contact emails.'}
-          </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">

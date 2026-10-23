@@ -158,7 +158,6 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onBackToLanding, onSucce
 
           <div className="text-right">
             <span className="text-xs font-bold text-slate-800 block">{schoolProfile.nameBn || schoolProfile.name}</span>
-            <span className="text-[10px] text-slate-400 block">দাখিল মাদ্রাসা ম্যানেজমেন্ট সিস্টেম</span>
           </div>
         </div>
       </header>
@@ -178,11 +177,11 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onBackToLanding, onSucce
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
               {authMode === 'login' ? 'মাদ্রাসা পোর্টাল লগইন' : 'নতুন একাউন্ট নিবন্ধন'}
             </h2>
-            <p className="text-xs text-slate-500">
-              {authMode === 'login' 
-                ? 'আপনার নির্দিষ্ট রোলের ড্যাশবোর্ডে প্রবেশ করুন' 
-                : 'শিক্ষক, স্টাফ বা অভিভাবক হিসেবে অ্যাকাউন্ট তৈরি করুন'}
-            </p>
+            {authMode !== 'login' && (
+              <p className="text-xs text-slate-500">
+                শিক্ষক, স্টাফ বা অভিভাবক হিসেবে অ্যাকাউন্ট তৈরি করুন
+              </p>
+            )}
           </div>
 
           {/* Mode Tabs (Login vs SignUp) */}

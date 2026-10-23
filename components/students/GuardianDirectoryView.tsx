@@ -86,14 +86,12 @@ export const GuardianDirectoryView: React.FC<{
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-2xs bg-teal-50/30">
           <p className="text-xs font-bold text-teal-700 dark:text-teal-400 uppercase">{isBn ? 'স্বতন্ত্র পরিবার / মোবাইল' : 'Unique Families'}</p>
           <p className="text-2xl font-black text-teal-900 dark:text-teal-200 mt-1">{formatNumber(uniquePhonesCount, language)}</p>
-          <span className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold">{isBn ? 'স্বতন্ত্র অভিভাবক যোগাযোগ' : 'Distinct Contacts'}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/30">
           <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">{isBn ? 'মোবাইল নম্বর অন্তর্ভুক্ত' : 'Valid Phones'}</p>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1">
             {formatNumber(activeStudents.filter(s => s.guardianPhone?.trim()).length, language)}
           </p>
-          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">{isBn ? 'এসএমএস ও কলের জন্য প্রস্তুত' : 'Ready for SMS/Call'}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-2xs bg-amber-50/30">
           <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase">{isBn ? 'ফোন নম্বর বিহীন' : 'Missing Phone'}</p>

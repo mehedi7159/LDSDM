@@ -331,9 +331,6 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       <PageHeader
         icon={Sparkles}
         title={language === 'bn' ? 'নম্বর এন্ট্রি ও মূল্যায়ন' : 'Marks Entry & Evaluation'}
-        subtitle={language === 'bn'
-          ? 'শিক্ষক দায়িত্ব অনুযায়ী নম্বর ইনপুট, CQ/MCQ/ব্যবহারিক হিসাব ও স্বয়ংক্রিয় গ্রেড নির্ধারণ'
-          : 'Fast marks entry with component breakdown, auto-validation, and instant GPA preview.'}
       >
         <div className="flex items-center gap-3">
           {isExamLocked && (
@@ -437,8 +434,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
             icon={BookOpen}
             title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো বিষয় যোগ করা হয়নি` : `No subjects found in ${selectedClass}`}
             description={language === 'bn' 
-              ? 'নম্বর এন্ট্রি শুরু করার জন্য প্রথমে এই শ্রেণীর পাঠ্যক্রমে নির্ধারিত বিষয়সমূহ যুক্ত করুন।' 
-              : 'Add curriculum subjects for this class to start recording examination marks.'}
+              ? 'প্রথমে বিষয় যোগ করুন।' 
+              : 'Add a subject first.'}
             actionLabel={language === 'bn' ? 'প্রথম বিষয় যোগ করুন' : 'Add First Subject'}
             actionIcon={Plus}
             onAction={() => onNavigate ? onNavigate('subjects') : null}
@@ -493,8 +490,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                         icon={Users}
                         title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো শিক্ষার্থী নেই` : `No students enrolled in ${selectedClass}`}
                         description={language === 'bn' 
-                          ? 'নম্বর ইনপুট করার জন্য প্রথমে এই শ্রেণিতে শিক্ষার্থী তালিকাভুক্ত বা ভর্তি করতে হবে।' 
-                          : 'Enroll students into this class to begin recording exam marks.'}
+                          ? 'প্রথমে শিক্ষার্থী ভর্তি করুন।' 
+                          : 'Enroll a student first.'}
                         actionLabel={language === 'bn' ? 'শিক্ষার্থী ভর্তি করুন' : 'Add First Student'}
                         actionIcon={UserPlus}
                         onAction={() => onNavigate ? onNavigate('students') : null}

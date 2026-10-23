@@ -244,9 +244,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       <PageHeader
         tone="brand"
         icon={Wallet}
-        eyebrow={isBn ? 'ধাপ ৫ • হিসাব ও অর্থ ব্যবস্থাপনা হাব' : 'Step 5 • Finance & Accounts Suite'}
         title={isBn ? 'হিসাব, ফি ও অর্থ ব্যবস্থাপনা কেন্দ্র' : 'Finance, Fees & Accounts Suite'}
-        subtitle={isBn ? 'ছাত্র ফি ও বকেয়া আদায়, স্বয়ংক্রিয় রসিদ প্রিন্ট, দান-সদকার খতিয়ান, উস্তাদদের বেতন ও ক্যাশ বুক অডিট ট্রেইল।' : 'Comprehensive fee collection, printable vouchers, donations & zakat funds, teacher payroll and audit-ready cashbook ledger.'}
         footer={
 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">

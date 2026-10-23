@@ -206,9 +206,7 @@ export const ClassRoutineBuilder: React.FC = () => {
       {/* Top Header & Mode Toggle */}
       <PageHeader
         icon={Clock}
-        eyebrow={isBn ? 'সাপ্তাহিক ক্লাস রুটিন ও সময়সূচি' : 'Weekly Timetable & Schedule'}
         title={isBn ? 'ক্লাস রুটিন ও শিক্ষক পিরিয়ড প্ল্যানার' : 'Class Routine & Period Planner'}
-        subtitle={isBn ? 'শ্রেণি ও শিক্ষকভিত্তিক দ্বৈত সময়সূচি, শিক্ষক দ্বন্দ্ব নিরসন ও প্রিন্টবান্ধব রুটিন শিট।' : 'Interactive timetable grid with conflict detection and printable schedule.'}
       >
 
         <div className="flex items-center gap-2 flex-wrap">

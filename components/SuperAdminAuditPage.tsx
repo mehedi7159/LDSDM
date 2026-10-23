@@ -4,7 +4,6 @@ import { useApp } from '../context/AppContext';
 import { fetchPlatformAuditLogs, logAuditEvent } from '../services/auditLog';
 import type { PlatformAuditLogEntry, AuditActionType } from '../types/rbac';
 import { 
-  ShieldCheck, 
   ShieldAlert, 
   Lock, 
   Search, 
@@ -115,10 +114,6 @@ export const SuperAdminAuditPage: React.FC = () => {
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              <ShieldCheck size={14} className="text-emerald-400" />
-              <span>{language === 'bn' ? 'প্ল্যাটফর্ম ওনার সিকিউরিটি জোন' : 'Platform Owner Security Zone'}</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
               <span>{language === 'bn' ? 'সুপার এডমিন কন্ট্রোল ও অডিট লগ' : 'Super Admin Security Audit'}</span>
             </h1>
@@ -205,7 +200,6 @@ export const SuperAdminAuditPage: React.FC = () => {
               <div className="p-12 text-center text-slate-400 space-y-2">
                 <ShieldAlert size={32} className="mx-auto text-slate-300" />
                 <p className="text-xs font-semibold text-slate-600">No audit records found matching query.</p>
-                <p className="text-[11px] text-slate-400">Audit logs are recorded automatically when custom roles or memberships change.</p>
               </div>
             ) : (
               filteredLogs.map((log) => {

@@ -208,9 +208,7 @@ export const ClassSectionSetupView: React.FC = () => {
       {/* Header */}
       <PageHeader
         icon={Layers}
-        eyebrow={isBn ? 'শ্রেণি, শাখা ও শ্রেণি শিক্ষক বিন্যাস' : 'Class, Section & Class Teacher Setup'}
         title={isBn ? 'শ্রেণি ও শাখা সমন্বয়' : 'Classes & Sections Management'}
-        subtitle={isBn ? 'মাদ্রাসার সকল জামাত/শ্রেণি, শাখা নির্ধারণ, আসন ধারণক্ষমতা, কক্ষ বরাদ্দ ও শ্রেণি শিক্ষক নির্বাচন।' : 'Configure classes, multiple sections, student capacity, classroom mapping and assign class teachers.'}
       >
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -292,9 +290,6 @@ export const ClassSectionSetupView: React.FC = () => {
                 <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
                   {selectedClass ? selectedClass.name : (isBn ? 'শ্রেণি নির্বাচন করুন' : 'Select Class')}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {isBn ? 'এই শ্রেণির অধীন শাখা, রুম নম্বর ও শ্রেণি শিক্ষক পরিচালনা করুন।' : 'Manage sections and assigned class teachers.'}
-                </p>
               </div>
 
               <Button
@@ -322,7 +317,6 @@ export const ClassSectionSetupView: React.FC = () => {
                 <div className="col-span-2 p-8 border border-dashed border-slate-300 dark:border-slate-600 rounded-2xl text-center">
                   <Layers size={32} className="mx-auto text-slate-300 mb-2" />
                   <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{isBn ? 'এই শ্রেণির কোনো শাখা যোগ করা হয়নি' : 'No sections added'}</p>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'উপরের বাটনে ক্লিক করে শাখা যুক্ত করুন।' : 'Click above to add a section.'}</p>
                 </div>
               ) : (
                 currentSections.map((sec) => {

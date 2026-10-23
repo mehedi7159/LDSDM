@@ -299,9 +299,6 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
               <span className="text-blue-600 dark:text-blue-400">৳</span>
               <span>{isBn ? formatBanglaNumber(totalCashReserve) : totalCashReserve.toLocaleString()}</span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 font-medium">
-              {isBn ? 'সাধারণ, ছাত্রকল্যাণ ও উন্নয়ন ফান্ডের নিট ব্যালেন্স' : 'Consolidated net balance across all funds'}
-            </p>
           </div>
         </div>
 

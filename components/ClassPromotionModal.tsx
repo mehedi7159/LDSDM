@@ -384,15 +384,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   <h3 className="text-lg font-bold">
                     {language === 'bn' ? 'শ্রেণি উত্তরণ ও মেধানুযায়ী রোল বরাদ্দ' : 'Class Promotion & Merit-Based Progression'}
                   </h3>
-                  <span className="text-xs bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                    {language === 'bn' ? 'বাল্ক প্রমোশন' : 'Bulk Advancement'}
-                  </span>
                 </div>
-                <p className="text-xs text-slate-300">
-                  {language === 'bn'
-                    ? 'পরীক্ষার ফলাফল বা নিয়মের ভিত্তিতে শিক্ষার্থীদের পরবর্তী শ্রেণিতে উত্তীর্ণ করুন'
-                    : 'Promote students to the next academic level at the end of an exam session'}
-                </p>
               </div>
             </div>
 
@@ -766,7 +758,6 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   <div className="py-12 text-center text-slate-500">
                     <Users size={32} className="mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-sm">{language === 'bn' ? 'কোন শিক্ষার্থী পাওয়া যায়নি' : 'No students found'}</p>
-                    <p className="text-xs text-slate-400 mt-1">{language === 'bn' ? 'নির্বাচিত শ্রেণিতে কোন শিক্ষার্থী নথিভুক্ত নেই' : 'No active students enrolled in this class'}</p>
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse text-xs">
@@ -1022,11 +1013,6 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   <h4 className="font-bold text-slate-800 text-base">
                     {language === 'bn' ? 'পূর্ববর্তী শ্রেণি উত্তরণের ইতিহাস ও গেজেট' : 'Past Promotion History & Gazettes'}
                   </h4>
-                  <p className="text-xs text-slate-500">
-                    {language === 'bn'
-                      ? 'পূর্বে সম্পন্ন হওয়া সকল শ্রেণি উত্তরণের রেকর্ড এবং গেজেট প্রিন্ট করার সুবিধা'
-                      : 'Review past promotion sessions and reprint official promotion gazettes'}
-                  </p>
                 </div>
 
                 {promotionHistory.length > 0 && (
@@ -1044,9 +1030,6 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                 <div className="py-16 text-center text-slate-500 bg-white rounded-xl border border-slate-200">
                   <History size={36} className="mx-auto mb-2 text-slate-300" />
                   <p className="font-semibold text-sm">{language === 'bn' ? 'এখনো কোন শ্রেণি উত্তরণ সম্পন্ন করা হয়নি' : 'No promotion history recorded yet'}</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {language === 'bn' ? 'উত্তরণ সম্পন্ন করলে তা এখানে সংরক্ষিত থাকবে' : 'Completed promotions will appear here'}
-                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3">

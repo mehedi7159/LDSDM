@@ -125,11 +125,6 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 {notices.length}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">
-              {language === 'bn' 
-                ? 'মাদ্রাসার গুরুত্বপূর্ণ ঘোষণা, ছুটির নোটিশ ও ক্লাসের দৈনিক বাড়ির কাজ' 
-                : 'Important institutional notices, holidays and daily class activities'}
-            </p>
           </div>
         </div>
 

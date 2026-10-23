@@ -195,9 +195,7 @@ export const SyllabusPlannerView: React.FC = () => {
       {/* Top Header */}
       <PageHeader
         icon={FileText}
-        eyebrow={isBn ? 'পাঠ পরিকল্পনা ও কারিকুলাম ট্র্যাকার' : 'Lesson Plan & Syllabus Tracker'}
         title={isBn ? 'সিলেবাস ও পাঠ পরিকল্পনা' : 'Syllabus & Lesson Planning'}
-        subtitle={isBn ? 'টার্মভিত্তিক অধ্যায় রূপরেখা, পিরিয়ড সমাপ্তি অগ্রগতি ও শিক্ষক পাঠ নোট ট্র্যাকিং।' : 'Term-wise syllabus breakdown with period progress and lesson plan tracking.'}
       >
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -336,9 +334,6 @@ export const SyllabusPlannerView: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-10 text-center">
             <FileText size={36} className="mx-auto text-slate-300 mb-2" />
             <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">{isBn ? 'কোনো পাঠ পরিকল্পনা পাওয়া যায়নি' : 'No syllabus topics found'}</h4>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              {isBn ? 'নির্বাচিত শ্রেণি ও বিষয়ের জন্য নতুন অধ্যায় যুক্ত করুন।' : 'Add a new chapter for selected class & subject.'}
-            </p>
             <Button
               onClick={handleOpenAdd}
               className="mt-4 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold"

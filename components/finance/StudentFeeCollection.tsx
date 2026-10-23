@@ -847,9 +847,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   <h2 className="text-base font-bold text-slate-900 dark:text-white">
                     {isBn ? 'ছাত্র ফি গ্রহণ ও তাৎক্ষণিক মানি রসিদ' : 'Student Fee Collection Wizard'}
                   </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    {isBn ? 'ছাত্র নির্বাচন করুন, ফি টিক দিয়ে ১-ক্লিকে রসিদ প্রিন্ট বা পিডিএফ করুন' : 'Select student, check fee heads & generate 2-copy receipt'}
-                  </p>
                 </div>
               </div>
 
@@ -1164,10 +1161,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 </span>
               </div>
 
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isBn ? 'কোন ছাত্রের কত টাকা বকেয়া আছে দেখতে এবং এসএমএস পাঠাতে বকেয়া ডিরেক্টরি ব্যবহার করুন।' : 'View student-wise dues and copy reminder notices.'}
-              </p>
-
               <Button
                 onClick={() => setActiveSubTab('dues')}
                 size="sm"
@@ -1195,9 +1188,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 <Users className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                 <span>{isBn ? 'ছাত্র বকেয়া খতিয়ান ও পেমেন্ট আচরণ ডিরেক্টরি' : 'Student Dues & Behavioral Directory'}</span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isBn ? 'প্রতিটি ছাত্রের প্রদেয় ফি, পরিশোধের রেকর্ড, বকেয়া এবং পেমেন্ট প্যাটার্ন ট্র্যাক করুন' : 'Track student-wise dues, payment history, and behavioral tags'}
-              </p>
             </div>
 
             {/* Print & PDF Dues Sheet */}
@@ -1375,9 +1365,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   <h2 className="text-base font-bold text-slate-900 dark:text-white">
                     {isBn ? 'ছাত্র ফি বনাম উস্তাদ বেতন কভারেজ ইঞ্জিন (Salary Bridge)' : 'Student Fee ➔ Teacher Salary Bridge'}
                   </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    {isBn ? 'ছাত্রদের থেকে সংগৃহীত ফি দিয়ে উস্তাদদের বেতন নিশ্চিত করার লাইভ ব্যালেন্সিং ও রিকমেন্ডেশন' : 'Real-time liquidity bridge ensuring teacher salary payroll is backed by student fee inflows'}
-                  </p>
                 </div>
               </div>
 
@@ -1486,9 +1473,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
               <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               <span>{isBn ? 'জামাতভিত্তিক ফি আদায় ও বকেয়ার সামগ্রিক চিত্র' : 'Class-wise Fee & Due Breakdown'}</span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isBn ? 'প্রতিটি শ্রেণির মোট ছাত্র, প্রদেয় ফি, আদায় ও আদায়ের হার' : 'Performance and collection rate across each class'}
-            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1540,9 +1524,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 <span>{isBn ? 'সাম্প্রতিক ছাত্র ফি আদায়ের খতিয়ান' : 'Recent Fee Transactions'}</span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isBn ? 'সর্বশেষ আদায়কৃত ছাত্র ফির তালিকা ও মানি রসিদ পুনরায় প্রিন্ট করার সুবিধা' : 'Latest student fee receipts with instant reprint'}
-              </p>
             </div>
           </div>
 

@@ -874,11 +874,6 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                 {notices.length}
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              {isBn 
-                ? 'জরুরি আপডেট, ক্লাস বাতিল ও পরীক্ষার নোটিশ প্রকাশ করুন যা ড্যাশবোর্ডে চলমান মারকুই ও ব্যানার হিসেবে প্রদর্শিত হবে।' 
-                : 'Post urgent announcements, class cancellations, and exam schedules to appear as marquee and dashboard alerts.'}
-            </p>
           </div>
         </div>
 
@@ -1028,8 +1023,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
           icon={Megaphone}
           title={isBn ? 'কোনো নোটিশ পাওয়া যায়নি' : 'No notices match your filter'}
           description={isBn 
-            ? 'এই ফিল্টারে বর্তমানে কোনো বিজ্ঞপ্তি নেই। নতুন বিজ্ঞপ্তি প্রকাশ করতে নিচের বোতামটি ব্যবহার করুন।' 
-            : 'There are no announcements currently matching this category.'}
+            ? 'এই ফিল্টারে কোনো বিজ্ঞপ্তি নেই।' 
+            : 'No announcements in this category.'}
           actionLabel={canManage ? (isBn ? 'নতুন নোটিশ প্রকাশ করুন' : 'Post New Notice') : undefined}
           onAction={canManage ? () => openCompose() : undefined}
           actionIcon={Plus}

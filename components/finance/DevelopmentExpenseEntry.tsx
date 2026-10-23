@@ -108,9 +108,6 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 {isBn ? 'মাদ্রাসা উন্নয়ন, নির্মাণ ও সংস্কার ব্যয়' : 'Madrasah Development & Construction'}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {isBn ? 'ভবন নির্মাণ সামগ্রী, মিস্ত্রি মজুরি ও সংস্কার খরচের ডেবিট ভাউচার' : 'Record building, hardware, renovation and contractor fees'}
-              </p>
             </div>
           </div>
         </div>
@@ -276,12 +273,6 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
             <Building2 className="w-4 h-4 text-amber-300" />
             {isBn ? 'উন্নয়ন ও নির্মাণ তহবিল' : 'Development Fund Tracking'}
           </h3>
-
-          <p className="mt-3 text-xs text-amber-100/90 leading-relaxed">
-            {isBn 
-              ? 'মাদ্রাসার নতুন ভবন নির্মাণ, মসজিদ সম্প্রসারণ ও সংস্কারের খরচের হিসাব সম্পূর্ণ সুরক্ষিত থাকে।' 
-              : 'Dedicated development accounting ensures every brick, bag of cement and mason payment is audited.'}
-          </p>
 
           <div className="mt-4 pt-3 border-t border-amber-600/80 space-y-2 text-xs">
             <div className="flex justify-between">

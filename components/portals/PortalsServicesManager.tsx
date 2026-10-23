@@ -15,7 +15,6 @@ import {
   Search, 
   Filter, 
   Printer, 
-  Sparkles, 
   Award, 
   UserPlus, 
   GraduationCap,
@@ -617,19 +616,10 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-bold tracking-wide">
-              <Sparkles size={14} className="animate-spin text-teal-300" style={{ animationDuration: '6s' }} />
-              <span>{isBn ? 'ধাপ ৯ • পোর্টাল, যোগাযোগ ও বিশেষ সেবা' : 'Step 9 • Portals, SMS & Special Services Suite'}</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white flex items-center gap-3">
               <Globe className="text-teal-400 shrink-0" size={32} />
               <span>{isBn ? 'পোর্টাল, এসএমএস ও বিশেষ সেবা কেন্দ্র' : 'Portals, SMS & Special Services Hub'}</span>
             </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              {isBn 
-                ? 'অভিভাবক পোর্টাল, অনলাইন রেজাল্ট ও কিউআর যাচাই, ভর্তি আবেদন ট্র্যাকার, এসএমএস নোটিফিকেশন গেটওয়ে, আবাসিক বোর্ডিং মেস এবং ছাত্রকল্যাণ ও উপবৃত্তি ফান্ড।'
-                : 'Unified hub for Guardian Portal, Web Results, QR Verification, Online Admissions, SMS Gateway, Residential Mess, and Student Welfare/Stipend.'}
-            </p>
           </div>
 
           {/* Quick Metrics Matrix */}
@@ -1283,17 +1273,9 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           {/* Public Result Simulator Header */}
           <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-indigo-800/40 shadow-lg">
             <div className="max-w-2xl space-y-3">
-              <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30">
-                {isBn ? 'অনলাইন রেজাল্ট ও কিউআর যাচাই গেটওয়ে' : 'Public Web Results & QR Verification Gateway'}
-              </span>
               <h2 className="text-xl sm:text-2xl font-black text-white">
                 {isBn ? 'পাবলিক রেজাল্ট পোর্টাল ও তাত্ক্ষণিক ভেরিফিকেশন' : 'Public Result Search & Instant Verification'}
               </h2>
-              <p className="text-xs sm:text-sm text-indigo-200/80 leading-relaxed">
-                {isBn 
-                  ? 'মাদ্রাসার অফিসিয়াল ওয়েবসাইটে রোল বা স্টুডেন্ট আইডি দিয়ে শিক্ষার্থী বা অভিভাবক যে রেজাল্ট দেখতে পাবেন তার লাইভ প্রিভিউ ও কিউআর কোড স্ক্যানার ভেরিফায়ার।'
-                  : 'Live preview of the public result sheet and QR verification seal that students and parents experience when searching online.'}
-              </p>
             </div>
 
             {/* Public Search Form Simulator */}

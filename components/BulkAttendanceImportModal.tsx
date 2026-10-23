@@ -13,7 +13,6 @@ import {
   Users, 
   RefreshCw, 
   Check, 
-  HelpCircle,
   FileText,
   Layers,
   ArrowRight,
@@ -336,11 +335,6 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
                   {selectedClass} • {selectedExam?.name}
                 </span>
               </div>
-              <p className="text-xs text-slate-300">
-                {language === 'bn' 
-                  ? 'এক্সেলে তৈরি হাজিরা শিট কপি-পেস্ট বা আপলোড করে এক ক্লিকে পুরো ক্লাসের হাজিরা যুক্ত করুন' 
-                  : 'Paste or upload daily working days, presence, and remarks for the entire class at once'}
-              </p>
             </div>
           </div>
 
@@ -441,10 +435,6 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
               />
 
               <div className="flex items-center justify-between text-[11px] text-slate-500">
-                <span className="flex items-center gap-1">
-                  <HelpCircle size={13} className="text-indigo-600" />
-                  <span>এক্সেলের যেকোনো সারি কপি করে এখানে পেস্ট করলেই তা স্বয়ংক্রিয়ভাবে প্রসেস হবে।</span>
-                </span>
                 {pastedText && (
                   <button
                     type="button"
@@ -503,7 +493,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
                     {language === 'bn' ? 'এক ক্লিকে পুরো ক্লাসের ডিফল্ট হাজিরা তৈরি করুন' : 'Fast Auto-Fill Preset for All Students'}
                   </span>
                   <span className="text-[11px] text-amber-700 block">
-                    {language === 'bn' ? 'সকল শিক্ষার্থীর জন্য একযোগে কর্মদিবস ও পূর্ণ উপস্থিতি সেট করে প্রয়োজনমতো এডিট করুন' : 'Set standard working days and full presence for all students with one click'}
+                    {language === 'bn' ? 'সবার কর্মদিবস ও পূর্ণ উপস্থিতি সেট হবে' : 'Sets working days and full presence for all'}
                   </span>
                 </div>
 

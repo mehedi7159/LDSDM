@@ -583,9 +583,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       <PageHeader
         icon={Users}
         title={language === 'bn' ? '২. শিক্ষার্থী ব্যবস্থাপনা' : '2. Student Management'}
-        subtitle={language === 'bn'
-          ? 'শিক্ষার্থীর সম্পূর্ণ তথ্য, ভর্তি কার্যক্রম, প্রোফাইল, অভিভাবক ও ছাড়পত্র'
-          : 'Complete Student Directory, Admissions, Profiles, Guardians & Transfers'}
       >
         <div className="flex items-center gap-2 flex-wrap">
           {canCreate && (
@@ -636,7 +633,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <Users size={16} className="text-teal-600 dark:text-teal-400" />
           </div>
           <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 font-bangla">{formatNumber(allCurrentStudentsList.length, language)}</p>
-          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold">{language === 'bn' ? 'বর্তমান রেজিস্টার্ড' : 'Enrolled'}</span>
         </div>
 
         <div 
@@ -648,7 +644,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <UserCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1 font-bangla">{formatNumber(activeStudentsList.length, language)}</p>
-          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">{language === 'bn' ? 'নিয়মিত তালিবুল ইলম' : 'Regular Students'}</span>
         </div>
 
         <div 
@@ -660,7 +655,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <UserX size={16} className="text-amber-600 dark:text-amber-400" />
           </div>
           <p className="text-2xl font-black text-amber-900 dark:text-amber-200 mt-1 font-bangla">{formatNumber(inactiveStudentsList.length, language)}</p>
-          <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">{language === 'bn' ? 'ছুটি / পরীক্ষা ছাড়া' : 'On Leave'}</span>
         </div>
 
         <div 
@@ -672,7 +666,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <UserMinus size={16} className="text-slate-600 dark:text-slate-300" />
           </div>
           <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 font-bangla">{formatNumber(formerStudentsList.length, language)}</p>
-          <span className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold">{language === 'bn' ? 'ছাড়পত্র / সাবেক' : 'TC / Alumni'}</span>
         </div>
 
         <div 
@@ -684,7 +677,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <Layers size={16} className="text-indigo-600 dark:text-indigo-400" />
           </div>
           <p className="text-2xl font-black text-indigo-900 dark:text-indigo-200 mt-1 font-bangla">{formatNumber(classes.length, language)}</p>
-          <span className="text-[10px] text-indigo-700 dark:text-indigo-400 font-semibold">{language === 'bn' ? 'মোট একাডেমিক স্তর' : 'Academic Levels'}</span>
         </div>
       </div>
 
@@ -816,9 +808,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <Award className="text-teal-700 dark:text-teal-400" size={20} />
                   <span>{language === 'bn' ? 'শিক্ষার্থী ছাড়পত্র ও প্রশংসাপত্র (TC) প্রদান' : 'Issue Transfer Certificate'}</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  {language === 'bn' ? 'যেকোনো শিক্ষার্থী নির্বাচন করে সাথে সাথে অফিশিয়াল ছাড়পত্র তৈরি ও প্রিন্ট করুন' : 'Select a student to generate and print TC'}
-                </p>
               </div>
             </div>
 
@@ -1126,7 +1115,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <EmptyState
                       icon={Users}
                       title={activeTab === 'former' ? t('noFormerStudents') : activeTab === 'inactive' ? (language === 'bn' ? 'কোনো অনিয়মিত শিক্ষার্থী নেই' : 'No inactive students found') : (language === 'bn' ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found')}
-                      description={language === 'bn' ? 'বর্তমান ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী পাওয়া যায়নি।' : 'No student records match the current search or filter.'}
                       actionLabel={canAdd ? (language === 'bn' ? 'নতুন শিক্ষার্থী ভর্তি' : 'New Admission') : undefined}
                       onAction={canAdd ? () => setSubTab('admission') : undefined}
                       actionIcon={UserPlus}
@@ -1291,7 +1279,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               <EmptyState
                 icon={Users}
                 title={activeTab === 'former' ? t('noFormerStudents') : activeTab === 'inactive' ? (language === 'bn' ? 'কোনো অনিয়মিত শিক্ষার্থী নেই' : 'No inactive students found') : (language === 'bn' ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found')}
-                description={language === 'bn' ? 'বর্তমান ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী পাওয়া যায়নি।' : 'No student records match the current search or filter.'}
                 actionLabel={canAdd ? (language === 'bn' ? 'নতুন শিক্ষার্থী ভর্তি' : 'New Admission') : undefined}
                 onAction={canAdd ? () => setSubTab('admission') : undefined}
                 actionIcon={UserPlus}
@@ -1585,9 +1572,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 <h3 className="text-base sm:text-lg font-bold">
                   {editingId ? (language === 'bn' ? 'শিক্ষার্থীর তথ্য সম্পাদনা' : 'Edit Student Profile') : (language === 'bn' ? 'নতুন শিক্ষার্থী ভর্তি ও নিবন্ধন' : 'New Student Registration')}
                 </h3>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                  {language === 'bn' ? 'সকল প্রয়োজনীয় তথ্য সঠিকভাবে পূরণ করুন।' : 'Please fill all required student profile fields.'}
-                </p>
               </div>
               <button 
                 type="button"

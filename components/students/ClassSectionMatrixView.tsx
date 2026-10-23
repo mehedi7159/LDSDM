@@ -64,19 +64,16 @@ export const ClassSectionMatrixView: React.FC<ClassSectionMatrixViewProps> = ({
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{isBn ? 'মোট শ্রেণি / জামাত' : 'Total Classes'}</p>
           <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{formatNumber(classes.length, language)}</p>
-          <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">{isBn ? 'মাদ্রাসার নিয়মিত শ্রেণি' : 'Academic Levels'}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-2xs bg-teal-50/30">
           <p className="text-xs font-bold text-teal-700 dark:text-teal-400 uppercase">{isBn ? 'মোট শিক্ষার্থী' : 'Total Students'}</p>
           <p className="text-2xl font-black text-teal-900 dark:text-teal-200 mt-1">{formatNumber(totalCurrentStudents, language)}</p>
-          <span className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold">{isBn ? 'সব শ্রেণি মিলিয়ে' : 'Across All Classes'}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/30">
           <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">{isBn ? 'গড় শিক্ষার্থী প্রতি শ্রেণি' : 'Average / Class'}</p>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1">
             {formatNumber(classes.length > 0 ? Math.round(totalCurrentStudents / classes.length) : 0, language)}
           </p>
-          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">{isBn ? 'সুষ্ঠু শ্রেণি বণ্টন' : 'Balanced Capacity'}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-2xs bg-indigo-50/30">
           <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase">{isBn ? 'সর্বোচ্চ শিক্ষার্থী শ্রেণি' : 'Largest Class'}</p>
@@ -87,7 +84,6 @@ export const ClassSectionMatrixView: React.FC<ClassSectionMatrixViewProps> = ({
               return maxCls ? `${maxCls.cls.name} (${formatNumber(maxCls.total, language)})` : '—';
             })()}
           </p>
-          <span className="text-[11px] text-indigo-700 dark:text-indigo-400 font-semibold">{isBn ? 'সর্বাধিক ভর্তি' : 'Highest Enrollment'}</span>
         </div>
       </div>
 

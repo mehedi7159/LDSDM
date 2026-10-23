@@ -168,11 +168,7 @@ export const NoticeBoardManager: React.FC = () => {
         tone="brand"
         className="print:hidden"
         icon={Megaphone}
-        eyebrow={language === 'bn' ? 'ডিজিটাল নোটিশ ও ঘোষণা বোর্ড' : 'Institutional Notice Board & Daily Diary'}
         title={language === 'bn' ? 'নোটিশ বোর্ড ও দৈনিক ডায়েরি ব্যবস্থাপনা' : 'Notice Board & Daily Activities'}
-        subtitle={language === 'bn'
-          ? 'মাদ্রাসার সমস্ত জরুরি নোটিশ, ছুটির বিজ্ঞপ্তি, পরীক্ষা বার্তা ও দৈনিক ক্লাসের বাড়ির কাজ পোস্ট ও পরিচালনা করুন।'
-          : 'Post and manage announcements, holidays, exam notifications and daily homework activities.'}
       >
         {canManage && (
           <Button

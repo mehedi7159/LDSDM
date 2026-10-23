@@ -248,25 +248,34 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   }, [searchedStudent, activeExam, subjects, marks, exams]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white relative">
       
       {/* Subtle Top Ambient Lighting */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-indigo-600/10 blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-indigo-500/10 dark:bg-indigo-600/10 blur-3xl pointer-events-none" />
 
       {/* Top Header */}
-      <header className="relative z-10 border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="relative z-10 border-b border-slate-200 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/70 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div 
           onClick={() => { setCurrentView('gateway'); setErrorMessage(''); }}
           className="flex items-center gap-3 cursor-pointer group"
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-600/20 group-hover:scale-105 transition-transform">
-            <Building2 size={20} />
-          </div>
+          {schoolProfile.logoUrl ? (
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+              <img src={schoolProfile.logoUrl} alt="School Logo" className="w-full h-full object-contain p-0.5" referrerPolicy="no-referrer" />
+            </div>
+          ) : (
+            <div
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-md group-hover:scale-105 transition-transform shrink-0"
+              style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+            >
+              <Building2 size={20} />
+            </div>
+          )}
           <div>
-            <h1 className="font-bold text-sm sm:text-base text-white tracking-tight leading-tight">
+            <h1 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight leading-tight">
               {schoolProfile.nameBn || schoolProfile.name}
             </h1>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {schoolProfile.addressBn || schoolProfile.address || 'স্মার্ট মাদ্রাসা ও শিক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম'}
             </p>
           </div>
@@ -277,7 +286,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
           <button
             onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-sm transition"
           >
             {language === 'bn' ? 'English' : 'বাংলা'}
           </button>
@@ -295,18 +304,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
             
             {/* Header Text */}
             <div className="text-center space-y-2.5 max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
-                <Sparkles size={13} className="text-indigo-400" />
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium shadow-sm"
+                style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
+              >
+                <Sparkles size={13} className="text-amber-500" />
                 <span>দারুল উলুম মাদ্রাসা পোর্টাল</span>
               </div>
               
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
                 {schoolProfile.nameBn || schoolProfile.name}
               </h2>
-              
-              <p className="text-xs sm:text-sm text-slate-400">
-                নিচের যেকোনো একটি অপশন নির্বাচন করুন: শিক্ষার্থী/অভিভাবক ফলাফল অনুসন্ধান অথবা প্রাতিষ্ঠানিক অ্যাকাউন্ট লগইন
-              </p>
             </div>
 
             {/* 2 Primary Choice Cards */}
@@ -315,25 +323,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {/* OPTION 1: RESULT SEARCH */}
               <div 
                 onClick={() => setCurrentView('results')}
-                className="group relative bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-950/40 cursor-pointer flex flex-col justify-between"
+                className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-emerald-950/40 cursor-pointer flex flex-col justify-between"
               >
                 <div className="space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                     <Award size={28} />
                   </div>
 
                   <div className="space-y-1.5">
-                    <h3 className="text-lg sm:text-xl font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center justify-between">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center justify-between">
                       <span>পরীক্ষার ফলাফল ও মার্কশিট</span>
-                      <ChevronRight size={18} className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                      <ChevronRight size={18} className="text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                       শিক্ষার্থী বা অভিভাবকগণ রোল নম্বর ও পরীক্ষা নির্বাচন করে সরাসরি ফলাফল, বিষয়ভিত্তিক নম্বর ও ডিজিটাল মার্কশিট দেখুন।
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-semibold text-emerald-400">
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                   <span className="flex items-center gap-1.5">
                     <Search size={14} />
                     <span>লগইন ছাড়াই সরাসরি রেজাল্ট চেক</span>
@@ -345,25 +353,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {/* OPTION 2: ACCOUNT LOGIN */}
               <div 
                 onClick={() => { setCurrentView('login'); setErrorMessage(''); }}
-                className="group relative bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-950/40 cursor-pointer flex flex-col justify-between"
+                className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-indigo-950/40 cursor-pointer flex flex-col justify-between"
               >
                 <div className="space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                     <LogIn size={28} />
                   </div>
 
                   <div className="space-y-1.5">
-                    <h3 className="text-lg sm:text-xl font-bold text-white group-hover:text-indigo-400 transition-colors flex items-center justify-between">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex items-center justify-between">
                       <span>অ্যাকাউন্ট লগইন / প্রবেশ</span>
-                      <ChevronRight size={18} className="text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                      <ChevronRight size={18} className="text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                       অধ্যক্ষ, শিক্ষক, হিসাবরক্ষক ও কর্মীদের জন্য ক্লাসরুম ম্যানেজমেন্ট, মার্কস এন্ট্রি, হাজিরা ও প্রাতিষ্ঠানিক পোর্টাল।
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-semibold text-indigo-400">
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                   <span className="flex items-center gap-1.5">
                     <Shield size={14} />
                     <span>সুরক্ষিত স্টাফ ও অভিভাবক পোর্টাল</span>
@@ -377,7 +385,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
             {/* Quick Helper Note */}
             <div className="text-center">
               <p className="text-xs text-slate-500">
-                শিক্ষাবর্ষ: <strong className="text-slate-400">{toBn(schoolProfile.academicYear || '২০২৬')}</strong> · কোনো সহায়তার জন্য মাদ্রাসার অফিসে যোগাযোগ করুন।
+                শিক্ষাবর্ষ: <strong className="text-slate-600 dark:text-slate-400">{toBn(schoolProfile.academicYear || '২০২৬')}</strong> · কোনো সহায়তার জন্য মাদ্রাসার অফিসে যোগাযোগ করুন।
               </p>
             </div>
 
@@ -390,12 +398,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
         {(currentView === 'login' || currentView === 'register') && (
           <div className="w-full max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300">
             
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-slate-950/80">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/80">
               
               {/* Back to Gateway Button */}
               <button
                 onClick={() => { if (onBack) onBack(); else setCurrentView('gateway'); setErrorMessage(''); }}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 mb-5 font-medium transition cursor-pointer"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 mb-5 font-medium transition cursor-pointer"
               >
                 <ArrowLeft size={14} />
                 <span>মূল অপশনে ফিরে যান</span>
@@ -403,26 +411,27 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
               {/* Title & Brand */}
               <div className="text-center space-y-1 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto mb-2">
+                <div
+                  className="w-12 h-12 rounded-2xl border flex items-center justify-center mx-auto mb-2 shadow-sm"
+                  style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
+                >
                   <Lock size={22} />
                 </div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                   {currentView === 'login' ? 'অ্যাকাউন্টে প্রবেশ করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
                 </h2>
-                <p className="text-xs text-slate-400">
-                  {currentView === 'login' ? 'আপনার ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন' : 'প্রয়োজনীয় তথ্য প্রদান করে নিবন্ধন সম্পন্ন করুন'}
-                </p>
               </div>
 
               {/* Tab Switcher */}
-              <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 mb-5">
+              <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 mb-5">
                 <button
                   type="button"
                   onClick={() => { setCurrentView('login'); setErrorMessage(''); setSuccessMessage(''); }}
+                  style={currentView === 'login' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' } : undefined}
                   className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     currentView === 'login'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
                   লগইন
@@ -430,10 +439,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 <button
                   type="button"
                   onClick={() => { setCurrentView('register'); setErrorMessage(''); setSuccessMessage(''); }}
+                  style={currentView === 'register' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' } : undefined}
                   className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     currentView === 'register'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
                   নতুন অ্যাকাউন্ট
@@ -442,14 +452,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
               {/* Alert Messages */}
               {errorMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                  <AlertCircle size={15} className="shrink-0 text-rose-400" />
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0 text-rose-500 dark:text-rose-400" />
                   <span>{errorMessage}</span>
                 </div>
               )}
               {successMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-                  <CheckCircle2 size={15} className="shrink-0 text-emerald-400" />
+                <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+                  <CheckCircle2 size={15} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
                   <span>{successMessage}</span>
                 </div>
               )}
@@ -458,49 +468,49 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {currentView === 'login' && (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                       ইমেইল ঠিকানা (Email)
                     </label>
                     <div className="relative">
-                      <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         type="email"
                         required
                         placeholder="yourname@madrasha.edu.bd"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                       />
                     </div>
                   </div>
 
                   <div>
                     <div className="flex justify-between items-center mb-1.5">
-                      <label className="block text-xs font-semibold text-slate-300">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                         পাসওয়ার্ড (Password)
                       </label>
                       <button
                         type="button"
                         onClick={() => setIsResetOpen(true)}
-                        className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium"
+                        className="text-[11px] text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
                       >
                         পাসওয়ার্ড ভুলে গেছেন?
                       </button>
                     </div>
                     <div className="relative">
-                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         placeholder="••••••••"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                       >
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
@@ -510,7 +520,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+                    className="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110 active:scale-98"
+                    style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
                   >
                     {isSubmitting ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -528,7 +539,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                       type="button"
                       onClick={handleGoogleLogin}
                       disabled={isSubmitting}
-                      className="w-full py-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-2.5 transition"
+                      className="w-full py-2.5 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold shadow-sm flex items-center justify-center gap-2.5 transition"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -546,42 +557,42 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {currentView === 'register' && (
                 <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       পূর্ণ নাম *
                     </label>
                     <div className="relative">
-                      <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         type="text"
                         required
                         placeholder="যেমন: মাওলানা মাহমুদুর রহমান"
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full pl-10 pr-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       ইমেইল ঠিকানা *
                     </label>
                     <div className="relative">
-                      <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         type="email"
                         required
                         placeholder="teacher@madrasha.edu.bd"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full pl-10 pr-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         মোবাইল নম্বর
                       </label>
                       <input
@@ -589,11 +600,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                         placeholder="017XXXXXXXX"
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         পাসওয়ার্ড *
                       </label>
                       <input
@@ -602,19 +613,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                         placeholder="কমপক্ষে ৬ অক্ষর"
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       আপনার ভূমিকা / পদবী *
                     </label>
                     <select
                       value={regRole}
                       onChange={(e) => setRegRole(e.target.value)}
-                      className="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full p-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                     >
                       <option value="সহকারী শিক্ষক (Teacher)">👨‍🏫 সহকারী শিক্ষক (Teacher)</option>
                       <option value="হিসাবরক্ষক / ক্যাশিয়ার (Accountant)">💼 হিসাবরক্ষক / ক্যাশিয়ার (Accountant)</option>
@@ -627,7 +638,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition cursor-pointer"
+                    className="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition cursor-pointer hover:brightness-110"
+                    style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
                   >
                     {isSubmitting ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -642,13 +654,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               )}
 
               {/* Bottom Direct Switch to Results & Student Profile */}
-              <div className="mt-6 pt-4 border-t border-slate-800 text-center space-y-2">
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
                 {onStudentProfile && (
                   <div>
                     <button
                       type="button"
                       onClick={onStudentProfile}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center justify-center gap-1.5 mx-auto"
+                      className="text-xs text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold flex items-center justify-center gap-1.5 mx-auto"
                     >
                       <GraduationCap size={14} />
                       <span>{language === 'bn' ? 'শিক্ষার্থী আইডি দিয়ে নিজস্ব সম্পূর্ণ প্রোফাইল দেখুন →' : 'Sign in to Student Profile Portal →'}</span>
@@ -658,7 +670,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 <button
                   type="button"
                   onClick={() => setCurrentView('results')}
-                  className="text-xs text-slate-400 hover:text-slate-300 font-medium"
+                  className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 font-medium"
                 >
                   {language === 'bn' ? 'সরাসরি পাবলিক পরীক্ষার ফলাফল চেক করুন →' : 'Check Public Exam Results →'}
                 </button>
@@ -679,7 +691,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
             <div className="flex items-center justify-between">
               <button
                 onClick={() => { if (onBack) onBack(); else setCurrentView('gateway'); }}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 font-medium transition cursor-pointer"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium transition cursor-pointer"
               >
                 <ArrowLeft size={14} />
                 <span>মূল অপশনে ফিরে যান</span>
@@ -687,7 +699,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
               <button
                 onClick={() => { setCurrentView('login'); setErrorMessage(''); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-white rounded-xl text-xs font-semibold transition shadow-sm hover:brightness-110"
+                style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
               >
                 <LogIn size={13} />
                 <span>অ্যাকাউন্ট লগইন</span>
@@ -695,24 +708,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
             </div>
 
             {/* Search Box Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
                   <Award size={20} />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold text-white">পরীক্ষার ফলাফল অনুসন্ধান</h2>
-                  <p className="text-xs text-slate-400">পরীক্ষা নির্বাচন করুন এবং শিক্ষার্থীর রোল বা আইডি নম্বর লিখুন</p>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">পরীক্ষার ফলাফল অনুসন্ধান</h2>
                 </div>
               </div>
 
               <form onSubmit={handleResultSearch} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                 <div className="sm:col-span-5">
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">পরীক্ষা নির্বাচন</label>
+                  <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">পরীক্ষা নির্বাচন</label>
                   <select
                     value={selectedExamId}
                     onChange={(e) => setSelectedExamId(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   >
                     {exams.map(e => (
                       <option key={e.id} value={e.id}>{e.nameBn || e.name} ({toBn(e.academicYear || '২০২৬')})</option>
@@ -721,21 +733,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 </div>
 
                 <div className="sm:col-span-5">
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">রোল নম্বর অথবা স্টুডেন্ট আইডি</label>
+                  <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">রোল নম্বর অথবা স্টুডেন্ট আইডি</label>
                   <input
                     type="text"
                     required
                     placeholder="যেমন: 101 বা S-001"
                     value={searchStudentQuery}
                     onChange={(e) => setSearchStudentQuery(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div className="sm:col-span-2 flex items-end">
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <Search size={14} />
                     <span>খুঁজুন</span>
@@ -746,37 +758,37 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
             {/* Results Display */}
             {hasSearched && !studentResultData && (
-              <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-8 text-center space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto">
+              <div className="bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 text-center space-y-2 shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-500 dark:text-rose-400 flex items-center justify-center mx-auto">
                   <AlertCircle size={24} />
                 </div>
-                <h3 className="text-sm font-bold text-white">কোনো ফলাফল পাওয়া যায়নি</h3>
-                <p className="text-xs text-slate-400">অনুগ্রহ করে রোল বা আইডি সঠিক কিনা যাচাই করে পুনরায় অনুসন্ধান করুন।</p>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">কোনো ফলাফল পাওয়া যায়নি</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">অনুগ্রহ করে রোল বা আইডি সঠিক কিনা যাচাই করে পুনরায় অনুসন্ধান করুন।</p>
               </div>
             )}
 
             {studentResultData && (
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl shadow-slate-200/60 dark:shadow-black/40">
                 
                 {/* Result Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-800 gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-100 dark:border-slate-800 gap-4">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider font-semibold">
+                    <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-semibold">
                       {studentResultData.exam.nameBn || studentResultData.exam.name} · {toBn(studentResultData.exam.academicYear || '২০২৬')}
                     </span>
-                    <h3 className="text-lg sm:text-xl font-bold text-white">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                       {studentResultData.student.nameBn || studentResultData.student.name}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <span>আইডি: <strong className="text-slate-200">{studentResultData.student.studentId}</strong></span>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span>আইডি: <strong className="text-slate-700 dark:text-slate-200">{studentResultData.student.studentId}</strong></span>
                       <span>·</span>
-                      <span>শ্রেণি: <strong className="text-slate-200">{studentResultData.student.class || studentResultData.student.classLevel}</strong></span>
+                      <span>শ্রেণি: <strong className="text-slate-700 dark:text-slate-200">{studentResultData.student.class || studentResultData.student.classLevel}</strong></span>
                       <span>·</span>
-                      <span>রোল: <strong className="text-slate-200">{toBn(studentResultData.student.roll)}</strong></span>
+                      <span>রোল: <strong className="text-slate-700 dark:text-slate-200">{toBn(studentResultData.student.roll)}</strong></span>
                       {studentResultData.student.section && (
                         <>
                           <span>·</span>
-                          <span>শাখা: <strong className="text-slate-200">{studentResultData.student.section}</strong></span>
+                          <span>শাখা: <strong className="text-slate-700 dark:text-slate-200">{studentResultData.student.section}</strong></span>
                         </>
                       )}
                     </div>
@@ -785,14 +797,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   {/* Summary GPA Box */}
                   <div className={`p-3.5 rounded-2xl border flex items-center gap-3 ${
                     studentResultData.gpaStats.isPassed
-                      ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
-                      : 'bg-rose-950/40 border-rose-800/60 text-rose-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300'
                   }`}>
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-slate-400">ফলাফল / GPA</div>
+                      <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">ফলাফল / GPA</div>
                       <div className="text-2xl font-black">{toBn(studentResultData.gpaStats.gpa)}</div>
                     </div>
-                    <div className="text-right border-l border-white/10 pl-3">
+                    <div className="text-right border-l border-slate-900/10 dark:border-white/10 pl-3">
                       <div className="text-xs font-extrabold">{studentResultData.gpaStats.grade}</div>
                       <div className="text-[11px] font-bold">
                         {studentResultData.gpaStats.isPassed ? 'উত্তীর্ণ (Passed)' : 'অনুত্তীর্ণ (Failed)'}
@@ -802,9 +814,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 </div>
 
                 {/* Subject-Wise Marks Table */}
-                <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+                    <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
                       <tr>
                         <th className="p-3">বিষয়</th>
                         <th className="p-3 text-center">পূর্ণমান</th>
@@ -813,34 +825,34 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                         <th className="p-3 text-center">গ্রেড পয়েন্ট</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {studentResultData.subjectBreakdown.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-800/40 transition">
-                          <td className="p-3 font-medium text-slate-200">
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                          <td className="p-3 font-medium text-slate-700 dark:text-slate-200">
                             {row.subject.nameBn || row.subject.name}
                           </td>
-                          <td className="p-3 text-center text-slate-400">{toBn(row.fullMarks)}</td>
-                          <td className="p-3 text-center font-bold text-white">{toBn(row.obtained)}</td>
+                          <td className="p-3 text-center text-slate-500 dark:text-slate-400">{toBn(row.fullMarks)}</td>
+                          <td className="p-3 text-center font-bold text-slate-900 dark:text-white">{toBn(row.obtained)}</td>
                           <td className="p-3 text-center">
-                            <span className={`font-bold ${row.isPassed ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            <span className={`font-bold ${row.isPassed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                               {row.grade}
                             </span>
                           </td>
-                          <td className="p-3 text-center font-mono text-slate-300">{toBn(row.gpa)}</td>
+                          <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-300">{toBn(row.gpa)}</td>
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="bg-slate-950/80 font-bold border-t border-slate-800">
+                    <tfoot className="bg-slate-50 dark:bg-slate-950/80 font-bold border-t border-slate-200 dark:border-slate-800">
                       <tr>
-                        <td className="p-3 text-slate-300">সর্বমোট প্রাপ্ত নম্বর</td>
-                        <td className="p-3 text-center text-slate-400">
+                        <td className="p-3 text-slate-700 dark:text-slate-300">সর্বমোট প্রাপ্ত নম্বর</td>
+                        <td className="p-3 text-center text-slate-500 dark:text-slate-400">
                           {toBn(studentResultData.subjectBreakdown.reduce((sum, r) => sum + r.fullMarks, 0))}
                         </td>
-                        <td className="p-3 text-center text-emerald-400 font-extrabold">
+                        <td className="p-3 text-center text-emerald-600 dark:text-emerald-400 font-extrabold">
                           {toBn(studentResultData.gpaStats.totalMarks)}
                         </td>
-                        <td className="p-3 text-center text-emerald-400">{studentResultData.gpaStats.grade}</td>
-                        <td className="p-3 text-center font-mono text-emerald-400">{toBn(studentResultData.gpaStats.gpa)}</td>
+                        <td className="p-3 text-center text-emerald-600 dark:text-emerald-400">{studentResultData.gpaStats.grade}</td>
+                        <td className="p-3 text-center font-mono text-emerald-600 dark:text-emerald-400">{toBn(studentResultData.gpaStats.gpa)}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -851,7 +863,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
                   >
                     <Printer size={14} />
                     <span>প্রিন্ট মার্কশিট</span>
@@ -867,19 +879,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-800/60 bg-slate-950/80 py-3 text-center text-[11px] text-slate-500">
+      <footer className="relative z-10 border-t border-slate-200 dark:border-slate-800/60 bg-white/70 dark:bg-slate-950/80 py-3 text-center text-[11px] text-slate-500">
         © {new Date().getFullYear()} {schoolProfile.nameBn || schoolProfile.name}. সর্বস্বত্ব সংরক্ষিত।
       </footer>
 
       {/* Forgot Password Modal */}
       {isResetOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
-            <h3 className="font-bold text-sm text-white flex items-center gap-2">
-              <Lock size={16} className="text-indigo-400" />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <Lock size={16} className="text-indigo-600 dark:text-indigo-400" />
               পাসওয়ার্ড রিসেট করুন
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               আপনার নিবন্ধিত ইমেইল ঠিকানা প্রদান করুন। আমরা পাসওয়ার্ড পরিবর্তনের লিংক পাঠিয়ে দেব।
             </p>
             <form onSubmit={handleResetPassword} className="space-y-3">
@@ -889,20 +901,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 placeholder="your-email@madrasha.edu.bd"
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
-                className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsResetOpen(false)}
-                  className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer transition"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
                   disabled={resetLoading}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer shadow-sm hover:brightness-110 transition"
+                  style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
                 >
                   {resetLoading ? 'পাঠানো হচ্ছে...' : 'রিসেট লিংক পাঠান'}
                 </button>

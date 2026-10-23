@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  Calendar, 
   CheckCircle2, 
   XCircle, 
   Clock, 
@@ -139,18 +138,9 @@ export const AttendanceReportView: React.FC = () => {
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div>
-          <div className="flex items-center gap-2 text-emerald-200 text-xs font-bold uppercase tracking-wider mb-1">
-            <Calendar size={16} />
-            <span>{language === 'bn' ? 'উপস্থিতি ও হাজিরা বিশ্লেষণ' : 'Attendance Analytics & Monthly Sheets'}</span>
-          </div>
           <h1 className="text-2xl font-black tracking-tight">
             {language === 'bn' ? 'হাজিরা রিপোর্ট ও মাসিক বিবরণী' : 'Monthly Attendance Reports'}
           </h1>
-          <p className="text-xs text-emerald-100/80 mt-1 max-w-xl">
-            {language === 'bn'
-              ? 'ক্লাস ভিত্তিক মাসিক উপস্থিতির শতাংশ, অনুপস্থিতির কারণ বিশ্লেষণ ও প্রিন্ট উপযোগী শিট।'
-              : 'Class-wise monthly attendance percentage, regularity tracking, and printable register sheets.'}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -188,7 +178,6 @@ export const AttendanceReportView: React.FC = () => {
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</p>
             <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{toBanglaDigits(classStudents.length)}</h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{language === 'bn' ? 'এই শ্রেণিতে' : 'in selected class'}</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
             <Users size={24} />

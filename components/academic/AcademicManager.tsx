@@ -123,19 +123,10 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
 
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <div className="flex items-center gap-2 text-teal-300 font-black text-xs uppercase tracking-wider mb-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{isBn ? 'ধাপ ৩ • একাডেমিক ব্যবস্থাপনা হাব' : 'Step 3 • Academic Management Hub'}</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
               <span>📚</span>
               <span>{isBn ? 'একাডেমিক ব্যবস্থাপনা ও কারিকুলাম সিস্টেম' : 'Academic & Curriculum Management'}</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-              {isBn 
-                ? 'কারিকুলাম ও বিষয় বণ্টন, শ্রেণি ও শাখা সমন্বয়, শিক্ষক দায়িত্ব, সাপ্তাহিক ক্লাস রুটিন, সিলেবাস পরিকল্পনা ও বাৎসরিক ক্যালেন্ডার।'
-                : 'Comprehensive curriculum design, class and section setup, teacher workloads, weekly routines, syllabus tracking and holiday calendar.'}
-            </p>
           </div>
 
           <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
