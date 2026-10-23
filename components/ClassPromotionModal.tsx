@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { Student, SchoolClass, Exam } from '../types';
 import { 
   StudentPromotionItem, 
@@ -70,6 +71,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
     promotionHistory,
     clearPromotionHistory
   } = useApp();
+  const { showError } = useTheme();
 
   // Active view tab: 'wizard' | 'history'
   const [activeView, setActiveView] = useState<'wizard' | 'history'>('wizard');
@@ -82,6 +84,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
 
   // Confirmation dialog state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Search & Filter inside promotion table
@@ -358,7 +361,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
       setCompletedRecord(historyRecord);
     } catch (err) {
       console.error('Failed to execute promotion:', err);
-      alert('Failed to execute promotion. Please try again.');
+      showError('Failed to execute promotion. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -1029,11 +1032,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                 {promotionHistory.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (confirm(language === 'bn' ? 'আপনি কি নিশ্চিত যে সকল উত্তরণ ইতিহাস মুছে ফেলতে চান?' : 'Clear all promotion history?')) {
-                        clearPromotionHistory();
-                      }
-                    }}
+                    onClick={() => setShowClearHistoryConfirm(true)}
                     className="text-xs text-rose-600 hover:text-rose-800 font-semibold"
                   >
                     {language === 'bn' ? 'ইতিহাস মুছে ফেলুন' : 'Clear History'}
@@ -1172,6 +1171,21 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Clear History Confirmation */}
+      <ConfirmDialog
+        isOpen={showClearHistoryConfirm}
+        onClose={() => setShowClearHistoryConfirm(false)}
+        onConfirm={() => {
+          clearPromotionHistory();
+          setShowClearHistoryConfirm(false);
+        }}
+        title={language === 'bn' ? 'ইতিহাস মুছে ফেলার নিশ্চিতকরণ' : 'Clear History Confirmation'}
+        message={language === 'bn' ? 'আপনি কি নিশ্চিত যে সকল উত্তরণ ইতিহাস মুছে ফেলতে চান?' : 'Clear all promotion history?'}
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, Clear'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
 
       {/* Gazette Modal */}
       {viewingGazette && (

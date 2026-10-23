@@ -3781,10 +3781,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setTrashBin([]);
   };
 
+  // Confirmation lives at the single call site (DataSecurityBackupCenter's
+  // ConfirmDialog) — this action itself just empties the bin.
   const emptyTrash = () => {
-    if (confirm(language === 'bn' ? 'আপনি কি নিশ্চিত যে রিসাইকেল বিন স্থায়ীভাবে খালি করতে চান?' : 'Are you sure you want to permanently empty recycle bin?')) {
-      setTrashBin([]);
-    }
+    setTrashBin([]);
   };
 
   const updateRemark = (studentId: string, examId: string, data: Partial<RemarkRecord>) => {

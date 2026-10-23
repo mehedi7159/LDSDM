@@ -59,9 +59,11 @@ export const UserRoleManager: React.FC = () => {
   );
 
   const handleClearDemoUsers = () => {
-    if (!confirm('আপনি কি নিশ্চিত যে সকল ডেমো (নমুনা) শিক্ষক ও কর্মচারীদের ডাটা মুছে ফেলতে চান? এতে শুধুমাত্র আপনার ওনার ও সুপার অ্যাডমিন অ্যাকাউন্ট বহাল থাকবে।')) {
-      return;
-    }
+    setShowClearDemoConfirm(true);
+  };
+
+  const executeClearDemoUsers = () => {
+    setShowClearDemoConfirm(false);
     const filtered = safeUsers.filter(u => 
       u.role === 'super_admin' || 
       (authUser?.email && u.email?.toLowerCase() === authUser.email.toLowerCase()) ||
@@ -81,6 +83,8 @@ export const UserRoleManager: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<AppUser | null>(null);
+  const [showClearDemoConfirm, setShowClearDemoConfirm] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
   // Form State
@@ -122,7 +126,8 @@ export const UserRoleManager: React.FC = () => {
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
-      alert('নাম ও মোবাইল নম্বর আবশ্যক।');
+      setNotification('নাম ও মোবাইল নম্বর আবশ্যক।');
+      setTimeout(() => setNotification(null), 4000);
       return;
     }
 
@@ -154,7 +159,8 @@ export const UserRoleManager: React.FC = () => {
           assignedClasses
         });
         if (!res.success) {
-          alert(res.message);
+          setNotification(res.message);
+          setTimeout(() => setNotification(null), 4000);
           return;
         }
       }
@@ -288,14 +294,14 @@ export const UserRoleManager: React.FC = () => {
       setNotification('অ্যাকাউন্ট সফলভাবে অনুমোদন ও সক্রিয় করা হয়েছে! শিক্ষক/ব্যবহারকারী এখন অবিলম্বে সিস্টেমে প্রবেশ করতে পারবেন।');
       setTimeout(() => setNotification(null), 4000);
     } catch (err: any) {
-      alert('অনুমোদনে সমস্যা: ' + (err.message || 'Error'));
+      setNotification('অনুমোদনে সমস্যা: ' + (err.message || 'Error'));
+      setTimeout(() => setNotification(null), 4000);
     } finally {
       setApprovingId(null);
     }
   };
 
   const handleReject = async (id: string) => {
-    if (!confirm('আপনি কি এই অ্যাকাউন্ট আবেদনটি বাতিল করতে চান?')) return;
     try {
       if (rejectMember) {
         await rejectMember(id);
@@ -326,8 +332,8 @@ export const UserRoleManager: React.FC = () => {
     <div className="space-y-6">
       {/* Toast Notification */}
       {notification && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-semibold flex items-center gap-2 shadow-xs">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 shadow-xs">
+          <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{notification}</span>
         </div>
       )}
@@ -352,7 +358,7 @@ export const UserRoleManager: React.FC = () => {
                 {authUser.email}
               </p>
               <div className="flex items-center gap-2 mt-1.5 text-[11px] text-indigo-300">
-                <span className="px-2 py-0.5 rounded bg-white/10 font-bold">পদবী: প্রতিষ্ঠাতা ও সুপার অ্যাডমিন</span>
+                <span className="px-2 py-0.5 rounded bg-white/10 dark:bg-slate-900/10 font-bold">পদবী: প্রতিষ্ঠাতা ও সুপার অ্যাডমিন</span>
                 <span>•</span>
                 <span className="text-emerald-400 font-semibold">পূর্ণ ক্লাউড নিয়ন্ত্রণ সক্রিয়</span>
               </div>
@@ -381,16 +387,16 @@ export const UserRoleManager: React.FC = () => {
         </div>
       ) : (
         /* Header Banner when not signed in */
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold shadow-xs">
               <ShieldCheck size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                 মাদ্রাসা ইউজার ও রোল পারমিশন ব্যবস্থাপনা
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 মুয়াল্লিম, স্টাফ, হিসাবরক্ষক ও অভিভাবকদের ইউজার আইডি, মোবাইল নম্বর ও পাসওয়ার্ড নিয়ন্ত্রণ করুন।
               </p>
             </div>
@@ -408,18 +414,18 @@ export const UserRoleManager: React.FC = () => {
 
       {/* PENDING APPROVALS SECTION - Visible to Admin when users are awaiting approval */}
       {pendingApprovals.length > 0 && (
-        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 rounded-3xl p-5 shadow-xs space-y-4 animate-in fade-in">
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 shadow-xs space-y-4 animate-in fade-in">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
                 <Clock size={20} className="animate-spin" style={{ animationDuration: '4s' }} />
               </div>
               <div>
-                <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                <h4 className="font-black text-slate-900 dark:text-white text-sm flex items-center gap-2">
                   <span>অপেক্ষমাণ অ্যাকাউন্ট অনুমোদন ({pendingApprovals.length} জন)</span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">অনুমোদন প্রয়োজন</span>
                 </h4>
-                <p className="text-xs text-slate-600 mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                   যেসব শিক্ষক বা কর্মচারী একাউন্ট খোলার পর অপেক্ষমাণ আছেন, তাদের এক ক্লিকে অনুমোদন ও সক্রিয় করুন।
                 </p>
               </div>
@@ -428,24 +434,24 @@ export const UserRoleManager: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {pendingApprovals.map(item => (
-              <div key={item.id} className="bg-white rounded-2xl p-4 border border-amber-200 shadow-xs flex flex-col justify-between gap-3">
+              <div key={item.id} className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-amber-200 dark:border-amber-800 shadow-xs flex flex-col justify-between gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="font-bold text-slate-900 text-sm">{item.name}</div>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5">{item.email || item.phone || 'ইমেইল/ফোন নেই'}</div>
+                    <div className="font-bold text-slate-900 dark:text-white text-sm">{item.name}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">{item.email || item.phone || 'ইমেইল/ফোন নেই'}</div>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px]">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 font-bold text-[10px]">
                         আবেদিত রোল: {item.requestedRole || item.role}
                       </span>
-                      {item.phone && <span className="text-[11px] text-slate-600 font-mono font-medium">📱 {item.phone}</span>}
+                      {item.phone && <span className="text-[11px] text-slate-600 dark:text-slate-300 font-mono font-medium">📱 {item.phone}</span>}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <button
-                    onClick={() => handleReject(item.id)}
-                    className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                    onClick={() => setRejectTargetId(item.id)}
+                    className="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                   >
                     <X size={13} />
                     <span>বাতিল</span>
@@ -467,7 +473,7 @@ export const UserRoleManager: React.FC = () => {
 
 
       {/* Filters Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 max-w-md">
           <div className="relative w-full">
             <input
@@ -475,9 +481,9 @@ export const UserRoleManager: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="নাম, মোবাইল বা ইমেইল দিয়ে খুঁজুন..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
           </div>
         </div>
 
@@ -485,7 +491,7 @@ export const UserRoleManager: React.FC = () => {
           <button
             onClick={() => setRoleFilter('all')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              roleFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              roleFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             সকল ({safeUsers.length})
@@ -493,7 +499,7 @@ export const UserRoleManager: React.FC = () => {
           <button
             onClick={() => setRoleFilter('teacher')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              roleFilter === 'teacher' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+              roleFilter === 'teacher' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
             }`}
           >
             মুয়াল্লিম ({safeUsers.filter(u => u.role === 'teacher').length})
@@ -501,7 +507,7 @@ export const UserRoleManager: React.FC = () => {
           <button
             onClick={() => setRoleFilter('accountant')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              roleFilter === 'accountant' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+              roleFilter === 'accountant' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
             }`}
           >
             হিসাবরক্ষক ({safeUsers.filter(u => u.role === 'accountant').length})
@@ -509,7 +515,7 @@ export const UserRoleManager: React.FC = () => {
           <button
             onClick={() => setRoleFilter('staff')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              roleFilter === 'staff' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+              roleFilter === 'staff' ? 'bg-amber-600 text-white' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50'
             }`}
           >
             অফিস স্টাফ ({safeUsers.filter(u => u.role === 'staff').length})
@@ -517,7 +523,7 @@ export const UserRoleManager: React.FC = () => {
           <button
             onClick={() => setRoleFilter('guardian')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              roleFilter === 'guardian' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'
+              roleFilter === 'guardian' ? 'bg-purple-600 text-white' : 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50'
             }`}
           >
             অভিভাবক ({safeUsers.filter(u => u.role === 'guardian').length})
@@ -526,11 +532,11 @@ export const UserRoleManager: React.FC = () => {
       </div>
 
       {/* Users List Container (Desktop Table + Mobile Cards) */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold">
               <tr>
                 <th className="p-4">নাম ও পদবী</th>
                 <th className="p-4">মোবাইল ও ইমেইল</th>
@@ -540,10 +546,10 @@ export const UserRoleManager: React.FC = () => {
                 <th className="p-4 text-right">একশন</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 font-medium">
+                  <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500 font-medium">
                     কোনো ব্যবহারকারী খুঁজে পাওয়া যায়নি।
                   </td>
                 </tr>
@@ -551,29 +557,29 @@ export const UserRoleManager: React.FC = () => {
                   filteredUsers.map(u => {
                     const isCurrentAuthUser = Boolean(authUser?.email && u.email?.toLowerCase() === authUser.email.toLowerCase());
                     return (
-                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="p-4 font-bold text-slate-900">
+                    <tr key={u.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50/70 transition-colors">
+                      <td className="p-4 font-bold text-slate-900 dark:text-white">
                         <div className="flex items-center gap-1.5">
                           <span>{u.nameBn || u.name}</span>
                           {isCurrentAuthUser && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-[9px] font-bold">
                               আপনি (ওনার)
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-normal">{u.designation || 'মাদ্রাসা স্টাফ'}</div>
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">{u.designation || 'মাদ্রাসা স্টাফ'}</div>
                       </td>
-                    <td className="p-4 text-slate-600">
-                      <div className="font-mono text-slate-800 font-semibold">{u.phone || 'N/A'}</div>
-                      <div className="text-[11px] text-slate-400 truncate max-w-[150px]">{u.email || ''}</div>
+                    <td className="p-4 text-slate-600 dark:text-slate-300">
+                      <div className="font-mono text-slate-800 dark:text-slate-100 font-semibold">{u.phone || 'N/A'}</div>
+                      <div className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[150px]">{u.email || ''}</div>
                     </td>
                     <td className="p-4">
                       <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
                         u.role === 'super_admin' ? 'bg-slate-900 text-white' :
-                        u.role === 'teacher' ? 'bg-emerald-100 text-emerald-800' :
-                        u.role === 'accountant' ? 'bg-blue-100 text-blue-800' :
-                        u.role === 'guardian' ? 'bg-purple-100 text-purple-800' :
-                        'bg-amber-100 text-amber-800'
+                        u.role === 'teacher' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' :
+                        u.role === 'accountant' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300' :
+                        u.role === 'guardian' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300' :
+                        'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300'
                       }`}>
                         {u.role === 'super_admin' ? 'সুপার অ্যাডমিন' :
                          u.role === 'teacher' ? 'মুয়াল্লিম (শিক্ষক)' :
@@ -581,23 +587,23 @@ export const UserRoleManager: React.FC = () => {
                          u.role === 'guardian' ? 'অভিভাবক' : 'অফিস স্টাফ'}
                       </span>
                       {u.status === 'pending' && (
-                        <span className="block mt-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                        <span className="block mt-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
                           অপেক্ষমাণ (Pending)
                         </span>
                       )}
                     </td>
-                    <td className="p-4 font-mono font-bold text-slate-700">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700">{u.password || '******'}</span>
+                    <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-200">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">{u.password || '******'}</span>
                     </td>
-                    <td className="p-4 text-slate-600">
+                    <td className="p-4 text-slate-600 dark:text-slate-300">
                       {u.assignedClasses && Array.isArray(u.assignedClasses) && u.assignedClasses.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {u.assignedClasses.map(c => (
-                            <span key={c} className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-700">{c}</span>
+                            <span key={c} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-700 dark:text-slate-200">{c}</span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-[11px] text-slate-400">{u.role === 'super_admin' ? 'সকল শ্রেণি' : 'নির্দিষ্ট নয়'}</span>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">{u.role === 'super_admin' ? 'সকল শ্রেণি' : 'নির্দিষ্ট নয়'}</span>
                       )}
                     </td>
                     <td className="p-4 text-right">
@@ -614,7 +620,7 @@ export const UserRoleManager: React.FC = () => {
                         )}
                         <button
                           onClick={() => handleOpenEdit(u)}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                           title="এডিট"
                         >
                           <Edit2 size={14} />
@@ -622,7 +628,7 @@ export const UserRoleManager: React.FC = () => {
                         {u.role !== 'super_admin' && (
                           <button
                             onClick={() => setUserToDelete(u)}
-                            className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
                             title="ডিলিট"
                           >
                             <Trash2 size={14} />
@@ -639,9 +645,9 @@ export const UserRoleManager: React.FC = () => {
         </div>
 
         {/* Mobile Cards View (< md) */}
-        <div className="md:hidden divide-y divide-slate-100">
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
           {filteredUsers.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 font-medium text-xs">
+            <div className="p-8 text-center text-slate-400 dark:text-slate-500 font-medium text-xs">
               কোনো ব্যবহারকারী খুঁজে পাওয়া যায়নি।
             </div>
           ) : (
@@ -651,25 +657,25 @@ export const UserRoleManager: React.FC = () => {
                   <div className="flex items-center gap-2.5">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
                       u.role === 'super_admin' ? 'bg-slate-900 text-white' :
-                      u.role === 'teacher' ? 'bg-emerald-100 text-emerald-800' :
-                      u.role === 'accountant' ? 'bg-blue-100 text-blue-800' :
-                      u.role === 'guardian' ? 'bg-purple-100 text-purple-800' :
-                      'bg-amber-100 text-amber-800'
+                      u.role === 'teacher' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' :
+                      u.role === 'accountant' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300' :
+                      u.role === 'guardian' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300' :
+                      'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300'
                     }`}>
                       {(u.nameBn || u.name || 'ইউ').substring(0, 1)}
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h4 className="font-bold text-slate-900 text-xs leading-tight">
+                        <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-tight">
                           {u.nameBn || u.name}
                         </h4>
                         {Boolean(authUser?.email && u.email?.toLowerCase() === authUser.email.toLowerCase()) && (
-                          <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                          <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-[9px] font-bold">
                             আপনি (ওনার)
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                         {u.designation || 'মাদ্রাসা স্টাফ'}
                       </p>
                     </div>
@@ -677,10 +683,10 @@ export const UserRoleManager: React.FC = () => {
 
                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold shrink-0 ${
                     u.role === 'super_admin' ? 'bg-slate-900 text-white' :
-                    u.role === 'teacher' ? 'bg-emerald-100 text-emerald-800' :
-                    u.role === 'accountant' ? 'bg-blue-100 text-blue-800' :
-                    u.role === 'guardian' ? 'bg-purple-100 text-purple-800' :
-                    'bg-amber-100 text-amber-800'
+                    u.role === 'teacher' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' :
+                    u.role === 'accountant' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300' :
+                    u.role === 'guardian' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300' :
+                    'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300'
                   }`}>
                     {u.role === 'super_admin' ? 'সুপার এডমিন' :
                      u.role === 'teacher' ? 'মুয়াল্লিম' :
@@ -689,16 +695,16 @@ export const UserRoleManager: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50/80 dark:bg-slate-800/50/80 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div>
-                    <span className="text-slate-400 block text-[9px] font-semibold">মোবাইল</span>
-                    <a href={`tel:${u.phone}`} className="font-mono font-semibold text-slate-800 hover:text-emerald-600">
+                    <span className="text-slate-400 dark:text-slate-500 block text-[9px] font-semibold">মোবাইল</span>
+                    <a href={`tel:${u.phone}`} className="font-mono font-semibold text-slate-800 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400">
                       {u.phone || 'N/A'}
                     </a>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] font-semibold">পাসওয়ার্ড</span>
-                    <span className="font-mono font-bold text-slate-700">
+                    <span className="text-slate-400 dark:text-slate-500 block text-[9px] font-semibold">পাসওয়ার্ড</span>
+                    <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
                       {u.password || '******'}
                     </span>
                   </div>
@@ -706,16 +712,16 @@ export const UserRoleManager: React.FC = () => {
 
                 {u.assignedClasses && Array.isArray(u.assignedClasses) && u.assignedClasses.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] text-slate-400 font-medium">শ্রেণি:</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">শ্রেণি:</span>
                     {u.assignedClasses.map(c => (
-                      <span key={c} className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-700 font-medium">
+                      <span key={c} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-700 dark:text-slate-200 font-medium">
                         {c}
                       </span>
                     ))}
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                   {u.status === 'pending' && (
                     <button
                       onClick={() => handleApprove({ id: u.id, roleId: `role_${u.role}`, role: u.role, assignedClasses: u.assignedClasses })}
@@ -727,7 +733,7 @@ export const UserRoleManager: React.FC = () => {
                   )}
                   <button
                     onClick={() => handleOpenEdit(u)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Edit2 size={12} />
                     <span>এডিট</span>
@@ -735,7 +741,7 @@ export const UserRoleManager: React.FC = () => {
                   {u.role !== 'super_admin' && (
                     <button
                       onClick={() => setUserToDelete(u)}
-                      className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                     >
                       <Trash2 size={12} />
                       <span>ডিলিট</span>
@@ -751,32 +757,32 @@ export const UserRoleManager: React.FC = () => {
       {/* Add / Edit User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200">
-            <h3 className="text-base font-bold text-slate-900 mb-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">
               {editingUser ? 'ইউজার তথ্য আপডেট' : 'নতুন ইউজার তৈরি করুন'}
             </h3>
 
             <form onSubmit={handleSaveUser} className="space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">নাম (বাংলা)</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">নাম (বাংলা)</label>
                   <input
                     type="text"
                     value={nameBn}
                     onChange={(e) => setNameBn(e.target.value)}
                     placeholder="যেমন: মাওলানা হাফিজুর রহমান"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">নাম (ইংরেজি)</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">নাম (ইংরেজি)</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Name in English"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   />
                 </div>
@@ -784,24 +790,24 @@ export const UserRoleManager: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">মোবাইল নম্বর (লগইন আইডি)</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">মোবাইল নম্বর (লগইন আইডি)</label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="017xxxxxxxx"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">লগইন পাসওয়ার্ড</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">লগইন পাসওয়ার্ড</label>
                   <input
                     type="text"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="123"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
                   />
                 </div>
@@ -809,11 +815,11 @@ export const UserRoleManager: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">রোল / পারমিশন</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">রোল / পারমিশন</label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as UserRole)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-900"
                   >
                     <option value="teacher">মুয়াল্লিম / শিক্ষক (Teacher)</option>
                     <option value="accountant">হিসাবরক্ষক (Accountant)</option>
@@ -823,13 +829,13 @@ export const UserRoleManager: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">পদবী / বিবরণ</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">পদবী / বিবরণ</label>
                   <input
                     type="text"
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value)}
                     placeholder="যেমন: আরবি মুয়াল্লিম"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
@@ -837,8 +843,8 @@ export const UserRoleManager: React.FC = () => {
               {/* Assigned Classes selector */}
               {role === 'teacher' && (
                 <div className="space-y-1.5 pt-1">
-                  <label className="block text-xs font-bold text-slate-700">অনুমোদিত শ্রেণি নির্বাচন করুন:</label>
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">অনুমোদিত শ্রেণি নির্বাচন করুন:</label>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
                     {(classes || []).map(c => {
                       const isSelected = (assignedClasses || []).includes(c.name);
                       return (
@@ -847,7 +853,7 @@ export const UserRoleManager: React.FC = () => {
                           type="button"
                           onClick={() => toggleClassAssignment(c.name)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                            isSelected ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                            isSelected ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                           }`}
                         >
                           {c.nameBn || c.name}
@@ -862,7 +868,7 @@ export const UserRoleManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-100 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   বাতিল
                 </button>
@@ -877,6 +883,35 @@ export const UserRoleManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Clear Demo Users Confirmation */}
+      <ConfirmDialog
+        isOpen={showClearDemoConfirm}
+        onClose={() => setShowClearDemoConfirm(false)}
+        onConfirm={executeClearDemoUsers}
+        title="ডেমো ডাটা ডিলিট নিশ্চিতকরণ"
+        message="আপনি কি নিশ্চিত যে সকল ডেমো (নমুনা) শিক্ষক ও কর্মচারীদের ডাটা মুছে ফেলতে চান? এতে শুধুমাত্র আপনার ওনার ও সুপার অ্যাডমিন অ্যাকাউন্ট বহাল থাকবে।"
+        confirmLabel="হ্যাঁ, ডিলিট করুন"
+        cancelLabel="বাতিল"
+        variant="danger"
+      />
+
+      {/* Reject Application Confirmation */}
+      <ConfirmDialog
+        isOpen={!!rejectTargetId}
+        onClose={() => setRejectTargetId(null)}
+        onConfirm={() => {
+          if (rejectTargetId) {
+            handleReject(rejectTargetId);
+            setRejectTargetId(null);
+          }
+        }}
+        title="আবেদন বাতিল নিশ্চিতকরণ"
+        message="আপনি কি এই অ্যাকাউন্ট আবেদনটি বাতিল করতে চান?"
+        confirmLabel="হ্যাঁ, বাতিল করুন"
+        cancelLabel="ফিরে যান"
+        variant="danger"
+      />
 
       {/* Delete Confirmation */}
       <ConfirmDialog

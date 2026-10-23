@@ -150,14 +150,14 @@ export const FinanceReportView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer border border-white/10 shadow-xs"
+            className="px-4 py-2.5 rounded-xl bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer border border-white/10 shadow-xs"
           >
             <Download size={15} />
             <span>{language === 'bn' ? 'CSV এক্সপোর্ট' : 'Export CSV'}</span>
           </button>
           <button
             onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl bg-white text-violet-950 hover:bg-violet-50 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/20"
+            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-violet-950 hover:bg-violet-50 dark:hover:bg-violet-950/50 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/20"
           >
             <Printer size={15} />
             <span>{language === 'bn' ? 'স্টেটমেন্ট প্রিন্ট' : 'Print Statement'}</span>
@@ -167,66 +167,66 @@ export const FinanceReportView: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:grid-cols-3">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'মোট আয় / রাজস্ব' : 'Total Income'}</p>
-            <h3 className="text-2xl font-black text-emerald-600 mt-1">৳ {toBanglaDigits(totalIncome)}</h3>
-            <p className="text-[10px] text-emerald-600/80 mt-0.5 flex items-center gap-1">
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'মোট আয় / রাজস্ব' : 'Total Income'}</p>
+            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">৳ {toBanglaDigits(totalIncome)}</h3>
+            <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
               <ArrowUpRight size={12} /> {language === 'bn' ? 'ফি ও অনুদান অন্তর্ভুক্তি' : 'Fees & Donations'}
             </p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
             <TrendingUp size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'মোট ব্যয় / খরচ' : 'Total Expense'}</p>
-            <h3 className="text-2xl font-black text-rose-600 mt-1">৳ {toBanglaDigits(totalExpense)}</h3>
-            <p className="text-[10px] text-rose-600/80 mt-0.5 flex items-center gap-1">
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'মোট ব্যয় / খরচ' : 'Total Expense'}</p>
+            <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">৳ {toBanglaDigits(totalExpense)}</h3>
+            <p className="text-[10px] text-rose-600/80 dark:text-rose-400 mt-0.5 flex items-center gap-1">
               <ArrowDownRight size={12} /> {language === 'bn' ? 'বেতন ও প্রাতিষ্ঠানিক ব্যয়' : 'Salaries & Bills'}
             </p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
             <TrendingDown size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'নিট ব্যালেন্স / তহবিল' : 'Net Fund Balance'}</p>
-            <h3 className={`text-2xl font-black mt-1 ${netBalance >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'নিট ব্যালেন্স / তহবিল' : 'Net Fund Balance'}</p>
+            <h3 className={`text-2xl font-black mt-1 ${netBalance >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
               ৳ {toBanglaDigits(netBalance)}
             </h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
               {netBalance >= 0 ? (language === 'bn' ? 'উদ্বৃত্ত তহবিল' : 'Surplus') : (language === 'bn' ? 'ঘাটতি' : 'Deficit')}
             </p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
             <Wallet size={24} />
           </div>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative flex-1 min-w-[180px]">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
               placeholder={language === 'bn' ? 'ভাউচার, বিবরণ বা নাম খুঁজুন...' : 'Search voucher, description...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/50/50 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
 
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
+            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
           >
             <option value="all">{language === 'bn' ? 'সকল লেনদেন' : 'All Types'}</option>
             <option value="INCOME">{language === 'bn' ? 'আয় (Income)' : 'Income'}</option>
@@ -237,7 +237,7 @@ export const FinanceReportView: React.FC = () => {
             type="date"
             value={dateRange.start}
             onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-            className="px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500"
             title="শুরুর তারিখ"
           />
 
@@ -245,18 +245,18 @@ export const FinanceReportView: React.FC = () => {
             type="date"
             value={dateRange.end}
             onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-            className="px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500"
             title="শেষ তারিখ"
           />
         </div>
 
-        <div className="text-xs font-bold text-slate-500">
-          {language === 'bn' ? 'মোট এন্ট্রি:' : 'Entries:'} <span className="text-violet-600 font-mono font-black">{toBanglaDigits(filteredTransactions.length)}</span>
+        <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          {language === 'bn' ? 'মোট এন্ট্রি:' : 'Entries:'} <span className="text-violet-600 dark:text-violet-400 font-mono font-black">{toBanglaDigits(filteredTransactions.length)}</span>
         </div>
       </div>
 
       {/* Printable Statement Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Printable Header */}
         <div className="p-6 border-b border-slate-100 hidden print:block text-center">
           <h2 className="text-xl font-black text-slate-900">{schoolProfile.nameBn || schoolProfile.name}</h2>
@@ -272,7 +272,7 @@ export const FinanceReportView: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
+              <tr className="bg-slate-50/80 dark:bg-slate-800/50/80 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider">
                 <th className="py-3 px-4 text-center">#</th>
                 <th className="py-3 px-4">{language === 'bn' ? 'তারিখ' : 'Date'}</th>
                 <th className="py-3 px-4">{language === 'bn' ? 'ভাউচার নং' : 'Voucher No'}</th>
@@ -283,26 +283,26 @@ export const FinanceReportView: React.FC = () => {
                 <th className="py-3 px-4 text-right">{language === 'bn' ? 'ব্যয় (টাকা)' : 'Expense'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400 dark:text-slate-500">
                     {language === 'bn' ? 'কোনো লেনদেনের রেকর্ড পাওয়া যায়নি' : 'No transaction records found'}
                   </td>
                 </tr>
               ) : (
                 filteredTransactions.map((tx, idx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 text-center font-mono text-slate-400">{toBanglaDigits(idx + 1)}</td>
-                    <td className="py-3 px-4 font-mono text-slate-600">{tx.date}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-slate-700">{tx.voucherNo || '-'}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">{tx.category}</td>
-                    <td className="py-3 px-4 text-slate-700">{tx.payerOrPayee || '-'}</td>
-                    <td className="py-3 px-4 text-slate-500 capitalize">{tx.paymentMethod || 'cash'}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
+                  <tr key={tx.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50/60 transition-colors">
+                    <td className="py-3 px-4 text-center font-mono text-slate-400 dark:text-slate-500">{toBanglaDigits(idx + 1)}</td>
+                    <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-300">{tx.date}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-slate-700 dark:text-slate-200">{tx.voucherNo || '-'}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">{tx.category}</td>
+                    <td className="py-3 px-4 text-slate-700 dark:text-slate-200">{tx.payerOrPayee || '-'}</td>
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400 capitalize">{tx.paymentMethod || 'cash'}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       {tx.type === 'INCOME' ? `৳ ${toBanglaDigits(tx.amount)}` : '-'}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-rose-600">
+                    <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
                       {tx.type === 'EXPENSE' ? `৳ ${toBanglaDigits(tx.amount)}` : '-'}
                     </td>
                   </tr>
@@ -311,14 +311,14 @@ export const FinanceReportView: React.FC = () => {
             </tbody>
             {filteredTransactions.length > 0 && (
               <tfoot>
-                <tr className="bg-slate-100/80 font-bold border-t-2 border-slate-300">
-                  <td colSpan={6} className="py-3 px-4 text-right uppercase text-[11px] text-slate-700">
+                <tr className="bg-slate-100/80 dark:bg-slate-800/80 font-bold border-t-2 border-slate-300 dark:border-slate-700">
+                  <td colSpan={6} className="py-3 px-4 text-right uppercase text-[11px] text-slate-700 dark:text-slate-200">
                     {language === 'bn' ? 'মোট যোগফল:' : 'Total Amount:'}
                   </td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-emerald-700">
+                  <td className="py-3 px-4 text-right font-mono font-black text-emerald-700 dark:text-emerald-400">
                     ৳ {toBanglaDigits(totalIncome)}
                   </td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-rose-700">
+                  <td className="py-3 px-4 text-right font-mono font-black text-rose-700 dark:text-rose-400">
                     ৳ {toBanglaDigits(totalExpense)}
                   </td>
                 </tr>

@@ -97,13 +97,13 @@ export const StudentIDCardGenerator: React.FC = () => {
         </div>
 
         {/* Toolbar Filters */}
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-4">
           {/* Doc Type Selector */}
-          <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200">
+          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl flex items-center gap-1 border border-slate-200 dark:border-slate-800">
             <button
               onClick={() => setDocType('id_card')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                docType === 'id_card' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                docType === 'id_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <CreditCard size={14} />
@@ -113,7 +113,7 @@ export const StudentIDCardGenerator: React.FC = () => {
             <button
               onClick={() => setDocType('admit_card')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                docType === 'admit_card' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                docType === 'admit_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Award size={14} />
@@ -123,7 +123,7 @@ export const StudentIDCardGenerator: React.FC = () => {
             <button
               onClick={() => setDocType('testimonial')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                docType === 'testimonial' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                docType === 'testimonial' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <FileText size={14} />
@@ -134,7 +134,7 @@ export const StudentIDCardGenerator: React.FC = () => {
           {/* Class, Exam & Student Selectors */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-slate-500">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {language === 'bn' ? 'শ্রেণি:' : 'Class:'}
               </label>
               <select
@@ -143,7 +143,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                   setSelectedClass(e.target.value);
                   setSelectedStudentId('all');
                 }}
-                className="px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-800 dark:text-slate-100"
               >
                 {classes.map(c => (
                   <option key={c.id} value={c.name}>
@@ -155,13 +155,13 @@ export const StudentIDCardGenerator: React.FC = () => {
 
             {docType === 'admit_card' && (
               <div className="flex items-center gap-2">
-                <label className="text-xs font-bold text-slate-500">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
                   {language === 'bn' ? 'পরীক্ষা:' : 'Exam:'}
                 </label>
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                  className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-800 dark:text-slate-100"
                 >
                   {exams.map(e => (
                     <option key={e.id} value={e.id}>
@@ -173,13 +173,13 @@ export const StudentIDCardGenerator: React.FC = () => {
             )}
 
             <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-slate-500">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {language === 'bn' ? 'শিক্ষার্থী:' : 'Student:'}
               </label>
               <select
                 value={selectedStudentId}
                 onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800 max-w-[200px] truncate"
+                className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-800 dark:text-slate-100 max-w-[200px] truncate"
               >
                 <option value="all">
                   {language === 'bn' ? `সকল শিক্ষার্থী (${classStudents.length} জন)` : `All Students (${classStudents.length})`}

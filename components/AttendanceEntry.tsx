@@ -169,14 +169,14 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
   return (
     <div className="space-y-6">
       {/* Top Main Tab Navigation */}
-      <div className="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
         <button
           type="button"
           onClick={() => setMainTab('daily')}
           className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             mainTab === 'daily'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Calendar size={16} />
@@ -189,7 +189,7 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
           className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             mainTab === 'exam_remarks'
               ? 'bg-teal-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Award size={16} />
@@ -203,8 +203,8 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">{t('attendance')} & {t('comments')}</h2>
-              <p className="text-gray-500 text-sm">{language === 'bn' ? 'শিক্ষার্থীদের কর্মদিবস, উপস্থিতি এবং মন্তব্য লিখুন (স্বয়ংক্রিয়ভাবে সেভ হয়)।' : 'Enter working days, attendance, and remarks for students (Auto-saved).'}</p>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">{t('attendance')} & {t('comments')}</h2>
+              <p className="text-gray-500 dark:text-slate-400 text-sm">{language === 'bn' ? 'শিক্ষার্থীদের কর্মদিবস, উপস্থিতি এবং মন্তব্য লিখুন (স্বয়ংক্রিয়ভাবে সেভ হয়)।' : 'Enter working days, attendance, and remarks for students (Auto-saved).'}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
                 <Button
@@ -226,13 +226,13 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
                 </Button>
 
             {saveStatus === 'saving' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-xs">
-                <Loader2 size={13} className="animate-spin text-amber-600" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 animate-pulse shadow-xs">
+                <Loader2 size={13} className="animate-spin text-amber-600 dark:text-amber-400" />
                 {language === 'bn' ? 'সংরক্ষিত হচ্ছে...' : 'Auto-saving...'}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs transition-all">
-                <CheckCircle2 size={14} className="text-emerald-600" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shadow-xs transition-all">
+                <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
                 {language === 'bn' ? 'অটো-সেভ সক্রিয়' : 'Auto-saved'}
               </span>
             )}
@@ -240,17 +240,17 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
       </div>
 
       {autoFillNotice && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2">
+          <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{autoFillNotice}</span>
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">{t('exam')}</label>
+          <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('exam')}</label>
           <select 
-            className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900"
+            className="w-full border border-gray-300 dark:border-slate-600 rounded-md p-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
             value={selectedExamId}
             onChange={(e) => setSelectedExamId(e.target.value)}
           >
@@ -259,15 +259,15 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
         </div>
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="block text-xs font-medium text-gray-500">{t('class')}</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400">{t('class')}</label>
             {!isOwner && !isAdmin && currentUser?.assignedClasses && currentUser.assignedClasses.length > 0 && (
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                 শ্রেণি শিক্ষক মোড
               </span>
             )}
           </div>
           <select 
-            className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900"
+            className="w-full border border-gray-300 dark:border-slate-600 rounded-md p-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
             value={selectedClass}
             onChange={(e) => {
                 setSelectedClass(e.target.value);
@@ -277,9 +277,9 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Sort By</label>
+          <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Sort By</label>
           <select 
-            className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900"
+            className="w-full border border-gray-300 dark:border-slate-600 rounded-md p-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'name' | 'id')}
           >
@@ -290,37 +290,37 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
       </div>
 
       {enrolledStudents.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full text-xs">
-            <thead className="bg-gray-50 text-left">
+            <thead className="bg-gray-50 dark:bg-slate-800/60 text-left">
               <tr>
-                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 uppercase w-12 sm:w-16">S/N</th>
-                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 uppercase w-24 sm:w-32">{t('studentId')}</th>
-                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 uppercase min-w-[150px] sm:min-w-[200px]">{t('name')}</th>
-                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 uppercase text-center w-20 sm:w-32">{t('workingDays')}</th>
-                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 uppercase text-center w-20 sm:w-32">{t('totalPresent')}</th>
-                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 uppercase text-center w-20 sm:w-32">{t('totalAbsent')}</th>
-                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 uppercase text-left min-w-[120px]">{t('comments')}</th>
+                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 dark:text-slate-400 uppercase w-12 sm:w-16">S/N</th>
+                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 dark:text-slate-400 uppercase w-24 sm:w-32">{t('studentId')}</th>
+                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 dark:text-slate-400 uppercase min-w-[150px] sm:min-w-[200px]">{t('name')}</th>
+                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 dark:text-slate-400 uppercase text-center w-20 sm:w-32">{t('workingDays')}</th>
+                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 dark:text-slate-400 uppercase text-center w-20 sm:w-32">{t('totalPresent')}</th>
+                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 dark:text-slate-400 uppercase text-center w-20 sm:w-32">{t('totalAbsent')}</th>
+                <th className="px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-gray-500 dark:text-slate-400 uppercase text-left min-w-[120px]">{t('comments')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
               {enrolledStudents.map((student, index) => {
                 const data = localData[student.id] || {};
                 
                 return (
-                  <tr key={student.id} className="hover:bg-blue-50/40 focus-within:bg-blue-50/80 transition-colors">
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 font-medium text-gray-500 text-center sm:text-left">{formatNumber(index + 1, language)}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 font-medium text-gray-900 font-mono text-[11px] sm:text-xs">{student.studentId ? formatNumber(student.studentId, language) : '-'}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-gray-700">
-                        <div className="font-bold text-gray-900 truncate max-w-[160px] sm:max-w-[200px] font-bangla text-xs sm:text-sm">{language === 'bn' ? (student.nameBn || student.name) : student.name}</div>
-                        <div className="text-[10px] text-gray-400 font-mono">ID: {student.studentId ? formatNumber(student.studentId, language) : '-'}</div>
+                  <tr key={student.id} className="hover:bg-blue-50/40 dark:hover:bg-blue-950/50/40 focus-within:bg-blue-50/80 dark:focus-within:bg-blue-950/50/80 transition-colors">
+                    <td className="px-3 sm:px-6 py-2 sm:py-3 font-medium text-gray-500 dark:text-slate-400 text-center sm:text-left">{formatNumber(index + 1, language)}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-3 font-medium text-gray-900 dark:text-white font-mono text-[11px] sm:text-xs">{student.studentId ? formatNumber(student.studentId, language) : '-'}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-gray-700 dark:text-slate-200">
+                        <div className="font-bold text-gray-900 dark:text-white truncate max-w-[160px] sm:max-w-[200px] font-bangla text-xs sm:text-sm">{language === 'bn' ? (student.nameBn || student.name) : student.name}</div>
+                        <div className="text-[10px] text-gray-400 dark:text-slate-500 font-mono">ID: {student.studentId ? formatNumber(student.studentId, language) : '-'}</div>
                     </td>
                     
                     <td className="px-2 sm:px-6 py-2 sm:py-3 text-center">
                         <input 
                             type="number" min="0"
-                            className="w-14 sm:w-20 border rounded px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300 text-xs sm:text-sm"
+                            className="w-14 sm:w-20 border rounded px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300 dark:border-slate-600 text-xs sm:text-sm"
                             value={data.workingDays ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'workingDays', e.target.value)}
                             onBlur={handleInputBlur}
@@ -329,7 +329,7 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
                     <td className="px-2 sm:px-6 py-2 sm:py-3 text-center">
                         <input 
                             type="number" min="0"
-                            className="w-14 sm:w-20 border rounded px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300 text-xs sm:text-sm font-semibold text-emerald-700"
+                            className="w-14 sm:w-20 border rounded px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300 dark:border-slate-600 text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-400"
                             value={data.totalPresent ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'totalPresent', e.target.value)}
                             onBlur={handleInputBlur}
@@ -338,7 +338,7 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
                     <td className="px-2 sm:px-6 py-2 sm:py-3 text-center">
                         <input 
                             type="number" min="0"
-                            className="w-14 sm:w-20 border rounded px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300 text-xs sm:text-sm font-semibold text-rose-600"
+                            className="w-14 sm:w-20 border rounded px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-center border-gray-300 dark:border-slate-600 text-xs sm:text-sm font-semibold text-rose-600 dark:text-rose-400"
                             value={data.totalAbsent ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'totalAbsent', e.target.value)}
                             onBlur={handleInputBlur}
@@ -347,7 +347,7 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
                     <td className="px-2 sm:px-6 py-2 sm:py-3 text-left">
                         <input 
                             type="text"
-                            className="w-full border rounded px-2 sm:px-3 py-1 sm:py-1.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none border-gray-300 text-xs"
+                            className="w-full border rounded px-2 sm:px-3 py-1 sm:py-1.5 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none border-gray-300 dark:border-slate-600 text-xs"
                             value={data.remark ?? ''}
                             onChange={(e) => handleInputChange(student.id, 'remark', e.target.value)}
                             onBlur={handleInputBlur}
@@ -361,20 +361,20 @@ export const AttendanceEntry: React.FC<AttendanceEntryProps> = ({ onNavigate, in
           </table>
           </div>
           
-          <div className="bg-gray-50/70 px-6 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+          <div className="bg-gray-50/70 dark:bg-slate-800/60/70 px-6 py-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
             <span className="flex items-center gap-1.5 font-medium">
-              <Sparkles size={14} className="text-indigo-500" />
+              <Sparkles size={14} className="text-indigo-500 dark:text-indigo-400" />
               {language === 'bn' 
                 ? 'উপস্থিতি ও মন্তব্য লেখার সাথে সাথে স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়।' 
                 : 'Attendance and remarks are auto-saved in real-time as you type.'}
             </span>
-            <span className="font-mono text-gray-400">
+            <span className="font-mono text-gray-400 dark:text-slate-500">
               Total {enrolledStudents.length} {language === 'bn' ? 'শিক্ষার্থী' : 'students'}
             </span>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <EmptyState
             icon={Users}
             title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো শিক্ষার্থী নেই` : `No students enrolled in ${selectedClass}`}

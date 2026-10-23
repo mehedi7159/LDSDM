@@ -156,14 +156,14 @@ export const AttendanceReportView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer border border-white/10 shadow-xs"
+            className="px-4 py-2.5 rounded-xl bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer border border-white/10 shadow-xs"
           >
             <Download size={15} />
             <span>{language === 'bn' ? 'CSV এক্সপোর্ট' : 'Export CSV'}</span>
           </button>
           <button
             onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl bg-white text-emerald-950 hover:bg-emerald-50 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/20"
+            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-emerald-950 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/20"
           >
             <Printer size={15} />
             <span>{language === 'bn' ? 'মাসিক শিট প্রিন্ট' : 'Print Sheet'}</span>
@@ -173,60 +173,60 @@ export const AttendanceReportView: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'গড় উপস্থিতি হার' : 'Avg Attendance Rate'}</p>
-            <h3 className="text-2xl font-black text-emerald-600 mt-1">{toBanglaDigits(classAvgRate)}%</h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">{selectedClass} শ্রেণির গড়</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'গড় উপস্থিতি হার' : 'Avg Attendance Rate'}</p>
+            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{toBanglaDigits(classAvgRate)}%</h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{selectedClass} শ্রেণির গড়</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
             <TrendingUp size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-1">{toBanglaDigits(classStudents.length)}</h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">{language === 'bn' ? 'এই শ্রেণিতে' : 'in selected class'}</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{toBanglaDigits(classStudents.length)}</h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{language === 'bn' ? 'এই শ্রেণিতে' : 'in selected class'}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
             <Users size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'নিয়মিত শিক্ষার্থী' : 'Regular Students'}</p>
-            <h3 className="text-2xl font-black text-teal-600 mt-1">{toBanglaDigits(goodCount)}</h3>
-            <p className="text-[10px] text-teal-600/80 mt-0.5">≥ ৮০% উপস্থিতি</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'নিয়মিত শিক্ষার্থী' : 'Regular Students'}</p>
+            <h3 className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">{toBanglaDigits(goodCount)}</h3>
+            <p className="text-[10px] text-teal-600/80 dark:text-teal-400 mt-0.5">≥ ৮০% উপস্থিতি</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
             <CheckCircle2 size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'অনুপস্থিতির ঝুঁকিতে' : 'Irregular / At Risk'}</p>
-            <h3 className="text-2xl font-black text-rose-600 mt-1">{toBanglaDigits(atRiskCount)}</h3>
-            <p className="text-[10px] text-rose-600/80 mt-0.5">&lt; ৮০% উপস্থিতি</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'অনুপস্থিতির ঝুঁকিতে' : 'Irregular / At Risk'}</p>
+            <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{toBanglaDigits(atRiskCount)}</h3>
+            <p className="text-[10px] text-rose-600/80 dark:text-rose-400 mt-0.5">&lt; ৮০% উপস্থিতি</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
             <AlertTriangle size={24} />
           </div>
         </div>
       </div>
 
       {/* Filter and Selection Row */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-600">{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</label>
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-300">{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
               {classes.map(c => (
                 <option key={c.id} value={c.name}>{language === 'bn' ? (c.nameBn || c.name) : c.name}</option>
@@ -235,34 +235,34 @@ export const AttendanceReportView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-600">{language === 'bn' ? 'মাস:' : 'Month:'}</label>
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-300">{language === 'bn' ? 'মাস:' : 'Month:'}</label>
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             />
           </div>
 
           <div className="relative flex-1 min-w-[180px]">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
               placeholder={language === 'bn' ? 'শিক্ষার্থী খুঁজুন...' : 'Search student...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/50/50 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>
 
-        <div className="text-xs font-bold text-slate-500">
-          {language === 'bn' ? 'মোট কর্মদিবস:' : 'Working Days:'} <span className="text-slate-900 font-mono font-black">{toBanglaDigits(24)}</span> {language === 'bn' ? 'দিন' : 'days'}
+        <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          {language === 'bn' ? 'মোট কর্মদিবস:' : 'Working Days:'} <span className="text-slate-900 dark:text-white font-mono font-black">{toBanglaDigits(24)}</span> {language === 'bn' ? 'দিন' : 'days'}
         </div>
       </div>
 
       {/* Attendance Sheet Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Printable Header */}
         <div className="p-6 border-b border-slate-100 hidden print:block text-center">
           <h2 className="text-xl font-black text-slate-900">{schoolProfile.nameBn || schoolProfile.name}</h2>
@@ -278,43 +278,43 @@ export const AttendanceReportView: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
+              <tr className="bg-slate-50/80 dark:bg-slate-800/50/80 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider">
                 <th className="py-3 px-4 text-center">#</th>
                 <th className="py-3 px-4">{language === 'bn' ? 'আইডি' : 'Student ID'}</th>
                 <th className="py-3 px-4 text-center">{language === 'bn' ? 'রোল' : 'Roll'}</th>
                 <th className="py-3 px-4">{language === 'bn' ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
                 <th className="py-3 px-4 text-center">{language === 'bn' ? 'কর্মদিবস' : 'Total Days'}</th>
-                <th className="py-3 px-4 text-center text-emerald-700">{language === 'bn' ? 'উপস্থিত' : 'Present'}</th>
-                <th className="py-3 px-4 text-center text-rose-700">{language === 'bn' ? 'অনুপস্থিত' : 'Absent'}</th>
-                <th className="py-3 px-4 text-center text-amber-700">{language === 'bn' ? 'বিলম্বে' : 'Late'}</th>
+                <th className="py-3 px-4 text-center text-emerald-700 dark:text-emerald-400">{language === 'bn' ? 'উপস্থিত' : 'Present'}</th>
+                <th className="py-3 px-4 text-center text-rose-700 dark:text-rose-400">{language === 'bn' ? 'অনুপস্থিত' : 'Absent'}</th>
+                <th className="py-3 px-4 text-center text-amber-700 dark:text-amber-400">{language === 'bn' ? 'বিলম্বে' : 'Late'}</th>
                 <th className="py-3 px-4 text-center">{language === 'bn' ? 'উপস্থিতি %' : 'Percentage'}</th>
                 <th className="py-3 px-4 text-center">{language === 'bn' ? 'রেগুলারিটি' : 'Regularity'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredStats.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-slate-400">
+                  <td colSpan={10} className="py-8 text-center text-slate-400 dark:text-slate-500">
                     {language === 'bn' ? 'এই শ্রেণিতে কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found'}
                   </td>
                 </tr>
               ) : (
                 filteredStats.map((item, idx) => (
-                  <tr key={item.student.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 text-center font-mono text-slate-400">{toBanglaDigits(idx + 1)}</td>
-                    <td className="py-3 px-4 font-mono font-semibold text-slate-700">{item.student.studentId}</td>
-                    <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">{toBanglaDigits(item.student.roll)}</td>
-                    <td className="py-3 px-4 font-bold text-slate-900">{item.student.name}</td>
-                    <td className="py-3 px-4 text-center font-mono text-slate-600">{toBanglaDigits(item.totalWorkingDays)}</td>
-                    <td className="py-3 px-4 text-center font-mono font-bold text-emerald-600 bg-emerald-50/30">{toBanglaDigits(item.presentDays)}</td>
-                    <td className="py-3 px-4 text-center font-mono font-bold text-rose-600 bg-rose-50/30">{toBanglaDigits(item.absentDays)}</td>
-                    <td className="py-3 px-4 text-center font-mono text-amber-600">{toBanglaDigits(item.lateDays)}</td>
-                    <td className="py-3 px-4 text-center font-mono font-extrabold text-slate-900">
+                  <tr key={item.student.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50/60 transition-colors">
+                    <td className="py-3 px-4 text-center font-mono text-slate-400 dark:text-slate-500">{toBanglaDigits(idx + 1)}</td>
+                    <td className="py-3 px-4 font-mono font-semibold text-slate-700 dark:text-slate-200">{item.student.studentId}</td>
+                    <td className="py-3 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-100">{toBanglaDigits(item.student.roll)}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{item.student.name}</td>
+                    <td className="py-3 px-4 text-center font-mono text-slate-600 dark:text-slate-300">{toBanglaDigits(item.totalWorkingDays)}</td>
+                    <td className="py-3 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/50/30">{toBanglaDigits(item.presentDays)}</td>
+                    <td className="py-3 px-4 text-center font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/50/30">{toBanglaDigits(item.absentDays)}</td>
+                    <td className="py-3 px-4 text-center font-mono text-amber-600 dark:text-amber-400">{toBanglaDigits(item.lateDays)}</td>
+                    <td className="py-3 px-4 text-center font-mono font-extrabold text-slate-900 dark:text-white">
                       {toBanglaDigits(item.attendancePercentage)}%
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        !item.isAtRisk ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        !item.isAtRisk ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
                       }`}>
                         {!item.isAtRisk ? (language === 'bn' ? 'নিয়মিত' : 'Good') : (language === 'bn' ? 'অনিয়মিত' : 'At Risk')}
                       </span>

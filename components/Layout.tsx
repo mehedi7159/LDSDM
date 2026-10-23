@@ -425,6 +425,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           badge: 'Report',
           permissions: ['finance.view', 'reports.view'],
           isReportItem: true
+        },
+        { 
+          id: 'islamic_welfare', 
+          label: language === 'bn' ? 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipends', 
+          icon: HeartHandshake, 
+          subType: 'report',
+          badge: 'Welfare'
         }
       ]
     },
@@ -563,12 +570,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       ]
     },
 
-    // ৮. রিপোর্ট, নোটিশ ও সেটিংস (Reports & Settings)
+    // ৮. নোটিশ ও রিপোর্ট (Notices & Reports)
     {
-      id: 'settings_reports_section',
-      categoryBn: '৮. রিপোর্ট, নোটিশ ও সেটিংস',
-      categoryEn: '8. Reports, Notices & Settings',
-      icon: Settings,
+      id: 'notices_reports_section',
+      categoryBn: '৮. নোটিশ ও রিপোর্ট',
+      categoryEn: '8. Notices & Reports',
+      icon: Megaphone,
       items: [
         { 
           id: 'notice_board', 
@@ -584,7 +591,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           badge: 'Report',
           isAdminOnly: true,
           isReportItem: true
-        },
+        }
+      ]
+    },
+
+    // ৯. সেটিংস ও সিস্টেম (Settings & System)
+    {
+      id: 'settings_reports_section',
+      categoryBn: '৯. সেটিংস ও সিস্টেম',
+      categoryEn: '9. Settings & System',
+      icon: Settings,
+      items: [
         { 
           id: 'settings', 
           label: language === 'bn' ? 'মাদ্রাসা প্রোফাইল ও পরিচিতি' : 'Madrasah Profile Settings', 
@@ -629,11 +646,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       ]
     },
 
-    // ৯. পোর্টাল, যোগাযোগ ও বিশেষ সেবা (Portals, SMS & Special Services)
+    // ১০. পোর্টাল ও যোগাযোগ (Portals & Communication)
     {
       id: 'portals_services_section',
-      categoryBn: '৯. পোর্টাল, যোগাযোগ ও বিশেষ সেবা',
-      categoryEn: '9. Portals, SMS & Special Services',
+      categoryBn: '১০. পোর্টাল ও যোগাযোগ',
+      categoryEn: '10. Portals & Communication',
       icon: Globe,
       items: [
         { 
@@ -662,28 +679,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           icon: MessageSquare, 
           subType: 'action',
           badge: 'SMS'
-        },
-        { 
-          id: 'boarding_mess', 
-          label: language === 'bn' ? 'ছাত্রাবাস ও হোস্টেল ডাইনিং' : 'Hostel & Mess Dining', 
-          icon: Home, 
-          subType: 'action'
-        },
-        { 
-          id: 'islamic_welfare', 
-          label: language === 'bn' ? 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipends', 
-          icon: HeartHandshake, 
-          subType: 'report',
-          badge: 'Welfare'
         }
       ]
     },
 
-    // ১০. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান (Library, Transport & Annual Events Hub)
+    // ১১. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান (Library, Transport & Annual Events Hub)
     {
       id: 'specialized_services_section',
-      categoryBn: '১০. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান',
-      categoryEn: '10. Library, Transport & Annual Events',
+      categoryBn: '১১. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান',
+      categoryEn: '11. Library, Transport & Annual Events',
       icon: Library,
       items: [
         { 
@@ -724,11 +728,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       ]
     },
 
-    // ১১. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব (Institutional Operations Hub)
+    // ১২. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব (Institutional Operations Hub)
     {
       id: 'institutional_operations_section',
-      categoryBn: '১১. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব',
-      categoryEn: '11. Assets, Houses, Alumni & Health',
+      categoryBn: '১২. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব',
+      categoryEn: '12. Assets, Houses, Alumni & Health',
       icon: Package,
       items: [
         { 
@@ -765,6 +769,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           icon: HeartPulse, 
           subType: 'report',
           badge: 'Health'
+        },
+        { 
+          id: 'boarding_mess', 
+          label: language === 'bn' ? 'ছাত্রাবাস ও হোস্টেল ডাইনিং' : 'Hostel & Mess Dining', 
+          icon: Home, 
+          subType: 'action'
         }
       ]
     }

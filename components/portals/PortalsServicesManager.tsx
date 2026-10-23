@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 import { 
   Users, 
   Globe, 
@@ -129,6 +130,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
   } = useApp();
 
   const isBn = language === 'bn';
+  const { showSuccess, showError } = useTheme();
 
   // Active sub-tab state
   const [activeSubTab, setActiveSubTab] = useState<PortalSubTab>(initialSubTab);
@@ -632,7 +634,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
           {/* Quick Metrics Matrix */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
+            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
               <span className="text-[11px] font-semibold text-teal-200 block uppercase">
                 {isBn ? 'অভিভাবক' : 'Guardians'}
               </span>
@@ -640,7 +642,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 {formatNumber(students.length, language)}
               </span>
             </div>
-            <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
+            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
               <span className="text-[11px] font-semibold text-teal-200 block uppercase">
                 {isBn ? 'আবাসিক' : 'Boarding'}
               </span>
@@ -648,7 +650,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 {formatNumber(residentialStudents.length, language)}
               </span>
             </div>
-            <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
+            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
               <span className="text-[11px] font-semibold text-teal-200 block uppercase">
                 {isBn ? 'ভর্তি আবেদন' : 'Admissions'}
               </span>
@@ -656,7 +658,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 {formatNumber(admissions.length, language)}
               </span>
             </div>
-            <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
+            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
               <span className="text-[11px] font-semibold text-teal-200 block uppercase">
                 {isBn ? 'এসএমএস রেডি' : 'SMS Ready'}
               </span>
@@ -690,14 +692,14 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   isActive 
                     ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/30' 
-                    : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5'
+                    : 'bg-white/5 dark:bg-slate-900/5 hover:bg-white/10 dark:hover:bg-slate-900/10 text-slate-300 hover:text-white border border-white/5'
                 }`}
               >
                 <Icon size={16} />
                 <span>{isBn ? tab.labelBn : tab.labelEn}</span>
                 {tab.badge && (
                   <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
-                    isActive ? 'bg-slate-950/20 text-slate-950' : 'bg-white/10 text-teal-300'
+                    isActive ? 'bg-slate-950/20 text-slate-950' : 'bg-white/10 dark:bg-slate-900/10 text-teal-300'
                   }`}>
                     {tab.badge}
                   </span>
@@ -715,23 +717,23 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Controls Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <div className="relative flex-1 sm:w-64">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder={isBn ? 'নাম, রোল বা অভিভাবক ফোন...' : 'Search student, roll or phone...'}
                   value={guardianSearchQuery}
                   onChange={(e) => setGuardianSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                  className="w-full pl-10 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                 />
               </div>
 
               <select
                 value={guardianClassFilter}
                 onChange={(e) => setGuardianClassFilter(e.target.value)}
-                className="py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-teal-500"
+                className="py-2 px-3 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl font-medium focus:outline-teal-500"
               >
                 <option value="all">{isBn ? 'সকল শ্রেণি' : 'All Classes'}</option>
                 {classes.map(c => (
@@ -742,7 +744,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               <select
                 value={selectedExamId}
                 onChange={(e) => setSelectedExamId(e.target.value)}
-                className="py-2 px-3 text-xs bg-teal-50 border border-teal-200 text-teal-900 rounded-xl font-bold focus:outline-teal-500"
+                className="py-2 px-3 text-xs bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 rounded-xl font-bold focus:outline-teal-500"
               >
                 {exams.map(e => (
                   <option key={e.id} value={e.id}>{e.name || e.academicYear}</option>
@@ -767,12 +769,12 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Left Column: Student Quick Picker (4 cols) */}
-            <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col h-[560px]">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-4 flex flex-col h-[560px]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   {isBn ? 'শিক্ষার্থী তালিকা' : 'Student Directory'}
                 </span>
-                <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 px-2 py-0.5 rounded-full">
                   {formatNumber(filteredStudentsForGuardian.length, language)}
                 </span>
               </div>
@@ -787,12 +789,12 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       className={`w-full text-left p-3 rounded-xl transition-all flex items-center justify-between gap-3 cursor-pointer ${
                         isSelected 
                           ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/20' 
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/60'
+                          : 'bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-800'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-800'
+                          isSelected ? 'bg-white/20 dark:bg-slate-900/20 text-white' : 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300'
                         }`}>
                           {st.roll || '—'}
                         </div>
@@ -800,7 +802,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                           <p className="font-bold text-xs truncate">
                             {isBn && st.nameBn ? st.nameBn : st.name}
                           </p>
-                          <p className={`text-[10px] ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] ${isSelected ? 'text-teal-100' : 'text-slate-400 dark:text-slate-500'}`}>
                             {st.classLevel} • {st.studentId || st.id.slice(0, 8)}
                           </p>
                         </div>
@@ -815,13 +817,13 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             {/* Right Column: Live Guardian Portal Preview (8 cols) */}
             <div className="lg:col-span-8">
               {activeStudent ? (
-                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden">
                   
                   {/* Guardian Portal Header Bar */}
                   <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-emerald-900 p-6 text-white relative">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl font-black text-white shadow-inner">
+                        <div className="w-16 h-16 rounded-2xl bg-white/10 dark:bg-slate-900/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl font-black text-white shadow-inner">
                           {activeStudent.nameBn ? activeStudent.nameBn.charAt(0) : activeStudent.name.charAt(0)}
                         </div>
                         <div>
@@ -852,9 +854,9 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                           <>
                             <a
                               href={`tel:${activeStudent.guardianPhone}`}
-                              className="px-3 py-2 rounded-xl bg-white text-teal-800 hover:bg-teal-50 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                              className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
                             >
-                              <Phone size={13} className="text-teal-600" />
+                              <Phone size={13} className="text-teal-600 dark:text-teal-400" />
                               <span>{isBn ? 'সরাসরি কল' : 'Call'}</span>
                             </a>
                             <a
@@ -877,53 +879,53 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       
                       {/* Academic Performance Card */}
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-                        <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-bold">
-                          <span className="flex items-center gap-1 text-teal-700">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2 font-bold">
+                          <span className="flex items-center gap-1 text-teal-700 dark:text-teal-400">
                             <Award size={14} />
                             <span>{isBn ? 'সর্বশেষ ফলাফল' : 'Latest Result'}</span>
                           </span>
-                          <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full text-slate-700">
+                          <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full text-slate-700 dark:text-slate-200">
                             {activeExam?.name || 'ইমতিহান'}
                           </span>
                         </div>
                         {studentResultSummary ? (
                           <div className="space-y-2">
                             <div className="flex items-baseline justify-between">
-                              <span className="text-2xl font-black text-slate-900">
+                              <span className="text-2xl font-black text-slate-900 dark:text-white">
                                 {formatNumber(studentResultSummary.gpa.toFixed(2), language)}
                               </span>
                               <span className={`px-2.5 py-1 rounded-lg text-xs font-black ${
-                                studentResultSummary.isPassed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                                studentResultSummary.isPassed ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300'
                               }`}>
                                 {studentResultSummary.grade} ({studentResultSummary.isPassed ? (isBn ? 'উত্তীর্ণ' : 'Passed') : (isBn ? 'অনুত্তীর্ণ' : 'Failed')})
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
                               {isBn ? 'প্রাপ্ত নম্বর:' : 'Marks:'} {formatNumber(studentResultSummary.totalObtained, language)} / {formatNumber(studentResultSummary.totalFull, language)}
                             </p>
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-400 py-3">{isBn ? 'ফলাফল এন্ট্রি নেই' : 'No marks entered'}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 py-3">{isBn ? 'ফলাফল এন্ট্রি নেই' : 'No marks entered'}</p>
                         )}
                       </div>
 
                       {/* Attendance Card */}
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-                        <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-bold">
-                          <span className="flex items-center gap-1 text-emerald-700">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2 font-bold">
+                          <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
                             <Calendar size={14} />
                             <span>{isBn ? 'হাজিরা ও উপস্থিতি' : 'Attendance Rate'}</span>
                           </span>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
                             ৯২%
                           </span>
                         </div>
                         <div className="space-y-2">
-                          <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
                             <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: '92%' }}></div>
                           </div>
-                          <div className="flex justify-between text-[11px] text-slate-500 font-medium">
+                          <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                             <span>{isBn ? 'উপস্থিত:' : 'Present:'} {formatNumber(24, language)} দিন</span>
                             <span>{isBn ? 'অনুপস্থিত:' : 'Absent:'} {formatNumber(2, language)} দিন</span>
                           </div>
@@ -931,26 +933,26 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       </div>
 
                       {/* Fee & Accounts Card */}
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-                        <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-bold">
-                          <span className="flex items-center gap-1 text-indigo-700">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2 font-bold">
+                          <span className="flex items-center gap-1 text-indigo-700 dark:text-indigo-400">
                             <Wallet size={14} />
                             <span>{isBn ? 'হিসাব ও ফি বিবরণী' : 'Fee Status'}</span>
                           </span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                            studentFinancials.pendingDues > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                            studentFinancials.pendingDues > 0 ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300'
                           }`}>
                             {studentFinancials.pendingDues > 0 ? (isBn ? 'বকেয়া আছে' : 'Due') : (isBn ? 'পরিশোধিত' : 'Clear')}
                           </span>
                         </div>
                         <div className="space-y-1">
                           <div className="flex justify-between items-baseline">
-                            <span className="text-xs text-slate-500">{isBn ? 'মোট পরিশোধ:' : 'Total Paid:'}</span>
-                            <span className="font-bold text-slate-800">৳{formatNumber(studentFinancials.totalPaid, language)}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'মোট পরিশোধ:' : 'Total Paid:'}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-100">৳{formatNumber(studentFinancials.totalPaid, language)}</span>
                           </div>
                           <div className="flex justify-between items-baseline">
-                            <span className="text-xs text-slate-500">{isBn ? 'চলতি বকেয়া:' : 'Due Balance:'}</span>
-                            <span className="font-bold text-rose-600">৳{formatNumber(studentFinancials.pendingDues, language)}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'চলতি বকেয়া:' : 'Due Balance:'}</span>
+                            <span className="font-bold text-rose-600 dark:text-rose-400">৳{formatNumber(studentFinancials.pendingDues, language)}</span>
                           </div>
                         </div>
                       </div>
@@ -958,28 +960,28 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                     </div>
 
                     {/* Guardian Access Code & Credentials */}
-                    <div className="bg-teal-50/60 p-4 rounded-2xl border border-teal-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="bg-teal-50/60 dark:bg-teal-950/50/60 p-4 rounded-2xl border border-teal-200/80 dark:border-teal-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold">
                           <ShieldCheck size={20} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-teal-900">
+                          <p className="text-xs font-bold text-teal-900 dark:text-teal-200">
                             {isBn ? 'অভিভাবক অনলাইন অ্যাক্সেস পিন (Guardian Portal PIN)' : 'Guardian Access Token & PIN'}
                           </p>
-                          <p className="text-[11px] text-teal-700">
+                          <p className="text-[11px] text-teal-700 dark:text-teal-400">
                             {isBn ? 'অভিভাবক এই পিন ব্যবহার করে সরাসরি তাদের মোবাইল থেকে লগইন করতে পারবেন।' : 'Guardians can use this security PIN to access the self-service web portal.'}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1.5 bg-white rounded-xl border border-teal-300 font-mono font-black text-sm text-teal-900 tracking-widest shadow-xs">
+                        <span className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded-xl border border-teal-300 dark:border-teal-700 font-mono font-black text-sm text-teal-900 dark:text-teal-200 tracking-widest shadow-xs">
                           {activeStudent.studentId ? activeStudent.studentId.slice(-4) : '7890'}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => alert(isBn ? 'অভিভাবকের ফোনে অ্যাক্সেস লিংক পাঠানো হয়েছে!' : 'Access PIN sent to guardian phone!')}
+                          onClick={() => showSuccess(isBn ? 'অভিভাবকের ফোনে অ্যাক্সেস লিংক পাঠানো হয়েছে!' : 'Access PIN sent to guardian phone!')}
                           className="text-xs rounded-xl"
                         >
                           <Send size={12} className="mr-1" />
@@ -991,9 +993,9 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="bg-white p-12 text-center rounded-3xl border border-slate-200">
+                <div className="bg-white dark:bg-slate-900 p-12 text-center rounded-3xl border border-slate-200 dark:border-slate-800">
                   <Users size={40} className="mx-auto text-slate-300 mb-3" />
-                  <p className="text-sm font-bold text-slate-600">{isBn ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No student found'}</p>
+                  <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{isBn ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No student found'}</p>
                 </div>
               )}
             </div>
@@ -1010,23 +1012,23 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Action & Filter Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <div className="relative flex-1 sm:w-64">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder={isBn ? 'আবেদনকারীর নাম বা মোবাইল...' : 'Search applicant name or phone...'}
                   value={admissionSearch}
                   onChange={(e) => setAdmissionSearch(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                  className="w-full pl-10 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                 />
               </div>
 
               <select
                 value={admissionFilterStatus}
                 onChange={(e) => setAdmissionFilterStatus(e.target.value)}
-                className="py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-teal-500"
+                className="py-2 px-3 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl font-medium focus:outline-teal-500"
               >
                 <option value="all">{isBn ? 'সকল স্ট্যাটাস' : 'All Status'}</option>
                 <option value="pending">{isBn ? 'অপেক্ষমাণ (Pending)' : 'Pending'}</option>
@@ -1038,7 +1040,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               <select
                 value={admissionFilterClass}
                 onChange={(e) => setAdmissionFilterClass(e.target.value)}
-                className="py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-teal-500"
+                className="py-2 px-3 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl font-medium focus:outline-teal-500"
               >
                 <option value="all">{isBn ? 'সকল আবেদন শ্রেণি' : 'All Classes'}</option>
                 {classes.map(c => (
@@ -1061,12 +1063,12 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           </div>
 
           {/* Applications Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'অনলাইন ও অফলাইন ভর্তি আবেদন তালিকা' : 'Admission Applications Ledger'}
               </span>
-              <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-1 rounded-full">
                 {formatNumber(filteredAdmissions.length, language)} {isBn ? 'টি আবেদন' : 'applications'}
               </span>
             </div>
@@ -1074,7 +1076,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-600 font-bold uppercase text-[11px]">
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px]">
                     <th className="py-3.5 px-4">{isBn ? 'আবেদনকারী ও অভিভাবক' : 'Applicant & Parent'}</th>
                     <th className="py-3.5 px-4">{isBn ? 'আবেদিত শ্রেণি' : 'Desired Class'}</th>
                     <th className="py-3.5 px-4">{isBn ? 'আবাসিক' : 'Residential'}</th>
@@ -1083,38 +1085,38 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                     <th className="py-3.5 px-4 text-right">{isBn ? 'পদক্ষেপ' : 'Actions'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredAdmissions.map(app => {
                     return (
-                      <tr key={app.id} className="hover:bg-teal-50/30 transition-colors">
+                      <tr key={app.id} className="hover:bg-teal-50/30 dark:hover:bg-teal-950/50/30 transition-colors">
                         <td className="py-3.5 px-4">
-                          <p className="font-bold text-slate-900">
+                          <p className="font-bold text-slate-900 dark:text-white">
                             {isBn && app.applicantNameBn ? app.applicantNameBn : app.applicantName}
                           </p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
                             {isBn ? 'পিতা:' : 'Father:'} {app.fatherName} • 📞 {app.phone}
                           </p>
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-800">
+                        <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-100">
                           {app.desiredClass}
                         </td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            app.isResidential ? 'bg-teal-100 text-teal-800' : 'bg-slate-100 text-slate-600'
+                            app.isResidential ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                           }`}>
                             {app.isResidential ? (isBn ? 'আবাসিক' : 'Residential') : (isBn ? 'অনাবাসিক' : 'Non-Res')}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
+                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                           {formatSafeDate(app.appliedDate)}
                         </td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                            app.status === 'admitted' ? 'bg-emerald-100 text-emerald-800' :
-                            app.status === 'approved' ? 'bg-teal-100 text-teal-800' :
-                            app.status === 'interview_called' ? 'bg-indigo-100 text-indigo-800' :
-                            app.status === 'rejected' ? 'bg-rose-100 text-rose-800' :
-                            'bg-amber-100 text-amber-800'
+                            app.status === 'admitted' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' :
+                            app.status === 'approved' ? 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300' :
+                            app.status === 'interview_called' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' :
+                            app.status === 'rejected' ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300' :
+                            'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300'
                           }`}>
                             {app.status === 'admitted' && <Check size={12} />}
                             <span>
@@ -1142,7 +1144,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                               const updated = admissions.map(a => a.id === app.id ? { ...a, status: nextStatus as any } : a);
                               saveAdmissions(updated);
                             }}
-                            className="p-1.5 text-slate-400 hover:text-teal-600 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                            className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-600 dark:hover:text-teal-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                             title="Advance Status"
                           >
                             <ArrowRight size={14} />
@@ -1159,59 +1161,59 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           {/* New Admission Modal */}
           {isAddAdmissionModalOpen && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
-                    <UserPlus size={18} className="text-teal-600" />
+              <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <UserPlus size={18} className="text-teal-600 dark:text-teal-400" />
                     <span>{isBn ? 'নতুন শিক্ষার্থী ভর্তি আবেদন ফর্ম' : 'New Admission Application'}</span>
                   </h3>
-                  <button onClick={() => setIsAddAdmissionModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setIsAddAdmissionModalOpen(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                     <X size={18} />
                   </button>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">{isBn ? 'শিক্ষার্থীর নাম (বাংলায়)' : 'Student Name (Bangla)'}</label>
+                    <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'শিক্ষার্থীর নাম (বাংলায়)' : 'Student Name (Bangla)'}</label>
                     <input
                       type="text"
                       value={newAdmissionForm.applicantNameBn || ''}
                       onChange={(e) => setNewAdmissionForm({ ...newAdmissionForm, applicantNameBn: e.target.value, applicantName: e.target.value })}
                       placeholder="যেমন: মোঃ আব্দুল্লাহ"
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">{isBn ? 'পিতার নাম' : "Father's Name"}</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'পিতার নাম' : "Father's Name"}</label>
                       <input
                         type="text"
                         value={newAdmissionForm.fatherName || ''}
                         onChange={(e) => setNewAdmissionForm({ ...newAdmissionForm, fatherName: e.target.value })}
                         placeholder="পিতার নাম"
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                       />
                     </div>
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">{isBn ? 'অভিভাবকের মোবাইল' : 'Guardian Mobile'}</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'অভিভাবকের মোবাইল' : 'Guardian Mobile'}</label>
                       <input
                         type="text"
                         value={newAdmissionForm.phone || ''}
                         onChange={(e) => setNewAdmissionForm({ ...newAdmissionForm, phone: e.target.value })}
                         placeholder="01XXXXXXXXX"
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">{isBn ? 'ভর্তির কাঙ্ক্ষিত শ্রেণি' : 'Desired Class'}</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'ভর্তির কাঙ্ক্ষিত শ্রেণি' : 'Desired Class'}</label>
                       <select
                         value={newAdmissionForm.desiredClass || ''}
                         onChange={(e) => setNewAdmissionForm({ ...newAdmissionForm, desiredClass: e.target.value })}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                       >
                         {classes.map(c => (
                           <option key={c.id} value={c.name}>{isBn && c.nameBn ? c.nameBn : c.name}</option>
@@ -1219,11 +1221,11 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">{isBn ? 'আবাসিক ধরন' : 'Residential Option'}</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'আবাসিক ধরন' : 'Residential Option'}</label>
                       <select
                         value={newAdmissionForm.isResidential ? 'res' : 'non_res'}
                         onChange={(e) => setNewAdmissionForm({ ...newAdmissionForm, isResidential: e.target.value === 'res' })}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                       >
                         <option value="non_res">{isBn ? 'অনাবাসিক (ডে)' : 'Non-Residential'}</option>
                         <option value="res">{isBn ? 'আবাসিক (বোর্ডিং)' : 'Residential (Boarding)'}</option>
@@ -1232,7 +1234,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
                   <Button variant="outline" size="sm" onClick={() => setIsAddAdmissionModalOpen(false)}>
                     {isBn ? 'বাতিল' : 'Cancel'}
                   </Button>
@@ -1242,7 +1244,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                     className="bg-teal-600 hover:bg-teal-700"
                     onClick={() => {
                       if (!newAdmissionForm.applicantName || !newAdmissionForm.phone) {
-                        alert(isBn ? 'অনুগ্রহ করে নাম ও মোবাইল নাম্বার লিখুন!' : 'Please enter name and phone!');
+                        showError(isBn ? 'অনুগ্রহ করে নাম ও মোবাইল নাম্বার লিখুন!' : 'Please enter name and phone!');
                         return;
                       }
                       const newApp: AdmissionApplication = {
@@ -1295,7 +1297,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             </div>
 
             {/* Public Search Form Simulator */}
-            <form onSubmit={handleSearchPublicResult} className="mt-6 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <form onSubmit={handleSearchPublicResult} className="mt-6 bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-[11px] font-bold text-indigo-200 block mb-1">
                   {isBn ? 'পরীক্ষা নির্বাচন' : 'Select Exam'}
@@ -1355,27 +1357,27 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           {/* Result Search Outcome */}
           {hasSearchedQr && (
             searchedStudent ? (
-              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md p-6 space-y-6">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md p-6 space-y-6">
                 
                 {/* Header with QR Token */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800 gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-xl shadow-md">
                       <GraduationCap size={24} />
                     </div>
                     <div>
-                      <h3 className="font-black text-lg text-slate-900">
+                      <h3 className="font-black text-lg text-slate-900 dark:text-white">
                         {isBn && searchedStudent.nameBn ? searchedStudent.nameBn : searchedStudent.name}
                       </h3>
-                      <p className="text-xs text-slate-500">
-                        {isBn ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-slate-800">{searchedStudent.classLevel}</span> | {isBn ? 'রোল:' : 'Roll:'} <span className="font-bold text-slate-800">{searchedStudent.roll}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {isBn ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-slate-800 dark:text-slate-100">{searchedStudent.classLevel}</span> | {isBn ? 'রোল:' : 'Roll:'} <span className="font-bold text-slate-800 dark:text-slate-100">{searchedStudent.roll}</span>
                       </p>
                     </div>
                   </div>
 
                   {/* QR Seal & Verification Hash Badge */}
-                  <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <div className="w-16 h-16 bg-white p-1 rounded-xl border border-slate-200 shadow-xs flex items-center justify-center">
+                  <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div className="w-16 h-16 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-center">
                       <ResultVerificationQR
                         student={searchedStudent}
                         exam={exams.find(e => e.id === qrQueryExamId) || exams[0]}
@@ -1384,11 +1386,11 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                         <CheckCircle2 size={10} />
                         <span>{isBn ? 'অফিসিয়াল কিউআর ভেরিফাইড' : 'Official QR Verified'}</span>
                       </span>
-                      <p className="text-[10px] font-mono text-slate-400 mt-1">
+                      <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-1">
                         HASH: MMS-{searchedStudent.id.slice(0, 8).toUpperCase()}
                       </p>
                     </div>
@@ -1399,7 +1401,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold">
                         <th className="py-2.5 px-3">{isBn ? 'বিষয়' : 'Subject'}</th>
                         <th className="py-2.5 px-3 text-center">{isBn ? 'পূর্ণমান' : 'Full Marks'}</th>
                         <th className="py-2.5 px-3 text-center">{isBn ? 'প্রাপ্ত নম্বর' : 'Obtained Marks'}</th>
@@ -1407,26 +1409,26 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                         <th className="py-2.5 px-3 text-center">{isBn ? 'পয়েন্ট' : 'Point'}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {subjects.filter(s => !s.classLevel || s.classLevel === searchedStudent.classLevel).map(sub => {
                         const m = marks.find(mark => mark.studentId === searchedStudent.id && mark.subjectId === sub.id && mark.examId === qrQueryExamId);
                         const obt = m ? (m.obtained || 0) : 0;
                         const gradeData = calculateGrade(obt, sub.fullMarks || 100);
                         return (
-                          <tr key={sub.id} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 px-3 font-medium text-slate-800">
+                          <tr key={sub.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50/50">
+                            <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-100">
                               {isBn && sub.nameBn ? sub.nameBn : sub.name}
                             </td>
-                            <td className="py-2.5 px-3 text-center text-slate-500 font-mono">
+                            <td className="py-2.5 px-3 text-center text-slate-500 dark:text-slate-400 font-mono">
                               {sub.fullMarks || 100}
                             </td>
-                            <td className="py-2.5 px-3 text-center font-bold text-slate-900 font-mono">
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-900 dark:text-white font-mono">
                               {obt}
                             </td>
-                            <td className="py-2.5 px-3 text-center font-bold text-teal-700">
+                            <td className="py-2.5 px-3 text-center font-bold text-teal-700 dark:text-teal-400">
                               {gradeData.grade}
                             </td>
-                            <td className="py-2.5 px-3 text-center font-mono text-slate-600">
+                            <td className="py-2.5 px-3 text-center font-mono text-slate-600 dark:text-slate-300">
                               {gradeData.gpa.toFixed(2)}
                             </td>
                           </tr>
@@ -1437,7 +1439,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 </div>
 
                 {/* Print and Verify Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1460,10 +1462,10 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
               </div>
             ) : (
-              <div className="bg-white p-12 text-center rounded-3xl border border-slate-200">
-                <AlertCircle size={40} className="mx-auto text-amber-500 mb-2" />
-                <p className="text-sm font-bold text-slate-700">{isBn ? 'কোনো ফলাফল পাওয়া যায়নি' : 'No result found'}</p>
-                <p className="text-xs text-slate-400 mt-1">{isBn ? 'সঠিক রোল নম্বর ও শ্রেণি নির্বাচন করে পুনরায় চেষ্টা করুন।' : 'Please verify roll number and class selection.'}</p>
+              <div className="bg-white dark:bg-slate-900 p-12 text-center rounded-3xl border border-slate-200 dark:border-slate-800">
+                <AlertCircle size={40} className="mx-auto text-amber-500 dark:text-amber-400 mb-2" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{isBn ? 'কোনো ফলাফল পাওয়া যায়নি' : 'No result found'}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'সঠিক রোল নম্বর ও শ্রেণি নির্বাচন করে পুনরায় চেষ্টা করুন।' : 'Please verify roll number and class selection.'}</p>
               </div>
             )
           )}
@@ -1492,15 +1494,15 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {smsSuccessMsg && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-emerald-600" />
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-2xl text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
               <span>{smsSuccessMsg}</span>
             </div>
           )}
 
           {smsErrorMsg && (
-            <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl text-xs font-bold flex items-center gap-2">
-              <AlertCircle size={16} className="text-amber-600 shrink-0" />
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 rounded-2xl text-xs font-bold flex items-center gap-2">
+              <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
               <span>{smsErrorMsg}</span>
             </div>
           )}
@@ -1508,13 +1510,13 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Left 7 Cols: SMS Composer & Dispatcher */}
-            <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                  <MessageSquare size={16} className="text-teal-600" />
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
+                  <MessageSquare size={16} className="text-teal-600 dark:text-teal-400" />
                   <span>{isBn ? 'এসএমএস কম্পোজার ও ব্রডকাস্ট' : 'SMS Composer & Broadcast'}</span>
                 </h3>
-                <span className="text-[11px] font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
+                <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 px-2.5 py-1 rounded-full">
                   {isBanglaUnicode ? 'বাংলা ইউনিকোড (৭০ অক্ষর/পার্ট)' : 'English GSM (160 chars/part)'}
                 </span>
               </div>
@@ -1522,11 +1524,11 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               {/* Target Selector */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{isBn ? 'গ্রাহক টার্গেট' : 'Target Audience'}</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'গ্রাহক টার্গেট' : 'Target Audience'}</label>
                   <select
                     value={smsTarget}
                     onChange={(e) => setSmsTarget(e.target.value as any)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                   >
                     <option value="class">{isBn ? 'নির্দিষ্ট শ্রেণি' : 'Specific Class'}</option>
                     <option value="all">{isBn ? 'সকল শিক্ষার্থী ও অভিভাবক' : 'All Students & Guardians'}</option>
@@ -1537,11 +1539,11 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
                 {smsTarget === 'class' && (
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">{isBn ? 'শ্রেণি নির্বাচন' : 'Select Class'}</label>
+                    <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'শ্রেণি নির্বাচন' : 'Select Class'}</label>
                     <select
                       value={smsTargetClass}
                       onChange={(e) => setSmsTargetClass(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-teal-500"
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-teal-500"
                     >
                       {classes.map(c => (
                         <option key={c.id} value={c.name}>{isBn && c.nameBn ? c.nameBn : c.name}</option>
@@ -1553,7 +1555,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
               {/* Template Tags Insertion Helper */}
               <div>
-                <label className="text-[11px] font-bold text-slate-500 block mb-1.5">
+                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1.5">
                   {isBn ? 'ডাইনামিক ভ্যারিয়েবল ট্যাগ (ক্লিক করে যুক্ত করুন):' : 'Dynamic Variable Tags (Click to insert):'}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -1570,7 +1572,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       key={tag}
                       type="button"
                       onClick={() => handleInsertTag(tag)}
-                      className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 text-[10px] font-mono font-bold transition-all cursor-pointer border border-teal-200/60"
+                      className="px-2 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 dark:hover:bg-teal-900/50 text-teal-800 dark:text-teal-300 text-[10px] font-mono font-bold transition-all cursor-pointer border border-teal-200/60 dark:border-teal-800"
                     >
                       {tag}
                     </button>
@@ -1580,21 +1582,21 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
               {/* Message Text Area */}
               <div>
-                <label className="font-bold text-slate-700 block mb-1 text-xs">{isBn ? 'এসএমএস বার্তা' : 'Message Body'}</label>
+                <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1 text-xs">{isBn ? 'এসএমএস বার্তা' : 'Message Body'}</label>
                 <textarea
                   rows={4}
                   value={smsText}
                   onChange={(e) => setSmsText(e.target.value)}
                   placeholder={isBn ? 'এসএমএস বার্তা লিখুন...' : 'Type message here...'}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-teal-500 font-sans leading-relaxed"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs focus:outline-teal-500 font-sans leading-relaxed"
                 />
                 
                 {/* Character Counter & Cost Calculator */}
-                <div className="flex justify-between items-center text-[11px] text-slate-500 mt-1 font-medium">
+                <div className="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
                   <span>
-                    {isBn ? 'অক্ষর সংখ্যা:' : 'Characters:'} <strong className="text-slate-800">{formatNumber(smsCharCount, language)}</strong> / {formatNumber(smsMaxPerPart, language)}
+                    {isBn ? 'অক্ষর সংখ্যা:' : 'Characters:'} <strong className="text-slate-800 dark:text-slate-100">{formatNumber(smsCharCount, language)}</strong> / {formatNumber(smsMaxPerPart, language)}
                   </span>
-                  <span className="text-teal-700 font-bold">
+                  <span className="text-teal-700 dark:text-teal-400 font-bold">
                     {formatNumber(smsPartCount, language)} {isBn ? 'পার্ট এসএমএস' : 'Part SMS'}
                   </span>
                 </div>
@@ -1620,10 +1622,10 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             <div className="lg:col-span-5 space-y-4">
               
               {/* Gateway Settings Card */}
-              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sliders size={14} className="text-teal-600" />
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sliders size={14} className="text-teal-600 dark:text-teal-400" />
                     <span>{isBn ? 'এসএমএস গেটওয়ে কনফিগারেশন' : 'Gateway Settings'}</span>
                   </span>
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -1631,11 +1633,11 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
                 <div className="space-y-2.5 text-xs">
                   <div>
-                    <label className="text-slate-500 block mb-0.5">{isBn ? 'গেটওয়ে প্রভাইডার' : 'Provider'}</label>
+                    <label className="text-slate-500 dark:text-slate-400 block mb-0.5">{isBn ? 'গেটওয়ে প্রভাইডার' : 'Provider'}</label>
                     <select
                       value={smsProvider}
                       onChange={(e) => setSmsProvider(e.target.value as any)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl"
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl"
                     >
                       <option value="greenweb">Greenweb BD (API V2)</option>
                       <option value="bulksmsbd">BulkSMSBD (Masking/Non-Masking)</option>
@@ -1646,41 +1648,41 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-slate-500 block mb-0.5">{isBn ? 'সেন্ডার আইডি / মাস্কিং' : 'Sender ID'}</label>
+                    <label className="text-slate-500 dark:text-slate-400 block mb-0.5">{isBn ? 'সেন্ডার আইডি / মাস্কিং' : 'Sender ID'}</label>
                     <input
                       type="text"
                       value={smsSenderId}
                       onChange={(e) => setSmsSenderId(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-mono"
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="text-slate-500 block mb-0.5">{isBn ? 'এপিআই সিক্রেট কি' : 'API Key'}</label>
+                    <label className="text-slate-500 dark:text-slate-400 block mb-0.5">{isBn ? 'এপিআই সিক্রেট কি' : 'API Key'}</label>
                     <input
                       type="password"
                       value={smsApiKey}
                       onChange={(e) => setSmsApiKey(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[11px]"
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-[11px]"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Recent SMS History Log */}
-              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 space-y-3">
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block pb-2 border-b border-slate-100">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 space-y-3">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider block pb-2 border-b border-slate-100 dark:border-slate-800">
                   {isBn ? 'সর্বশেষ প্রেরিত এসএমএস লগ' : 'Recent Dispatch History'}
                 </span>
 
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar text-xs">
                   {smsLogs.map(log => (
-                    <div key={log.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/60 space-y-1">
-                      <div className="flex justify-between items-center text-[10px] text-slate-400">
-                        <span className="font-bold text-slate-700">{log.recipient}</span>
+                    <div key={log.id} className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-1">
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-500">
+                        <span className="font-bold text-slate-700 dark:text-slate-200">{log.recipient}</span>
                         <span>{log.time}</span>
                       </div>
-                      <p className="text-[11px] text-slate-600 line-clamp-2">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2">
                         {log.message}
                       </p>
                     </div>
@@ -1703,36 +1705,36 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           
           {/* Top Boarding Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase block">{isBn ? 'মোট আবাসিক ছাত্র' : 'Residential Students'}</span>
-              <span className="text-2xl font-black text-slate-900 mt-1 block">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'মোট আবাসিক ছাত্র' : 'Residential Students'}</span>
+              <span className="text-2xl font-black text-slate-900 dark:text-white mt-1 block">
                 {formatNumber(boardingStats.totalResidential, language)} {isBn ? 'জন' : ''}
               </span>
             </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase block">{isBn ? 'সকালের নাস্তা' : 'Breakfast Meals'}</span>
-              <span className="text-2xl font-black text-teal-600 mt-1 block">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'সকালের নাস্তা' : 'Breakfast Meals'}</span>
+              <span className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1 block">
                 {formatNumber(boardingStats.morningMeals, language)}
               </span>
             </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase block">{isBn ? 'দুপুরের খাবার' : 'Lunch Meals'}</span>
-              <span className="text-2xl font-black text-emerald-600 mt-1 block">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'দুপুরের খাবার' : 'Lunch Meals'}</span>
+              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
                 {formatNumber(boardingStats.noonMeals, language)}
               </span>
             </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase block">{isBn ? 'রাতের খাবার' : 'Dinner Meals'}</span>
-              <span className="text-2xl font-black text-indigo-600 mt-1 block">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'রাতের খাবার' : 'Dinner Meals'}</span>
+              <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1 block">
                 {formatNumber(boardingStats.nightMeals, language)}
               </span>
             </div>
           </div>
 
           {/* Residential Students Mess List */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'আবাসিক ছাত্র ডরমিটরি, বেড ও দৈনিক ডাইনিং হাজিরা' : 'Residential Dormitory & Daily Dining Roster'}
               </span>
               <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 text-xs rounded-xl">
@@ -1744,7 +1746,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px]">
                     <th className="py-3 px-4">{isBn ? 'শিক্ষার্থী ও শ্রেণি' : 'Student & Class'}</th>
                     <th className="py-3 px-4">{isBn ? 'কক্ষ ও বেড' : 'Room & Bed'}</th>
                     <th className="py-3 px-4">{isBn ? 'মেস স্ট্যাটাস' : 'Mess Status'}</th>
@@ -1753,7 +1755,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                     <th className="py-3 px-4 text-center">{isBn ? 'রাত' : 'Dinner'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {residentialStudents.map(st => {
                     const cfg = boardingConfigs[st.id] || {
                       studentId: st.id,
@@ -1766,16 +1768,16 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                     };
 
                     return (
-                      <tr key={st.id} className="hover:bg-slate-50/50">
+                      <tr key={st.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50/50">
                         <td className="py-3 px-4">
-                          <p className="font-bold text-slate-900">{isBn && st.nameBn ? st.nameBn : st.name}</p>
-                          <p className="text-[11px] text-slate-400">{st.classLevel} • রোল: {st.roll}</p>
+                          <p className="font-bold text-slate-900 dark:text-white">{isBn && st.nameBn ? st.nameBn : st.name}</p>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500">{st.classLevel} • রোল: {st.roll}</p>
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-700">
+                        <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-200">
                           {cfg.roomNo} - {cfg.bedNo}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300">
                             {isBn ? 'সক্রিয়' : 'Active'}
                           </span>
                         </td>
@@ -1783,7 +1785,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                           <button
                             onClick={() => handleToggleMeal(st.id, 'breakfast')}
                             className={`w-7 h-7 rounded-lg text-xs font-bold inline-flex items-center justify-center transition-all cursor-pointer ${
-                              cfg.breakfast ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
+                              cfg.breakfast ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                             }`}
                           >
                             {cfg.breakfast ? <Check size={14} /> : <X size={14} />}
@@ -1793,7 +1795,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                           <button
                             onClick={() => handleToggleMeal(st.id, 'lunch')}
                             className={`w-7 h-7 rounded-lg text-xs font-bold inline-flex items-center justify-center transition-all cursor-pointer ${
-                              cfg.lunch ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
+                              cfg.lunch ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                             }`}
                           >
                             {cfg.lunch ? <Check size={14} /> : <X size={14} />}
@@ -1803,7 +1805,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                           <button
                             onClick={() => handleToggleMeal(st.id, 'dinner')}
                             className={`w-7 h-7 rounded-lg text-xs font-bold inline-flex items-center justify-center transition-all cursor-pointer ${
-                              cfg.dinner ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
+                              cfg.dinner ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                             }`}
                           >
                             {cfg.dinner ? <Check size={14} /> : <X size={14} />}
@@ -1853,12 +1855,12 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               </p>
             </div>
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide block">
+                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide block">
                   {isBn ? 'উপবৃত্তি ও সহায়তা গ্রহণকারী শিক্ষার্থী' : 'Stipend Beneficiaries'}
                 </span>
-                <span className="text-2xl font-black text-slate-900 mt-1 block">
+                <span className="text-2xl font-black text-slate-900 dark:text-white mt-1 block">
                   {formatNumber(welfareBeneficiaries.length, language)} {isBn ? 'জন' : ''}
                 </span>
               </div>
@@ -1876,9 +1878,9 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           </div>
 
           {/* Welfare Beneficiaries Roster */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'এতিম ও দুঃস্থ শিক্ষার্থী অনুদান রেজিস্টার' : 'Welfare Beneficiaries Ledger'}
               </span>
               <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 text-xs rounded-xl">
@@ -1890,7 +1892,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px]">
                     <th className="py-3 px-4">{isBn ? 'শিক্ষার্থী' : 'Student'}</th>
                     <th className="py-3 px-4">{isBn ? 'শ্রেণিবিভাগ' : 'Category'}</th>
                     <th className="py-3 px-4">{isBn ? 'দাতা / স্পনসর' : 'Sponsor / Donor'}</th>
@@ -1898,29 +1900,29 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                     <th className="py-3 px-4">{isBn ? 'অনুমোদন তারিখ' : 'Approved Date'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {welfareBeneficiaries.map(ben => {
                     const st = students.find(s => s.id === ben.studentId);
                     return (
-                      <tr key={ben.id} className="hover:bg-slate-50/50">
-                        <td className="py-3 px-4 font-bold text-slate-900">
+                      <tr key={ben.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50/50">
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                           {st ? (isBn && st.nameBn ? st.nameBn : st.name) : 'শিক্ষার্থী'}
-                          <p className="text-[11px] font-normal text-slate-400">{st?.classLevel} • রোল: {st?.roll}</p>
+                          <p className="text-[11px] font-normal text-slate-400 dark:text-slate-500">{st?.classLevel} • রোল: {st?.roll}</p>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300">
                             {ben.category === 'orphan' ? (isBn ? 'এতিম তালিব-এ ইলম' : 'Orphan') :
                              ben.category === 'needy' ? (isBn ? 'দুঃস্থ ও অসচ্ছল' : 'Needy') :
                              (isBn ? 'মেধাবী হাফেজ বৃত্তি' : 'Hifz Stipend')}
                           </span>
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-700">
+                        <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-200">
                           {ben.sponsorName || '—'}
                         </td>
-                        <td className="py-3 px-4 font-bold text-slate-900 font-mono">
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white font-mono">
                           ৳{formatNumber(ben.monthlyStipend, language)}
                         </td>
-                        <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                        <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                           {ben.approvedDate}
                         </td>
                       </tr>
@@ -1934,24 +1936,24 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           {/* Disburse Modal */}
           {isDisburseModalOpen && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
-                    <HeartHandshake size={18} className="text-teal-600" />
+              <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <HeartHandshake size={18} className="text-teal-600 dark:text-teal-400" />
                     <span>{isBn ? 'নতুন ছাত্রকল্যাণ ও উপবৃত্তি অনুদান বিতরণ' : 'Disburse Student Welfare / Stipend'}</span>
                   </h3>
-                  <button onClick={() => setIsDisburseModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setIsDisburseModalOpen(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                     <X size={18} />
                   </button>
                 </div>
 
                 <form onSubmit={handleDisburseStipend} className="space-y-3 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">{isBn ? 'উপকারভোগী শিক্ষার্থী' : 'Beneficiary Student'}</label>
+                    <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'উপকারভোগী শিক্ষার্থী' : 'Beneficiary Student'}</label>
                     <select
                       value={disburseForm.studentId}
                       onChange={(e) => setDisburseForm({ ...disburseForm, studentId: e.target.value })}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl"
                     >
                       {students.map(s => (
                         <option key={s.id} value={s.id}>{isBn && s.nameBn ? s.nameBn : s.name} ({s.classLevel})</option>
@@ -1961,38 +1963,38 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">{isBn ? 'তহবিল উৎস' : 'Fund Source'}</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'তহবিল উৎস' : 'Fund Source'}</label>
                       <select
                         value={disburseForm.fund}
                         onChange={(e) => setDisburseForm({ ...disburseForm, fund: e.target.value as any })}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl"
                       >
                         <option value="ZAKAT">{isBn ? 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipend'}</option>
                         <option value="ORPHAN_AID">{isBn ? 'মেধাবৃত্তি ও দরিদ্র সহায়তা তহবিল' : 'Merit & Need Aid'}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">{isBn ? 'অনুদানের পরিমাণ (৳)' : 'Amount (BDT)'}</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'অনুদানের পরিমাণ (৳)' : 'Amount (BDT)'}</label>
                       <input
                         type="number"
                         value={disburseForm.amount}
                         onChange={(e) => setDisburseForm({ ...disburseForm, amount: Number(e.target.value) })}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl font-bold"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">{isBn ? 'অনুদানের বিবরণ' : 'Description / Purpose'}</label>
+                    <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">{isBn ? 'অনুদানের বিবরণ' : 'Description / Purpose'}</label>
                     <input
                       type="text"
                       value={disburseForm.purpose}
                       onChange={(e) => setDisburseForm({ ...disburseForm, purpose: e.target.value })}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl"
                     />
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
                     <Button variant="outline" size="sm" type="button" onClick={() => setIsDisburseModalOpen(false)}>
                       {isBn ? 'বাতিল' : 'Cancel'}
                     </Button>

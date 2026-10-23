@@ -138,7 +138,8 @@ export const CloudSyncWidget: React.FC = () => {
         : 'New cloud snapshot backup successfully created!');
       setTimeout(() => setSyncNotification(null), 3500);
     } catch (e) {
-      alert(language === 'bn' ? 'ব্যাকআপ তৈরি করা সম্ভব হয়নি।' : 'Failed to create snapshot.');
+      setSyncNotification(language === 'bn' ? 'ব্যাকআপ তৈরি করা সম্ভব হয়নি।' : 'Failed to create snapshot.');
+      setTimeout(() => setSyncNotification(null), 4000);
     } finally {
       setIsSyncingAction(false);
     }
@@ -155,7 +156,8 @@ export const CloudSyncWidget: React.FC = () => {
         : 'Successfully restored from cloud snapshot!');
       setTimeout(() => setSyncNotification(null), 3500);
     } catch (e) {
-      alert(language === 'bn' ? 'রিস্টোর ত্রুটি ঘটেছে।' : 'Restore error.');
+      setSyncNotification(language === 'bn' ? 'রিস্টোর ত্রুটি ঘটেছে।' : 'Restore error.');
+      setTimeout(() => setSyncNotification(null), 4000);
     } finally {
       setIsSyncingAction(false);
     }
@@ -182,7 +184,8 @@ export const CloudSyncWidget: React.FC = () => {
       setSyncNotification(language === 'bn' ? res.messageBn : res.messageEn);
       setTimeout(() => setSyncNotification(null), 5000);
     } catch (e: any) {
-      alert(e.message || 'Rescue failed');
+      setSyncNotification(e.message || 'Rescue failed');
+      setTimeout(() => setSyncNotification(null), 4000);
     } finally {
       setIsRescuing(false);
     }

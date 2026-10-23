@@ -25,6 +25,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { calculateTotalGPA, calculateGrade, getConsolidatedMark } from '../services/utils';
@@ -50,6 +51,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     subjects = [],
     marks = []
   } = useApp();
+  const { showSuccess, showError } = useTheme();
 
   // Active view: 'gateway' (2 options), 'login' (clean login), 'register' (clean signup), 'results' (public results)
   const [currentView, setCurrentView] = useState<'gateway' | 'login' | 'register' | 'results'>(initialView);
@@ -168,11 +170,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     try {
       const res = await resetPassword(resetEmail);
       if (res.success) {
-        alert(language === 'bn' ? 'পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে।' : 'Password reset link sent to your email.');
+        showSuccess(language === 'bn' ? 'পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে।' : 'Password reset link sent to your email.');
         setIsResetOpen(false);
         setResetEmail('');
       } else {
-        alert(res.error || 'Reset error');
+        showError(res.error || 'Reset error');
       }
     } finally {
       setResetLoading(false);

@@ -76,7 +76,7 @@ export const AdminReportView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl bg-white text-slate-950 hover:bg-slate-100 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/20"
+            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/20"
           >
             <Printer size={15} />
             <span>{language === 'bn' ? 'রিপোর্ট প্রিন্ট' : 'Print Report'}</span>
@@ -86,64 +86,64 @@ export const AdminReportView: React.FC = () => {
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'সিস্টেম ইউজার' : 'Registered Users'}</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-1">{toBanglaDigits(membersCount)}</h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">{language === 'bn' ? 'নিবন্ধিত স্টাফ/শিক্ষক' : 'Members'}</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'সিস্টেম ইউজার' : 'Registered Users'}</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{toBanglaDigits(membersCount)}</h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{language === 'bn' ? 'নিবন্ধিত স্টাফ/শিক্ষক' : 'Members'}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
             <Users size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'নির্ধারিত রোল' : 'Active Roles'}</p>
-            <h3 className="text-2xl font-black text-purple-600 mt-1">{toBanglaDigits(rolesCount)}</h3>
-            <p className="text-[10px] text-purple-600/80 mt-0.5">{language === 'bn' ? 'RBAC পারমিশন লেয়ার' : 'RBAC Configured'}</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'নির্ধারিত রোল' : 'Active Roles'}</p>
+            <h3 className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{toBanglaDigits(rolesCount)}</h3>
+            <p className="text-[10px] text-purple-600/80 dark:text-purple-400 mt-0.5">{language === 'bn' ? 'RBAC পারমিশন লেয়ার' : 'RBAC Configured'}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
             <Key size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'ডাটাবেজ সিঙ্ক' : 'Database Sync'}</p>
-            <h3 className="text-2xl font-black text-emerald-600 mt-1">100%</h3>
-            <p className="text-[10px] text-emerald-600/80 mt-0.5">{language === 'bn' ? 'রিয়েলটাইম ক্লাউড ফায়ারস্টোর' : 'Firestore Realtime'}</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'ডাটাবেজ সিঙ্ক' : 'Database Sync'}</p>
+            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">100%</h3>
+            <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400 mt-0.5">{language === 'bn' ? 'রিয়েলটাইম ক্লাউড ফায়ারস্টোর' : 'Firestore Realtime'}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
             <Database size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'সিকিউরিটি লেভেল' : 'Security Level'}</p>
-            <h3 className="text-2xl font-black text-blue-600 mt-1">Tier-1</h3>
-            <p className="text-[10px] text-blue-600/80 mt-0.5">{language === 'bn' ? 'রোল বেসড এক্সেস গার্ড' : 'RBAC Protected'}</p>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'সিকিউরিটি লেভেল' : 'Security Level'}</p>
+            <h3 className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">Tier-1</h3>
+            <p className="text-[10px] text-blue-600/80 dark:text-blue-400 mt-0.5">{language === 'bn' ? 'রোল বেসড এক্সেস গার্ড' : 'RBAC Protected'}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
             <Shield size={24} />
           </div>
         </div>
       </div>
 
       {/* Security Status Box */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 space-y-4">
-        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <Server size={18} className="text-purple-600" />
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6 space-y-4">
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <Server size={18} className="text-purple-600 dark:text-purple-400" />
           <span>{language === 'bn' ? 'সিস্টেম ও সিকিউরিটি কনফিগারেশন চেকলিস্ট' : 'System Governance & Security Matrix'}</span>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-            <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
+            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-bold text-slate-900">{language === 'bn' ? 'কাস্টম রোল পারমিশন ইঞ্জিন (RBAC)' : 'Multi-Level RBAC'}</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">{language === 'bn' ? 'কাস্টম রোল পারমিশন ইঞ্জিন (RBAC)' : 'Multi-Level RBAC'}</h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {language === 'bn'
                   ? 'ব্যবহারকারীর রোল ও ক্লাসরুম স্কোপ অনুযায়ী সুরক্ষিত ডাটা রিড/রাইট নিরাপত্তা নিশ্চিত।'
                   : 'Enforces granular permissions and data scopes.'}
@@ -151,11 +151,11 @@ export const AdminReportView: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-            <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
+            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-bold text-slate-900">{language === 'bn' ? 'ক্লাউড ফায়ারস্টোর ডাটাবেজ ও অফলাইন ব্যাকআপ' : 'Cloud Firestore & Offline Vault'}</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">{language === 'bn' ? 'ক্লাউড ফায়ারস্টোর ডাটাবেজ ও অফলাইন ব্যাকআপ' : 'Cloud Firestore & Offline Vault'}</h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {language === 'bn'
                   ? 'স্বয়ংক্রিয় ক্লাউড সিঙ্ক এবং লোকাল ব্যাকআপ রিকভারি এনাবল করা আছে।'
                   : 'Automatic real-time sync with local snapshot recovery enabled.'}
@@ -163,11 +163,11 @@ export const AdminReportView: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-            <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
+            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-bold text-slate-900">{language === 'bn' ? 'প্রশাসনিক অডিট ট্রেইল' : 'Administrative Audit Trail'}</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">{language === 'bn' ? 'প্রশাসনিক অডিট ট্রেইল' : 'Administrative Audit Trail'}</h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {language === 'bn'
                   ? 'রোল পরিবর্তন, ফলাফল অনুমোদন এবং আর্থিক লেনদেনের সময় অডিট ইভেন্ট সংরক্ষিত হয়।'
                   : 'System logs every critical change with actor timestamps.'}
@@ -175,11 +175,11 @@ export const AdminReportView: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-            <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
+            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-bold text-slate-900">{language === 'bn' ? 'সুপার অ্যাডমিন সিকিউরিটি গার্ড' : 'Super Admin Policy'}</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">{language === 'bn' ? 'সুপার অ্যাডমিন সিকিউরিটি গার্ড' : 'Super Admin Policy'}</h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {language === 'bn'
                   ? `${SUPER_ADMIN_EMAIL} এর জন্য প্ল্যাটফর্ম-লেভেল ইউনিভার্সাল সিকিউরিটি অথরিটি।`
                   : 'Cryptographically protected root authority.'}
