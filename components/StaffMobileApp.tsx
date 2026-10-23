@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
-import { calculateTotalGPA } from '../services/utils';
+import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
+import { DAYS_OF_WEEK } from '../services/academicScheduleService';
+import { DayOfWeek } from '../types/academic';
 import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, StudentDueProfile } from '../services/studentDuesService';
-import { Student, MarkRecord, Exam, Subject } from '../types';
+import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod } from '../types';
 import {
   Home,
   CheckSquare,
@@ -18,6 +20,9 @@ import {
   Bell,
   ChevronRight,
   Calendar,
+  CalendarDays,
+  Clock,
+  MapPin,
   Award,
   CreditCard,
   LogOut,
@@ -83,6 +88,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     transactions = [],
     feeStructures = [],
     notices = [],
+    classRoutines = [],
+    teachers = [],
+    addTransaction,
     bulkUpdateMarks,
     language,
     setLanguage,
@@ -395,11 +403,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'attendance', title: 'দৈনিক হাজিরা গ্রহণ', subtitle: `${selectedClass}-এর উপস্থিতি নিন — এক ক্লিকে সবাই উপস্থিত`, icon: CheckSquare, moduleKey: 'teacher_attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'students_dues', title: 'আমার ক্লাসের ছাত্র ও বকেয়া', subtitle: 'ছাত্র তালিকা, অভিভাবকের মোবাইল ও কার কত বাকি', icon: Users, moduleKey: 'teacher_students_dues', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
         { id: 'marks', title: 'পরীক্ষার নম্বর এন্ট্রি', subtitle: `${selectedClass}-এর বিষয়ভিত্তিক নম্বর এন্ট্রি`, icon: PenTool, moduleKey: 'teacher_marks', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'routine', title: 'আমার রুটিন', subtitle: 'সপ্তাহের কোন দিন কোন ক্লাসে পড়াবেন', icon: CalendarDays, moduleKey: 'teacher_routine', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
         { id: 'notices', title: 'মাদরাসা নোটিশ বোর্ড', subtitle: 'জরুরি সার্কুলার ও প্রাতিষ্ঠানিক নির্দেশনা', icon: Bell, moduleKey: 'teacher_notices', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
       ];
     } else if (userRole === 'cashier') {
       return [
-        { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', subtitle: 'বেতন, ভর্তি ফি ও বকেয়া সংগ্রহ করে রসিদ দিন', icon: Wallet, moduleKey: 'finance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+        { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', subtitle: 'বেতন, ভর্তি ফি ও বকেয়া সংগ্রহ করে রসিদ দিন', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance_expense', title: 'দৈনিক খরচ এন্ট্রি', subtitle: 'মাদরাসার প্রতিদিনের ব্যয়ের ভাউচার যুক্ত করুন', icon: Receipt, moduleKey: 'finance', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
         { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া খতিয়ান', subtitle: 'সকল ক্লাসের বকেয়া ও অভিভাবকের মোবাইল', icon: Users, moduleKey: 'students', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
         { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', subtitle: 'দৈনিক ও মাসিক ক্যাশ জমার বিবরণী', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
@@ -434,7 +443,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     } else if (userRole === 'cashier') {
       return [
         { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
-        { id: 'action1', label: 'ফি আদায়', icon: Wallet, targetModule: 'finance' as string | null },
+        { id: 'action1', label: 'ফি আদায়', icon: Wallet, targetModule: 'cashier_collect' as string | null },
         { id: 'action2', label: 'রিপোর্ট', icon: FileSpreadsheet, targetModule: 'finance_reports' as string | null },
         { id: 'action3', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
         profile
@@ -457,7 +466,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     ];
   }, [userRole]);
 
-  const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result'];
+  const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result', 'teacher_routine', 'cashier_collect'];
 
   const handleOpenModule = (moduleKey: string) => {
     // For shared desktop modules, switch the app tab first so the
@@ -623,6 +632,193 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       .sort((a, b) => b.dueThisMonth - a.dueThisMonth)
       .slice(0, 5);
   }, [allDuesSummary]);
+
+  // -------------------------------------------------------------
+  // Phase 4 additions: teacher class routine + native cashier fee entry
+  // -------------------------------------------------------------
+  // Routine data comes from the cloud-synced classRoutines in context
+  // (services/academicScheduleService bridge → main_store). Each routine
+  // item carries teacherId + teacherName per period, so the teacher's own
+  // periods are matched by linked teacher record id first, then by name.
+  const normalizeName = (s?: string | null) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const myTeacherRecord = useMemo(() => {
+    const uid = authUser?.uid;
+    const email = (authUser?.email || currentUser?.email || '').toLowerCase();
+    return (
+      teachers.find(t => uid && t.userId && t.userId === uid) ||
+      teachers.find(t => currentUser?.id && t.id === currentUser.id) ||
+      teachers.find(t => email && t.email && t.email.toLowerCase() === email) ||
+      null
+    );
+  }, [teachers, authUser, currentUser]);
+
+  const myNameSet = useMemo(() => {
+    return new Set(
+      [myTeacherRecord?.name, myTeacherRecord?.nameBn, currentUser?.name, currentUser?.nameBn, authUser?.displayName]
+        .map(n => normalizeName(n))
+        .filter(Boolean)
+    );
+  }, [myTeacherRecord, currentUser, authUser]);
+
+  const activeRoutineItems = useMemo(() => {
+    return (classRoutines || []).filter(r => !r.status || r.status === 'ACTIVE');
+  }, [classRoutines]);
+
+  const myRoutineItems = useMemo(() => {
+    return activeRoutineItems.filter(r =>
+      (myTeacherRecord?.id && r.teacherId === myTeacherRecord.id) ||
+      (r.teacherName && myNameSet.has(normalizeName(r.teacherName)))
+    );
+  }, [activeRoutineItems, myTeacherRecord, myNameSet]);
+
+  // Fallback: if no period in the whole week is linked to this teacher
+  // (e.g. routines were entered by class only), show the routine of the
+  // teacher's own assigned class(es) — still strictly their class data.
+  const routineIsClassFallback = myRoutineItems.length === 0;
+
+  const routineItems = useMemo(() => {
+    if (!routineIsClassFallback) return myRoutineItems;
+    const classNames = new Set<string>();
+    teacherClasses.forEach(c => classNames.add(normalizeName(c)));
+    classes.forEach(c => {
+      if (teacherClasses.includes(c.name)) {
+        if (c.nameBn) classNames.add(normalizeName(c.nameBn));
+        if (c.displayName) classNames.add(normalizeName(c.displayName));
+      }
+    });
+    return activeRoutineItems.filter(r => classNames.has(normalizeName(r.classLevel)));
+  }, [routineIsClassFallback, myRoutineItems, activeRoutineItems, teacherClasses, classes]);
+
+  const todayDayEn = useMemo<DayOfWeek>(() => {
+    const names: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return names[new Date().getDay()];
+  }, []);
+
+  const [routineDay, setRoutineDay] = useState<DayOfWeek>(todayDayEn);
+
+  const routineDayItems = useMemo(() => {
+    return routineItems
+      .filter(r => r.dayOfWeek === routineDay)
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+  }, [routineItems, routineDay]);
+
+  const todaysRoutineItems = useMemo(() => {
+    return routineItems
+      .filter(r => r.dayOfWeek === todayDayEn)
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+  }, [routineItems, todayDayEn]);
+
+  const routineSubjectName = (item: (typeof routineItems)[number]) => {
+    if (item.subjectName) return item.subjectName;
+    const sub = subjects.find(s => s.id === item.subjectId);
+    return sub ? (sub.nameBn || sub.name) : item.subjectId;
+  };
+
+  // Fee entry is gated by the same permission helpers as the rest of the
+  // app (accountant role gets finance./fees./payments. in hasPermission;
+  // owner/admin/principal always pass inside hasPermission itself).
+  const canCollectFees = useMemo(() => {
+    try {
+      if (typeof hasPermission !== 'function') return userRole === 'cashier';
+      return !!(
+        hasPermission('fees.create' as any) ||
+        hasPermission('finance.create' as any) ||
+        hasPermission('payments.create' as any)
+      );
+    } catch {
+      return userRole === 'cashier';
+    }
+  }, [hasPermission, currentMember, currentUser, userRole]);
+
+  const FEE_METHODS: { id: PaymentMethod; bn: string; en: string }[] = [
+    { id: 'CASH', bn: 'নগদ টাকা', en: 'Cash' },
+    { id: 'BKASH', bn: 'বিকাশ', en: 'bKash' },
+    { id: 'NAGAD', bn: 'নগদ', en: 'Nagad' },
+    { id: 'ROCKET', bn: 'রকেট', en: 'Rocket' },
+    { id: 'BANK_TRANSFER', bn: 'ব্যাংক', en: 'Bank' }
+  ];
+
+  const [feeSearchQuery, setFeeSearchQuery] = useState('');
+  const [feeStudentId, setFeeStudentId] = useState<string | null>(null);
+  const [feeAmount, setFeeAmount] = useState('');
+  const [feeMethod, setFeeMethod] = useState<PaymentMethod>('CASH');
+  const [feeRefNo, setFeeRefNo] = useState('');
+  const [feeNote, setFeeNote] = useState('');
+  const [lastReceipt, setLastReceipt] = useState<{ tx: FinanceTransaction; remainingDue: number } | null>(null);
+
+  const feeSearchProfiles = useMemo(() => {
+    const q = feeSearchQuery.toLowerCase().trim();
+    const all = allDuesSummary.profiles;
+    if (!q) return all;
+    return all.filter(p => {
+      const st = p.student;
+      return (
+        (st.name && st.name.toLowerCase().includes(q)) ||
+        (st.nameBn && st.nameBn.includes(q)) ||
+        (st.roll && String(st.roll).includes(q)) ||
+        (st.rollNumber && String(st.rollNumber).includes(q)) ||
+        (st.studentId && String(st.studentId).toLowerCase().includes(q)) ||
+        (st.guardianPhone && String(st.guardianPhone).includes(q)) ||
+        (st.classLevel && st.classLevel.toLowerCase().includes(q))
+      );
+    });
+  }, [allDuesSummary, feeSearchQuery]);
+
+  const selectedFeeProfile = useMemo(() => {
+    if (!feeStudentId) return null;
+    return allDuesSummary.profiles.find(p => p.student.id === feeStudentId) || null;
+  }, [allDuesSummary, feeStudentId]);
+
+  const handleSelectFeeStudent = (profile: StudentDueProfile) => {
+    setFeeStudentId(profile.student.id);
+    setFeeAmount(profile.dueThisMonth > 0 ? String(profile.dueThisMonth) : '');
+    setFeeRefNo('');
+    setFeeNote('');
+    setLastReceipt(null);
+  };
+
+  const handleCollectFee = () => {
+    if (!canCollectFees || !selectedFeeProfile || typeof addTransaction !== 'function') return;
+    const st = selectedFeeProfile.student;
+    const amount = Number(feeAmount) || 0;
+    if (amount <= 0) return;
+
+    const feeMonth = new Date().toISOString().slice(0, 7); // YYYY-MM — same key the dues service uses
+    const todayStr = new Date().toISOString().split('T')[0];
+    const collector = authUser?.displayName || currentMember?.displayName || currentUser?.name || '';
+
+    // Same transaction shape + same AppContext addTransaction path as the
+    // desktop StudentFeeCollection — no separate data path.
+    const newTx: Omit<FinanceTransaction, 'id' | 'createdAt'> = {
+      voucherNo: generateVoucherNo('INCOME', transactions),
+      type: 'INCOME',
+      category: 'STUDENT_TUITION',
+      categoryName: isEn ? 'Student Fees' : 'ছাত্র ফি ও বেতন',
+      fundType: 'GENERAL',
+      amount,
+      date: todayStr,
+      paymentMethod: feeMethod,
+      referenceNo: feeRefNo.trim() || undefined,
+      studentId: st.id,
+      studentCode: st.studentId,
+      studentName: st.name,
+      studentNameBn: st.nameBn,
+      classLevel: st.classLevel,
+      feeMonth,
+      feeBreakdown: [{ name: 'Monthly Tuition', nameBn: 'মাসিক বেতন', amount }],
+      payerOrPayee: st.guardianName ? `${st.guardianName} (অভিভাবক)` : (st.nameBn || st.name || ''),
+      contactNo: st.guardianPhone || '',
+      description: feeNote.trim() || `${feeMonth} মাসের ফি পরিশোধ`,
+      collectedBy: collector
+    };
+
+    const created = addTransaction(newTx);
+    const remaining = calculateSingleStudentDue(st, feeStructures, [...transactions, created]).dueThisMonth;
+    setLastReceipt({ tx: created, remainingDue: remaining });
+    setSaveSuccessNotice(isEn ? `✓ Receipt ${created.voucherNo} saved!` : `✓ রসিদ নং ${created.voucherNo} সংরক্ষিত হয়েছে!`);
+    setTimeout(() => setSaveSuccessNotice(null), 3500);
+  };
 
   // -------------------------------------------------------------
   // Shared chrome
@@ -1272,7 +1468,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           {activeSubModule === 'teacher_notices' && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-1">
-                <Bell size={17} className="text-[#7c3aed]" />
+                <Bell size={17} className="brand-text" />
                 <h2 className="text-sm font-bold">মাদরাসা নোটিশ ও সার্কুলার</h2>
               </div>
               {notices.length === 0 ? (
@@ -1293,6 +1489,366 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <p className="text-xs text-[#5b6478] dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{notice.content}</p>
                   </div>
                 ))
+              )}
+            </div>
+          )}
+
+          {/* ============ TEACHER: MY CLASS ROUTINE ============ */}
+          {activeSubModule === 'teacher_routine' && (
+            <div className="space-y-4">
+              <div className={`${cardCls} p-4 space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-9 h-9 rounded-2xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center">
+                      <CalendarDays size={17} />
+                    </span>
+                    <h2 className="text-sm font-bold">{isEn ? 'My Routine' : 'আমার রুটিন'}</h2>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">
+                    {isEn ? 'Weekly' : 'সাপ্তাহিক'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#5b6478] dark:text-slate-400 leading-relaxed">
+                  {routineIsClassFallback
+                    ? (isEn
+                        ? 'No period is assigned to you by name yet — showing the routine of your class(es).'
+                        : 'আপনার নামে এখনো সরাসরি কোনো ঘণ্টা বরাদ্দ নেই — আপনার ক্লাসের রুটিন দেখানো হচ্ছে।')
+                    : (isEn
+                        ? 'The periods you teach each day, from the synced class routine.'
+                        : 'সিঙ্ক হওয়া ক্লাস রুটিন থেকে — প্রতিদিন আপনার পড়ানোর ঘণ্টাগুলো।')}
+                </p>
+
+                {/* Weekday selector — today highlighted */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {DAYS_OF_WEEK.map(d => {
+                    const isToday = d.en === todayDayEn;
+                    const isSelected = d.en === routineDay;
+                    return (
+                      <button
+                        key={d.en}
+                        onClick={() => setRoutineDay(d.en)}
+                        className={`px-3 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                          isSelected
+                            ? 'brand-grad text-white shadow-md shadow-violet-500/25'
+                            : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
+                        }`}
+                      >
+                        {isEn ? d.en.slice(0, 3) : d.shortBn}
+                        {isToday && <span className={`ml-1 ${isSelected ? 'text-white' : 'brand-text'}`}>• {isEn ? 'Today' : 'আজ'}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-[#5b6478] dark:text-slate-400">
+                    {(() => { const d = DAYS_OF_WEEK.find(x => x.en === routineDay); return isEn ? routineDay : (d ? d.bn : routineDay); })()}
+                    {routineDay === todayDayEn && <span className="brand-text"> • {isEn ? 'Today' : 'আজ'}</span>}
+                  </span>
+                  <span className="text-[11px] text-[#8a93a8]">{toBn(routineDayItems.length)} {isEn ? 'periods' : 'টি ঘণ্টা'}</span>
+                </div>
+
+                {routineItems.length === 0 ? (
+                  <div className={`${cardCls} p-8 text-center space-y-2`}>
+                    <CalendarDays size={32} className="mx-auto text-[#c3c9d9]" />
+                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">
+                      {isEn ? 'No class routine has been created yet. Ask the office to publish the routine.' : 'এখনো কোনো ক্লাস রুটিন তৈরি হয়নি। রুটিন প্রকাশ করতে অফিসে জানান।'}
+                    </p>
+                  </div>
+                ) : routineDayItems.length === 0 ? (
+                  <div className={`${cardCls} p-8 text-center space-y-2`}>
+                    <CalendarDays size={32} className="mx-auto text-[#c3c9d9]" />
+                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">
+                      {isEn ? 'No class for you on this day.' : 'এই দিনে আপনার কোনো ক্লাস নেই।'}
+                    </p>
+                  </div>
+                ) : (
+                  routineDayItems.map(item => (
+                    <div key={item.id} className={`${cardCls} p-4 flex gap-3.5`}>
+                      <div className="flex flex-col items-center shrink-0 w-[74px]">
+                        <span className="text-[11px] font-black brand-soft px-2 py-1 rounded-lg text-center leading-tight">
+                          {item.periodName || `${toBn(item.periodNumber)}`}
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#8a93a8] mt-1.5 text-center leading-tight flex items-center gap-0.5">
+                          <Clock size={10} className="shrink-0" />
+                          {toBn(item.startTime)}
+                        </span>
+                        <span className="text-[10px] text-[#8a93a8] text-center leading-tight">{toBn(item.endTime)}</span>
+                      </div>
+                      <div className="w-px bg-[#e8ecf4] dark:bg-white/5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-[13px] font-bold leading-snug">{routineSubjectName(item)}</h3>
+                        <p className="text-[11px] text-[#5b6478] dark:text-slate-400 mt-0.5">
+                          {item.classLevel}{item.sectionName ? ` • ${isEn ? 'Section' : 'শাখা'}: ${item.sectionName}` : ''}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          {item.roomNumber && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 text-[#5b6478] dark:text-slate-300 flex items-center gap-1">
+                              <MapPin size={9} /> {isEn ? 'Room' : 'কক্ষ'} {toBn(item.roomNumber)}
+                            </span>
+                          )}
+                          {routineIsClassFallback && item.teacherName && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 text-[#5b6478] dark:text-slate-300">
+                              {item.teacherName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ============ CASHIER: NATIVE FEE COLLECTION ============ */}
+          {activeSubModule === 'cashier_collect' && (
+            <div className="space-y-4">
+              {!canCollectFees && (
+                <div className="p-4 rounded-[24px] bg-[#fef3c7] dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 flex items-start gap-3">
+                  <span className="w-9 h-9 rounded-2xl bg-[#f59e0b] text-white flex items-center justify-center shrink-0">
+                    <Lock size={16} />
+                  </span>
+                  <div>
+                    <h3 className="text-[13px] font-bold text-[#92400e] dark:text-amber-200">{isEn ? 'Fee collection is not enabled for your role' : 'আপনার রোলের জন্য ফি আদায় চালু নেই'}</h3>
+                    <p className="text-[11px] text-[#92400e]/80 dark:text-amber-200/70 mt-0.5 leading-relaxed">
+                      {isEn
+                        ? 'You can view dues below, but collecting fees needs the fees/finance create permission. Contact the principal/admin.'
+                        : 'নিচে বকেয়া তালিকা দেখতে পারবেন, তবে ফি আদায়ের জন্য ফি/ফাইন্যান্স তৈরির অনুমতি লাগবে। প্রিন্সিপাল/এডমিনের সাথে যোগাযোগ করুন।'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {lastReceipt ? (
+                /* ---- Receipt summary (in-app) ---- */
+                <div className="space-y-4">
+                  <div className={`${cardCls} p-5 space-y-3`}>
+                    <div className="flex flex-col items-center text-center space-y-2 pb-1">
+                      <span className="w-14 h-14 rounded-full bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                        <CheckCircle2 size={28} />
+                      </span>
+                      <h2 className="text-base font-black">{isEn ? 'Fee received!' : 'ফি গৃহীত হয়েছে!'}</h2>
+                      <p className="text-[11px] text-[#8a93a8]">{schoolProfile.nameBn || schoolProfile.name}</p>
+                    </div>
+                    <div className="h-px bg-[#e8ecf4] dark:bg-white/5" />
+                    {([
+                      [isEn ? 'Receipt No' : 'রসিদ নং', lastReceipt.tx.voucherNo],
+                      [isEn ? 'Student' : 'শিক্ষার্থী', lastReceipt.tx.studentNameBn || lastReceipt.tx.studentName || ''],
+                      [isEn ? 'Class' : 'শ্রেণি', lastReceipt.tx.classLevel || ''],
+                      [isEn ? 'Amount' : 'পরিমাণ', `৳${toBn(lastReceipt.tx.amount.toLocaleString())}`],
+                      [isEn ? 'Method' : 'মাধ্যম', (FEE_METHODS.find(m => m.id === lastReceipt.tx.paymentMethod) || FEE_METHODS[0])[isEn ? 'en' : 'bn']],
+                      [isEn ? 'Date' : 'তারিখ', toBn(lastReceipt.tx.date)],
+                      [isEn ? 'Remaining due (this month)' : 'অবশিষ্ট বকেয়া (এই মাস)', `৳${toBn(lastReceipt.remainingDue.toLocaleString())}`]
+                    ] as [string, string][]).map(([label, value], i) => (
+                      <div key={i} className="flex items-center justify-between text-xs gap-3">
+                        <span className="text-[#8a93a8] font-semibold shrink-0">{label}</span>
+                        <span className="font-bold text-right">{value}</span>
+                      </div>
+                    ))}
+                    {lastReceipt.tx.referenceNo && (
+                      <div className="flex items-center justify-between text-xs gap-3">
+                        <span className="text-[#8a93a8] font-semibold shrink-0">{isEn ? 'Reference' : 'রেফারেন্স'}</span>
+                        <span className="font-bold text-right">{lastReceipt.tx.referenceNo}</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setLastReceipt(null); setFeeStudentId(null); setFeeAmount(''); setFeeSearchQuery(''); }}
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <Wallet size={17} />
+                    <span>{isEn ? 'Collect another fee' : 'আরেকটি ফি আদায় করুন'}</span>
+                  </button>
+                </div>
+              ) : selectedFeeProfile ? (
+                /* ---- Fee entry form for the selected student ---- */
+                <div className="space-y-4">
+                  <div className={`${cardCls} p-4 space-y-3`}>
+                    <button
+                      onClick={() => setFeeStudentId(null)}
+                      className="flex items-center gap-1.5 text-xs font-bold brand-text cursor-pointer"
+                    >
+                      <ArrowLeft size={14} /> {isEn ? 'Back to student list' : 'তালিকায় ফিরুন'}
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <span className="w-12 h-12 rounded-full brand-grad text-white font-bold flex items-center justify-center text-base shadow-md shadow-violet-500/20 shrink-0">
+                        {(selectedFeeProfile.student.nameBn || selectedFeeProfile.student.name || 'শ').charAt(0)}
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="text-sm font-black leading-tight truncate">{selectedFeeProfile.student.nameBn || selectedFeeProfile.student.name}</h2>
+                        <p className="text-[11px] text-[#8a93a8]">
+                          {selectedFeeProfile.student.classLevel} • {isEn ? 'Roll' : 'রোল'}: {toBn(selectedFeeProfile.student.roll || selectedFeeProfile.student.rollNumber || '—')}
+                          {selectedFeeProfile.student.guardianPhone ? ` • ${toBn(selectedFeeProfile.student.guardianPhone)}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className={`${softBg} p-2.5 rounded-2xl`}>
+                        <span className="text-[10px] font-semibold text-[#5b6478] dark:text-slate-400 block">{isEn ? 'Monthly fee' : 'মাসিক ধার্য'}</span>
+                        <span className="text-[13px] font-black">৳{toBn(selectedFeeProfile.monthlyExpected.toLocaleString())}</span>
+                      </div>
+                      <div className="bg-[#d1fae5] dark:bg-emerald-500/10 p-2.5 rounded-2xl">
+                        <span className="text-[10px] font-semibold text-[#059669] block">{isEn ? 'Paid' : 'পরিশোধিত'}</span>
+                        <span className="text-[13px] font-black text-[#059669] dark:text-emerald-300">৳{toBn(selectedFeeProfile.paidThisMonth.toLocaleString())}</span>
+                      </div>
+                      <div className="bg-[#fee2e2] dark:bg-rose-500/10 p-2.5 rounded-2xl">
+                        <span className="text-[10px] font-semibold text-[#dc2626] block">{isEn ? 'Due' : 'বকেয়া'}</span>
+                        <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300">৳{toBn(selectedFeeProfile.dueThisMonth.toLocaleString())}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`${cardCls} p-4 space-y-3.5`}>
+                    <div>
+                      <label className="text-[11px] text-[#8a93a8] font-semibold block mb-1.5">{isEn ? 'Amount (৳)' : 'টাকার পরিমাণ (৳)'}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        value={feeAmount}
+                        onChange={e => setFeeAmount(e.target.value)}
+                        placeholder="০"
+                        className="w-full py-3 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-base font-black focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      />
+                      {selectedFeeProfile.dueThisMonth > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setFeeAmount(String(selectedFeeProfile.dueThisMonth))}
+                          className="mt-1.5 text-[11px] font-bold brand-text cursor-pointer"
+                        >
+                          {isEn ? `Full due: ৳${toBn(selectedFeeProfile.dueThisMonth.toLocaleString())}` : `পুরো বকেয়া নিন: ৳${toBn(selectedFeeProfile.dueThisMonth.toLocaleString())}`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-[#8a93a8] font-semibold block mb-1.5">{isEn ? 'Payment method' : 'পরিশোধের মাধ্যম'}</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {FEE_METHODS.map(m => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setFeeMethod(m.id)}
+                            className={`px-3.5 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                              feeMethod === m.id
+                                ? 'brand-grad text-white shadow-md shadow-violet-500/25'
+                                : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
+                            }`}
+                          >
+                            {isEn ? m.en : m.bn}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {feeMethod !== 'CASH' && (
+                      <div>
+                        <label className="text-[11px] text-[#8a93a8] font-semibold block mb-1.5">{isEn ? 'Transaction / reference no (optional)' : 'ট্রানজেকশন / রেফারেন্স নং (ঐচ্ছিক)'}</label>
+                        <input
+                          type="text"
+                          value={feeRefNo}
+                          onChange={e => setFeeRefNo(e.target.value)}
+                          placeholder={isEn ? 'e.g. TrxID' : 'যেমন: TrxID'}
+                          className="w-full py-2.5 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-[11px] text-[#8a93a8] font-semibold block mb-1.5">{isEn ? 'Note (optional)' : 'মন্তব্য (ঐচ্ছিক)'}</label>
+                      <input
+                        type="text"
+                        value={feeNote}
+                        onChange={e => setFeeNote(e.target.value)}
+                        className="w-full py-2.5 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      />
+                    </div>
+                  </div>
+
+                  {canCollectFees && (
+                    <div className="sticky bottom-[84px] z-30 pt-1">
+                      <button
+                        onClick={handleCollectFee}
+                        disabled={!feeAmount || Number(feeAmount) <= 0}
+                        className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Receipt size={17} />
+                        <span>{isEn ? 'Collect fee & save receipt' : 'ফি গ্রহণ করে রসিদ সংরক্ষণ করুন'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* ---- Student picker (search + dues list) ---- */
+                <div className="space-y-4">
+                  <div className={`${cardCls} p-4 space-y-1.5`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-9 h-9 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                        <Wallet size={17} />
+                      </span>
+                      <h2 className="text-sm font-bold">{isEn ? 'Collect Fee' : 'ফি আদায়'}</h2>
+                    </div>
+                    <p className="text-[11px] text-[#5b6478] dark:text-slate-400 leading-relaxed">
+                      {isEn ? 'Pick a student to collect this month’s fee and save a receipt.' : 'শিক্ষার্থী বেছে চলতি মাসের ফি আদায় করে রসিদ সংরক্ষণ করুন।'}
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8a93a8]" />
+                    <input
+                      type="text"
+                      value={feeSearchQuery}
+                      onChange={e => setFeeSearchQuery(e.target.value)}
+                      placeholder={isEn ? 'Search by name, roll, class or phone…' : 'নাম, রোল, শ্রেণি বা মোবাইল দিয়ে খুঁজুন...'}
+                      className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                    />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {feeSearchProfiles.length === 0 ? (
+                      <div className={`${cardCls} p-8 text-center space-y-2`}>
+                        <Users size={32} className="mx-auto text-[#c3c9d9]" />
+                        <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{isEn ? 'No student found.' : 'কোনো শিক্ষার্থী পাওয়া যায়নি।'}</p>
+                      </div>
+                    ) : (
+                      feeSearchProfiles.slice(0, 60).map(p => {
+                        const st = p.student;
+                        const hasDue = p.dueThisMonth > 0;
+                        return (
+                          <button
+                            key={st.id}
+                            onClick={() => handleSelectFeeStudent(p)}
+                            className={`w-full text-left ${cardCls} p-4 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all`}
+                          >
+                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                              {(st.nameBn || st.name || 'শ').charAt(0)}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-[13px] font-bold leading-tight truncate">{st.nameBn || st.name}</h3>
+                              <p className="text-[11px] text-[#8a93a8] truncate">
+                                {st.classLevel} • {isEn ? 'Roll' : 'রোল'}: {toBn(st.roll || st.rollNumber || '—')}
+                              </p>
+                            </div>
+                            <span className={`text-[11px] font-black px-2.5 py-1.5 rounded-xl shrink-0 ${
+                              hasDue ? 'bg-[#fee2e2] text-[#991b1b] dark:bg-rose-500/15 dark:text-rose-300' : 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300'
+                            }`}>
+                              {hasDue ? `${isEn ? 'Due' : 'বকেয়া'} ৳${toBn(p.dueThisMonth.toLocaleString())}` : (isEn ? 'Paid ✓' : 'পরিশোধিত ✓')}
+                            </span>
+                            <ChevronRight size={15} className="text-[#c3c9d9] shrink-0" />
+                          </button>
+                        );
+                      })
+                    )}
+                    {feeSearchProfiles.length > 60 && (
+                      <p className="text-center text-[11px] text-[#8a93a8] font-medium pt-1">
+                        {isEn ? 'Showing first 60 — search to narrow down.' : 'প্রথম ৬০ জন দেখানো হচ্ছে — খুঁজে তালিকা ছোট করুন।'}
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -1467,6 +2023,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     attendance: 'হাজিরা',
     students_dues: 'বকেয়া',
     marks: 'নম্বর',
+    routine: 'রুটিন',
     notices: 'নোটিশ',
     finance_collect: 'ফি আদায়',
     finance_expense: 'খরচ',
@@ -1630,6 +2187,60 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           </section>
         )}
 
+        {/* TEACHER: today's routine strip */}
+        {userRole === 'teacher' && routineItems.length > 0 && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center">
+                  <CalendarDays size={15} />
+                </span>
+                {isEn ? "Today's Routine" : 'আজকের রুটিন'}
+              </h3>
+              <button
+                onClick={() => handleOpenModule('teacher_routine')}
+                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+              >
+                {isEn ? 'Full week' : 'পুরো সপ্তাহ'} <ChevronRight size={12} />
+              </button>
+            </div>
+            {routineIsClassFallback && (
+              <p className="text-[11px] text-[#8a93a8] font-medium -mt-1">
+                {isEn ? 'Showing your class routine (no period is assigned to you by name yet).' : 'আপনার ক্লাসের রুটিন দেখানো হচ্ছে (নামে ঘণ্টা বরাদ্দ হয়নি)।'}
+              </p>
+            )}
+            {todaysRoutineItems.length === 0 ? (
+              <p className="text-xs text-[#8a93a8] font-medium py-1">{isEn ? 'No class for you today.' : 'আজ আপনার কোনো ক্লাস নেই।'}</p>
+            ) : (
+              <div className="space-y-2">
+                {todaysRoutineItems.slice(0, 4).map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleOpenModule('teacher_routine')}
+                    className="w-full flex items-center gap-3 text-left cursor-pointer active:scale-[0.99] transition-all"
+                  >
+                    <span className="text-[11px] font-black brand-soft px-2 py-1.5 rounded-lg shrink-0 w-[86px] text-center leading-tight">
+                      {toBn(item.startTime)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold truncate">{routineSubjectName(item)}</p>
+                      <p className="text-[11px] text-[#8a93a8] truncate">
+                        {item.classLevel}{item.sectionName ? ` • ${isEn ? 'Section' : 'শাখা'}: ${item.sectionName}` : ''}{item.periodName ? ` • ${item.periodName}` : ''}
+                      </p>
+                    </div>
+                    <ChevronRight size={14} className="text-[#c3c9d9] shrink-0" />
+                  </button>
+                ))}
+                {todaysRoutineItems.length > 4 && (
+                  <p className="text-[11px] text-[#8a93a8] font-medium pl-1">
+                    + {toBn(todaysRoutineItems.length - 4)} {isEn ? 'more periods today' : 'টি ঘণ্টা আরও আছে আজ'}
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* TEACHER: class reports */}
         {userRole === 'teacher' && (
           <section className="space-y-3">
@@ -1751,8 +2362,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <Receipt size={16} />
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-bold truncate">{(t as any).description || (t as any).category || (isEn ? 'Fee collection' : 'ফি আদায়')}</p>
-                      <p className="text-[11px] text-[#8a93a8]">{toBn(String(t.date || '').slice(0, 10))}</p>
+                      <p className="text-[13px] font-bold truncate">{(t as any).studentNameBn || (t as any).studentName || (t as any).description || (isEn ? 'Fee collection' : 'ফি আদায়')}</p>
+                      <p className="text-[11px] text-[#8a93a8]">{(t as any).voucherNo ? `${(t as any).voucherNo} • ` : ''}{toBn(String(t.date || '').slice(0, 10))}</p>
                     </div>
                     <span className="text-[13px] font-black text-[#059669] dark:text-emerald-300 shrink-0">৳{toBn((Number(t.amount) || 0).toLocaleString())}</span>
                   </div>
