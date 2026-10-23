@@ -233,12 +233,17 @@ class DailyAttendanceService {
     const workingDays = records.length;
     const totalPresent = records.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
     const totalAbsent = records.filter(r => r.status === 'ABSENT' || r.status === 'LEAVE').length;
-    const attendancePercentage = workingDays > 0 ? Math.round((totalPresent / workingDays) * 100) : 100;
+    // Honest-zero rule: figures derive ONLY from recorded entries. When a
+    // student has no records the result is 0 across the board — never an
+    // invented "standard" estimate (a previous version returned 90 days /
+    // 85 present / 5 absent here, which then got written into exam remarks
+    // as if it were real attendance).
+    const attendancePercentage = workingDays > 0 ? Math.round((totalPresent / workingDays) * 100) : 0;
 
     return {
-      workingDays: workingDays || 90, // Fallback to 90 standard days if no manual logs yet
-      totalPresent: workingDays > 0 ? totalPresent : 85,
-      totalAbsent: workingDays > 0 ? totalAbsent : 5,
+      workingDays,
+      totalPresent,
+      totalAbsent,
       attendancePercentage
     };
   }
@@ -266,12 +271,15 @@ class DailyAttendanceService {
     const leaveDays = records.filter(r => r.status === 'LEAVE').length;
 
     const effectivePresent = presentDays + lateDays;
-    const percentage = workingDays > 0 ? Math.round((effectivePresent / workingDays) * 100) : 100;
+    // Honest-zero rule (see calculateStudentAttendanceForExam): a month
+    // with no records reports 0 recorded days and 0%, never an invented
+    // 24-day / 22-present estimate.
+    const percentage = workingDays > 0 ? Math.round((effectivePresent / workingDays) * 100) : 0;
 
     return {
-      workingDays: workingDays || 24,
-      presentDays: workingDays > 0 ? presentDays : 22,
-      absentDays: workingDays > 0 ? absentDays : 2,
+      workingDays,
+      presentDays,
+      absentDays,
       lateDays,
       leaveDays,
       percentage

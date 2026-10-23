@@ -157,8 +157,10 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
 
   // 2. Staff & Faculty Metrics
   const staffMetrics = useMemo(() => {
-    const totalTeachers = teachers.length > 0 ? teachers.length : (users.filter(u => u.role === 'teacher').length || 12);
-    const totalStaff = users.length > 0 ? users.length : (totalTeachers + 4);
+    // Real counts only — a previous version invented `|| 12` teachers
+    // and `+ 4` extra staff when the lists were empty.
+    const totalTeachers = teachers.length > 0 ? teachers.length : users.filter(u => u.role === 'teacher').length;
+    const totalStaff = users.length > 0 ? users.length : totalTeachers;
     const teacherStudentRatio = totalTeachers > 0 
       ? Math.round(studentMetrics.active / totalTeachers) 
       : 0;
@@ -170,49 +172,37 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
     };
   }, [teachers, users, studentMetrics.active]);
 
-  // 3. Today's Attendance Pulse
-  const attendanceMetrics = useMemo(() => {
-    // Check if there are remarks or attendance recorded for current academic year/exam
-    let totalPresentRecorded = 0;
-    let totalAbsentRecorded = 0;
-
-    remarks.forEach(r => {
-      totalPresentRecorded += Number(r.totalPresent) || 0;
-      totalAbsentRecorded += Number(r.totalAbsent) || 0;
-    });
-
-    const activeCount = studentMetrics.active || 1;
-    let presentCount = 0;
-    let absentCount = 0;
-
+  // 3. Today's Attendance Pulse — RECORDED DATA ONLY (owner rule).
+  // A previous version invented today's attendance three different ways:
+  // it extrapolated exam-remark rates across the whole enrolment, or
+  // fell back to a "high-standard baseline" of 95% present when nothing
+  // was recorded. Now the card reflects ONLY today's live daily
+  // attendance records: no records → the "not taken yet" state, no
+  // percentage, no counts. Rate is over recorded entries only.
+  // Computed on every render (not memoized): the records live outside
+  // React state, and the dashboard re-renders whenever AppContext data
+  // syncs in, which is exactly when this should refresh.
+  const attendanceMetrics = (() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const liveDaySummary = dailyAttendanceService.getDaySummary(todayStr);
+    const recorded = liveDaySummary.totalStudents;
 
-    if (liveDaySummary.totalStudents > 0) {
-      presentCount = liveDaySummary.presentCount + liveDaySummary.lateCount;
-      absentCount = liveDaySummary.absentCount + liveDaySummary.leaveCount;
-    } else if (totalPresentRecorded > 0 || totalAbsentRecorded > 0) {
-      const recordedTotal = totalPresentRecorded + totalAbsentRecorded;
-      const rate = (totalPresentRecorded / recordedTotal);
-      presentCount = Math.round(activeCount * rate);
-      absentCount = activeCount - presentCount;
-    } else {
-      // High-standard baseline for active days when no manual absents recorded yet today
-      presentCount = Math.round(activeCount * 0.95);
-      absentCount = activeCount - presentCount;
+    if (recorded === 0) {
+      return { present: null, absent: null, rate: null, recorded: 0, isRecorded: false };
     }
 
-    const attendanceRate = activeCount > 0 
-      ? ((presentCount / activeCount) * 100).toFixed(1) 
-      : '0.0';
+    const presentCount = liveDaySummary.presentCount + liveDaySummary.lateCount;
+    const absentCount = liveDaySummary.absentCount + liveDaySummary.leaveCount;
+    const attendanceRate = (presentCount / recorded * 100).toFixed(1);
 
     return {
       present: presentCount,
       absent: absentCount,
       rate: attendanceRate,
-      isRecorded: totalPresentRecorded > 0
+      recorded,
+      isRecorded: true
     };
-  }, [remarks, studentMetrics.active]);
+  })();
 
   // 4. Today's Income & Expense (Cash Flow)
   const todayCashFlow = useMemo(() => {
@@ -500,30 +490,57 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
-                <CountUpNumber target={Math.round(Number(attendanceMetrics.rate) || 0)} suffix="%" />
-              </h3>
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                <CheckCircle2 size={13} />
-                <span>{isBn ? 'সন্তোষজনক' : 'Good'}</span>
-              </span>
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-              <div className="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200">
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">{isBn ? 'উপস্থিত' : 'Present'}</span>
-                <span className="text-base font-black tabular-nums font-mono">
-                  <CountUpNumber target={attendanceMetrics.present} /> {isBn ? 'জন' : ''}
-                </span>
-              </div>
-              <div className="p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800/60 text-rose-900 dark:text-rose-200">
-                <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
-                <span className="text-base font-black tabular-nums font-mono">
-                  <CountUpNumber target={attendanceMetrics.absent} /> {isBn ? 'জন' : ''}
-                </span>
-              </div>
-            </div>
+            {attendanceMetrics.isRecorded ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
+                    <CountUpNumber target={Math.round(Number(attendanceMetrics.rate) || 0)} suffix="%" />
+                  </h3>
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                    <CheckCircle2 size={13} />
+                    <span>{isBn ? 'সন্তোষজনক' : 'Good'}</span>
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {isBn
+                    ? `রেকর্ডকৃত ${toBanglaDigits(attendanceMetrics.recorded, 'bn')} জনের ভিত্তিতে`
+                    : `Based on ${attendanceMetrics.recorded} recorded students`}
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <div className="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">{isBn ? 'উপস্থিত' : 'Present'}</span>
+                    <span className="text-base font-black tabular-nums font-mono">
+                      <CountUpNumber target={attendanceMetrics.present ?? 0} /> {isBn ? 'জন' : ''}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800/60 text-rose-900 dark:text-rose-200">
+                    <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
+                    <span className="text-base font-black tabular-nums font-mono">
+                      <CountUpNumber target={attendanceMetrics.absent ?? 0} /> {isBn ? 'জন' : ''}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
+                  {isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {isBn ? 'আজ এখনো কোনো ক্লাসের হাজিরা রেকর্ড হয়নি' : 'No class attendance recorded yet today'}
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <div className="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">{isBn ? 'উপস্থিত' : 'Present'}</span>
+                    <span className="text-base font-black">—</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800/60 text-rose-900 dark:text-rose-200">
+                    <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
+                    <span className="text-base font-black">—</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="mt-4 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">

@@ -87,9 +87,17 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   // Staff attendance map: staffId -> status
   const [staffAttendanceMap, setStaffAttendanceMap] = useState<Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string }>>({});
 
+  // SAVED records for the selected date (+class) — the only source the
+  // summary strip may present as fact. The working maps above are
+  // pre-filled with PRESENT defaults to make taking attendance one-tap;
+  // counting them would invent attendance that was never recorded.
+  const [savedStudentRecords, setSavedStudentRecords] = useState<DailyStudentAttendanceRecord[]>([]);
+  const [savedStaffRecords, setSavedStaffRecords] = useState<DailyStaffAttendanceRecord[]>([]);
+
   // Load student attendance for selectedDate & selectedClass
   useEffect(() => {
     const records = dailyAttendanceService.getRecordsByDateAndClass(selectedDate, selectedClass);
+    setSavedStudentRecords(records);
     const newMap: Record<string, { status: AttendanceStatus; timeIn?: string; note?: string }> = {};
 
     classStudents.forEach(student => {
@@ -116,6 +124,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   // Load staff attendance for selectedDate
   useEffect(() => {
     const records = dailyAttendanceService.getStaffAttendanceByDate(selectedDate);
+    setSavedStaffRecords(records);
     const newStaffMap: Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string }> = {};
 
     teachers.forEach(teacher => {
@@ -192,6 +201,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     });
 
     dailyAttendanceService.batchSaveStudentAttendance(recordsToSave);
+    setSavedStudentRecords(dailyAttendanceService.getRecordsByDateAndClass(selectedDate, selectedClass));
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2500);
   };
@@ -215,6 +225,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     });
 
     dailyAttendanceService.batchSaveStaffAttendance(recordsToSave);
+    setSavedStaffRecords(dailyAttendanceService.getStaffAttendanceByDate(selectedDate));
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2500);
   };
@@ -338,7 +349,12 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     setTimeout(() => setSyncStatus(null), 4000);
   };
 
-  // Computed summary metrics
+  // Computed summary metrics — RECORDED DATA ONLY (owner rule).
+  // A previous version counted the working attendanceMap, which is
+  // pre-filled with PRESENT defaults for one-tap taking, so an untouched
+  // class reported 100% present / a fabricated rate. These figures now
+  // come from the saved records for this date+class; the rate is over
+  // recorded entries only, and is null until something is recorded.
   const summary = useMemo(() => {
     const total = classStudents.length;
     let present = 0;
@@ -346,17 +362,22 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     let late = 0;
     let leave = 0;
 
-    classStudents.forEach(s => {
-      const st = attendanceMap[s.id]?.status || 'PRESENT';
-      if (st === 'PRESENT') present++;
-      else if (st === 'ABSENT') absent++;
-      else if (st === 'LATE') late++;
-      else if (st === 'LEAVE') leave++;
+    savedStudentRecords.forEach(r => {
+      if (r.status === 'PRESENT') present++;
+      else if (r.status === 'ABSENT') absent++;
+      else if (r.status === 'LATE') late++;
+      else if (r.status === 'LEAVE') leave++;
     });
 
-    const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
-    return { total, present, absent, late, leave, percentage };
-  }, [classStudents, attendanceMap]);
+    const recorded = savedStudentRecords.length;
+    const percentage = recorded > 0 ? Math.round(((present + late) / recorded) * 100) : null;
+    return {
+      total, present, absent, late, leave,
+      recorded,
+      pending: Math.max(0, total - recorded),
+      percentage
+    };
+  }, [classStudents, savedStudentRecords]);
 
   // Filtered students by search
   const filteredStudents = useMemo(() => {
@@ -454,25 +475,35 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 shadow-2xs bg-emerald-50/20">
           <span className="text-[11px] font-bold text-emerald-700 uppercase">{isBn ? 'উপস্থিত' : 'Present'}</span>
-          <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{formatNumber(summary.present, language)}</p>
+          <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.present, language) : '—'}</p>
+          {summary.pending > 0 && (
+            <span className="text-[10px] text-emerald-700 font-semibold">{isBn ? `হাজিরা বাকি ${formatNumber(summary.pending, language)} জন` : `${formatNumber(summary.pending, language)} pending`}</span>
+          )}
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-rose-200 shadow-2xs bg-rose-50/20">
           <span className="text-[11px] font-bold text-rose-700 uppercase">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
-          <p className="text-2xl font-black text-rose-900 mt-1 font-bangla">{formatNumber(summary.absent, language)}</p>
+          <p className="text-2xl font-black text-rose-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.absent, language) : '—'}</p>
           <span className="text-[10px] text-rose-700 font-semibold">{isBn ? 'অনুমতি ছাড়া' : 'Unexcused'}</span>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-amber-200 shadow-2xs bg-amber-50/20">
           <span className="text-[11px] font-bold text-amber-700 uppercase">{isBn ? 'বিলম্বিত' : 'Late'}</span>
-          <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{formatNumber(summary.late, language)}</p>
+          <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.late, language) : '—'}</p>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-indigo-200 shadow-2xs bg-indigo-50/20">
           <span className="text-[11px] font-bold text-indigo-700 uppercase">{isBn ? 'ছুটি / মার্জিত' : 'Leave'}</span>
-          <p className="text-2xl font-black text-indigo-900 mt-1 font-bangla">{formatNumber(summary.leave, language)}</p>
+          <p className="text-2xl font-black text-indigo-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.leave, language) : '—'}</p>
           <span className="text-[10px] text-indigo-700 font-semibold">{isBn ? 'দরখাস্ত গৃহীত' : 'Approved Leave'}</span>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-teal-200 shadow-2xs bg-teal-50/30">
           <span className="text-[11px] font-bold text-teal-700 uppercase">{isBn ? 'উপস্থিতির হার' : 'Rate'}</span>
-          <p className="text-2xl font-black text-teal-900 mt-1 font-bangla">{formatNumber(summary.percentage, language)}%</p>
+          {summary.percentage !== null ? (
+            <>
+              <p className="text-2xl font-black text-teal-900 mt-1 font-bangla">{formatNumber(summary.percentage, language)}%</p>
+              <span className="text-[10px] text-teal-700 font-semibold">{isBn ? `রেকর্ডকৃত ${formatNumber(summary.recorded, language)} জনের ভিত্তিতে` : `Based on ${formatNumber(summary.recorded, language)} recorded`}</span>
+            </>
+          ) : (
+            <p className="text-sm font-black text-amber-600 mt-1.5">{isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}</p>
+          )}
         </div>
       </div>
 
@@ -1078,7 +1109,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               min="0"
                               value={data.workingDays ?? ''}
                               onChange={(e) => handleRemarkFieldChange(student.id, 'workingDays', e.target.value)}
-                              placeholder="90"
+                              placeholder="0"
                               className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-center text-xs font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none"
                             />
                           </td>
@@ -1088,7 +1119,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               min="0"
                               value={data.totalPresent ?? ''}
                               onChange={(e) => handleRemarkFieldChange(student.id, 'totalPresent', e.target.value)}
-                              placeholder="85"
+                              placeholder="0"
                               className="w-16 px-2 py-1 bg-white border border-emerald-300 rounded-lg text-center text-xs font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500 outline-none"
                             />
                           </td>
@@ -1098,7 +1129,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               min="0"
                               value={data.totalAbsent ?? ''}
                               onChange={(e) => handleRemarkFieldChange(student.id, 'totalAbsent', e.target.value)}
-                              placeholder="5"
+                              placeholder="0"
                               className="w-16 px-2 py-1 bg-white border border-rose-300 rounded-lg text-center text-xs font-bold text-rose-800 focus:ring-2 focus:ring-rose-500 outline-none"
                             />
                           </td>
@@ -1106,7 +1137,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                             <span className={`px-2 py-0.5 rounded-full text-[11px] ${
                               rate >= 85 ? 'bg-emerald-100 text-emerald-800' : (rate >= 70 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
                             }`}>
-                              {rate}%
+                              {formatNumber(rate, language)}%
                             </span>
                           </td>
                           <td className="py-2.5 px-3">

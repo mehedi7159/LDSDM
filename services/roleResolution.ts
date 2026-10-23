@@ -178,3 +178,19 @@ export function sanitizeAdditionalRoles(
   }
   return out;
 }
+
+/**
+ * Desktop home tab for a role. Non-admin roles must NOT land on the
+ * principal-oriented Dashboard: each gets its primary work module.
+ * Admin-tier roles (owner / super_admin / admin / principal) keep the
+ * Dashboard exactly as before.
+ */
+export function roleHomeTab(role?: string | null): string {
+  switch (normalizeRoleKey(role)) {
+    case 'teacher': return 'attendance';
+    case 'accountant': return 'finance';
+    case 'staff': return 'students';
+    case 'guardian': return 'guardian_portal';
+    default: return 'dashboard';
+  }
+}

@@ -63,32 +63,42 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
     }
   }, [initialSubTab]);
 
-  // Dynamic KPI Stats for Today
+  // KPI Stats for the selected date — RECORDED DATA ONLY.
+  // Standing rule (owner directive): a figure may only be derived from
+  // attendance actually recorded for that date. A previous version
+  // invented a "realistic baseline" when nothing was logged yet
+  // (present = 92% of enrolment, rate = 95, faculty = 100%), which is
+  // exactly the fabrication the owner flagged. Now: rates are computed
+  // over recorded entries only and are null until at least one record
+  // exists; the header then shows the "not taken yet" state plus how
+  // many students/staff are still pending.
   const kpis = useMemo(() => {
     const totalEnrolled = students.filter(s => s.status === 'Active' && !s.isFormer).length;
     const summary = dailyAttendanceService.getDaySummary(selectedDate);
-    const effectivePresent = summary.totalStudents > 0 
-      ? summary.presentCount + summary.lateCount 
-      : Math.round(totalEnrolled * 0.92); // realistic baseline if not logged yet
-    const absentCount = summary.totalStudents > 0 
-      ? summary.absentCount 
-      : Math.max(0, totalEnrolled - effectivePresent);
-    const studentRate = totalEnrolled > 0 
-      ? Math.round((effectivePresent / totalEnrolled) * 100) 
-      : 95;
+    const recordedStudents = summary.totalStudents;
+    const presentRecorded = summary.presentCount + summary.lateCount;
+    const absentRecorded = summary.absentCount;
+    const studentRate = recordedStudents > 0
+      ? Math.round((presentRecorded / recordedStudents) * 100)
+      : null;
 
-    // Staff attendance for date
+    // Staff attendance for date (recorded entries only)
     const staffRecords = dailyAttendanceService.getStaffAttendanceByDate(selectedDate);
-    const staffPresent = staffRecords.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
-    const staffRate = teachers.length > 0 
-      ? Math.round(((staffRecords.length > 0 ? staffPresent : teachers.length) / teachers.length) * 100) 
-      : 100;
+    const staffRecorded = staffRecords.length;
+    const staffPresentRecorded = staffRecords.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
+    const staffRate = staffRecorded > 0
+      ? Math.round((staffPresentRecorded / staffRecorded) * 100)
+      : null;
 
     return {
       totalEnrolled,
-      effectivePresent,
-      absentCount,
+      recordedStudents,
+      presentRecorded,
+      absentRecorded,
       studentRate,
+      pendingStudents: Math.max(0, totalEnrolled - recordedStudents),
+      staffRecorded,
+      staffPresentRecorded,
       staffRate,
       totalTeachers: teachers.length
     };
@@ -98,7 +108,7 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
   const tabs: { id: AttendanceSubTab; labelBn: string; labelEn: string; icon: any; badge?: string }[] = [
     { id: 'students', labelBn: '১. শিক্ষার্থীর দৈনিক উপস্থিতি', labelEn: '1. Daily Students', icon: UserCheck },
     { id: 'staff', labelBn: '২. শিক্ষক ও কর্মচারী উপস্থিতি', labelEn: '2. Staff Attendance', icon: Briefcase },
-    { id: 'absentees', labelBn: '৩. অনুপস্থিত তালিকা ও SMS', labelEn: '3. Absentees & SMS', icon: Phone, badge: kpis.absentCount > 0 ? `${kpis.absentCount}` : undefined },
+    { id: 'absentees', labelBn: '৩. অনুপস্থিত তালিকা ও SMS', labelEn: '3. Absentees & SMS', icon: Phone, badge: kpis.absentRecorded > 0 ? formatNumber(kpis.absentRecorded, language) : undefined },
     { id: 'register', labelBn: '৪. মাসিক রেজিস্টার শিট', labelEn: '4. Monthly Register', icon: FileSpreadsheet, badge: 'Print' },
     { id: 'sync', labelBn: '৫. পরীক্ষার মার্কশিটে সিঙ্ক', labelEn: '5. Sync to Marksheet', icon: Sparkles, badge: 'Auto' },
     { id: 'reports', labelBn: '৬. উপস্থিতি অ্যানালিটিক্স', labelEn: '6. Reports & Analytics', icon: BarChart3, badge: 'Report' },
@@ -138,40 +148,85 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
           </div>
         </div>
 
-        {/* Top KPI Metrics Strip */}
+        {/* Top KPI Metrics Strip — recorded data only; every digit goes
+            through formatNumber(..., language) so bn mode shows Bangla
+            digits (incl. percentages and the date) and en mode Latin. */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের শিক্ষার্থী হাজিরা' : 'Attendance Rate'}</div>
-            <div className="text-xl font-black text-emerald-300 mt-0.5">{kpis.studentRate}%</div>
-            <div className="text-[10px] text-teal-300 font-medium">{formatNumber(kpis.effectivePresent, 'bn')} জন উপস্থিত</div>
+            {kpis.studentRate !== null ? (
+              <>
+                <div className="text-xl font-black text-emerald-300 mt-0.5 font-bangla">{formatNumber(kpis.studentRate, language)}%</div>
+                <div className="text-[10px] text-teal-300 font-medium">
+                  {isBn
+                    ? `${formatNumber(kpis.presentRecorded, language)} জন উপস্থিত • রেকর্ড ${formatNumber(kpis.recordedStudents, language)}/${formatNumber(kpis.totalEnrolled, language)}`
+                    : `${formatNumber(kpis.presentRecorded, language)} present • recorded ${formatNumber(kpis.recordedStudents, language)}/${formatNumber(kpis.totalEnrolled, language)}`}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-black text-amber-300 mt-1">{isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}</div>
+                <div className="text-[10px] text-teal-300 font-medium">
+                  {isBn
+                    ? `${formatNumber(kpis.pendingStudents, language)} জন শিক্ষার্থীর হাজিরা বাকি`
+                    : `${formatNumber(kpis.pendingStudents, language)} students pending`}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের অনুপস্থিত' : 'Absentees Today'}</div>
-            <div className="text-xl font-black text-rose-300 mt-0.5">{formatNumber(kpis.absentCount, 'bn')} জন</div>
+            <div className="text-xl font-black text-rose-300 mt-0.5 font-bangla">
+              {kpis.recordedStudents > 0
+                ? (isBn ? `${formatNumber(kpis.absentRecorded, language)} জন` : formatNumber(kpis.absentRecorded, language))
+                : '—'}
+            </div>
+            {kpis.recordedStudents > 0 && kpis.pendingStudents > 0 && (
+              <div className="text-[10px] text-slate-400 font-medium">
+                {isBn ? `আরও ${formatNumber(kpis.pendingStudents, language)} জনের হাজিরা বাকি` : `${formatNumber(kpis.pendingStudents, language)} more pending`}
+              </div>
+            )}
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'শিক্ষক ও কর্মী উপস্থিতি' : 'Faculty Attendance'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{kpis.staffRate}%</div>
-            <div className="text-[10px] text-teal-300 font-medium">{formatNumber(kpis.totalTeachers, 'bn')} জন শিক্ষক</div>
+            {kpis.staffRate !== null ? (
+              <>
+                <div className="text-xl font-black text-white mt-0.5 font-bangla">{formatNumber(kpis.staffRate, language)}%</div>
+                <div className="text-[10px] text-teal-300 font-medium">
+                  {isBn
+                    ? `${formatNumber(kpis.staffPresentRecorded, language)} জন উপস্থিত • রেকর্ড ${formatNumber(kpis.staffRecorded, language)}/${formatNumber(kpis.totalTeachers, language)}`
+                    : `${formatNumber(kpis.staffPresentRecorded, language)} present • recorded ${formatNumber(kpis.staffRecorded, language)}/${formatNumber(kpis.totalTeachers, language)}`}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-black text-amber-300 mt-1">{isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}</div>
+                <div className="text-[10px] text-teal-300 font-medium">
+                  {isBn
+                    ? `মোট ${formatNumber(kpis.totalTeachers, language)} জন শিক্ষক`
+                    : `${formatNumber(kpis.totalTeachers, language)} teachers in total`}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট সক্রিয় ছাত্র' : 'Active Students'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.totalEnrolled, 'bn')} জন</div>
-            <div className="text-[10px] text-teal-300 font-medium">{formatNumber(classes.length, 'bn')} টি শ্রেণি</div>
+            <div className="text-xl font-black text-white mt-0.5 font-bangla">{formatNumber(kpis.totalEnrolled, language)}{isBn ? ' জন' : ''}</div>
+            <div className="text-[10px] text-teal-300 font-medium">{formatNumber(classes.length, language)}{isBn ? ' টি শ্রেণি' : ' classes'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'পরীক্ষার টার্ম সিঙ্ক' : 'Exam Sync'}</div>
             <div className="text-xl font-black text-teal-200 mt-0.5">{isBn ? 'সক্রিয়' : 'Active'}</div>
-            <div className="text-[10px] text-slate-400 font-medium">{formatNumber(exams.length, 'bn')} টি পরীক্ষা</div>
+            <div className="text-[10px] text-slate-400 font-medium">{formatNumber(exams.length, language)}{isBn ? ' টি পরীক্ষা' : ' exams'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'তারিখ' : 'Date'}</div>
-            <div className="text-xs font-black text-white mt-1 font-mono">{formatSafeDate(selectedDate, isBn)}</div>
+            <div className="text-xs font-black text-white mt-1 font-bangla">{formatNumber(formatSafeDate(selectedDate, isBn), language)}</div>
           </div>
         </div>
       </div>

@@ -123,7 +123,9 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
     });
 
     const totalDays = totalPresent + totalAbsent;
-    const attendanceRate = totalDays > 0 ? ((totalPresent / totalDays) * 100).toFixed(1) : '94.5';
+    // Real data only: with no exam attendance remarks there is NO rate —
+    // a previous version displayed an invented '94.5%' here.
+    const attendanceRate = totalDays > 0 ? ((totalPresent / totalDays) * 100).toFixed(1) : null;
 
     return {
       present: totalPresent,
@@ -304,7 +306,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             </div>
             <div className="mt-2">
               <h3 className="text-3xl font-black text-slate-900 tracking-tight flex items-baseline gap-1">
-                <span>{toBanglaDigits(attendanceStats.rate)}%</span>
+                <span>{attendanceStats.rate !== null ? `${toBanglaDigits(attendanceStats.rate)}%` : '—'}</span>
               </h3>
             </div>
           </div>

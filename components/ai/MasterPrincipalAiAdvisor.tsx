@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { AiActionProposal, AiProposedRoutine, AiRoutineSlot } from '../../server/aiAssistantApi';
 import { formatNumber } from '../../services/utils';
+import { dailyAttendanceService } from '../../services/dailyAttendanceService';
 import { useVoiceCommand } from '../../hooks/useVoiceCommand';
 
 interface ChatMessage {
@@ -339,7 +340,20 @@ ${schoolProfile.nameBn || schoolProfile.name}`
             totalTeachers: metrics.totalTeachers,
             classes: classes.map(c => c.name),
             subjects: subjects.map(s => s.name),
-            todayAttendance: { present: Math.round(metrics.totalStudents * 0.93), absent: Math.round(metrics.totalStudents * 0.07), rate: 93.4 },
+            // Real recorded attendance only — a previous version sent an
+          // invented 93.4% / 93%-of-enrolment split to the AI here.
+          todayAttendance: (() => {
+            const day = dailyAttendanceService.getDaySummary(new Date().toISOString().split('T')[0]);
+            const present = day.presentCount + day.lateCount;
+            const absent = day.absentCount + day.leaveCount;
+            return {
+              recorded: day.totalStudents > 0,
+              recordedCount: day.totalStudents,
+              present,
+              absent,
+              rate: day.totalStudents > 0 ? Math.round((present / day.totalStudents) * 1000) / 10 : null
+            };
+          })(),
             feesSummary: { totalCollected: metrics.totalCollected, totalDue: metrics.totalDue },
             upcomingExams: exams.map(e => e.name),
             currentDashboardMode: dashboardMode

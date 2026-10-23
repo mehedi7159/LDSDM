@@ -1,4 +1,5 @@
 import { SUPER_ADMIN_EMAIL } from './services/appConfig';
+import { normalizeRoleKey, roleHomeTab } from './services/roleResolution';
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { AppProvider, useApp } from './context/AppContext';
@@ -121,8 +122,12 @@ const AppContent = () => {
       return true;
     }
 
-    // Public / universal tabs
-    if (tab === 'dashboard' || tab === 'academic_reports' || tab === 'web_results' || tab === 'student_profile' || tab === 'notice_board') {
+    // Public / universal tabs.
+    // NOTE: 'academic_reports' is deliberately NOT universal — its render
+    // guard requires reports.view || subjects.view, so a guardian (who
+    // has neither) used to pass this gate and hit a restricted wall. It
+    // has its own case below mirroring the render guard.
+    if (tab === 'dashboard' || tab === 'web_results' || tab === 'student_profile' || tab === 'notice_board') {
       return true;
     }
 
@@ -145,13 +150,23 @@ const AppContent = () => {
       case 'student_reports':
         return isAdmin || hasPermission('students.view') || hasPermission('reports.view');
       case 'subjects':
-      case 'class_section_setup':
-      case 'teacher_assignment':
       case 'class_routine':
+        return isAdmin || hasPermission('subjects.view') || hasPermission('subjectAssignments.view') || currentUser?.role === 'teacher';
+      // The cases below mirror their renderContent guards exactly. They
+      // used to share the subjects case above, which let roles PASS this
+      // gate and then hit the render-level restricted wall (e.g. a
+      // teacher opening syllabus_planner), or FAIL it despite the menu
+      // and render both allowing them (office staff opening
+      // class_section_setup via classes.view).
+      case 'class_section_setup':
+        return isAdmin || hasPermission('classes.view') || hasPermission('teachers.view');
+      case 'teacher_assignment':
+        return isAdmin || hasPermission('subjectAssignments.view') || hasPermission('teachers.view');
       case 'syllabus_planner':
       case 'academic_calendar':
+        return isAdmin || hasPermission('academic.view');
       case 'academic_reports':
-        return isAdmin || hasPermission('subjects.view') || hasPermission('subjectAssignments.view') || currentUser?.role === 'teacher';
+        return isAdmin || hasPermission('reports.view') || hasPermission('subjects.view');
       case 'marks':
         return isAdmin || hasPermission('marks.view') || hasPermission('marks.create') || hasPermission('marks.edit') || currentUser?.role === 'teacher';
       case 'exam_settings':
@@ -168,14 +183,24 @@ const AppContent = () => {
         return isAdmin || hasPermission('attendance.view') || hasPermission('reports.view') || currentUser?.role === 'teacher';
       case 'fee_structure':
         return isAdmin || hasPermission('finance.view') || hasPermission('fees.view') || currentUser?.role === 'accountant';
+      // Staff/HR tabs — split per tab to mirror each renderContent guard
+      // exactly. The old lumped case (roles.view || users.view) bounced
+      // roles whose menu item was visible and whose module would have
+      // rendered: teacher → staff_assignments/staff_analytics,
+      // accountant → staff_payroll.
       case 'user_roles':
+        return isAdmin || hasPermission('roles.view') || hasPermission('users.view') || hasPermission('teachers.view') || currentUser?.role === 'principal';
       case 'staff_roles':
+        return isAdmin || hasPermission('roles.view') || hasPermission('users.view') || currentUser?.role === 'principal';
       case 'staff_assignments':
+        return isAdmin || hasPermission('subjects.view') || hasPermission('teachers.view');
       case 'staff_payroll':
+        return isAdmin || hasPermission('finance.view') || hasPermission('fees.view');
       case 'staff_leaves':
       case 'staff_id_cards':
+        return isAdmin || hasPermission('users.view');
       case 'staff_analytics':
-        return isAdmin || hasPermission('roles.view') || hasPermission('users.view') || currentUser?.role === 'principal';
+        return isAdmin || hasPermission('reports.view');
       case 'settings':
       case 'branding_settings':
         return isAdmin || hasPermission('institution.settings.view');
@@ -198,9 +223,12 @@ const AppContent = () => {
       case 'public_web_results':
         return true;
       case 'sms_gateway':
-        return isAdmin || currentUser?.role === 'principal' || currentUser?.role === 'teacher';
+        // Layout shows this to the accountant as well (primary or
+        // additional role); the module renders unconditionally, so the
+        // gate now matches the menu.
+        return isAdmin || currentUser?.role === 'principal' || currentUser?.role === 'teacher' || currentUser?.role === 'accountant' || (effectiveRoles || []).includes('accountant');
       case 'boarding_mess':
-        return isAdmin || currentUser?.role === 'principal' || currentUser?.role === 'teacher';
+        return isAdmin || currentUser?.role === 'principal' || currentUser?.role === 'teacher' || currentUser?.role === 'accountant' || (effectiveRoles || []).includes('accountant');
       case 'islamic_welfare':
         return isAdmin || currentUser?.role === 'principal' || currentUser?.role === 'accountant';
       case 'book_bank':
@@ -221,6 +249,26 @@ const AppContent = () => {
     }
   };
 
+  // Desktop home tab for non-admin roles. The principal's Dashboard is
+  // gate-allowed for everyone, so without an explicit home rule a
+  // teacher/accountant/staff/guardian session lands on it — institution
+  // totals, report doors and operational to-dos that are not their home.
+  // Each non-admin role gets its primary work module instead
+  // (roleHomeTab). Admin-tier users keep 'dashboard' exactly.
+  // MOBILE IS UNTOUCHED: the redirect below only fires at desktop width;
+  // StaffMobileApp owns the mobile experience.
+  const primaryRoleKey = normalizeRoleKey(currentUser?.role)
+    || normalizeRoleKey(currentMember?.roleId)
+    || normalizeRoleKey(authRole)
+    || normalizeRoleKey(userRole)
+    || normalizeRoleKey((effectiveRoles || [])[0]);
+  // A user holding principal as an ADDITIONAL role keeps the Dashboard:
+  // the tab gate already treats them as principal throughout.
+  const homeTab = (isNonAdminRole && !(effectiveRoles || []).includes('principal'))
+    ? roleHomeTab(primaryRoleKey)
+    : 'dashboard';
+  const isDesktopWidth = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+
   // Debounced verification hook to avoid transient screen flashing and redirection loops
   useEffect(() => {
     // 1. While auth state is initializing or checking, NEVER redirect or evaluate tab permissions.
@@ -239,9 +287,12 @@ const AppContent = () => {
       clearTimeout(debounceRedirectRef.current);
     }
 
-    // 4. Fast-path check: If immediately allowed, do nothing
+    // 4. Fast-path check: If immediately allowed, do nothing — EXCEPT a
+    // non-admin role sitting on the principal's Dashboard at desktop
+    // width, which belongs on its role home (see homeTab above).
     const isAllowed = isTabAllowedForUser(activeTab);
-    if (isAllowed) {
+    const needsHomeRedirect = isNonAdminRole && activeTab === 'dashboard' && homeTab !== 'dashboard' && isDesktopWidth();
+    if (isAllowed && !needsHomeRedirect) {
       return;
     }
 
@@ -249,10 +300,18 @@ const AppContent = () => {
     // Prevents false-negative redirects while claims, roles, or member records are settling asynchronously
     debounceRedirectRef.current = setTimeout(() => {
       const stillAllowed = isTabAllowedForUser(activeTab);
-      if (!stillAllowed) {
-        if (activeTab !== 'dashboard') {
-          console.warn(`[Navigation] Role does not possess permission for "${activeTab}". Redirecting to dashboard.`);
-          setActiveTab('dashboard');
+      const stillNeedsHome = isNonAdminRole && activeTab === 'dashboard' && homeTab !== 'dashboard' && isDesktopWidth();
+      if (!stillAllowed || stillNeedsHome) {
+        // Non-admin desktop users go to their role home (when the home
+        // itself passes the gate); everyone else keeps the historical
+        // 'dashboard' fallback. On mobile the target stays 'dashboard'
+        // so mobile behaviour is unchanged.
+        const target = (isNonAdminRole && isDesktopWidth() && homeTab !== 'dashboard' && isTabAllowedForUser(homeTab))
+          ? homeTab
+          : 'dashboard';
+        if (activeTab !== target) {
+          console.warn(`[Navigation] Redirecting "${activeTab}" -> "${target}" for this role.`);
+          setActiveTab(target);
         }
       }
     }, 300);
@@ -262,7 +321,7 @@ const AppContent = () => {
         clearTimeout(debounceRedirectRef.current);
       }
     };
-  }, [activeTab, authUser, authClaims, authRole, isAdmin, isSuperAdmin, currentMember, isAuthReady]);
+  }, [activeTab, authUser, authClaims, authRole, isAdmin, isSuperAdmin, currentMember, isAuthReady, isNonAdminRole, homeTab]);
   
   // States for Result switching
   const [resultMode, setResultMode] = useState<'individual' | 'class'>('individual');

@@ -98,17 +98,26 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
     return daysArray.filter(d => !d.isFriday).length;
   }, [daysArray]);
 
-  // Compute student stats
+  // Compute student stats — RECORDED DAYS ONLY (owner rule).
+  // A previous version defaulted every unlogged day to PRESENT
+  // (`|| 'PRESENT'; // default present if not logged`), so the printed
+  // register showed near-perfect attendance for months where attendance
+  // was never taken. Now an unlogged day counts for nothing: it renders
+  // blank, and the rate is computed over recorded days only (null when
+  // the student has no records at all that month).
   const getStudentStats = (studentId: string) => {
     const studentLog = monthlyDataMap[studentId] || {};
     let presentCount = 0;
     let absentCount = 0;
     let lateCount = 0;
     let leaveCount = 0;
+    let recordedDays = 0;
 
     daysArray.forEach(d => {
       if (d.isFriday) return;
-      const st = studentLog[d.dateStr] || 'PRESENT'; // default present if not logged
+      const st = studentLog[d.dateStr];
+      if (!st) return; // not recorded — never counted as present
+      recordedDays++;
       if (st === 'PRESENT') presentCount++;
       else if (st === 'ABSENT') absentCount++;
       else if (st === 'LATE') { lateCount++; presentCount++; }
@@ -116,10 +125,11 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
     });
 
     const totalPresent = presentCount;
-    const rate = totalWorkingDays > 0 ? Math.round((totalPresent / totalWorkingDays) * 100) : 100;
+    const rate = recordedDays > 0 ? Math.round((totalPresent / recordedDays) * 100) : null;
 
     return {
-      workingDays: totalWorkingDays,
+      workingDays: recordedDays,
+      recordedDays,
       presentCount,
       absentCount,
       lateCount,
@@ -177,11 +187,11 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
         if (d.isFriday) {
           csv += 'ছুটি,';
         } else {
-          const s = (monthlyDataMap[st.id] && monthlyDataMap[st.id][d.dateStr]) || 'P';
+          const s = (monthlyDataMap[st.id] && monthlyDataMap[st.id][d.dateStr]) || '-';
           csv += `${s},`;
         }
       });
-      csv += `${stats.workingDays},${stats.presentCount},${stats.absentCount},${stats.lateCount},${stats.leaveCount},${stats.rate}%\n`;
+      csv += `${stats.workingDays},${stats.presentCount},${stats.absentCount},${stats.lateCount},${stats.leaveCount},${stats.rate !== null ? `${stats.rate}%` : '-'}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -259,7 +269,7 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
               <ChevronLeft size={16} />
             </button>
             <span className="text-xs font-bold text-slate-800 px-2 min-w-[120px] text-center">
-              {isBn ? `${monthNamesBn[selectedMonth - 1]} ${formatNumber(selectedYear, 'bn')}` : `${selectedMonth}/${selectedYear}`}
+              {isBn ? `${monthNamesBn[selectedMonth - 1]} ${formatNumber(selectedYear, language)}` : `${selectedMonth}/${selectedYear}`}
             </span>
             <button
               type="button"
@@ -272,7 +282,7 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
           </div>
 
           <div className="text-xs text-slate-500 font-semibold bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-            {isBn ? `মোট কর্মদিবস: ${formatNumber(totalWorkingDays, 'bn')} দিন` : `Working days: ${totalWorkingDays}`}
+            {isBn ? `মোট কর্মদিবস: ${formatNumber(totalWorkingDays, language)} দিন` : `Working days: ${totalWorkingDays}`}
           </div>
         </div>
 
@@ -323,7 +333,7 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
             </h3>
             <p className="text-xs text-slate-500">
               {isBn 
-                ? `মাসিক হাজিরা রেজিস্টার: ${monthNamesBn[selectedMonth - 1]} ${formatNumber(selectedYear, 'bn')} • মোট ছাত্র: ${formatNumber(filteredStudents.length, 'bn')} জন`
+                ? `মাসিক হাজিরা রেজিস্টার: ${monthNamesBn[selectedMonth - 1]} ${formatNumber(selectedYear, language)} • মোট ছাত্র: ${formatNumber(filteredStudents.length, language)} জন`
                 : `Register: ${selectedMonth}/${selectedYear}`}
             </p>
           </div>
@@ -368,7 +378,7 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
               ) : (
                 filteredStudents.map(student => {
                   const stats = getStudentStats(student.id);
-                  const isLow = stats.rate < 80;
+                  const isLow = stats.rate !== null && stats.rate < 80;
 
                   return (
                     <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
@@ -389,7 +399,16 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
                           );
                         }
 
-                        const status = (monthlyDataMap[student.id] && monthlyDataMap[student.id][d.dateStr]) || 'PRESENT';
+                        const status = (monthlyDataMap[student.id] && monthlyDataMap[student.id][d.dateStr]) || null;
+
+                        // Unrecorded day: blank cell — never a fabricated 'P'.
+                        if (!status) {
+                          return (
+                            <td key={d.day} className="py-1 px-0.5 text-center border-r border-slate-200 text-[10px] font-mono text-slate-300">
+                              –
+                            </td>
+                          );
+                        }
 
                         let badgeClass = 'text-emerald-700 font-bold bg-emerald-50/60';
                         let symbol = 'P';
@@ -413,15 +432,15 @@ export const MonthlyAttendanceRegisterSheet: React.FC = () => {
 
                       {/* Summary Columns */}
                       <td className="py-1.5 px-2 text-center font-mono font-bold text-emerald-700 border-l border-r border-slate-200 bg-emerald-50/30">
-                        {formatNumber(stats.presentCount, 'bn')}
+                        {formatNumber(stats.presentCount, language)}
                       </td>
                       <td className="py-1.5 px-2 text-center font-mono font-bold text-rose-700 border-r border-slate-200 bg-rose-50/30">
-                        {formatNumber(stats.absentCount, 'bn')}
+                        {formatNumber(stats.absentCount, language)}
                       </td>
                       <td className={`py-1.5 px-2 text-center font-mono font-black ${
                         isLow ? 'bg-rose-100 text-rose-800' : 'bg-emerald-50 text-emerald-800'
                       }`}>
-                        {stats.rate}%
+                        {stats.rate !== null ? `${formatNumber(stats.rate, language)}%` : '—'}
                       </td>
                     </tr>
                   );

@@ -27,6 +27,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
+import { dailyAttendanceService } from '../services/dailyAttendanceService';
 
 export const AttendanceReportView: React.FC = () => {
   const { students = [], classes = [], schoolProfile, language, t } = useApp();
@@ -55,29 +56,34 @@ export const AttendanceReportView: React.FC = () => {
       .sort((a, b) => (Number(a.roll || a.rollNumber || '0') || 0) - (Number(b.roll || b.rollNumber || '0') || 0));
   }, [students, selectedClass]);
 
-  // Generate mock/real dynamic monthly attendance statistics
+  // Monthly attendance statistics — REAL recorded data only.
+  // A previous version FABRICATED these numbers from a hash of the
+  // student ID (fixed 24 working days, absent = hash % 5, ...), so the
+  // report, its KPIs, its charts and its CSV export showed invented
+  // attendance for every student. The figures now come from
+  // dailyAttendanceService.getStudentMonthlySummary for the selected
+  // month: "total days" is the number of days that student actually has
+  // a record for, and a student with no records gets a null percentage
+  // (rendered as '—'), never an invented rate.
   const monthlyStats = useMemo(() => {
-    // Generate realistic attendance metrics based on student IDs
-    return classStudents.map((s, idx) => {
-      // Deterministic calculation for consistency
-      const hash = s.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const totalWorkingDays = 24;
-      const absentDays = (hash % 5);
-      const lateDays = (hash % 3);
-      const presentDays = totalWorkingDays - absentDays;
-      const attendancePercentage = Number(((presentDays / totalWorkingDays) * 100).toFixed(1));
-
+    const [yearStr, monthStr] = selectedMonth.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    return classStudents.map(s => {
+      const sum = dailyAttendanceService.getStudentMonthlySummary(s.id, year, month);
+      const hasRecords = sum.workingDays > 0;
       return {
         student: s,
-        totalWorkingDays,
-        presentDays,
-        absentDays,
-        lateDays,
-        attendancePercentage,
-        isAtRisk: attendancePercentage < 80
+        totalWorkingDays: sum.workingDays, // recorded days for this student
+        presentDays: sum.presentDays,
+        absentDays: sum.absentDays + sum.leaveDays,
+        lateDays: sum.lateDays,
+        hasRecords,
+        attendancePercentage: hasRecords ? sum.percentage : null,
+        isAtRisk: hasRecords && sum.percentage < 80
       };
     });
-  }, [classStudents]);
+  }, [classStudents, selectedMonth]);
 
   const filteredStats = useMemo(() => {
     if (!searchQuery.trim()) return monthlyStats;
@@ -91,15 +97,19 @@ export const AttendanceReportView: React.FC = () => {
     );
   }, [monthlyStats, searchQuery]);
 
-  // Class overall attendance rate
+  // Class overall attendance rate — averaged over students who HAVE
+  // records only; null when nobody in the class has any record that
+  // month (the KPI card then shows the no-records state, not 0% or an
+  // invented average).
   const classAvgRate = useMemo(() => {
-    if (monthlyStats.length === 0) return 0;
-    const total = monthlyStats.reduce((sum, item) => sum + item.attendancePercentage, 0);
-    return (total / monthlyStats.length).toFixed(1);
+    const recorded = monthlyStats.filter(m => m.hasRecords && m.attendancePercentage !== null);
+    if (recorded.length === 0) return null;
+    const total = recorded.reduce((sum, item) => sum + (item.attendancePercentage || 0), 0);
+    return (total / recorded.length).toFixed(1);
   }, [monthlyStats]);
 
   const atRiskCount = monthlyStats.filter(m => m.isAtRisk).length;
-  const goodCount = monthlyStats.length - atRiskCount;
+  const goodCount = monthlyStats.filter(m => m.hasRecords && !m.isAtRisk).length;
 
   const attendanceDistribution = [
     { name: language === 'bn' ? 'সন্তোষজনক (≥৮০%)' : 'Regular (≥80%)', value: goodCount, color: '#10b981' },
@@ -121,7 +131,7 @@ export const AttendanceReportView: React.FC = () => {
       item.presentDays,
       item.absentDays,
       item.lateDays,
-      `${item.attendancePercentage}%`
+      item.attendancePercentage !== null ? `${item.attendancePercentage}%` : 'Not recorded'
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -166,8 +176,8 @@ export const AttendanceReportView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'গড় উপস্থিতি হার' : 'Avg Attendance Rate'}</p>
-            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{toBanglaDigits(classAvgRate)}%</h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{selectedClass} শ্রেণির গড়</p>
+            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{classAvgRate !== null ? `${toBanglaDigits(classAvgRate)}%` : '—'}</h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{classAvgRate !== null ? `${selectedClass} শ্রেণির গড়` : (language === 'bn' ? 'এই মাসে কোনো হাজিরা রেকর্ড নেই' : 'No attendance recorded this month')}</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
             <TrendingUp size={24} />
@@ -299,14 +309,20 @@ export const AttendanceReportView: React.FC = () => {
                     <td className="py-3 px-4 text-center font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/50/30">{toBanglaDigits(item.absentDays)}</td>
                     <td className="py-3 px-4 text-center font-mono text-amber-600 dark:text-amber-400">{toBanglaDigits(item.lateDays)}</td>
                     <td className="py-3 px-4 text-center font-mono font-extrabold text-slate-900 dark:text-white">
-                      {toBanglaDigits(item.attendancePercentage)}%
+                      {item.attendancePercentage !== null ? `${toBanglaDigits(item.attendancePercentage)}%` : '—'}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        !item.isAtRisk ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
-                      }`}>
-                        {!item.isAtRisk ? (language === 'bn' ? 'নিয়মিত' : 'Good') : (language === 'bn' ? 'অনিয়মিত' : 'At Risk')}
-                      </span>
+                      {!item.hasRecords ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                          {language === 'bn' ? 'রেকর্ড নেই' : 'No record'}
+                        </span>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          !item.isAtRisk ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
+                        }`}>
+                          {!item.isAtRisk ? (language === 'bn' ? 'নিয়মিত' : 'Good') : (language === 'bn' ? 'অনিয়মিত' : 'At Risk')}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))

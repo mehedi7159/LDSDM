@@ -1,4 +1,5 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
+import { normalizeRoleKey, roleHomeTab } from '../services/roleResolution';
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -119,6 +120,34 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // Multi-role: principal held as an additional role counts as principal.
   const isPrincipal = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || (effectiveRoles || []).includes('principal');
   const canAccessMasterAi = isOwner || isPrincipal;
+
+  // Desktop home for the current user. Admin-tier users (owner / admin /
+  // principal) keep the Dashboard exactly as before; every non-admin
+  // role lands on its primary work module instead (teacher → attendance,
+  // accountant → finance, staff → students, guardian → guardian_portal).
+  const isAdminTier = isOwner || isAdmin || isPrincipal;
+  const primaryRoleKey = normalizeRoleKey(currentUser?.role)
+    || normalizeRoleKey(currentMember?.roleId)
+    || normalizeRoleKey(userRole)
+    || normalizeRoleKey((effectiveRoles || [])[0]);
+  const homeTab = isAdminTier ? 'dashboard' : roleHomeTab(primaryRoleKey);
+
+  // Whether the slim desktop rail may offer a tab to this user — mirrors
+  // the App.tsx tab gate + render guards for just these rail tabs, so a
+  // role is never shown a rail button that bounces or dead-ends.
+  const canOpenRailTab = (tab: string): boolean => {
+    if (isAdminTier) return true;
+    switch (tab) {
+      case 'students': return hasPermission('students.view') || hasPermission('students.create');
+      case 'attendance': return hasPermission('attendance.view') || hasPermission('attendance.create') || hasPermission('attendance.edit');
+      case 'results': return hasPermission('marks.view') || hasPermission('marks.create') || hasPermission('reports.view');
+      case 'finance': return hasPermission('finance.view') || hasPermission('fees.view') || hasPermission('payments.view');
+      case 'class_routine': return hasPermission('academic.view') || hasPermission('subjects.view');
+      case 'notice_board': return true;
+      case 'settings': return hasPermission('institution.settings.view');
+      default: return false;
+    }
+  };
 
   // Theme & Mobile Navigation Sheet states
   const { darkMode, toggleDarkMode } = useTheme();
@@ -412,13 +441,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           subType: 'action',
           permissions: ['finance.view', 'fees.view', 'payments.view'] 
         },
-        { 
-          id: 'fee_structure', 
-          label: language === 'bn' ? 'ফি কাঠামো ও রেট চার্ট' : 'Fee Structure & Rates', 
-          icon: Sliders, 
+        {
+          id: 'fee_structure',
+          label: language === 'bn' ? 'ফি কাঠামো ও রেট চার্ট' : 'Fee Structure & Rates',
+          icon: Sliders,
           subType: 'action',
-          badge: 'Admin',
-          isAdminOnly: true
+          // The accountant's core rate chart: gate + render both allow it
+          // via finance.view, so it must be visible to finance roles
+          // (previously isAdminOnly hid it from everyone non-admin).
+          permissions: ['finance.view']
         },
         { 
           id: 'finance_reports', 
@@ -540,13 +571,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           subType: 'action',
           permissions: ['subjects.view', 'teachers.view']
         },
-        { 
-          id: 'staff_payroll', 
-          label: language === 'bn' ? 'বেতন ও মাসিক পে-রোল' : 'Payroll & Salary', 
-          icon: CreditCard, 
+        {
+          id: 'staff_payroll',
+          label: language === 'bn' ? 'বেতন ও মাসিক পে-রোল' : 'Payroll & Salary',
+          icon: CreditCard,
           subType: 'action',
           badge: 'Pay',
-          permissions: ['finance.view', 'fees.view']
+          // finance.view only: with fees.view here, GUARDIANS (who hold
+          // fees.view for their child's fees) were shown the staff salary
+          // module. The accountant keeps it via finance.view.
+          permissions: ['finance.view']
         },
         { 
           id: 'staff_leaves', 
@@ -639,12 +673,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           badge: 'Super',
           isSuperAdminOnly: true
         },
-        { 
-          id: 'system_diagnostics', 
-          label: language === 'bn' ? 'সিস্টেম ও ডাটাবেজ স্থিতি' : 'System & Cloud Diagnostics', 
-          icon: Activity, 
+        {
+          id: 'system_diagnostics',
+          label: language === 'bn' ? 'সিস্টেম ও ডাটাবেজ স্থিতি' : 'System & Cloud Diagnostics',
+          icon: Activity,
           subType: 'report',
-          badge: 'Status'
+          badge: 'Status',
+          // Gate + render both restrict this to admin/super-admin; it was
+          // visible to every non-admin role and only bounced them.
+          isAdminOnly: true
         }
       ]
     },
@@ -903,23 +940,26 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             )}
           </div>
 
-          {/* Top-Level Dashboard Button */}
+          {/* Top-Level Home Button — Dashboard for admin-tier users;
+              for non-admin roles it points at their role home instead. */}
           {!menuSearchQuery && (
             <button
-              onClick={() => handleTabClick('dashboard')}
+              onClick={() => handleTabClick(homeTab)}
               className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                activeTab === 'dashboard'
+                activeTab === homeTab
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-white'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className={`w-6 h-6 rounded flex items-center justify-center ${activeTab === 'dashboard' ? 'bg-white/20 text-white' : 'text-indigo-400'}`}>
-                  <LayoutDashboard size={15} />
+                <div className={`w-6 h-6 rounded flex items-center justify-center ${activeTab === homeTab ? 'bg-white/20 text-white' : 'text-indigo-400'}`}>
+                  {homeTab === 'dashboard' ? <LayoutDashboard size={15} /> : <Home size={15} />}
                 </div>
-                <span>{language === 'bn' ? '১. ড্যাশবোর্ড (সারসংক্ষেপ)' : '1. Dashboard (Overview)'}</span>
+                <span>{homeTab === 'dashboard'
+                  ? (language === 'bn' ? '১. ড্যাশবোর্ড (সারসংক্ষেপ)' : '1. Dashboard (Overview)')
+                  : (language === 'bn' ? '১. হোম' : '1. Home')}</span>
               </div>
-              {activeTab === 'dashboard' ? (
+              {activeTab === homeTab ? (
                 <span className="w-1.5 h-1.5 rounded-full bg-white" />
               ) : (
                 <ChevronRight size={13} className="text-slate-500" />
@@ -1105,7 +1145,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         <div className="flex flex-col items-center gap-2.5 w-full">
           <button
             type="button"
-            onClick={() => handleTabClick('dashboard')}
+            onClick={() => handleTabClick(homeTab)}
             className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             title={schoolProfile.nameBn || schoolProfile.name}
             style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
@@ -1147,15 +1187,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           {/* Quick Nav Icon Buttons with tooltips */}
           <div className="flex flex-col items-center gap-1.5 w-full px-2">
             {[
-              { id: 'dashboard', label: language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard', icon: LayoutDashboard },
+              // First entry is the user's home: 'dashboard' for admin-tier,
+              // the role home for non-admin roles. The other entries use
+              // REAL tab ids ('routine'/'notices' were bogus ids that set a
+              // non-existent tab and fell through to the Dashboard) and are
+              // filtered to tabs this role can actually open.
+              { id: homeTab, label: homeTab === 'dashboard' ? (language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : (language === 'bn' ? 'হোম' : 'Home'), icon: homeTab === 'dashboard' ? LayoutDashboard : Home },
               { id: 'students', label: language === 'bn' ? 'শিক্ষার্থী' : 'Students', icon: Users },
               { id: 'attendance', label: language === 'bn' ? 'হাজিরা' : 'Attendance', icon: UserCheck },
               { id: 'results', label: language === 'bn' ? 'ফলাফল' : 'Results', icon: Award },
               { id: 'finance', label: language === 'bn' ? 'হিসাব' : 'Finance', icon: Wallet },
-              { id: 'routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
-              { id: 'notices', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
+              { id: 'class_routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
+              { id: 'notice_board', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
               { id: 'settings', label: language === 'bn' ? 'সেটিংস' : 'Settings', icon: Settings }
-            ].map(item => {
+            ].filter(item => item.id === homeTab || canOpenRailTab(item.id)).map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -1273,7 +1318,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               {/* PWA In-App Install Button */}
               <PWAInstallButton />
 
-              {/* Backup Hub Button */}
+              {/* Backup Hub Button — hidden for non-admin roles: the
+                  backup_recovery tab is admin-only, so for them this was
+                  a one-click dead end into a restricted wall. */}
+              {isAdminTier && (
               <button
                 onClick={() => setActiveTab('backup_recovery')}
                 className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition-all cursor-pointer min-h-[36px]"
@@ -1284,10 +1332,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                   {language === 'bn' ? 'ব্যাকআপ হাব' : 'Backup Hub'}
                 </span>
               </button>
+              )}
 
-              {/* Cloud Status */}
-              <div 
-                onClick={() => setActiveTab('settings')}
+              {/* Cloud Status — display-only for non-admin roles (the chip
+                  used to navigate to 'settings', which they cannot open);
+                  admin-tier users keep the click-through. */}
+              <div
+                onClick={isAdminTier ? () => setActiveTab('settings') : undefined}
                 className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 title="Cloud Status"
               >
