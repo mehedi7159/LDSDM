@@ -72,6 +72,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const {
     authUser,
     currentMember,
+    currentRole,
     currentUser,
     schoolProfile,
     students = [],
@@ -93,14 +94,29 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const { accentTheme, setAccentTheme, darkMode, setDarkMode, toggleDarkMode } = useTheme();
   const isEn = language === 'en';
 
-  // 1. Determine current active role
+  // 1. Determine current active role.
+  // Signal-based (not exact roleId match): institutions use CUSTOM roles
+  // with generated ids, so match on role id + role name + display name
+  // (English and Bangla), then fall back to the role's permissions —
+  // finance-entry without marks-entry means accounts work.
   const userRole = useMemo<'teacher' | 'cashier' | 'parent' | 'staff'>(() => {
-    const roleId = currentMember?.roleId || currentUser?.role || '';
-    if (roleId === 'role_accountant' || roleId === 'accountant') return 'cashier';
-    if (roleId === 'role_guardian' || roleId === 'guardian' || roleId === 'parent') return 'parent';
-    if (roleId === 'role_staff' || roleId === 'staff') return 'staff';
+    const roleId = String(currentMember?.roleId || currentUser?.role || '').toLowerCase();
+    const hay = `${roleId} ${String(currentRole?.name || '').toLowerCase()} ${String(currentRole?.displayName || '').toLowerCase()}`;
+    if (hay.includes('account') || hay.includes('cashier') || hay.includes('হিসাব') || hay.includes('ক্যাশ')) return 'cashier';
+    if (hay.includes('guardian') || hay.includes('parent') || hay.includes('অভিভাবক')) return 'parent';
+    if (hay.includes('librarian') || hay.includes('গ্রন্থাগার')) return 'staff';
+    if (hay.includes('teacher') || hay.includes('শিক্ষক') || hay.includes('মৌলভী') || hay.includes('মাওলানা')) return 'teacher';
+    if (hay.includes('staff') || hay.includes('office') || hay.includes('অফিস')) return 'staff';
+    try {
+      if (typeof hasPermission === 'function') {
+        const canFee = !!(hasPermission('fees.create' as any) || hasPermission('finance.create' as any) || hasPermission('payments.create' as any));
+        const canMarks = !!hasPermission('marks.create' as any);
+        const canAttend = !!hasPermission('attendance.create' as any);
+        if (canFee && !canMarks && !canAttend) return 'cashier';
+      }
+    } catch { /* keep default below */ }
     return 'teacher'; // Default role for standard instructors
-  }, [currentMember, currentUser]);
+  }, [currentMember, currentUser, currentRole, hasPermission]);
 
   const [activeBottomNav, setActiveBottomNav] = useState<string>('home');
   const [activeSubModule, setActiveSubModule] = useState<string | null>(null);
@@ -617,6 +633,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       .brand-soft { background-color: var(--color-brand-light) !important; color: var(--color-brand) !important; }
       .brand-text { color: var(--color-brand) !important; }
       .brand-bg { background-color: var(--color-brand) !important; }
+      @keyframes smFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .anim-stagger > * { animation: smFadeUp .45s cubic-bezier(.22,.8,.36,1) both; }
+      .anim-stagger > *:nth-child(2) { animation-delay: .05s; }
+      .anim-stagger > *:nth-child(3) { animation-delay: .1s; }
+      .anim-stagger > *:nth-child(4) { animation-delay: .15s; }
+      .anim-stagger > *:nth-child(5) { animation-delay: .2s; }
+      .anim-stagger > *:nth-child(6) { animation-delay: .25s; }
+      .anim-stagger > *:nth-child(7) { animation-delay: .3s; }
+      html { scroll-behavior: smooth; }
     `}</style>
   );
 
@@ -636,7 +661,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               onClick={() => handleBottomNavClick(item)}
               className="relative flex flex-col items-center justify-center gap-1 min-h-[56px] cursor-pointer"
             >
-              <Icon size={21} className={isActive ? 'brand-text' : 'text-[#8a93a8] dark:text-slate-500'} />
+              <span className={`flex items-center justify-center w-12 h-[30px] rounded-full transition-all ${isActive ? 'brand-soft' : ''}`}>
+                <Icon size={21} className={isActive ? 'brand-text' : 'text-[#8a93a8] dark:text-slate-500'} />
+              </span>
               <span className={`text-[11px] leading-none ${isActive ? 'font-bold brand-text' : 'font-medium text-[#8a93a8] dark:text-slate-500'}`}>
                 {item.label}
               </span>
@@ -701,7 +728,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
         {successToast}
 
-        <main className="flex-1 p-4 space-y-4">
+        <main className="flex-1 p-4 space-y-4 anim-stagger">
 
           {/* ============ TEACHER: DAILY ATTENDANCE ============ */}
           {activeSubModule === 'teacher_attendance' && (
@@ -778,7 +805,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <button
                         type="button"
                         onClick={() => handleSetStudentStatus(st.id, status)}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        className={`py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 ${
                           currentStatus === status ? activeCls : 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-400'
                         }`}
                       >
@@ -1462,8 +1489,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   return (
     <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] text-[#1e2433] dark:text-slate-100 flex flex-col pb-24">
-      {/* Top bar */}
-      <header className="px-4 pt-5 pb-1 flex items-center gap-3 relative">
+      {/* Top bar — sticky with soft blur */}
+      <header className="sticky top-0 z-40 bg-[#f4f6fb]/85 dark:bg-[#0e1220]/85 backdrop-blur-xl px-4 pt-4 pb-3 flex items-center gap-3">
         <div className="w-12 h-12 rounded-[16px] brand-grad text-white font-black flex items-center justify-center text-lg shadow-lg shrink-0">
           {initialLetter}
         </div>
@@ -1513,7 +1540,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
       {successToast}
 
-      <main className="flex-1 p-4 space-y-4">
+      <main className="flex-1 p-4 space-y-4 anim-stagger">
         {/* HERO — gradient greeting + quick actions inside (Tutor App pattern) */}
         <section className="relative overflow-hidden rounded-[28px] brand-grad text-white p-5 shadow-xl">
           <div className="absolute w-40 h-40 -top-10 -right-10 rounded-full bg-white/[0.14] pointer-events-none" />
@@ -1541,9 +1568,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <button
                     key={a.id}
                     onClick={() => handleOpenModule(a.moduleKey)}
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 px-1 min-h-[64px] bg-white/[0.16] active:scale-95 transition-all cursor-pointer"
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] py-3 px-1 min-h-[72px] bg-white/[0.16] active:bg-white/[0.28] active:scale-95 transition-all cursor-pointer"
                   >
-                    <TileIcon size={20} className="text-white" />
+                    <TileIcon size={22} className="text-white" />
                     <span className="text-[11px] font-semibold text-white leading-tight text-center">
                       {tileLabels[a.id] || a.title}
                     </span>
