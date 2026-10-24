@@ -103,6 +103,16 @@ const AppContent = () => {
            roleId === 'role_staff' || roleId === 'staff';
   }, [isSuperAdmin, isAdmin, currentMember, authRole, currentUser, userRole]);
 
+  // Phase 1b: principal / super_admin get a dedicated mobile home at
+  // phone widths (StaffMobileApp) while desktop keeps Layout+Dashboard
+  // exactly. Keyed on the same role signals the gate above uses. Plain
+  // 'admin' users are NOT included — they keep Layout at all widths.
+  const isPrincipalMobile = useMemo(() => {
+    if (isSuperAdmin || currentUser?.role === 'super_admin') return true;
+    if (currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal') return true;
+    return (effectiveRoles || []).includes('principal');
+  }, [isSuperAdmin, currentUser, currentMember, userRole, effectiveRoles]);
+
   useEffect(() => {
     // Fail-safe: Automatically dismiss loading screen after 1.2s max if auth is taking time
     const timer = setTimeout(() => {
@@ -720,9 +730,9 @@ const AppContent = () => {
 
   return (
     <div className={language === 'bn' ? 'font-bangla' : ''}>
-      {isNonAdminRole ? (
+      {isNonAdminRole || isPrincipalMobile ? (
         <>
-          {/* Dedicated Native Mobile App View for Teacher, Cashier, Parent, Staff */}
+          {/* Dedicated Native Mobile App View for Teacher, Cashier, Parent, Staff, Principal (phone widths only; desktop below is Layout) */}
           <div className="block md:hidden">
             <Suspense fallback={<TabLoadingFallback />}>
               <StaffMobileApp

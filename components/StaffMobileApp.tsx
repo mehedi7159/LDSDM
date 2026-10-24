@@ -136,14 +136,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // 'teacher' is the weakest stamp at every step (it was the historical
   // default written by older code), so a non-teacher signal found at a
   // later step still beats a teacher stamp found earlier.
-  type MobileHome = 'teacher' | 'cashier' | 'parent' | 'staff';
+  type MobileHome = 'teacher' | 'cashier' | 'parent' | 'staff' | 'principal';
   const homeForRoleKey = (raw?: string | null): MobileHome | null => {
     const key = normalizeRoleKey(raw);
     if (key === 'accountant') return 'cashier';
     if (key === 'teacher') return 'teacher';
     if (key === 'guardian') return 'parent';
     if (key === 'staff') return 'staff';
-    return null; // principal / super_admin have no dedicated mobile home
+    // Phase 1b: principal / super_admin get their own mobile home.
+    if (key === 'principal' || key === 'super_admin') return 'principal';
+    return null;
   };
 
   const primaryHome = useMemo<MobileHome>(() => {
@@ -514,14 +516,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     if (userRole === 'cashier') return ['হিসাবরক্ষক / ক্যাশিয়ার', 'ফি ও ক্যাশ শাখা', 'রসিদ ইনচার্জ'];
     if (userRole === 'parent') return ['অভিভাবক পোর্টাল', 'সন্তানের তথ্য'];
+    if (userRole === 'principal') return ['অধ্যক্ষ', schoolProfile?.nameBn || schoolProfile?.name || 'মাদরাসা', `${toBn(classStudents.length)} জন শিক্ষার্থী`];
     return ['অফিস স্টাফ', 'ভর্তি ও প্রশাসন', 'সার্টিফিকেট শাখা'];
-  }, [userRole, selectedClass, classStudents]);
+  }, [userRole, selectedClass, classStudents, schoolProfile]);
 
   const roleTitleBengali: Record<string, string> = {
     teacher: 'শিক্ষক পোর্টাল',
     cashier: 'হিসাবরক্ষক পোর্টাল',
     parent: 'অভিভাবক পোর্টাল',
-    staff: 'অফিস স্টাফ পোর্টাল'
+    staff: 'অফিস স্টাফ পোর্টাল',
+    principal: 'অধ্যক্ষ পোর্টাল'
   };
 
   // Quick Actions per Role
@@ -552,6 +556,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', icon: CheckSquare, moduleKey: 'guardian_portal', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'guardian_portal', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
         { id: 'notices', title: 'মাদরাসার নোটিশ ও ডায়রি', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+      ];
+    }
+    if (userRole === 'principal') {
+      return [
+        { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া', icon: Users, moduleKey: 'students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
+        { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+        { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+        { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'notices', title: 'নোটিশ বোর্ড', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
       ];
     }
     return [
@@ -595,6 +608,24 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         more
       ];
     }
+    if (userRole === 'principal') {
+      // Tutor owner-view nav: Dashboard | Fees | Attendance | Students | More.
+      // Fees → cashier_collect (the only native mobile fees module: fee
+      // search + collect + receipt). The principal passes canCollectFees
+      // (hasPermission always passes for owner/admin/principal), so the
+      // collect flow is open to them; 'finance' would open the desktop
+      // hub via passthrough instead of a mobile-shaped page, and
+      // 'finance_reports' (reports) stays in More. No badge: like the
+      // cashier's collect tab, this is a collect action, not a dues
+      // list — the Due report section below carries the numbers.
+      return [
+        { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
+        { id: 'action1', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
+        { id: 'action2', label: 'ফি', icon: Wallet, targetModule: 'cashier_collect' as string | null },
+        { id: 'action3', label: 'হাজিরা', icon: CheckSquare, targetModule: 'attendance' as string | null },
+        more
+      ];
+    }
     return [
       { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
       { id: 'action1', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
@@ -630,6 +661,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     if (userRole === 'parent') {
       return [
         { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'notice_board', badge: noticeBadge },
+        profileItem
+      ] as MoreItem[];
+    }
+    if (userRole === 'principal') {
+      // Only destinations already routed for this app: reports, notices,
+      // ID cards, profile. (No generic routine/settings tab key was
+      // verified for mobile passthrough, so none is invented here.)
+      return [
+        { id: 'finance_reports', label: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports' },
+        { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'notice_board', badge: noticeBadge },
+        { id: 'id_cards', label: 'আইডি কার্ড', icon: CreditCard, moduleKey: 'student_id_cards' },
         profileItem
       ] as MoreItem[];
     }
@@ -918,6 +960,84 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       thisMonthPaid: allDuesSummary.totalPaid
     };
   }, [transactions, allDuesSummary]);
+
+  // -------------------------------------------------------------
+  // Phase 1b additions: principal whole-madrasa summaries. Same
+  // honesty patterns as components/MadrasaReports.tsx (recorded-only
+  // attendance with not-taken states, real ledger money, no invented
+  // figures) — but computed here with small memos from context data
+  // instead of importing MadrasaReports, which is a desktop Dashboard
+  // component and must not join the mobile chunk. Non-principal homes
+  // skip the loops entirely (early return).
+  // -------------------------------------------------------------
+  // Today's recorded-only attendance across ALL classes.
+  const principalTodayAttendance = useMemo(() => {
+    if (userRole !== 'principal') return { total: 0, present: 0, rate: 0 };
+    const todayStr = new Date().toISOString().split('T')[0];
+    let total = 0;
+    let present = 0;
+    classes.forEach(c => {
+      const recs = dailyAttendanceService.getRecordsByDateAndClass(todayStr, c.name || '');
+      recs.forEach(r => {
+        total++;
+        if (r.status === 'PRESENT' || r.status === 'LATE') present++;
+      });
+    });
+    return { total, present, rate: total > 0 ? Math.round((present / total) * 100) : 0 };
+  }, [userRole, classes, attendanceDate]);
+
+  // This month: ledger income/expense/net + recorded-days-only
+  // attendance (days with at least one record in any class).
+  const principalMonthSummary = useMemo(() => {
+    if (userRole !== 'principal') {
+      return { income: 0, expense: 0, net: 0, attTotal: 0, attRate: 0, recordedDays: 0 };
+    }
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const income = transactions
+      .filter(t => t.type === 'INCOME' && (t.date || '').startsWith(prefix))
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const expense = transactions
+      .filter(t => t.type === 'EXPENSE' && (t.date || '').startsWith(prefix))
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    let attTotal = 0;
+    let attPresent = 0;
+    const days = new Set<string>();
+    for (let d = 1; d <= 31; d++) {
+      const dateStr = `${prefix}-${String(d).padStart(2, '0')}`;
+      let dayHas = false;
+      classes.forEach(c => {
+        const recs = dailyAttendanceService.getRecordsByDateAndClass(dateStr, c.name || '');
+        if (recs.length > 0) dayHas = true;
+        recs.forEach(r => {
+          attTotal++;
+          if (r.status === 'PRESENT' || r.status === 'LATE') attPresent++;
+        });
+      });
+      if (dayHas) days.add(dateStr);
+    }
+    return {
+      income,
+      expense,
+      net: income - expense,
+      attTotal,
+      attRate: attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : 0,
+      recordedDays: days.size
+    };
+  }, [userRole, transactions, classes]);
+
+  // Principal stat cards: whole-madrasa figures. Total dues = the
+  // existing current-month dues total + the Phase 2 aged total
+  // (calculateFeeAging, reused as-is over all active students).
+  const principalStatCards = useMemo(() => {
+    const activeCount = students.filter(s => s.status === 'Active' && !s.isFormer).length;
+    const totalDue = allDuesSummary.totalDue + cashierAging.totalAged;
+    return [
+      { value: toBn(activeCount) + ' জন', label: 'মোট শিক্ষার্থী', Icon: Users, cls: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
+      { value: '৳' + toBn(cashierFigures.todayIncome.toLocaleString()), label: 'আজকের আদায়', Icon: Wallet, cls: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+      { value: '৳' + toBn(totalDue.toLocaleString()), label: 'মোট বকেয়া', Icon: TrendingUp, cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' }
+    ];
+  }, [students, allDuesSummary, cashierAging, cashierFigures]);
 
   // Teacher: this month's attendance rate per assigned class (same
   // recorded-only counting as monthlyAttendance, per class).
@@ -2478,7 +2598,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     id_cards: 'আইডি কার্ড'
   };
 
-  const statsRow = [
+  // Principal uses the whole-madrasa cards above (roleStats cannot see
+  // cashierAging — it is defined after roleStats in this file).
+  const statsRow = userRole === 'principal' ? principalStatCards : [
     { value: roleStats.stat1Value, label: roleStats.stat1Label, Icon: roleStats.stat1Icon, cls: roleStats.stat1Cls },
     { value: roleStats.stat2Value, label: roleStats.stat2Label, Icon: roleStats.stat2Icon, cls: roleStats.stat2Cls },
     { value: roleStats.stat3Value, label: roleStats.stat3Label, Icon: roleStats.stat3Icon, cls: roleStats.stat3Cls }
@@ -2573,6 +2695,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     h === 'teacher' ? (isEn ? 'Teacher' : 'শিক্ষক') :
                     h === 'cashier' ? (isEn ? 'Cashier' : 'হিসাবরক্ষক') :
                     h === 'parent' ? (isEn ? 'Guardian' : 'অভিভাবক') :
+                    h === 'principal' ? (isEn ? 'Principal' : 'অধ্যক্ষ') :
                     (isEn ? 'Office' : 'অফিস');
                   const isActive = userRole === h;
                   return (
@@ -3342,13 +3465,197 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           </>
         )}
 
+        {/* PRINCIPAL: today's report — whole madrasa, recorded-only
+            attendance with an honest not-taken state (MadrasaReports
+            pattern), real ledger money only. */}
+        {userRole === 'principal' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center">
+                  <Sun size={15} />
+                </span>
+                {isEn ? "Today's report" : 'আজকের প্রতিবেদন'}
+              </h3>
+              <button
+                onClick={() => handleOpenModule('finance_reports')}
+                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+              >
+                {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'Collected' : 'আদায়'}</p>
+                <p className="text-[14px] font-black text-[#059669] dark:text-emerald-300 mt-1">৳{toBn(cashierFigures.todayIncome.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'Expense' : 'খরচ'}</p>
+                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(todayExpense.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'Net' : 'নিট'}</p>
+                <p className="text-[14px] font-black mt-1">৳{toBn(cashierNet.toLocaleString())}</p>
+              </div>
+            </div>
+            {principalTodayAttendance.total === 0 ? (
+              <p className="text-xs font-semibold text-[#8a93a8] py-1">
+                {isEn ? 'No attendance taken today yet.' : 'আজ এখনো হাজিরা নেওয়া হয়নি।'}
+              </p>
+            ) : (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs font-bold">{isEn ? 'Student attendance today' : 'আজ শিক্ষার্থী হাজিরা'}</span>
+                <span className="text-xs font-black">
+                  {toBn(principalTodayAttendance.rate)}% · {toBn(principalTodayAttendance.present)}/{toBn(principalTodayAttendance.total)}
+                </span>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* PRINCIPAL: this month's report — ledger income/expense/net +
+            monthly attendance from recorded days only. */}
+        {userRole === 'principal' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 flex items-center justify-center">
+                  <BarChart3 size={15} />
+                </span>
+                {isEn ? "This month's report" : 'এই মাসের প্রতিবেদন'}
+              </h3>
+              <button
+                onClick={() => handleOpenModule('finance_reports')}
+                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+              >
+                {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-[12px] font-semibold">
+              <span>{isEn ? 'Income' : 'আয়'}</span>
+              <span className="text-[#059669] dark:text-emerald-300 font-black">৳{toBn(principalMonthSummary.income.toLocaleString())}</span>
+            </div>
+            <div className="flex items-center justify-between text-[12px] font-semibold">
+              <span>{isEn ? 'Expense' : 'ব্যয়'}</span>
+              <span className="text-[#dc2626] dark:text-rose-300 font-black">৳{toBn(principalMonthSummary.expense.toLocaleString())}</span>
+            </div>
+            <div className="flex items-center justify-between text-[12px] font-black pt-2 border-t border-dashed border-[#e8ecf4] dark:border-white/10">
+              <span>{isEn ? 'Net' : 'নিট'}</span>
+              <span>৳{toBn(principalMonthSummary.net.toLocaleString())}</span>
+            </div>
+            {principalMonthSummary.attTotal === 0 ? (
+              <p className="text-xs font-semibold text-[#8a93a8] py-1">
+                {isEn ? 'No attendance records this month yet.' : 'এই মাসে এখনো হাজিরা রেকর্ড নেই।'}
+              </p>
+            ) : (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs font-bold">{isEn ? 'Monthly attendance (recorded days)' : 'মাসিক হাজিরা (রেকর্ডকৃত দিন)'}</span>
+                <span className="text-xs font-black">
+                  {toBn(principalMonthSummary.attRate)}% · {toBn(principalMonthSummary.recordedDays)} {isEn ? 'days' : 'দিন'}
+                </span>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* PRINCIPAL: Due report with aging buckets (Tutor pattern) over
+            all active students — same buckets/rows as the cashier's
+            report, same Collect/WhatsApp/call handlers. */}
+        {userRole === 'principal' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 flex items-center justify-center">
+                  <Wallet size={15} />
+                </span>
+                {isEn ? 'Due report' : 'বকেয়া রিপোর্ট'}
+              </h3>
+              <button
+                onClick={() => handleOpenModule('cashier_collect')}
+                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+              >
+                {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'This month' : 'চলতি মাস'}</p>
+                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(allDuesSummary.totalDue.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '1 month old' : '১ মাস আগের'}</p>
+                <p className="text-[14px] font-black text-[#d97706] dark:text-amber-300 mt-1">৳{toBn(cashierAging.oneMonthOld.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '2+ months old' : '২+ মাস আগের'}</p>
+                <p className="text-[14px] font-black text-[#7c3aed] dark:text-violet-300 mt-1">৳{toBn(cashierAging.twoPlus.toLocaleString())}</p>
+              </div>
+            </div>
+            {cashierAging.agedRows.length === 0 ? (
+              <p className="text-xs font-semibold text-[#059669] dark:text-emerald-300 py-1">
+                {isEn ? 'No dues from finished months ✓' : 'শেষ হওয়া মাসের কোনো বকেয়া নেই ✓'}
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {cashierAging.agedRows.slice(0, 5).map(r => {
+                  const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
+                  return (
+                    <div key={r.student.id} className="flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                        {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold truncate">{r.student.nameBn || r.student.name}</p>
+                        <p className="text-[11px] text-[#8a93a8]">
+                          {r.student.classLevel}
+                          {r.aging.byMonth.length > 0 ? ` • ${isEn ? 'oldest' : 'সবচেয়ে পুরনো'} ${toBn(bnMonthLabel(r.aging.byMonth[0].month))}` : ''}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(r.aging.totalAged.toLocaleString())}</span>
+                      {canCollectFees && r.profile && (
+                        <button
+                          onClick={() => { handleSelectFeeStudent(r.profile!); handleOpenModule('cashier_collect'); }}
+                          className="px-3 h-9 rounded-full bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 text-[11px] font-black flex items-center gap-1 shrink-0 active:scale-95 transition-all cursor-pointer"
+                        >
+                          <Wallet size={13} />
+                          {isEn ? 'Collect' : 'আদায়'}
+                        </button>
+                      )}
+                      {wa && (
+                        <a
+                          href={wa}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label="WhatsApp reminder"
+                          className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                        >
+                          <MessageCircle size={15} />
+                        </a>
+                      )}
+                      {r.student.guardianPhone && (
+                        <a
+                          href={`tel:${r.student.guardianPhone}`}
+                          aria-label="Call guardian"
+                          className="w-9 h-9 rounded-full bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                        >
+                          <Phone size={15} />
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Next-task nudge (all roles) */}
         <section className={`${cardCls} p-4 flex items-center gap-3`}>
           <span className="w-10 h-10 rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 flex items-center justify-center shrink-0">
             <FileText size={17} />
           </span>
           <div className="min-w-0">
-            <p className="text-[13px] font-bold">{roleStats.nextTaskTime}</p>
+            <p className="text-[13px] font-bold">{userRole === 'principal' ? (isEn ? 'Principal diary' : 'অধ্যক্ষের ডায়েরি') : roleStats.nextTaskTime}</p>
           </div>
         </section>
 
