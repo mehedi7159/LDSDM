@@ -21,39 +21,67 @@ import {
   CreditCard
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, formatBanglaNumber, toBengali } from '../services/utils';
+import { resolveGuardianChildren } from '../services/guardianScope';
+import { dailyAttendanceService } from '../services/dailyAttendanceService';
+import { calculateSingleStudentDue } from '../services/studentDuesService';
 import { VerifiedResultModal } from './VerifiedResultModal';
 
+type GuardianPortalTab = 'results' | 'attendance' | 'fees';
+
+/**
+ * sessionStorage bridge: the mobile parent home writes the tab the
+ * guardian tapped (results / attendance / fees) before opening this
+ * portal through the module passthrough, so the portal opens on the
+ * right tab. Read once, then cleared.
+ */
+const PORTAL_TAB_HINT_KEY = 'ldsdm_guardian_portal_tab';
+function readPortalTabHint(): GuardianPortalTab {
+  try {
+    const v = sessionStorage.getItem(PORTAL_TAB_HINT_KEY);
+    sessionStorage.removeItem(PORTAL_TAB_HINT_KEY);
+    if (v === 'attendance' || v === 'fees' || v === 'results') return v;
+  } catch { /* storage unavailable — default below */ }
+  return 'results';
+}
+
 export const GuardianPortal: React.FC = () => {
-  const { 
-    currentUser, 
-    schoolProfile, 
-    students, 
-    subjects, 
-    exams, 
-    marks, 
-    transactions, 
-    feeStructures, 
+  const {
+    currentUser,
+    currentMember,
+    authUser,
+    schoolProfile,
+    students,
+    subjects,
+    exams,
+    marks,
+    transactions,
+    feeStructures,
     logoutUser,
-    language 
+    language
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'results' | 'attendance' | 'fees'>('results');
+  const [activeTab, setActiveTab] = useState<GuardianPortalTab>(() => readPortalTabHint());
   const [selectedExamId, setSelectedExamId] = useState(exams[0]?.id || '');
   const [showQrModal, setShowQrModal] = useState(false);
 
-  // Link to student via currentUser.studentId or studentRoll or take first student as demo
+  // The guardian's OWN child(ren) — the single linkage in
+  // services/guardianScope.ts (account studentId, then guardian
+  // phone/email matches; siblings included). An unlinked account
+  // resolves to an EMPTY set and gets the no-link state below — the
+  // old `students[0]` "demo" fallback (which showed a stranger's
+  // child as the guardian's own) is gone.
+  const children = useMemo(() => {
+    return resolveGuardianChildren(currentUser, students, {
+      phones: [currentMember?.phone],
+      emails: [currentMember?.email, authUser?.email]
+    });
+  }, [currentUser, currentMember, authUser, students]);
+
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
   const linkedStudent = useMemo(() => {
-    if (!currentUser) return students[0] || null;
-    if (currentUser.studentId) {
-      const found = students.find(s => s.id === currentUser.studentId || s.studentId === currentUser.studentId || s.roll === currentUser.studentRoll);
-      if (found) return found;
-    }
-    if (currentUser.phone) {
-      const foundByPhone = students.find(s => s.guardianPhone && s.guardianPhone.replace(/[^0-9]/g, '') === currentUser.phone?.replace(/[^0-9]/g, ''));
-      if (foundByPhone) return foundByPhone;
-    }
-    return students[0] || null;
-  }, [currentUser, students]);
+    if (children.length === 0) return null;
+    return children.find(c => c.id === selectedChildId) || children[0];
+  }, [children, selectedChildId]);
 
   const selectedExam = exams.find(e => e.id === selectedExamId) || exams[0];
 
@@ -71,31 +99,43 @@ export const GuardianPortal: React.FC = () => {
     };
   }, [linkedStudent, selectedExam, subjects, marks, exams]);
 
-  // Fee calculation for student
+  // Fee summary for the selected child — the canonical dues service
+  // (the same figures the office and the mobile app show), replacing
+  // the old ad-hoc "monthly tuition x 10 months, default 800" estimate.
   const feeSummary = useMemo(() => {
-    if (!linkedStudent) return { paid: 0, due: 0, transactions: [] };
+    if (!linkedStudent) return { paid: 0, due: 0, monthlyExpected: 0, transactions: [] as typeof transactions };
     const studentTx = transactions.filter(t => t.studentId === linkedStudent.id || (t.studentCode && t.studentCode === linkedStudent.studentId));
-    const paidTotal = studentTx.reduce((sum, t) => sum + (t.type === 'INCOME' ? t.amount : 0), 0);
-    
-    // Structure
-    const feeStruct = feeStructures.find(f => f.classLevel === linkedStudent.classLevel);
-    const expectedTuition = (feeStruct?.monthlyTuition || 800) * 10; // 10 months
-    const dueTotal = Math.max(0, expectedTuition - paidTotal);
-
+    const profile = calculateSingleStudentDue(linkedStudent, feeStructures, transactions);
     return {
-      paid: paidTotal,
-      due: dueTotal,
+      paid: profile.totalPaidLifetime,
+      due: profile.dueThisMonth,
+      monthlyExpected: profile.monthlyExpected,
       transactions: studentTx
     };
   }, [linkedStudent, transactions, feeStructures]);
 
+  // Attendance for the selected child — RECORDED days only (the
+  // honest-zero rule): figures come from the daily attendance records
+  // for this student; a child with no records gets the no-record
+  // state, never an invented rate (the old tab hard-coded
+  // 220 days / 212 present / 96.4% for every guardian).
+  const attendanceSummary = useMemo(() => {
+    if (!linkedStudent) return null;
+    return dailyAttendanceService.calculateStudentAttendanceForExam(linkedStudent.id);
+  }, [linkedStudent]);
+
+  // Unlinked guardian account: an honest empty state — NEVER another
+  // student's data and never the full directory as a fallback.
   if (!linkedStudent) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <div className="bg-white p-6 rounded-3xl text-center max-w-sm w-full space-y-3 shadow-md">
           <AlertCircle size={36} className="text-amber-500 mx-auto" />
-          <h3 className="font-bold text-slate-800">কোনো শিক্ষার্থীর রেকর্ড যুক্ত নেই</h3>
-          <p className="text-xs text-slate-500">অনুগ্রহ করে মাদ্রাসা অফিসের সাথে যোগাযোগ করে আপনার শিক্ষার্থীর আইডি যুক্ত করুন।</p>
+          <h3 className="font-bold text-slate-800">
+            {language === 'en'
+              ? 'No student linked yet — please contact the office'
+              : 'কোনো শিক্ষার্থী যুক্ত করা হয়নি — অফিসে যোগাযোগ করুন'}
+          </h3>
           <button onClick={logoutUser} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold">লগআউট</button>
         </div>
       </div>
@@ -177,7 +217,29 @@ export const GuardianPortal: React.FC = () => {
 
       {/* Main App Body */}
       <main className="max-w-4xl w-full mx-auto px-4 py-5 flex-1 space-y-5">
-        
+
+        {/* Child switcher — guardians with more than one child at the
+            madrasa pick which child's data is shown. Every tab below
+            is scoped to the selected child only. */}
+        {children.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-500">{language === 'en' ? 'My children:' : 'আমার সন্তান:'}</span>
+            {children.map(child => (
+              <button
+                key={child.id}
+                onClick={() => setSelectedChildId(child.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
+                  linkedStudent.id === child.id
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400'
+                }`}
+              >
+                {child.nameBn || child.name} • {child.classLevel}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Tab 1: Results */}
         {activeTab === 'results' && (
           <div className="space-y-4">
@@ -288,30 +350,43 @@ export const GuardianPortal: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 2: Attendance */}
+        {/* Tab 2: Attendance — recorded days only */}
         {activeTab === 'attendance' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                <span className="text-xs font-semibold text-slate-400 block">মোট কার্যদিবস</span>
-                <span className="text-2xl font-black text-slate-800 font-mono mt-1 block">২২০ দিন</span>
+            {attendanceSummary && attendanceSummary.workingDays > 0 ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <span className="text-xs font-semibold text-slate-400 block">রেকর্ডকৃত দিন</span>
+                    <span className="text-2xl font-black text-slate-800 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.workingDays)} দিন</span>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <span className="text-xs font-semibold text-emerald-600 block">উপস্থিত</span>
+                    <span className="text-2xl font-black text-emerald-700 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.totalPresent)} দিন</span>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <span className="text-xs font-semibold text-rose-600 block">অনুপস্থিত</span>
+                    <span className="text-2xl font-black text-rose-700 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.totalAbsent)} দিন</span>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <span className="text-xs font-semibold text-blue-600 block">উপস্থিতির হার</span>
+                    <span className="text-2xl font-black text-blue-700 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.attendancePercentage)}%</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {language === 'en'
+                    ? 'Calculated from recorded attendance days only.'
+                    : 'হিসাবটি শুধু রেকর্ডকৃত হাজিরার দিনের ভিত্তিতে।'}
+                </p>
+              </>
+            ) : (
+              <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs text-center space-y-2">
+                <AlertCircle size={28} className="text-slate-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-700">
+                  {language === 'en' ? 'No attendance records yet' : 'এখনো কোনো হাজিরার রেকর্ড নেই'}
+                </p>
               </div>
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                <span className="text-xs font-semibold text-emerald-600 block">মোট উপস্থিতি</span>
-                <span className="text-2xl font-black text-emerald-700 font-mono mt-1 block">২১২ দিন</span>
-              </div>
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs col-span-2 sm:col-span-1">
-                <span className="text-xs font-semibold text-blue-600 block">উপস্থিতির হার</span>
-                <span className="text-2xl font-black text-blue-700 font-mono mt-1 block">৯৬.৪%</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
-              <h4 className="text-sm font-bold text-slate-900">নিয়মিত উপস্থিতি রিপোর্ট</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                আপনার সন্তানের উপস্থিতি অত্যন্ত সন্তোষজনক। কোনো জরুরি কারণে অনুপস্থিত থাকলে পূর্বেই মাদ্রাসার শ্রেণি শিক্ষকের অনুমতি গ্রহণ করুন।
-              </p>
-            </div>
+            )}
           </div>
         )}
 
@@ -328,7 +403,7 @@ export const GuardianPortal: React.FC = () => {
               </div>
 
               <div className="bg-amber-50 border border-amber-200 p-5 rounded-3xl">
-                <span className="text-xs font-bold text-amber-800 block">বর্তমান বকেয়া (যদি থাকে)</span>
+                <span className="text-xs font-bold text-amber-800 block">চলতি মাসের বকেয়া (যদি থাকে)</span>
                 <span className="text-3xl font-black text-amber-900 font-mono mt-1 block">
                   ৳ {formatBanglaNumber(feeSummary.due)}
                 </span>

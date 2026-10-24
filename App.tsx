@@ -34,6 +34,7 @@ const ExamResultsManager = lazyWithRetry(() => import('./components/examination/
 const StaffManager = lazyWithRetry(() => import('./components/staff/StaffManager').then(m => ({ default: m.StaffManager })));
 const ReportsSettingsManager = lazyWithRetry(() => import('./components/settings/ReportsSettingsManager').then(m => ({ default: m.ReportsSettingsManager })));
 const PortalsServicesManager = lazyWithRetry(() => import('./components/portals/PortalsServicesManager').then(m => ({ default: m.PortalsServicesManager })));
+const GuardianPortal = lazyWithRetry(() => import('./components/GuardianPortal').then(m => ({ default: m.GuardianPortal })));
 const SpecializedServicesManager = lazyWithRetry(() => import('./components/services/SpecializedServicesManager').then(m => ({ default: m.SpecializedServicesManager })));
 const InstitutionalOperationsManager = lazyWithRetry(() => import('./components/operations/InstitutionalOperationsManager').then(m => ({ default: m.InstitutionalOperationsManager })));
 const MasterPrincipalAiAdvisor = lazyWithRetry(() => import('./components/ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
@@ -120,6 +121,24 @@ const AppContent = () => {
     if (currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal' || (effectiveRoles || []).includes('principal')) {
       if (tab === 'backup_recovery' || tab === 'superadmin_audit') return false;
       return true;
+    }
+
+    // Guardian-ONLY sessions: the guardian experience is the
+    // self-service portal (their OWN children only, resolved by
+    // services/guardianScope.ts) plus the shared notice board. Every
+    // other tab — the all-student managers, reports, finance and the
+    // public lookup surfaces included — is closed to them at this
+    // gate, no matter which broad permission (students.view /
+    // fees.view / marks.view …) the guardian template carries. Those
+    // permissions still drive the portal's own child-scoped views;
+    // this block changes nothing for any other role (a user holding
+    // guardian alongside another role keeps the union behaviour).
+    // 'dashboard' stays allowed so the debounced home redirect moves
+    // them to guardian_portal exactly as before.
+    const isGuardianOnlySession = (effectiveRoles || []).includes('guardian')
+      && (effectiveRoles || []).every(r => r === 'guardian');
+    if (isGuardianOnlySession) {
+      return tab === 'guardian_portal' || tab === 'notice_board' || tab === 'dashboard';
     }
 
     // Public / universal tabs.
@@ -565,8 +584,20 @@ const AppContent = () => {
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('marks.view') || hasPermission('marks.create') || hasPermission('reports.view')) 
           ? <ExamResultsManager initialSubTab="cards" onNavigateTab={(tab) => setActiveTab(tab)} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'ফলাফল ও মার্কশিট' : 'Result Cards & Tabulation'} onGoToResults={() => setActiveTab('dashboard')} />;
-      case 'guardian_portal':
-        return <PortalsServicesManager initialSubTab="guardian_portal" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'guardian_portal': {
+        // A guardian session (guardian role held, no admin-tier role)
+        // gets the SELF-SERVICE portal — their own child(ren) only.
+        // Staff/admin sessions keep the office's Portals & Services
+        // manager (the all-student guardian directory preview is an
+        // office tool; it was previously what guardians landed on,
+        // which let them browse every student).
+        const isGuardianSelfView = (effectiveRoles || []).includes('guardian')
+          && !isAdmin && !isSuperAdmin && !isOwnerAdmin
+          && !(effectiveRoles || []).includes('principal');
+        return isGuardianSelfView
+          ? <GuardianPortal />
+          : <PortalsServicesManager initialSubTab="guardian_portal" onNavigateTab={(tab) => setActiveTab(tab)} />;
+      }
       case 'online_admissions':
         return <PortalsServicesManager initialSubTab="online_admissions" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'public_web_results':

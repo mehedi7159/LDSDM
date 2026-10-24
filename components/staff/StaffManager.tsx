@@ -260,6 +260,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       tx.date.startsWith(currentMonth)
     );
     const totalDisbursed = monthlySalaryTx.reduce((sum, tx) => sum + tx.amount, 0);
+    // Real per-person average from this month's actual salary payments —
+    // replaces a hard-coded "average salary" figure that was shown before.
+    const paidStaffCount = new Set(monthlySalaryTx.map(tx => tx.staffName || tx.description || tx.id)).size;
+    const avgSalary = paidStaffCount > 0 ? Math.round(totalDisbursed / paidStaffCount) : 0;
 
     // Active leaves today
     const leavesTodayCount = leaves.filter(l => 
@@ -276,6 +280,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       attendanceRecorded: recordedAttendance > 0,
       presentToday: presentStaff,
       totalDisbursed,
+      paidStaffCount,
+      avgSalary,
       leavesTodayCount
     };
   }, [unifiedStaffList, todayStaffAttendance, transactions, todayStr, leaves]);
@@ -1163,12 +1169,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <h4 className="font-bold text-slate-900 dark:text-white text-sm">{isBn ? 'জনবল কাঠামো বিভাজন' : 'Staff Breakdown'}</h4>
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'প্রধান ও সিনিয়র শিক্ষক:' : 'Senior Faculty:'}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(Math.ceil(kpis.teachersOnlyCount * 0.4), 'bn')} জন</span>
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'শিক্ষক ও মুয়াল্লিম:' : 'Teachers:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(kpis.teachersOnlyCount, 'bn')} জন</span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'সহকারী শিক্ষক ও মুয়াল্লিম:' : 'Assistant Faculty:'}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(Math.floor(kpis.teachersOnlyCount * 0.6), 'bn')} জন</span>
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'মোট কর্মী:' : 'Total Staff:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(kpis.totalStaffCount, 'bn')} জন</span>
                   </div>
                   <div className="flex justify-between py-1.5">
                     <span className="text-slate-600 dark:text-slate-300">{isBn ? 'প্রশাসনিক ও অফিস স্টাফ:' : 'Administrative Staff:'}</span>
@@ -1186,11 +1192,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                     <span className="text-slate-600 dark:text-slate-300">{isBn ? 'গড় মাসিক শিক্ষক বেতন:' : 'Average Salary:'}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">৳ ১২,০০০</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{kpis.paidStaffCount > 0 ? `৳ ${formatBanglaNumber(kpis.avgSalary)}` : '—'}</span>
                   </div>
                   <div className="flex justify-between py-1.5">
-                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'বেতন প্রদেয় মোট কর্মী:' : 'Staff on Payroll:'}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(kpis.totalStaffCount, 'bn')} জন</span>
+                    <span className="text-slate-600 dark:text-slate-300">{isBn ? 'এই মাসে বেতন পেয়েছেন:' : 'Paid This Month:'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(kpis.paidStaffCount, 'bn')} জন</span>
                   </div>
                 </div>
               </div>

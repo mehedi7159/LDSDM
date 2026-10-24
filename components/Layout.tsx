@@ -132,11 +132,23 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     || normalizeRoleKey((effectiveRoles || [])[0]);
   const homeTab = isAdminTier ? 'dashboard' : roleHomeTab(primaryRoleKey);
 
+  // Guardian-ONLY session (guardian is the user's only role): their
+  // entire menu is the self-service portal (own children only) plus
+  // the shared notice board. Everything else in the catalogue is an
+  // all-student or institutional surface. Multi-role users holding
+  // guardian alongside a staff role keep the union menu.
+  const isGuardianOnlySession = !isAdminTier
+    && (effectiveRoles || []).includes('guardian')
+    && (effectiveRoles || []).every(r => r === 'guardian');
+
   // Whether the slim desktop rail may offer a tab to this user — mirrors
   // the App.tsx tab gate + render guards for just these rail tabs, so a
   // role is never shown a rail button that bounces or dead-ends.
   const canOpenRailTab = (tab: string): boolean => {
     if (isAdminTier) return true;
+    // Guardian-only: the rail offers the notice board next to the
+    // portal home (added separately) — no all-student shortcuts.
+    if (isGuardianOnlySession) return tab === 'notice_board';
     switch (tab) {
       case 'students': return hasPermission('students.view') || hasPermission('students.create');
       case 'attendance': return hasPermission('attendance.view') || hasPermission('attendance.create') || hasPermission('attendance.edit');
@@ -180,6 +192,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     // 2. Super Admin or Institution Admin has full access to all standard modules
     if (isSuperAdmin || isAdmin || isOwnerEmail || currentUser?.role === 'super_admin') {
       return true;
+    }
+
+    // 2b. Guardian-only sessions see exactly two items: their portal
+    // (own children only) and the shared notice board. This runs
+    // before the permission steps because the guardian template's
+    // broad students.view / fees.view / marks.view grants would
+    // otherwise surface the all-student managers and reports.
+    if (isGuardianOnlySession) {
+      return item.id === 'guardian_portal' || item.id === 'notice_board';
     }
 
     // 3. Admin-only items (e.g., user_roles, settings, admin_reports)

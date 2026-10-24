@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
 import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
 import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
+import { resolveGuardianChildren } from '../services/guardianScope';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
@@ -254,6 +255,49 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return calculateClassDuesSummary(active, feeStructures, transactions);
   }, [userRole, classDuesSummary, students, feeStructures, transactions]);
 
+  // Guardian scope: the signed-in guardian's OWN child(ren), resolved
+  // by the single linkage in services/guardianScope.ts. Null for
+  // sessions without the guardian role (unscoped — staff aggregates
+  // above stay exactly as they are for those homes). An unlinked
+  // guardian resolves to an EMPTY list, never a fallback student.
+  const guardianChildren = useMemo(() => {
+    if (!(effectiveRoles || []).includes('guardian')) return null;
+    return resolveGuardianChildren(currentUser, students, {
+      phones: [currentMember?.phone],
+      emails: [currentMember?.email, authUser?.email]
+    });
+  }, [effectiveRoles, currentUser, currentMember, authUser, students]);
+
+  // Recorded-only attendance aggregate over the guardian's children
+  // (present / recorded days — no records anywhere means rate 0 with
+  // recorded 0, which the stats render as "no records", not a rate).
+  const guardianAttendance = useMemo(() => {
+    let recorded = 0;
+    let present = 0;
+    (guardianChildren || []).forEach(child => {
+      const s = dailyAttendanceService.calculateStudentAttendanceForExam(child.id);
+      recorded += s.workingDays;
+      present += s.totalPresent;
+    });
+    return { recorded, present, rate: recorded > 0 ? Math.round((present / recorded) * 100) : 0 };
+  }, [guardianChildren]);
+
+  // This month's dues summed over the guardian's children only (the
+  // parent home previously showed the WHOLE institution's dues here).
+  const guardianDuesTotal = useMemo(() => {
+    if (!guardianChildren) return 0;
+    return guardianChildren.reduce(
+      (sum, child) => sum + calculateSingleStudentDue(child, feeStructures, transactions).dueThisMonth,
+      0
+    );
+  }, [guardianChildren, feeStructures, transactions]);
+
+  // Portal tab hint for the guardian self-service portal (consumed by
+  // GuardianPortal's initial tab — see its sessionStorage bridge).
+  const setPortalTabHint = (tab: 'results' | 'attendance' | 'fees') => {
+    try { sessionStorage.setItem('ldsdm_guardian_portal_tab', tab); } catch { /* ignore */ }
+  };
+
   // 3. Daily Attendance state
   const [attendanceDate, setAttendanceDate] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
@@ -433,10 +477,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         nextTaskTime: 'ক্যাশিয়ার ডেস্ক',
       };
     } else if (userRole === 'parent') {
+      // Guardian-scoped figures ONLY: attendance recorded for their
+      // own child(ren) and their own children's dues. (This branch
+      // previously read the first class's attendance stats and the
+      // whole institution's dues total.)
+      const hasChildren = !!guardianChildren && guardianChildren.length > 0;
       return {
-        stat1Value: attendanceStats.rate > 0 ? `${toBn(attendanceStats.rate)}%` : 'নিয়মিত', stat1Label: 'হাজিরা রেকর্ড', stat1Icon: CheckSquare, stat1Cls: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300',
+        stat1Value: !hasChildren ? '—' : (guardianAttendance.recorded > 0 ? `${toBn(guardianAttendance.rate)}%` : 'রেকর্ড নেই'), stat1Label: 'সন্তানের হাজিরা', stat1Icon: CheckSquare, stat1Cls: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300',
         stat2Value: exams.length > 0 ? (exams[0].name || 'পরীক্ষা') : 'সাময়িক', stat2Label: 'চলমান পরীক্ষা', stat2Icon: Award, stat2Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
-        stat3Value: '৳' + toBn(classDuesSummary.totalDue.toLocaleString()), stat3Label: 'বকেয়া ফি', stat3Icon: Wallet, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
+        stat3Value: '৳' + toBn(guardianDuesTotal.toLocaleString()), stat3Label: 'বকেয়া ফি', stat3Icon: Wallet, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
         nextTaskTime: 'অভিভাবক ডায়েরি',
       };
     }
@@ -446,7 +495,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       stat3Value: toBn(notices.length) + 'টি', stat3Label: 'সক্রিয় নোটিশ', stat3Icon: Bell, stat3Cls: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300',
       nextTaskTime: 'অফিস প্রশাসন',
     };
-  }, [userRole, teacherClasses, classStudents, classDuesSummary, allDuesSummary, cashierFigures, students, exams, notices, selectedClass, attendanceStats]);
+  }, [userRole, teacherClasses, classStudents, classDuesSummary, allDuesSummary, cashierFigures, students, exams, notices, selectedClass, attendanceStats, guardianChildren, guardianAttendance, guardianDuesTotal]);
 
   const roleBadges = useMemo(() => {
     if (userRole === 'teacher') {
@@ -482,10 +531,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
       ];
     } else if (userRole === 'parent') {
+      // All three data actions open the guardian SELF-SERVICE portal
+      // (own children only) on the matching tab — NOT the shared
+      // all-student desktop modules ('results' / 'attendance' /
+      // 'finance'), which exposed every student's data to guardians.
+      // The tile renderer maps the action id to the portal tab hint.
       return [
-        { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'results', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-        { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'finance', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
+        { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'guardian_portal', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', icon: CheckSquare, moduleKey: 'guardian_portal', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
+        { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'guardian_portal', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
         { id: 'notices', title: 'মাদরাসার নোটিশ ও ডায়রি', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
       ];
     }
@@ -517,11 +571,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         profile
       ];
     } else if (userRole === 'parent') {
+      // Bottom nav opens the guardian portal (own children only) on
+      // the matching tab — see handleBottomNavClick for the tab hint.
       return [
         { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
-        { id: 'action1', label: 'ফলাফল', icon: Award, targetModule: 'results' as string | null },
-        { id: 'action2', label: 'হাজিরা', icon: CheckSquare, targetModule: 'attendance' as string | null },
-        { id: 'action3', label: 'ফি', icon: Wallet, targetModule: 'finance' as string | null },
+        { id: 'action1', label: 'ফলাফল', icon: Award, targetModule: 'guardian_portal' as string | null },
+        { id: 'action2', label: 'হাজিরা', icon: CheckSquare, targetModule: 'guardian_portal' as string | null },
+        { id: 'action3', label: 'ফি', icon: Wallet, targetModule: 'guardian_portal' as string | null },
         profile
       ];
     }
@@ -555,6 +611,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     setShowProfile(false);
     if (nav.targetModule) {
+      // Guardian bottom nav: open the portal on the tapped tab.
+      if (nav.targetModule === 'guardian_portal') {
+        setPortalTabHint(nav.id === 'action2' ? 'attendance' : nav.id === 'action3' ? 'fees' : 'results');
+      }
       handleOpenModule(nav.targetModule);
     } else {
       setActiveSubModule(null);
@@ -2220,7 +2280,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 return (
                   <button
                     key={a.id}
-                    onClick={() => handleOpenModule(a.moduleKey)}
+                    onClick={() => {
+                      // Guardian tiles open the portal on their tab
+                      // (action ids mirror the portal tabs; the fee
+                      // tile's id is 'finance', the tab is 'fees').
+                      if (a.moduleKey === 'guardian_portal') {
+                        setPortalTabHint(a.id === 'attendance' ? 'attendance' : a.id === 'finance' ? 'fees' : 'results');
+                      }
+                      handleOpenModule(a.moduleKey);
+                    }}
                     className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] py-3 px-1 min-h-[72px] bg-white/[0.16] active:bg-white/[0.28] active:scale-95 transition-all cursor-pointer"
                   >
                     <TileIcon size={22} className="text-white" />
@@ -2246,6 +2314,58 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </div>
           ))}
         </section>
+
+        {/* PARENT: my children — the guardian's OWN child(ren) only.
+            An unlinked guardian gets the honest no-link state, never
+            another student's card. */}
+        {userRole === 'parent' && guardianChildren !== null && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <h3 className="text-sm font-black flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                <GraduationCap size={15} />
+              </span>
+              {isEn ? 'My children' : 'আমার সন্তান'}
+            </h3>
+            {guardianChildren.length === 0 ? (
+              <p className="text-xs font-semibold text-[#5b6478] dark:text-slate-400 leading-relaxed">
+                {isEn
+                  ? 'No student linked yet — please contact the office'
+                  : 'কোনো শিক্ষার্থী যুক্ত করা হয়নি — অফিসে যোগাযোগ করুন'}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {guardianChildren.map(child => {
+                  const due = calculateSingleStudentDue(child, feeStructures, transactions);
+                  return (
+                    <button
+                      key={child.id}
+                      onClick={() => { setPortalTabHint('results'); handleOpenModule('guardian_portal'); }}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 text-left active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      <span className="w-10 h-10 rounded-xl brand-soft flex items-center justify-center font-black text-sm shrink-0">
+                        {(child.nameBn || child.name || 'শ')[0]}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13px] font-black truncate">{child.nameBn || child.name}</span>
+                        <span className="block text-[11px] font-medium text-[#5b6478] dark:text-slate-400">
+                          {child.classLevel}{child.roll ? ` • ${isEn ? 'Roll' : 'রোল'} ${toBn(child.roll)}` : ''}
+                        </span>
+                      </span>
+                      <span className={`px-2 py-1 rounded-lg text-[10px] font-black shrink-0 ${
+                        due.dueThisMonth > 0
+                          ? 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300'
+                          : 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300'
+                      }`}>
+                        {due.dueThisMonth > 0 ? `${isEn ? 'Due' : 'বকেয়া'} ৳${toBn(due.dueThisMonth.toLocaleString())}` : (isEn ? 'Paid' : 'পরিশোধিত')}
+                      </span>
+                      <ChevronRight size={15} className="text-[#c3c9d9] shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* TEACHER: today's attendance progress */}
         {userRole === 'teacher' && (

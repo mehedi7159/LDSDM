@@ -153,13 +153,18 @@ function evalAppExpr(expr: string, hp: (p: string) => boolean, roleKey: string):
   return Boolean(new Function(`return (${js});`)());
 }
 
-function parseGate(): { universal: string[]; cases: Map<string, string>; defaultExpr: string } {
+function parseGate(): { universal: string[]; guardianOnly: string[]; cases: Map<string, string>; defaultExpr: string } {
   const src = fs.readFileSync(path.join(ROOT, 'App.tsx'), 'utf8');
   const fnStart = src.indexOf('const isTabAllowedForUser');
   const region = src.slice(fnStart, src.indexOf('// Debounced verification', fnStart));
 
   const uniM = region.match(/\/\/ Public \/ universal tabs[\s\S]*?if \(([^)]*)\) \{\s*return true;/);
   const universal = uniM ? [...uniM[1].matchAll(/tab === '([^']+)'/g)].map(m => m[1]) : [];
+
+  // The guardian-only gate block (guardian scoping): sits before the
+  // universal return and limits guardian-only sessions to its list.
+  const gM = region.match(/if \(isGuardianOnlySession\) \{\s*return ([^;]+);/);
+  const guardianOnly = gM ? [...gM[1].matchAll(/tab === '([^']+)'/g)].map(m => m[1]) : [];
 
   // Sequential scan: stacked `case 'a': case 'b':` labels share the next
   // `return ...;`, so collect pending labels and assign on each return.
@@ -181,7 +186,7 @@ function parseGate(): { universal: string[]; cases: Map<string, string>; default
       pendingDefault = false;
     }
   }
-  return { universal, cases, defaultExpr };
+  return { universal, guardianOnly, cases, defaultExpr };
 }
 
 function parseRenderGuards(): Map<string, string | null> {
@@ -205,6 +210,11 @@ function parseRenderGuards(): Map<string, string | null> {
 // ---------------------------------------------------------------------------
 function isItemVisible(item: MenuItem, roleKey: string, hp: (p: string) => boolean): boolean {
   if (item.superOnly) return false;                       // step 1
+  // step 2b (guardian scoping): a guardian-only session sees exactly
+  // the portal + notice board, whatever the template grants.
+  if (roleKey === 'guardian') {
+    return item.id === 'guardian_portal' || item.id === 'notice_board';
+  }
   // step 2 (admin tier) does not apply to these roles.
   if (item.adminOnly) {                                   // step 3
     if (item.perms && item.perms.length > 0) return item.perms.some(p => hp(p));
@@ -222,7 +232,10 @@ function isItemVisible(item: MenuItem, roleKey: string, hp: (p: string) => boole
 }
 
 // Layout.canOpenRailTab replica (post-fix)
-function canOpenRailTab(tab: string, hp: (p: string) => boolean): boolean {
+function canOpenRailTab(tab: string, roleKey: string, hp: (p: string) => boolean): boolean {
+  // Guardian-only (guardian scoping): notice board only; the portal
+  // home entry is added separately by the rail filter.
+  if (roleKey === 'guardian') return tab === 'notice_board';
   switch (tab) {
     case 'students': return hp('students.view') || hp('students.create');
     case 'attendance': return hp('attendance.view') || hp('attendance.create') || hp('attendance.edit');
@@ -245,6 +258,11 @@ const gate = parseGate();
 const renderGuards = parseRenderGuards();
 
 const gateAllows = (tab: string, roleKey: string, hp: (p: string) => boolean): boolean => {
+  // Guardian-only block pre-empts the universal list and the switch
+  // for a single-role guardian (this script's scenario shape).
+  if (roleKey === 'guardian' && gate.guardianOnly.length > 0) {
+    return gate.guardianOnly.includes(tab);
+  }
   if (gate.universal.includes(tab)) return true;
   const expr = gate.cases.get(tab) || gate.defaultExpr;
   return evalAppExpr(expr, hp, roleKey);
@@ -278,7 +296,7 @@ for (const roleKey of ['teacher', 'accountant', 'staff', 'guardian']) {
       failures++;
     }
   }
-  const rail = RAIL_TABS.filter(t => canOpenRailTab(t, hp));
+  const rail = RAIL_TABS.filter(t => canOpenRailTab(t, roleKey, hp));
   console.log(`Slim rail offered: ${[home, ...rail.filter(t => t !== home)].join(', ')}`);
   for (const t of rail) {
     if (!gateAllows(t, roleKey, hp) || !renderAllows(t, roleKey, hp)) {
