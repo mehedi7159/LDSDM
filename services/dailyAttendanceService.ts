@@ -15,6 +15,11 @@ export interface DailyStudentAttendanceRecord {
   classLevel: string;
   status: AttendanceStatus;
   timeIn?: string;
+  // Phase 3 (mobile roll-call): minutes late, recorded only when the
+  // status is LATE. ADDITIVE optional field — old records simply lack
+  // it; batchSave/save spread the whole record, so no service logic
+  // change was needed to persist it.
+  lateMinutes?: number;
   note?: string;
   updatedAt?: string;
 }

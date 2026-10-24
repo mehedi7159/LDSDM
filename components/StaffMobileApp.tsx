@@ -6,6 +6,7 @@ import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolutio
 import { resolveGuardianChildren } from '../services/guardianScope';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
@@ -102,8 +103,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     feeStructures = [],
     notices = [],
     classRoutines = [],
+    calendarEvents = [],
     teachers = [],
     addTransaction,
+    updateStudent,
+    deleteStudent,
     bulkUpdateMarks,
     language,
     setLanguage,
@@ -316,15 +320,79 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return new Date().toISOString().split('T')[0];
   });
   const [studentAttendanceMap, setStudentAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
+  // Phase 3: late minutes per student (Tutor late-minutes picker).
+  // Persisted on the record as the additive optional lateMinutes field;
+  // old records simply lack it.
+  const [lateMinutesMap, setLateMinutesMap] = useState<Record<string, number>>({});
+  const [latePicker, setLatePicker] = useState<{ studentId: string; hours: number; minutes: number } | null>(null);
+  // Phase 3: roll-call / monthly-sheet tabs + sheet month.
+  const [attTab, setAttTab] = useState<'rollcall' | 'sheet'>('rollcall');
+  const [sheetMonth, setSheetMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
 
   useEffect(() => {
     const savedRecords = dailyAttendanceService.getRecordsByDateAndClass(attendanceDate, selectedClass);
     const map: Record<string, AttendanceStatus> = {};
+    const mins: Record<string, number> = {};
     savedRecords.forEach(r => {
       map[r.studentId] = r.status;
+      if (r.status === 'LATE' && r.lateMinutes && r.lateMinutes > 0) mins[r.studentId] = r.lateMinutes;
     });
     setStudentAttendanceMap(map);
+    setLateMinutesMap(mins);
   }, [attendanceDate, selectedClass]);
+
+  // Phase 3 — HOLIDAY-OFF (user's rule): a calendar HOLIDAY/VACATION
+  // event covering the selected date (for this class, when the event
+  // names classes) means no roll-call that day. If records already
+  // exist for the date+class (holiday declared after taking), the
+  // roll-call still shows so saved data is never orphaned.
+  const holidayForDate = (dateStr: string, classLevel: string) => {
+    return (calendarEvents || []).find(ev => {
+      const isHol = ev.isHoliday || ev.type === 'HOLIDAY' || ev.type === 'VACATION';
+      if (!isHol) return false;
+      if (dateStr < ev.startDate || dateStr > ev.endDate) return false;
+      if (ev.applicableClasses && ev.applicableClasses.length > 0 && !ev.applicableClasses.includes(classLevel)) return false;
+      return true;
+    });
+  };
+  const attendanceHoliday = holidayForDate(attendanceDate, selectedClass);
+  const attendanceSavedCount = dailyAttendanceService.getRecordsByDateAndClass(attendanceDate, selectedClass).length;
+  const attendanceDayOff = !!attendanceHoliday && attendanceSavedCount === 0;
+
+  // Phase 3: monthly-sheet records for the selected class + month.
+  const sheetRecords = useMemo(() => {
+    return dailyAttendanceService.getAllStudentRecords().filter(
+      r => r.classLevel === selectedClass && r.date.startsWith(sheetMonth)
+    );
+  }, [sheetMonth, selectedClass, studentAttendanceMap]);
+
+  // Phase 3: sheet calendar — one entry per day of the month with its
+  // marks. Friday = weekly holiday (academicScheduleService labels
+  // Friday 'সাপ্তাহিক ছুটি'); calendar HOLIDAY/VACATION days are
+  // marked separately. No schoolProfile weekly-holiday setting exists,
+  // so Fridays are display-marked only — roll-call is NOT blocked on
+  // Fridays (only calendar events block entry).
+  const [sheetView, setSheetView] = useState<'cards' | 'grid'>('cards');
+  const sheetDays = useMemo(() => {
+    const [y, m] = sheetMonth.split('-').map(Number);
+    if (!y || !m) return [] as { day: number; dateStr: string; isFriday: boolean; holiday: string | null }[];
+    const daysInMonth = new Date(y, m, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const dateStr = `${sheetMonth}-${String(day).padStart(2, '0')}`;
+      const isFriday = new Date(y, m - 1, day).getDay() === 5;
+      const hol = holidayForDate(dateStr, selectedClass);
+      return { day, dateStr, isFriday, holiday: hol ? (hol.titleBn || hol.title) : null };
+    });
+  }, [sheetMonth, selectedClass, calendarEvents]);
+  const sheetByStudent = useMemo(() => {
+    const map = new Map<string, Map<string, DailyStudentAttendanceRecord>>();
+    sheetRecords.forEach(r => {
+      if (!map.has(r.studentId)) map.set(r.studentId, new Map());
+      map.get(r.studentId)!.set(r.date, r);
+    });
+    return map;
+  }, [sheetRecords]);
 
   const attendanceStats = useMemo(() => {
     let present = 0;
@@ -345,7 +413,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
     const takenCount = present + absent + late + leave;
 
-    return { total, present, absent, late, leave, attended, rate, takenCount };
+    return { total, present, absent, late, leave, attended, rate, takenCount, unmarked: total - takenCount };
   }, [classStudents, studentAttendanceMap]);
 
   const handleMarkAllPresent = () => {
@@ -354,6 +422,24 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       nextMap[st.id] = 'PRESENT';
     });
     setStudentAttendanceMap(nextMap);
+    setLateMinutesMap({});
+  };
+
+  // Phase 3: Tutor ALL ABSENT + Reset (clears the working selection
+  // back to unmarked; the existing save still defaults unmarked to
+  // PRESENT, exactly as before — Reset alone writes nothing).
+  const handleMarkAllAbsent = () => {
+    const nextMap: Record<string, AttendanceStatus> = { ...studentAttendanceMap };
+    classStudents.forEach(st => {
+      nextMap[st.id] = 'ABSENT';
+    });
+    setStudentAttendanceMap(nextMap);
+    setLateMinutesMap({});
+  };
+
+  const handleResetAttendance = () => {
+    setStudentAttendanceMap({});
+    setLateMinutesMap({});
   };
 
   const handleSetStudentStatus = (studentId: string, status: AttendanceStatus) => {
@@ -361,11 +447,43 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       ...prev,
       [studentId]: status
     }));
+    if (status !== 'LATE') {
+      setLateMinutesMap(prev => {
+        if (!(studentId in prev)) return prev;
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+    }
+  };
+
+  // Phase 3: tapping LATE opens the hour/minute picker instead of
+  // stamping LATE immediately; confirming stamps LATE + minutes.
+  const handleLatePress = (studentId: string) => {
+    const total = lateMinutesMap[studentId] || 0;
+    setLatePicker({ studentId, hours: Math.floor(total / 60), minutes: total % 60 });
+  };
+
+  const handleLateConfirm = () => {
+    if (!latePicker) return;
+    const total = latePicker.hours * 60 + latePicker.minutes;
+    setStudentAttendanceMap(prev => ({ ...prev, [latePicker.studentId]: 'LATE' }));
+    setLateMinutesMap(prev => {
+      if (total <= 0) {
+        if (!(latePicker.studentId in prev)) return prev;
+        const next = { ...prev };
+        delete next[latePicker.studentId];
+        return next;
+      }
+      return { ...prev, [latePicker.studentId]: total };
+    });
+    setLatePicker(null);
   };
 
   const handleSaveAttendance = () => {
     const records: DailyStudentAttendanceRecord[] = classStudents.map(st => {
       const status = studentAttendanceMap[st.id] || 'PRESENT';
+      const mins = status === 'LATE' ? (lateMinutesMap[st.id] || 0) : 0;
       return {
         id: `${attendanceDate}_${st.id}`,
         date: attendanceDate,
@@ -374,6 +492,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         roll: st.roll || st.rollNumber || '',
         classLevel: st.classLevel,
         status,
+        ...(mins > 0 ? { lateMinutes: mins } : {}),
         updatedAt: new Date().toISOString()
       };
     });
@@ -542,7 +661,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return [
         { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance_expense', title: 'দৈনিক খরচ এন্ট্রি', icon: Receipt, moduleKey: 'finance', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-        { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া খতিয়ান', subtitle: 'সকল ক্লাস', icon: Users, moduleKey: 'students', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
+        { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া খতিয়ান', subtitle: 'সকল ক্লাস', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
         { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
       ];
     } else if (userRole === 'parent') {
@@ -560,7 +679,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     if (userRole === 'principal') {
       return [
-        { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া', icon: Users, moduleKey: 'students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
+        { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
         { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
@@ -568,7 +687,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       ];
     }
     return [
-      { id: 'students', title: 'নতুন শিক্ষার্থী ভর্তি ও তালিকা', icon: Users, moduleKey: 'students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
+      { id: 'students', title: 'নতুন শিক্ষার্থী ভর্তি ও তালিকা', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
       { id: 'id_cards', title: 'আইডি কার্ড ও সনদপত্র', icon: CreditCard, moduleKey: 'student_id_cards', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
       { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
       { id: 'notices', title: 'নোটিশ বোর্ড ম্যানেজমেন্ট', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
@@ -594,7 +713,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
         { id: 'action1', label: 'ফি আদায়', icon: Wallet, targetModule: 'cashier_collect' as string | null },
         { id: 'action2', label: 'রিপোর্ট', icon: FileSpreadsheet, targetModule: 'finance_reports' as string | null },
-        { id: 'action3', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
+        { id: 'action3', label: 'ছাত্র', icon: Users, targetModule: 'mobile_students' as string | null },
         more
       ];
     } else if (userRole === 'parent') {
@@ -620,7 +739,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       // list — the Due report section below carries the numbers.
       return [
         { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
-        { id: 'action1', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
+        { id: 'action1', label: 'ছাত্র', icon: Users, targetModule: 'mobile_students' as string | null },
         { id: 'action2', label: 'ফি', icon: Wallet, targetModule: 'cashier_collect' as string | null },
         { id: 'action3', label: 'হাজিরা', icon: CheckSquare, targetModule: 'attendance' as string | null },
         more
@@ -628,7 +747,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     return [
       { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
-      { id: 'action1', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
+      { id: 'action1', label: 'ছাত্র', icon: Users, targetModule: 'mobile_students' as string | null },
       { id: 'action2', label: 'আইডি কার্ড', icon: CreditCard, targetModule: 'student_id_cards' as string | null },
       { id: 'action3', label: 'নোটিশ', icon: Bell, targetModule: 'notice_board' as string | null },
       more
@@ -694,7 +813,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return () => { document.body.style.overflow = prev; };
   }, [moreOpen]);
 
-  const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result', 'teacher_routine', 'cashier_collect'];
+  const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result', 'teacher_routine', 'cashier_collect', 'mobile_students'];
 
   const handleOpenModule = (moduleKey: string) => {
     // For shared desktop modules, switch the app tab first so the
@@ -743,8 +862,29 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [duesSearchQuery, setDuesSearchQuery] = useState('');
   const [duesFilterMode, setDuesFilterMode] = useState<'ALL' | 'DUE_ONLY' | 'PAID_ONLY'>('ALL');
 
+  // Phase 3: fee-month view — the dues list can be viewed for a past
+  // month (calculateSingleStudentDue's existing targetMonth param).
+  // Past months use the CURRENT class fee structure (same stated
+  // limitation as fee aging); the TOTAL DUE banner always shows the
+  // live overall position (current month + aged).
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const [duesViewMonth, setDuesViewMonth] = useState<string>(currentMonthStr);
+  const feeMonthOptions = useMemo(() => {
+    const out: string[] = [];
+    const now = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return out;
+  }, []);
+  const viewDuesSummary = useMemo(() => {
+    if (duesViewMonth === currentMonthStr) return classDuesSummary;
+    return calculateClassDuesSummary(classStudents, feeStructures, transactions, duesViewMonth);
+  }, [duesViewMonth, currentMonthStr, classDuesSummary, classStudents, feeStructures, transactions]);
+
   const filteredDuesProfiles = useMemo(() => {
-    return classDuesSummary.profiles.filter(p => {
+    return viewDuesSummary.profiles.filter(p => {
       if (duesFilterMode === 'DUE_ONLY' && p.dueThisMonth <= 0) return false;
       if (duesFilterMode === 'PAID_ONLY' && p.dueThisMonth > 0) return false;
 
@@ -759,7 +899,73 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         (st.guardianPhone && String(st.guardianPhone).includes(q))
       );
     });
-  }, [classDuesSummary, duesSearchQuery, duesFilterMode]);
+  }, [viewDuesSummary, duesSearchQuery, duesFilterMode]);
+
+  // Phase 3: native mobile Students list (Tutor pattern). Scope:
+  // cashier/staff/principal see all students (the desktop
+  // StudentManager's list scope); teacher has no students tab (their
+  // view is teacher_students_dues) and guardians stay in the portal.
+  // Active convention mirrors the existing filters: status 'Active'
+  // (or 'active') and not former; everything else counts as inactive
+  // for the filter. Mutations reuse the context handlers; the status
+  // toggle writes the capitalized 'Active'/'Inactive' values the
+  // existing filters already match on.
+  const [studentsSearch, setStudentsSearch] = useState('');
+  const [studentsClass, setStudentsClass] = useState<string>('all');
+  const [studentsStatus, setStudentsStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const canManageStudents = useMemo(() => {
+    try {
+      if (typeof hasPermission !== 'function') return false;
+      return !!((hasPermission as any)('students.create') || (hasPermission as any)('students.edit'));
+    } catch {
+      return false;
+    }
+  }, [hasPermission]);
+  const isStudentActive = (s: Student) => (s.status === 'Active' || s.status === 'active') && !s.isFormer;
+  const studentStatusLabel = (s: Student) => {
+    if (s.isFormer || s.status === 'Former') return isEn ? 'Former' : 'সাবেক';
+    if (isStudentActive(s)) return isEn ? 'Active' : 'সক্রিয়';
+    return isEn ? 'Inactive' : 'নিষ্ক্রিয়';
+  };
+  const studentClassNames = useMemo(() => {
+    const names: string[] = [];
+    classes.forEach(c => { if (c.name && !names.includes(c.name)) names.push(c.name); });
+    students.forEach(s => { if (s.classLevel && !names.includes(s.classLevel)) names.push(s.classLevel); });
+    return names;
+  }, [classes, students]);
+  const filteredMobileStudents = useMemo(() => {
+    const q = studentsSearch.toLowerCase().trim();
+    return students.filter(s => {
+      if (studentsClass !== 'all' && s.classLevel !== studentsClass) return false;
+      if (studentsStatus === 'active' && !isStudentActive(s)) return false;
+      if (studentsStatus === 'inactive' && isStudentActive(s)) return false;
+      if (!q) return true;
+      return (
+        (s.name && s.name.toLowerCase().includes(q)) ||
+        (s.nameBn && s.nameBn.includes(q)) ||
+        (s.roll && String(s.roll).includes(q)) ||
+        (s.rollNumber && String(s.rollNumber).includes(q)) ||
+        (s.studentId && String(s.studentId).toLowerCase().includes(q)) ||
+        (s.guardianPhone && String(s.guardianPhone).includes(q)) ||
+        (s.classLevel && s.classLevel.toLowerCase().includes(q))
+      );
+    });
+  }, [students, studentsSearch, studentsClass, studentsStatus]);
+
+  // Phase 3: Copy All Numbers — clipboard copy of the guardian phones
+  // of the currently listed DUE students (same clipboard approach as
+  // the per-student copy; no SMS is sent from here).
+  const [copiedAllNumbers, setCopiedAllNumbers] = useState(false);
+  const handleCopyAllNumbers = (profiles: StudentDueProfile[]) => {
+    const phones = Array.from(new Set(
+      profiles.filter(p => p.dueThisMonth > 0 && p.student.guardianPhone).map(p => String(p.student.guardianPhone))
+    ));
+    if (phones.length === 0) return;
+    navigator.clipboard.writeText(phones.join(', '));
+    setCopiedAllNumbers(true);
+    setTimeout(() => setCopiedAllNumbers(false), 2500);
+  };
 
   // Copy SMS text handler
   const handleCopySms = (profile: StudentDueProfile) => {
@@ -1224,9 +1430,20 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [feeNote, setFeeNote] = useState('');
   const [lastReceipt, setLastReceipt] = useState<{ tx: FinanceTransaction; remainingDue: number } | null>(null);
 
+  // Phase 3: cashier fee-month view (same targetMonth mechanism as
+  // the teacher dues page; the collect form itself still records the
+  // current month's feeMonth, as before).
+  const [cashierViewMonth, setCashierViewMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const viewFeeProfiles = useMemo(() => {
+    const current = new Date().toISOString().slice(0, 7);
+    if (cashierViewMonth === current) return allDuesSummary.profiles;
+    const active = students.filter(s => s.status === 'Active' && !s.isFormer);
+    return calculateClassDuesSummary(active, feeStructures, transactions, cashierViewMonth).profiles;
+  }, [cashierViewMonth, allDuesSummary, students, feeStructures, transactions]);
+
   const feeSearchProfiles = useMemo(() => {
     const q = feeSearchQuery.toLowerCase().trim();
-    const all = allDuesSummary.profiles;
+    const all = viewFeeProfiles;
     if (!q) return all;
     return all.filter(p => {
       const st = p.student;
@@ -1240,7 +1457,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         (st.classLevel && st.classLevel.toLowerCase().includes(q))
       );
     });
-  }, [allDuesSummary, feeSearchQuery]);
+  }, [viewFeeProfiles, feeSearchQuery]);
 
   const selectedFeeProfile = useMemo(() => {
     if (!feeStudentId) return null;
@@ -1514,6 +1731,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 {classSwitcher}
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
+                    className="px-3 py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-black cursor-pointer active:scale-95"
+                  >
+                    ‹
+                  </button>
                   <div className={`flex-1 flex items-center gap-2 ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5`}>
                     <Calendar size={15} className="text-[#8a93a8]" />
                     <input
@@ -1524,34 +1748,93 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     />
                   </div>
                   <button
-                    onClick={handleMarkAllPresent}
-                    className="px-3.5 py-2.5 rounded-2xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer"
+                    type="button"
+                    onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
+                    className="px-3 py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-black cursor-pointer active:scale-95"
                   >
-                    <CheckCircle2 size={14} />
-                    <span>সবাই উপস্থিত</span>
+                    ›
                   </button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 pt-1 text-center">
-                  <div className={`${softBg} p-2.5 rounded-2xl`}>
-                    <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400 block">মোট</span>
-                    <span className="text-base font-black">{toBn(attendanceStats.total)}</span>
-                  </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAttTab('rollcall')}
+                    className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${attTab === 'rollcall' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
+                  >
+                    রোল কল
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAttTab('sheet')}
+                    className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${attTab === 'sheet' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
+                  >
+                    মাসিক শিট
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-1 text-center">
                   <div className="bg-[#d1fae5] dark:bg-emerald-500/10 p-2.5 rounded-2xl">
                     <span className="text-[11px] font-semibold text-[#059669] block">উপস্থিত</span>
                     <span className="text-base font-black text-[#059669] dark:text-emerald-300">{toBn(attendanceStats.present)}</span>
+                  </div>
+                  <div className="bg-[#fef3c7] dark:bg-amber-500/10 p-2.5 rounded-2xl">
+                    <span className="text-[11px] font-semibold text-[#d97706] block">দেরি</span>
+                    <span className="text-base font-black text-[#d97706] dark:text-amber-300">{toBn(attendanceStats.late)}</span>
                   </div>
                   <div className="bg-[#fee2e2] dark:bg-rose-500/10 p-2.5 rounded-2xl">
                     <span className="text-[11px] font-semibold text-[#dc2626] block">অনুপস্থিত</span>
                     <span className="text-base font-black text-[#dc2626] dark:text-rose-300">{toBn(attendanceStats.absent)}</span>
                   </div>
-                  <div className="bg-[#fef3c7] dark:bg-amber-500/10 p-2.5 rounded-2xl">
-                    <span className="text-[11px] font-semibold text-[#d97706] block">হার</span>
-                    <span className="text-base font-black text-[#d97706] dark:text-amber-300">{toBn(attendanceStats.rate)}%</span>
+                  <div className="bg-[#dbeafe] dark:bg-blue-500/10 p-2.5 rounded-2xl">
+                    <span className="text-[11px] font-semibold text-[#1e40af] dark:text-blue-300 block">ছুটি</span>
+                    <span className="text-base font-black text-[#1e40af] dark:text-blue-300">{toBn(attendanceStats.leave)}</span>
+                  </div>
+                  <div className={`${softBg} p-2.5 rounded-2xl`}>
+                    <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400 block">চিহ্নিত নয়</span>
+                    <span className="text-base font-black">{toBn(attendanceStats.unmarked)}</span>
+                  </div>
+                  <div className={`${softBg} p-2.5 rounded-2xl`}>
+                    <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400 block">মোট</span>
+                    <span className="text-base font-black">{toBn(attendanceStats.total)}</span>
                   </div>
                 </div>
+
+                {attTab === 'rollcall' && !attendanceDayOff && (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      onClick={handleMarkAllPresent}
+                      className="py-2.5 rounded-2xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold flex items-center justify-center gap-1 shadow-md shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>সবাই উপস্থিত</span>
+                    </button>
+                    <button
+                      onClick={handleMarkAllAbsent}
+                      className="py-2.5 rounded-2xl bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-bold active:scale-95 transition-all cursor-pointer"
+                    >
+                      সবাই অনুপস্থিত
+                    </button>
+                    <button
+                      onClick={handleResetAttendance}
+                      className="py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-bold active:scale-95 transition-all cursor-pointer"
+                    >
+                      রিসেট
+                    </button>
+                  </div>
+                )}
               </div>
 
+              {attTab === 'rollcall' && attendanceDayOff ? (
+                <div className={`${cardCls} p-8 text-center space-y-2`}>
+                  <CalendarDays size={32} className="mx-auto text-[#c3c9d9]" />
+                  <p className="text-sm font-black">আজ ছুটি</p>
+                  <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium leading-relaxed">
+                    {attendanceHoliday?.titleBn || attendanceHoliday?.title} — ক্যালেন্ডার অনুযায়ী আজ {selectedClass}-এর ছুটির দিন, তাই হাজিরা নেওয়া যাবে না।
+                  </p>
+                </div>
+              ) : attTab === 'rollcall' ? (
+              <>
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-[#5b6478] dark:text-slate-400">শিক্ষার্থী ({toBn(classStudents.length)} জন)</span>
@@ -1585,7 +1868,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             </span>
                             <div>
                               <h3 className="text-[13px] font-bold leading-tight">{st.nameBn || st.name}</h3>
-                              <p className="text-[11px] text-[#8a93a8]">রোল: {toBn(st.roll || st.rollNumber || '—')} • পিতা: {st.fatherNameBn || st.fatherName || '—'}</p>
+                              <p className="text-[11px] text-[#8a93a8]">রোল: {toBn(st.roll || st.rollNumber || '—')}{st.guardianPhone ? ` • ফোন: ${toBn(st.guardianPhone)}` : ''}</p>
                             </div>
                           </div>
                           <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${
@@ -1594,13 +1877,21 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             currentStatus === 'LATE' ? 'bg-[#fef3c7] text-[#92400e] dark:bg-amber-500/15 dark:text-amber-300' :
                             'bg-[#dbeafe] text-[#1e40af] dark:bg-blue-500/15 dark:text-blue-300'
                           }`}>
-                            {currentStatus === 'PRESENT' ? 'উপস্থিত' : currentStatus === 'ABSENT' ? 'অনুপস্থিত' : currentStatus === 'LATE' ? 'দেরি' : 'ছুটি'}
+                            {currentStatus === 'PRESENT' ? 'উপস্থিত' : currentStatus === 'ABSENT' ? 'অনুপস্থিত' : currentStatus === 'LATE' ? (lateMinutesMap[st.id] ? `দেরি · ${toBn(lateMinutesMap[st.id])} মিনিট` : 'দেরি') : 'ছুটি'}
                           </span>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5">
                           {stBtn('PRESENT', 'উপস্থিত', 'bg-[#10b981] text-white shadow-md shadow-emerald-500/25')}
                           {stBtn('ABSENT', 'অনুপস্থিত', 'bg-[#ef4444] text-white shadow-md shadow-rose-500/25')}
-                          {stBtn('LATE', 'দেরি', 'bg-[#f59e0b] text-white shadow-md shadow-amber-500/25')}
+                          <button
+                            type="button"
+                            onClick={() => handleLatePress(st.id)}
+                            className={`py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                              currentStatus === 'LATE' ? 'bg-[#f59e0b] text-white shadow-md shadow-amber-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-400'
+                            }`}
+                          >
+                            দেরি
+                          </button>
                           {stBtn('LEAVE', 'ছুটি', 'bg-[#3b82f6] text-white shadow-md shadow-blue-500/25')}
                         </div>
                       </div>
@@ -1618,6 +1909,181 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <Save size={17} />
                     <span>হাজিরা সংরক্ষণ করুন</span>
                   </button>
+                </div>
+              )}
+              </>
+              ) : (
+              <div className="space-y-4">
+                <div className={`${cardCls} p-4 space-y-3`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`flex-1 flex items-center gap-2 ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5`}>
+                      <CalendarDays size={15} className="text-[#8a93a8]" />
+                      <input
+                        type="month"
+                        value={sheetMonth}
+                        onChange={e => setSheetMonth(e.target.value)}
+                        className="bg-transparent text-xs font-semibold focus:outline-none w-full dark:[color-scheme:dark]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-bold cursor-pointer active:scale-95"
+                    >
+                      প্রিন্ট
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSheetView('cards')}
+                      className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${sheetView === 'cards' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
+                    >
+                      কার্ড
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSheetView('grid')}
+                      className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${sheetView === 'grid' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
+                    >
+                      গ্রিড
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#8a93a8] font-medium leading-relaxed">
+                    ✓ উপস্থিত • দেরি • ✗ অনুপস্থিত • ছুটি • শুক্রবার = সাপ্তাহিক ছুটি • ক্যালেন্ডার ছুটি আলাদা চিহ্নে
+                  </p>
+                </div>
+
+                {sheetView === 'cards' ? (
+                  <div className="space-y-2.5">
+                    {classStudents.length === 0 ? (
+                      <div className={`${cardCls} p-8 text-center space-y-2`}>
+                        <Users size={32} className="mx-auto text-[#c3c9d9]" />
+                        <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{selectedClass}-এ কোনো শিক্ষার্থী পাওয়া যায়নি।</p>
+                      </div>
+                    ) : (
+                      classStudents.map(st => {
+                        const s = dailyAttendanceService.getStudentMonthlySummary(st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
+                        const studentMonthRecs: DailyStudentAttendanceRecord[] = sheetByStudent.get(st.id) ? Array.from(sheetByStudent.get(st.id)!.values()) : [];
+                        const lateTotal = studentMonthRecs.reduce((sum, r) => sum + (r.status === 'LATE' ? (r.lateMinutes || 0) : 0), 0);
+                        return (
+                          <div key={st.id} className={`${cardCls} p-4 space-y-2.5`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                                  {(st.nameBn || st.name || 'শ').charAt(0)}
+                                </span>
+                                <div className="min-w-0">
+                                  <h3 className="text-[13px] font-bold leading-tight truncate">{st.nameBn || st.name}</h3>
+                                  <p className="text-[11px] text-[#8a93a8]">রোল: {toBn(st.roll || st.rollNumber || '—')}</p>
+                                </div>
+                              </div>
+                              <span className="text-[11px] font-black px-2.5 py-1.5 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#065f46] dark:text-emerald-300 shrink-0">
+                                {toBn(s.percentage)}%
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1.5 text-center text-[11px]">
+                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#059669]">{toBn(s.presentDays)}</span><span className="text-[#8a93a8]">উপস্থিত</span></div>
+                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#d97706]">{toBn(s.lateDays)}</span><span className="text-[#8a93a8]">দেরি</span></div>
+                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#dc2626]">{toBn(s.absentDays)}</span><span className="text-[#8a93a8]">অনুপস্থিত</span></div>
+                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#1e40af]">{toBn(s.leaveDays)}</span><span className="text-[#8a93a8]">ছুটি</span></div>
+                            </div>
+                            <p className="text-[11px] text-[#8a93a8] font-medium">
+                              রেকর্ডকৃত {toBn(s.workingDays)} দিন{lateTotal > 0 ? ` • মোট দেরি ${toBn(lateTotal)} মিনিট` : ''}
+                            </p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                ) : (
+                  <div className={`${cardCls} p-3 overflow-x-auto`}>
+                    <table className="border-collapse text-[11px] min-w-max">
+                      <thead>
+                        <tr>
+                          <th className="sticky left-0 bg-white dark:bg-[#161c2e] text-left font-bold px-2 py-2 min-w-[110px]">শিক্ষার্থী</th>
+                          {sheetDays.map(d => (
+                            <th
+                              key={d.dateStr}
+                              className={`px-1 py-2 text-center font-bold w-[30px] ${d.holiday ? 'text-[#d97706]' : d.isFriday ? 'text-[#8a93a8]' : ''}`}
+                              title={d.holiday || (d.isFriday ? 'সাপ্তাহিক ছুটি (শুক্রবার)' : d.dateStr)}
+                            >
+                              {toBn(d.day)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {classStudents.map(st => {
+                          const recs = sheetByStudent.get(st.id);
+                          return (
+                            <tr key={st.id} className="border-t border-[#e8ecf4] dark:border-white/5">
+                              <td className="sticky left-0 bg-white dark:bg-[#161c2e] px-2 py-2 font-semibold whitespace-nowrap">
+                                {(st.nameBn || st.name || '').split(' ')[0]}
+                              </td>
+                              {sheetDays.map(d => {
+                                const rec = recs?.get(d.dateStr);
+                                const cell = rec
+                                  ? (rec.status === 'PRESENT' ? '✓' : rec.status === 'LATE' ? 'দে' : rec.status === 'ABSENT' ? '✗' : 'ছ')
+                                  : (d.holiday ? 'ছু' : d.isFriday ? 'শু' : '–');
+                                const cls = rec
+                                  ? (rec.status === 'PRESENT' ? 'text-[#059669]' : rec.status === 'LATE' ? 'text-[#d97706]' : rec.status === 'ABSENT' ? 'text-[#dc2626]' : 'text-[#1e40af]')
+                                  : (d.holiday ? 'text-[#d97706] font-black' : d.isFriday ? 'text-[#8a93a8]' : 'text-[#c3c9d9]');
+                                return (
+                                  <td key={d.dateStr} className={`px-1 py-2 text-center font-bold ${cls}`} title={rec && rec.status === 'LATE' && rec.lateMinutes ? `দেরি ${toBn(rec.lateMinutes)} মিনিট` : (d.holiday || undefined)}>
+                                    {cell}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              )}
+
+              {latePicker && (
+                <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setLatePicker(null)}>
+                  <div className="w-full max-w-sm bg-white dark:bg-[#161c2e] rounded-[24px] p-5 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-black">দেরির সময়</h3>
+                      <button type="button" onClick={() => setLatePicker(null)} className="p-1.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 cursor-pointer">
+                        <X size={15} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">
+                      {(classStudents.find(s => s.id === latePicker.studentId)?.nameBn || classStudents.find(s => s.id === latePicker.studentId)?.name || '')} কতক্ষণ দেরি করেছে?
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`${softBg} p-3 rounded-2xl text-center space-y-2`}>
+                        <span className="text-[11px] font-semibold text-[#8a93a8] block">ঘণ্টা</span>
+                        <div className="flex items-center justify-center gap-3">
+                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, hours: Math.max(0, p.hours - 1) } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">−</button>
+                          <span className="text-xl font-black w-8">{toBn(latePicker.hours)}</span>
+                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, hours: Math.min(12, p.hours + 1) } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">+</button>
+                        </div>
+                      </div>
+                      <div className={`${softBg} p-3 rounded-2xl text-center space-y-2`}>
+                        <span className="text-[11px] font-semibold text-[#8a93a8] block">মিনিট</span>
+                        <div className="flex items-center justify-center gap-3">
+                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, minutes: (p.minutes + 55) % 60 } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">−</button>
+                          <span className="text-xl font-black w-8">{toBn(latePicker.minutes)}</span>
+                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, minutes: (p.minutes + 5) % 60 } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">+</button>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-center text-xs font-bold">মোট: {toBn(latePicker.hours * 60 + latePicker.minutes)} মিনিট</p>
+                    <button
+                      type="button"
+                      onClick={handleLateConfirm}
+                      className="w-full py-3.5 rounded-[20px] brand-grad text-white font-bold text-sm shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      নিশ্চিত করুন
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1642,24 +2108,56 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 <div className="grid grid-cols-2 gap-2">
                   <div className={`${softBg} p-3 rounded-2xl`}>
                     <span className="text-[11px] text-[#5b6478] dark:text-slate-400 font-medium block">মোট শিক্ষার্থী</span>
-                    <span className="text-lg font-black">{toBn(classDuesSummary.totalStudents)} জন</span>
+                    <span className="text-lg font-black">{toBn(viewDuesSummary.totalStudents)} জন</span>
                   </div>
                   <div className="bg-[#fee2e2] dark:bg-rose-500/10 p-3 rounded-2xl">
                     <span className="text-[11px] text-[#dc2626] font-medium block">মোট বকেয়া ফি</span>
-                    <span className="text-lg font-black text-[#dc2626] dark:text-rose-300">৳{toBn(classDuesSummary.totalDue.toLocaleString())}</span>
+                    <span className="text-lg font-black text-[#dc2626] dark:text-rose-300">৳{toBn(viewDuesSummary.totalDue.toLocaleString())}</span>
                   </div>
                   <div className={`${softBg} p-3 rounded-2xl`}>
                     <span className="text-[11px] text-[#5b6478] dark:text-slate-400 font-medium block">বকেয়া রয়েছে</span>
-                    <span className="text-sm font-bold text-[#dc2626] dark:text-rose-300">{toBn(classDuesSummary.dueStudentsCount)} জন</span>
+                    <span className="text-sm font-bold text-[#dc2626] dark:text-rose-300">{toBn(viewDuesSummary.dueStudentsCount)} জন</span>
                   </div>
                   <div className={`${softBg} p-3 rounded-2xl`}>
                     <span className="text-[11px] text-[#5b6478] dark:text-slate-400 font-medium block">পরিশোধিত</span>
-                    <span className="text-sm font-bold text-[#059669] dark:text-emerald-300">{toBn(classDuesSummary.paidStudentsCount)} জন</span>
+                    <span className="text-sm font-bold text-[#059669] dark:text-emerald-300">{toBn(viewDuesSummary.paidStudentsCount)} জন</span>
                   </div>
                 </div>
               </div>
 
+              <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25 shadow-[0_2px_12px_rgba(30,36,51,0.05)]">
+                <span className="text-[11px] font-bold text-[#dc2626] dark:text-rose-300 block">মোট বকেয়া (সব মাস মিলিয়ে)</span>
+                <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn((classDuesSummary.totalDue + teacherAging.totalAged).toLocaleString())}</span>
+                <p className="text-[11px] text-[#dc2626]/80 dark:text-rose-300/80 font-medium">
+                  চলতি মাস ৳{toBn(classDuesSummary.totalDue.toLocaleString())} + পুরনো ৳{toBn(teacherAging.totalAged.toLocaleString())} (১ মাস আগের ৳{toBn(teacherAging.oneMonthOld.toLocaleString())} • ২+ মাস আগের ৳{toBn(teacherAging.twoPlus.toLocaleString())})
+                </p>
+              </div>
+
               <div className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-[#5b6478] dark:text-slate-400 shrink-0">ফি মাস:</span>
+                  <select
+                    value={duesViewMonth}
+                    onChange={e => setDuesViewMonth(e.target.value)}
+                    className="flex-1 py-3 px-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-violet-400 cursor-pointer"
+                  >
+                    {feeMonthOptions.map(m => (
+                      <option key={m} value={m}>{bnMonthLabel(m)}{m === currentMonthStr ? ' (চলতি)' : ''}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyAllNumbers(filteredDuesProfiles)}
+                    className="px-3.5 py-3 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-bold cursor-pointer active:scale-95 shrink-0"
+                  >
+                    {copiedAllNumbers ? 'কপি হয়েছে ✓' : 'সব নম্বর কপি'}
+                  </button>
+                </div>
+                {duesViewMonth !== currentMonthStr && (
+                  <p className="text-[11px] text-[#8a93a8] font-medium px-1">
+                    দেখছেন: {bnMonthLabel(duesViewMonth)} মাসের হিসাব — পুরনো মাসের ধার্য বর্তমান ক্লাস-ফি দিয়ে হিসাব করা হয়েছে।
+                  </p>
+                )}
                 <div className="relative">
                   <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8a93a8]" />
                   <input
@@ -1672,9 +2170,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                   {([
-                    ['ALL', `সবাই (${toBn(classDuesSummary.totalStudents)})`],
-                    ['DUE_ONLY', `শুধু বকেয়া (${toBn(classDuesSummary.dueStudentsCount)})`],
-                    ['PAID_ONLY', `পরিশোধিত (${toBn(classDuesSummary.paidStudentsCount)})`]
+                    ['ALL', `সবাই (${toBn(viewDuesSummary.totalStudents)})`],
+                    ['DUE_ONLY', `শুধু বকেয়া (${toBn(viewDuesSummary.dueStudentsCount)})`],
+                    ['PAID_ONLY', `পরিশোধিত (${toBn(viewDuesSummary.paidStudentsCount)})`]
                   ] as const).map(([mode, label]) => (
                     <button
                       key={mode}
@@ -1695,7 +2193,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 {filteredDuesProfiles.length === 0 ? (
                   <div className={`${cardCls} p-8 text-center space-y-2`}>
                     <CheckCircle2 size={32} className="mx-auto text-[#10b981]" />
-                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</p>
+                    {duesFilterMode === 'DUE_ONLY' ? (
+                      <>
+                        <p className="text-sm font-black text-[#059669] dark:text-emerald-300">সব ফি আদায় হয়েছে!</p>
+                        <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">এই তালিকায় কারো বকেয়া নেই।</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</p>
+                    )}
                   </div>
                 ) : (
                   filteredDuesProfiles.map(p => {
@@ -1703,6 +2208,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     const hasDue = p.dueThisMonth > 0;
                     const phone = st.guardianPhone;
                     const wa = hasDue ? whatsappLink(p) : null;
+                    const aging = agingByStudent.get(st.id);
+                    const agedTotal = aging?.totalAged || 0;
+                    const agedWa = agedTotal > 0 ? agedWhatsappLink(st, agedTotal) : null;
                     return (
                       <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
                         <div className="flex items-start justify-between gap-2">
@@ -1732,6 +2240,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             <span className="font-bold text-[#059669] dark:text-emerald-300">৳{toBn(p.paidThisMonth.toLocaleString())}</span>
                           </div>
                         </div>
+                        {agedTotal > 0 && aging && (
+                          <p className="text-[11px] font-semibold text-[#d97706] dark:text-amber-300">
+                            এর মধ্যে পুরনো বকেয়া: ৳{toBn(agedTotal.toLocaleString())} (১ মাস আগের ৳{toBn(aging.oneMonthOld.toLocaleString())} • ২+ মাস আগের ৳{toBn(aging.twoPlusMonthsOld.toLocaleString())})
+                          </p>
+                        )}
 
                         <div className="flex items-center justify-between pt-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-[#5b6478] dark:text-slate-300 min-w-0">
@@ -1747,6 +2260,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             {hasDue && wa && (
                               <a href={wa} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-xl bg-[#10b981] text-white text-[11px] font-bold flex items-center gap-1 shadow-md shadow-emerald-500/25">
                                 <MessageCircle size={11} /> WhatsApp
+                              </a>
+                            )}
+                            {agedWa && (
+                              <a href={agedWa} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-xl bg-[#f59e0b] text-white text-[11px] font-bold flex items-center gap-1 shadow-md shadow-amber-500/25">
+                                <MessageCircle size={11} /> পুরনো WhatsApp
                               </a>
                             )}
                             {hasDue && (
@@ -2359,6 +2877,34 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     </div>
                   </div>
 
+                  <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25 shadow-[0_2px_12px_rgba(30,36,51,0.05)]">
+                    <span className="text-[11px] font-bold text-[#dc2626] dark:text-rose-300 block">{isEn ? 'TOTAL DUE (all months)' : 'মোট বকেয়া (সব মাস মিলিয়ে)'}</span>
+                    <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn((allDuesSummary.totalDue + cashierAging.totalAged).toLocaleString())}</span>
+                    <p className="text-[11px] text-[#dc2626]/80 dark:text-rose-300/80 font-medium">
+                      {isEn ? 'This month' : 'চলতি মাস'} ৳{toBn(allDuesSummary.totalDue.toLocaleString())} + {isEn ? 'old' : 'পুরনো'} ৳{toBn(cashierAging.totalAged.toLocaleString())}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-[#5b6478] dark:text-slate-400 shrink-0">{isEn ? 'Fee month:' : 'ফি মাস:'}</span>
+                    <select
+                      value={cashierViewMonth}
+                      onChange={e => setCashierViewMonth(e.target.value)}
+                      className="flex-1 py-3 px-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-violet-400 cursor-pointer"
+                    >
+                      {feeMonthOptions.map(m => (
+                        <option key={m} value={m}>{bnMonthLabel(m)}{m === currentMonthStr ? (isEn ? ' (current)' : ' (চলতি)') : ''}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyAllNumbers(feeSearchProfiles)}
+                      className="px-3.5 py-3 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-bold cursor-pointer active:scale-95 shrink-0"
+                    >
+                      {copiedAllNumbers ? (isEn ? 'Copied ✓' : 'কপি হয়েছে ✓') : (isEn ? 'Copy All Numbers' : 'সব নম্বর কপি')}
+                    </button>
+                  </div>
+
                   <div className="relative">
                     <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8a93a8]" />
                     <input
@@ -2380,6 +2926,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       feeSearchProfiles.slice(0, 60).map(p => {
                         const st = p.student;
                         const hasDue = p.dueThisMonth > 0;
+                        const agedTotal = agingByStudent.get(st.id)?.totalAged || 0;
                         return (
                           <button
                             key={st.id}
@@ -2394,6 +2941,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                               <p className="text-[11px] text-[#8a93a8] truncate">
                                 {st.classLevel} • {isEn ? 'Roll' : 'রোল'}: {toBn(st.roll || st.rollNumber || '—')}
                               </p>
+                              {agedTotal > 0 && (
+                                <p className="text-[11px] font-semibold text-[#d97706] dark:text-amber-300 truncate">
+                                  {isEn ? 'Old due: ' : 'পুরনো বকেয়া: '}৳{toBn(agedTotal.toLocaleString())}
+                                </p>
+                              )}
                             </div>
                             <span className={`text-[11px] font-black px-2.5 py-1.5 rounded-xl shrink-0 ${
                               hasDue ? 'bg-[#fee2e2] text-[#991b1b] dark:bg-rose-500/15 dark:text-rose-300' : 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300'
@@ -2413,6 +2965,183 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ============ MOBILE: STUDENTS (Tutor pattern, native) ============ */}
+          {activeSubModule === 'mobile_students' && (
+            <div className="space-y-4">
+              <div className={`${cardCls} p-4 space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-9 h-9 rounded-2xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center">
+                      <Users size={17} />
+                    </span>
+                    <h2 className="text-sm font-bold">{isEn ? 'Students' : 'শিক্ষার্থী'}</h2>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">
+                    {toBn(filteredMobileStudents.length)} {isEn ? 'students' : 'জন'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {canManageStudents && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModule('student_admission')}
+                      className="flex-1 py-3 rounded-2xl brand-grad text-white text-xs font-bold shadow-md shadow-violet-500/25 active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      + {isEn ? 'New student' : 'নতুন শিক্ষার্থী'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenModule('students')}
+                    className={`${canManageStudents ? 'flex-1' : 'w-full'} py-3 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-bold cursor-pointer active:scale-[0.98] transition-all`}
+                  >
+                    {isEn ? 'Full management' : 'পূর্ণ ব্যবস্থাপনা'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="relative">
+                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8a93a8]" />
+                  <input
+                    type="text"
+                    value={studentsSearch}
+                    onChange={e => setStudentsSearch(e.target.value)}
+                    placeholder={isEn ? 'Search by name, roll, class or phone…' : 'নাম, রোল, শ্রেণি বা মোবাইল দিয়ে খুঁজুন...'}
+                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setStudentsClass('all')}
+                    className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === 'all' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                  >
+                    {isEn ? 'All classes' : 'সব শ্রেণি'}
+                  </button>
+                  {studentClassNames.map(cn => (
+                    <button
+                      key={cn}
+                      type="button"
+                      onClick={() => setStudentsClass(cn)}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === cn ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                    >
+                      {cn}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {([
+                    ['all', isEn ? 'All' : 'সবাই'],
+                    ['active', isEn ? 'Active' : 'সক্রিয়'],
+                    ['inactive', isEn ? 'Inactive' : 'নিষ্ক্রিয়']
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setStudentsStatus(mode)}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsStatus === mode ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {filteredMobileStudents.length === 0 ? (
+                  <div className={`${cardCls} p-8 text-center space-y-2`}>
+                    <Users size={32} className="mx-auto text-[#c3c9d9]" />
+                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{isEn ? 'No student found.' : 'কোনো শিক্ষার্থী পাওয়া যায়নি।'}</p>
+                  </div>
+                ) : (
+                  filteredMobileStudents.slice(0, 100).map(st => {
+                    const active = isStudentActive(st);
+                    const fee = calculateSingleStudentDue(st, feeStructures, transactions).monthlyExpected;
+                    const phone = st.guardianPhone;
+                    return (
+                      <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                              {(st.nameBn || st.name || 'শ').charAt(0)}
+                            </span>
+                            <div className="min-w-0">
+                              <h3 className="text-[13px] font-bold leading-tight truncate">{st.nameBn || st.name}</h3>
+                              <p className="text-[11px] text-[#8a93a8] truncate">
+                                {st.classLevel} • {isEn ? 'Roll' : 'রোল'}: {toBn(st.roll || st.rollNumber || '—')}
+                              </p>
+                              <p className="text-[11px] text-[#8a93a8] truncate">
+                                {phone ? `${isEn ? 'Phone' : 'ফোন'}: ${toBn(phone)}` : (isEn ? 'No phone' : 'ফোন নম্বর নেই')} • {isEn ? 'Fee/mo' : 'মাসিক ফি'}: ৳{toBn(fee.toLocaleString())}
+                              </p>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${
+                            active ? 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-400'
+                          }`}>
+                            {studentStatusLabel(st)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {phone && (
+                            <a href={`tel:${phone}`} className="px-3 py-2 rounded-xl bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 text-[11px] font-bold flex items-center gap-1">
+                              <Phone size={11} /> {isEn ? 'Call' : 'কল'}
+                            </a>
+                          )}
+                          {canManageStudents && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenModule('students')}
+                                className="px-3 py-2 rounded-xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-[11px] font-bold cursor-pointer"
+                              >
+                                {isEn ? 'Edit' : 'এডিট'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateStudent && updateStudent({ ...st, status: active ? 'Inactive' : 'Active' })}
+                                className="px-3 py-2 rounded-xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-[11px] font-bold cursor-pointer"
+                              >
+                                {active ? (isEn ? 'Deactivate' : 'নিষ্ক্রিয় করুন') : (isEn ? 'Activate' : 'সক্রিয় করুন')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setStudentToDelete(st)}
+                                className="px-3 py-2 rounded-xl bg-[#fee2e2] dark:bg-rose-500/10 text-[#dc2626] dark:text-rose-300 text-[11px] font-bold cursor-pointer"
+                              >
+                                {isEn ? 'Delete' : 'ডিলিট'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {filteredMobileStudents.length > 100 && (
+                  <p className="text-center text-[11px] text-[#8a93a8] font-medium pt-1">
+                    {isEn ? 'Showing first 100 — search to narrow down.' : 'প্রথম ১০০ জন দেখানো হচ্ছে — খুঁজে তালিকা ছোট করুন।'}
+                  </p>
+                )}
+              </div>
+
+              <ConfirmDialog
+                isOpen={!!studentToDelete}
+                onClose={() => setStudentToDelete(null)}
+                onConfirm={() => {
+                  if (studentToDelete && deleteStudent) deleteStudent(studentToDelete.id);
+                  setStudentToDelete(null);
+                }}
+                title={isEn ? 'Confirm student deletion' : 'শিক্ষার্থী ডিলিট নিশ্চিতকরণ'}
+                message={isEn
+                  ? 'Are you sure you want to delete this student record? (It will be moved to the Trash Bin)'
+                  : 'আপনি কি নিশ্চিত যে এই শিক্ষার্থীর সকল তথ্য ও রেকর্ড ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)'}
+                highlightText={studentToDelete ? `${studentToDelete.nameBn || studentToDelete.name} • ${studentToDelete.classLevel}` : undefined}
+                variant="danger"
+              />
             </div>
           )}
 
@@ -3406,7 +4135,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   {staffByClass.map(c => (
                     <button
                       key={c.className}
-                      onClick={() => handleOpenModule('students')}
+                      onClick={() => handleOpenModule('mobile_students')}
                       className="w-full text-left cursor-pointer active:scale-[0.99] transition-all"
                     >
                       <div className="flex items-center justify-between text-[12px] font-semibold mb-1">
