@@ -9,7 +9,7 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { AccessRestrictedView } from './components/AccessRestrictedView';
 import { Button } from './components/ui/Button';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Smartphone } from 'lucide-react';
 import { VerifiedResultModal } from './components/VerifiedResultModal';
 import { LocalDataRecoveryModal } from './components/LocalDataRecoveryModal';
 import { AuthPage } from './components/AuthPage';
@@ -744,13 +744,33 @@ const AppContent = () => {
               />
             </Suspense>
           </div>
-          {/* Standard Desktop View */}
+          {/* Standard Desktop View — mobile-only roles (teacher, accountant,
+              staff, guardian) never see the system here: blank background +
+              a kind message asking them to switch to mobile view instead. */}
           <div className="hidden md:block">
-            <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-              <Suspense fallback={<TabLoadingFallback />}>
-                {renderContent()}
-              </Suspense>
-            </Layout>
+            {isNonAdminRole && !isPrincipalMobile ? (
+              <div className="min-h-screen bg-[#f4f6fb] flex items-center justify-center p-6">
+                <div className="w-full max-w-sm text-center">
+                  <span className="mx-auto w-20 h-20 rounded-full brand-soft flex items-center justify-center">
+                    <Smartphone size={36} className="brand-text" />
+                  </span>
+                  <h1 className="mt-5 text-lg font-black text-[#1e293b]">
+                    {language === 'bn' ? 'শুধু মোবাইলে ব্যবহার করা যায়' : 'Mobile only'}
+                  </h1>
+                  <p className="mt-2 text-sm leading-relaxed text-[#5b6478]">
+                    {language === 'bn'
+                      ? 'এই অ্যাকাউন্টটি শুধু মোবাইল ফোন থেকে ব্যবহার করা যায়। অনুগ্রহ করে আপনার মোবাইল ফোন থেকে খুলুন।'
+                      : 'This account can only be used from a mobile phone. Please open it on your phone.'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+                <Suspense fallback={<TabLoadingFallback />}>
+                  {renderContent()}
+                </Suspense>
+              </Layout>
+            )}
           </div>
         </>
       ) : (
