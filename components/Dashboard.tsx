@@ -64,6 +64,7 @@ import { calculateTotalGPA } from '../services/utils';
 import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
+import { MadrasaReports } from './MadrasaReports';
 import { SectionCard } from './ui/SectionCard';
 import { ProgressBar } from './ui/ProgressBar';
 import { calculateClassDuesSummary, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
@@ -1003,52 +1004,6 @@ export const Dashboard = () => {
 
       {activeView === 'overview' && (<>
 
-      {/* Dynamic Situational AI Mode Banner */}
-      {dashboardMode !== 'standard' && (
-        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in ${
-          dashboardMode === 'exam' ? 'bg-amber-500/10 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100' :
-          dashboardMode === 'fee_collection' ? 'bg-emerald-500/10 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100' :
-          dashboardMode === 'attendance_crisis' ? 'bg-rose-500/10 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100' :
-          'bg-indigo-500/10 border-indigo-300 dark:border-indigo-800 text-indigo-950 dark:text-indigo-100'
-        }`}>
-          <div className="flex items-center gap-2.5">
-            <Sparkles size={18} className={
-              dashboardMode === 'exam' ? 'text-amber-600' :
-              dashboardMode === 'fee_collection' ? 'text-emerald-600' :
-              dashboardMode === 'attendance_crisis' ? 'text-rose-600' : 'text-indigo-600'
-            } />
-            <div>
-              <strong className="block text-sm font-black">
-                {language === 'bn' ? 'এআই পরিস্থিতি মোড সক্রিয়:' : 'AI Situational Mode Active:'} {' '}
-                {dashboardMode === 'exam' && (language === 'bn' ? 'পরীক্ষা ও ফলাফল প্রস্তুতি' : 'Exam & Results Focus')}
-                {dashboardMode === 'fee_collection' && (language === 'bn' ? 'ফি আদায় ও আর্থিক অডিট' : 'Fee Recovery & Cashflow Focus')}
-                {dashboardMode === 'attendance_crisis' && (language === 'bn' ? 'হাজিরা সংকট ও জরুরি অ্যালার্ট' : 'Attendance & Crisis Monitoring')}
-                {dashboardMode === 'admission' && (language === 'bn' ? 'নতুন ভর্তি সেশন' : 'Admission Season')}
-              </strong>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setActiveTab('ai_principal_advisor')}
-              className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition cursor-pointer"
-            >
-              {language === 'bn' ? 'এআই কনসোল' : 'AI Console'}
-            </button>
-            <button
-              onClick={() => {
-                localStorage.setItem('ai_dashboard_mode', 'standard');
-                setDashboardMode('standard');
-              }}
-              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer"
-            >
-              {language === 'bn' ? 'স্বাভাবিক মোডে ফিরুন' : 'Reset to Standard'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ধাপ ১ বাস্তবায়ন: প্রতিদিনের সামগ্রিক অবস্থা এক নজরে (Overview, আজকের উপস্থিতি, আজকের আয়–ব্যয়, শিক্ষার্থী ও জনবল, বকেয়া ফি, আসন্ন পরীক্ষা ও নোটিশ, সাম্প্রতিক কার্যক্রম) */}
       {/* Urgent notices — compact card inside Overview (the alert content of
           the deleted above-hero banner lives here now; self-hides when none) */}
       <UrgentNoticesCard
@@ -1057,31 +1012,7 @@ export const Dashboard = () => {
         onOpenNoticeBoard={() => setActiveTab('notice_board')}
       />
 
-      <DashboardDailyOverview
-        section="stats"
-        onNavigate={setActiveTab}
-        selectedAcademicYear={selectedAcademicYear}
-        onSelectAcademicYear={setSelectedAcademicYear}
-        academicYears={academicYears}
-        selectedExamId={selectedExamId}
-        onSelectExamId={setSelectedExamId}
-        yearExams={yearExams}
-        onOpenRecoveryModal={() => setIsRecoveryModalOpen(true)}
-      />
-
-      {/* 3. Quick shortcuts now live in the DailyOverview brand hero (Phase 3) */}
-
-      {/* 4. Memoized Evaluation Pipeline */}
-      <EvaluationPipeline 
-        matrix={examEvaluationMatrix}
-        progressPercent={evaluationMetrics.progressPercent}
-        selectedAcademicYear={selectedAcademicYear}
-        onSelectExamAndNavigate={(examId, tab) => {
-          setSelectedExamId(examId);
-          setActiveTab(tab);
-        }}
-        language={language}
-      />
+      <MadrasaReports />
 
       {/* REPORTS ACCESS — daily / weekly / monthly reporting lives in the
           existing report modules; these are direct doors to them from the
@@ -1113,60 +1044,6 @@ export const Dashboard = () => {
         })}
       </SectionCard>
 
-      {/* 5. Navigation Switcher */}
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/70 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
-          <button
-            onClick={() => setActiveSectionTab('overview')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'overview'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {language === 'bn' ? 'সার্বিক ওভারভিউ' : 'Overview'}
-          </button>
-          <button
-            onClick={() => setActiveSectionTab('student')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'student'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {language === 'bn' ? 'শিক্ষার্থীর ট্র্যাকিং' : 'Student Trajectory'}
-          </button>
-          <button
-            onClick={() => setActiveSectionTab('subjects')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'subjects'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {language === 'bn' ? 'বিষয়ভিত্তিক বিশ্লেষণ' : 'Subject Analytics'}
-          </button>
-          <button
-            onClick={() => setActiveSectionTab('merit')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeSectionTab === 'merit'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {language === 'bn' ? 'মেধা তালিকা' : 'Merit List'}
-          </button>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium shrink-0">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span>{language === 'bn' ? 'নির্বাচিত সেশন:' : 'Session:'}</span>
-          <span className="text-slate-800 dark:text-slate-100 font-bold">{toBanglaDigits(selectedAcademicYear, language)}</span>
-        </div>
-      </div>
-
-      {/* 6. TAB CONTENT SECTIONS */}
-      {activeSectionTab === 'overview' && (
         <div className="space-y-6">
           {/* Class Grid */}
           <ClassGrid classCards={classCards} language={language} />
@@ -1357,134 +1234,6 @@ export const Dashboard = () => {
           </div>
 
         </div>
-      )}
-
-      {/* TAB B: STUDENT TRAJECTORY */}
-      {activeSectionTab === 'student' && (
-        <SectionCard bodyClassName="space-y-4">
-          <StudentPerformanceCard
-            initialStudentId={topStudents[0]?.id}
-            studentId={topStudents[0]?.id}
-            initialClass={selectedClass !== 'All' ? selectedClass : undefined}
-          />
-        </SectionCard>
-      )}
-
-      {/* TAB C: SUBJECT ANALYTICS */}
-      {activeSectionTab === 'subjects' && (
-        <SectionCard bodyClassName="space-y-4">
-          <SubjectPerformanceAnalytics
-            subjects={subjects}
-            students={students}
-            marks={marks}
-            exams={exams}
-            classes={classes}
-            selectedExamId={selectedExamId}
-            selectedClass={selectedClass}
-            language={language}
-            t={t}
-            toBanglaDigits={(num) => toBanglaDigits(num, language)}
-            getClassNameDisplay={(classLevel) => {
-              if (language === 'bn') {
-                const key = `cls_${classLevel.replace(/\s+/g, '')}`;
-                return t ? (t(key as any) || classLevel) : classLevel;
-              }
-              return classLevel;
-            }}
-          />
-        </SectionCard>
-      )}
-
-      {/* TAB D: MERIT LIST */}
-      {activeSectionTab === 'merit' && (
-        <SectionCard bodyClassName="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white">
-                {language === 'bn' ? 'প্রাতিষ্ঠানিক পূর্ণাঙ্গ মেধা তালিকা' : 'Institutional Merit Standings'}
-              </h3>
-            </div>
-
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
-              <input
-                type="text"
-                value={meritSearchQuery}
-                onChange={(e) => setMeritSearchQuery(e.target.value)}
-                placeholder={language === 'bn' ? 'নাম বা আইডি দিয়ে খুঁজুন...' : 'Search student...'}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-200 dark:border-slate-700">
-                  <th className="p-3 text-center w-12">{language === 'bn' ? 'র‌্যাংক' : 'Rank'}</th>
-                  <th className="p-3">{language === 'bn' ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
-                  <th className="p-3 text-center">{language === 'bn' ? 'শ্রেণি' : 'Class'}</th>
-                  <th className="p-3 text-center">{language === 'bn' ? 'রোল' : 'Roll'}</th>
-                  <th className="p-3 text-center">{language === 'bn' ? 'প্রাপ্ত নম্বর' : 'Total'}</th>
-                  <th className="p-3 text-center">{language === 'bn' ? 'জিপিএ' : 'GPA'}</th>
-                  <th className="p-3 text-center">{language === 'bn' ? 'গ্রেড' : 'Grade'}</th>
-                  <th className="p-3 text-center">{language === 'bn' ? 'অবস্থা' : 'Status'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
-                {filteredTopStudents.map((st, idx) => (
-                  <tr key={st.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="p-3 text-center font-bold">
-                      <span className={`inline-block w-6 h-6 rounded-md leading-6 text-center ${
-                        idx === 0 ? 'bg-amber-400 text-amber-950 font-bold' :
-                        idx === 1 ? 'bg-slate-300 text-slate-900 font-bold' :
-                        idx === 2 ? 'bg-amber-600/30 text-amber-900 dark:text-amber-200 font-bold' :
-                        'text-slate-600 dark:text-slate-300'
-                      }`}>
-                        {toBanglaDigits(idx + 1, language)}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span className="font-bold text-slate-900 dark:text-white block">
-                        {language === 'bn' ? st.nameBn || st.name : st.name}
-                      </span>
-                      <span className="text-[11px] text-slate-400">{st.studentId}</span>
-                    </td>
-                    <td className="p-3 text-center font-semibold">{st.classLevel}</td>
-                    <td className="p-3 text-center">{toBanglaDigits(st.roll || '-', language)}</td>
-                    <td className="p-3 text-center font-bold">{toBanglaDigits(st.totalMarks, language)}</td>
-                    <td className="p-3 text-center font-bold text-indigo-700 dark:text-indigo-300">
-                      {toBanglaDigits(st.gpa.toFixed(2), language)}
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        st.grade === 'A+' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' :
-                        st.grade === 'A' ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300' :
-                        st.grade === 'F' ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300' :
-                        'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
-                      }`}>
-                        {st.grade}
-                      </span>
-                    </td>
-                    <td className="p-3 text-center">
-                      {st.isFail ? (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                          {language === 'bn' ? 'ফেল' : 'Fail'}
-                        </span>
-                      ) : (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          {language === 'bn' ? 'উত্তীর্ণ' : 'Passed'}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
-      )}
-
       </>)}
 
       {activeView === 'action' && (<>
