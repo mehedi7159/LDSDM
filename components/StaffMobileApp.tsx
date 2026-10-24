@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
 import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
@@ -36,6 +36,7 @@ import {
   ArrowLeft,
   X,
   Phone,
+  Printer,
   Search,
   MessageCircle,
   Copy,
@@ -76,6 +77,120 @@ interface StaffMobileAppProps {
 
 const cardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-[24px] shadow-[0_2px_12px_rgba(30,36,51,0.05)]';
 const softBg = 'bg-[#f4f6fb] dark:bg-white/5';
+// ---- Attendance page (Tutor pattern) helpers ----
+// Tutor card shell: rounded-2xl white card (LDSDM's cardCls is 24px).
+const attCardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl shadow-sm';
+// Tutor avatar tints (pastel bg + dark text, hashed by id).
+const ATT_AVATAR_TINTS = [
+  { bg: '#dcfce7', color: '#15803d' },
+  { bg: '#fee2e2', color: '#b91c1c' },
+  { bg: '#dbeafe', color: '#1d4ed8' },
+  { bg: '#ffedd5', color: '#c2410c' },
+] as const;
+const attAvatarTint = (id: string) => {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return ATT_AVATAR_TINTS[h % ATT_AVATAR_TINTS.length];
+};
+const attInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// Tutor late-picker drum wheels: hours 0-3 x minutes 0-59 (total 0-239).
+const WHEEL_ITEM_H = 46;
+const WHEEL_ROWS = 4;
+const WHEEL_VIEW_H = WHEEL_ITEM_H * WHEEL_ROWS;
+const WHEEL_PAD = (WHEEL_VIEW_H - WHEEL_ITEM_H) / 2;
+const LATE_HOURS: number[] = [0, 1, 2, 3];
+const LATE_MINUTE_VALUES: number[] = Array.from({ length: 60 }, (_, i) => i);
+const LATE_MAX_TOTAL = 239;
+const WHEEL_FADE = 'linear-gradient(to bottom, transparent 0%, black 22%, black 78%, transparent 100%)';
+/** One scrollable drum column with scroll-snap (ported from Tutor's Attendance page). */
+function WheelColumn(props: {
+  values: number[];
+  value: number;
+  onChange: (v: number) => void;
+  format: (v: number) => string;
+  ariaLabel: string;
+}) {
+  const { values, value, onChange, format, ariaLabel } = props;
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const settleRef = useRef<number | null>(null);
+  const mountedRef = useRef(false);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = values.indexOf(value);
+    if (idx < 0) return;
+    const target = idx * WHEEL_ITEM_H;
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      el.scrollTop = target;
+      return;
+    }
+    if (Math.abs(el.scrollTop - target) > 1) {
+      el.scrollTo({ top: target, behavior: 'smooth' });
+    }
+  }, [value, values]);
+  useEffect(() => () => {
+    if (settleRef.current) window.clearTimeout(settleRef.current);
+  }, []);
+  const handleScroll = () => {
+    if (settleRef.current) window.clearTimeout(settleRef.current);
+    settleRef.current = window.setTimeout(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const idx = Math.min(values.length - 1, Math.max(0, Math.round(el.scrollTop / WHEEL_ITEM_H)));
+      const v = values[idx];
+      if (v !== value) onChange(v);
+    }, 90);
+  };
+  return (
+    <div
+      ref={scrollRef}
+      role="listbox"
+      aria-label={ariaLabel}
+      onScroll={handleScroll}
+      className="late-wheel-scroll flex-1 overflow-y-auto"
+      style={{
+        height: WHEEL_VIEW_H,
+        scrollSnapType: 'y mandatory',
+        paddingTop: WHEEL_PAD,
+        paddingBottom: WHEEL_PAD,
+        scrollbarWidth: 'none',
+      }}
+    >
+      {values.map(v => {
+        const selected = v === value;
+        return (
+          <button
+            key={v}
+            type="button"
+            role="option"
+            aria-selected={selected}
+            onClick={() => onChange(v)}
+            className="w-full flex items-center justify-center"
+            style={{
+              height: WHEEL_ITEM_H,
+              scrollSnapAlign: 'center',
+              background: 'transparent',
+              fontSize: selected ? 24 : 18,
+              fontWeight: selected ? 800 : 500,
+              color: selected ? '#d97706' : '#8a93a8',
+              transition: 'font-size 120ms ease, color 120ms ease',
+            }}
+          >
+            {format(v)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 
 // Short Bengali month names for report bars ("2026-09" -> "সেপ ২০২৬" via bnMonth below).
 const BN_MONTH_SHORT = ['জান', 'ফেব', 'মার', 'এপ্র', 'মে', 'জুন', 'জুল', 'আগ', 'সেপ', 'অক্ট', 'নভে', 'ডিস'];
@@ -460,7 +575,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // Phase 3: tapping LATE opens the hour/minute picker instead of
   // stamping LATE immediately; confirming stamps LATE + minutes.
   const handleLatePress = (studentId: string) => {
-    const total = lateMinutesMap[studentId] || 0;
+    // Tutor default: 10 minutes when no value saved yet; legacy values
+    // above the wheel range clamp to 239 (3h59m), like Tutor's picker.
+    const saved = Math.min(LATE_MAX_TOTAL, Math.max(0, lateMinutesMap[studentId] || 0));
+    const total = saved > 0 ? saved : 10;
     setLatePicker({ studentId, hours: Math.floor(total / 60), minutes: total % 60 });
   };
 
@@ -479,6 +597,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     });
     setLatePicker(null);
   };
+
+  // Late picker open -> lock body scroll (Tutor ModalShell behavior).
+  useEffect(() => {
+    if (!latePicker) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [latePicker]);
 
   const handleSaveAttendance = () => {
     const records: DailyStudentAttendanceRecord[] = classStudents.map(st => {
@@ -1524,7 +1650,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       .brand-text { color: var(--color-brand) !important; }
       .brand-bg { background-color: var(--color-brand) !important; }
       @keyframes smFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      .anim-stagger > * { animation: smFadeUp .45s cubic-bezier(.22,.8,.36,1) both; }
+      .anim-stagger > * { animation: smFadeUp .45s cubic-bezier(.22,.8,.36,1) backwards; }
       .anim-stagger > *:nth-child(2) { animation-delay: .05s; }
       .anim-stagger > *:nth-child(3) { animation-delay: .1s; }
       .anim-stagger > *:nth-child(4) { animation-delay: .15s; }
@@ -1715,13 +1841,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           {/* ============ TEACHER: DAILY ATTENDANCE ============ */}
           {activeSubModule === 'teacher_attendance' && (
             <div className="space-y-4">
-              <div className={`${cardCls} p-4 space-y-3`}>
+              {/* Title + class switcher (LDSDM's own — teacher scoping) */}
+              <div className={`${attCardCls} p-4 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-9 h-9 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
                       <CheckSquare size={17} />
                     </span>
-                    <h2 className="text-sm font-bold">দৈনিক হাজিরা গ্রহণ</h2>
+                    <h2 className="text-sm font-bold">{isEn ? 'Daily attendance' : 'দৈনিক হাজিরা গ্রহণ'}</h2>
                   </div>
                   <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">
                     {selectedClass}
@@ -1729,363 +1856,610 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 </div>
 
                 {classSwitcher}
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
-                    className="px-3 py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-black cursor-pointer active:scale-95"
-                  >
-                    ‹
-                  </button>
-                  <div className={`flex-1 flex items-center gap-2 ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5`}>
-                    <Calendar size={15} className="text-[#8a93a8]" />
-                    <input
-                      type="date"
-                      value={attendanceDate}
-                      onChange={e => setAttendanceDate(e.target.value)}
-                      className="bg-transparent text-xs font-semibold focus:outline-none w-full dark:[color-scheme:dark]"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
-                    className="px-3 py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-black cursor-pointer active:scale-95"
-                  >
-                    ›
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setAttTab('rollcall')}
-                    className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${attTab === 'rollcall' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
-                  >
-                    রোল কল
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAttTab('sheet')}
-                    className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${attTab === 'sheet' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
-                  >
-                    মাসিক শিট
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-                  <div className="bg-[#d1fae5] dark:bg-emerald-500/10 p-2.5 rounded-2xl">
-                    <span className="text-[11px] font-semibold text-[#059669] block">উপস্থিত</span>
-                    <span className="text-base font-black text-[#059669] dark:text-emerald-300">{toBn(attendanceStats.present)}</span>
-                  </div>
-                  <div className="bg-[#fef3c7] dark:bg-amber-500/10 p-2.5 rounded-2xl">
-                    <span className="text-[11px] font-semibold text-[#d97706] block">দেরি</span>
-                    <span className="text-base font-black text-[#d97706] dark:text-amber-300">{toBn(attendanceStats.late)}</span>
-                  </div>
-                  <div className="bg-[#fee2e2] dark:bg-rose-500/10 p-2.5 rounded-2xl">
-                    <span className="text-[11px] font-semibold text-[#dc2626] block">অনুপস্থিত</span>
-                    <span className="text-base font-black text-[#dc2626] dark:text-rose-300">{toBn(attendanceStats.absent)}</span>
-                  </div>
-                  <div className="bg-[#dbeafe] dark:bg-blue-500/10 p-2.5 rounded-2xl">
-                    <span className="text-[11px] font-semibold text-[#1e40af] dark:text-blue-300 block">ছুটি</span>
-                    <span className="text-base font-black text-[#1e40af] dark:text-blue-300">{toBn(attendanceStats.leave)}</span>
-                  </div>
-                  <div className={`${softBg} p-2.5 rounded-2xl`}>
-                    <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400 block">চিহ্নিত নয়</span>
-                    <span className="text-base font-black">{toBn(attendanceStats.unmarked)}</span>
-                  </div>
-                  <div className={`${softBg} p-2.5 rounded-2xl`}>
-                    <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400 block">মোট</span>
-                    <span className="text-base font-black">{toBn(attendanceStats.total)}</span>
-                  </div>
-                </div>
-
-                {attTab === 'rollcall' && !attendanceDayOff && (
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button
-                      onClick={handleMarkAllPresent}
-                      className="py-2.5 rounded-2xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold flex items-center justify-center gap-1 shadow-md shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer"
-                    >
-                      <CheckCircle2 size={13} />
-                      <span>সবাই উপস্থিত</span>
-                    </button>
-                    <button
-                      onClick={handleMarkAllAbsent}
-                      className="py-2.5 rounded-2xl bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-bold active:scale-95 transition-all cursor-pointer"
-                    >
-                      সবাই অনুপস্থিত
-                    </button>
-                    <button
-                      onClick={handleResetAttendance}
-                      className="py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-bold active:scale-95 transition-all cursor-pointer"
-                    >
-                      রিসেট
-                    </button>
-                  </div>
-                )}
               </div>
 
-              {attTab === 'rollcall' && attendanceDayOff ? (
-                <div className={`${cardCls} p-8 text-center space-y-2`}>
-                  <CalendarDays size={32} className="mx-auto text-[#c3c9d9]" />
-                  <p className="text-sm font-black">আজ ছুটি</p>
-                  <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium leading-relaxed">
-                    {attendanceHoliday?.titleBn || attendanceHoliday?.title} — ক্যালেন্ডার অনুযায়ী আজ {selectedClass}-এর ছুটির দিন, তাই হাজিরা নেওয়া যাবে না।
-                  </p>
-                </div>
-              ) : attTab === 'rollcall' ? (
-              <>
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-[#5b6478] dark:text-slate-400">শিক্ষার্থী ({toBn(classStudents.length)} জন)</span>
-                </div>
+              {/* Tabs — Tutor pattern: page-bg bar, active tab = card + shadow + accent text */}
+              <div className="flex gap-1 p-1 rounded-2xl bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setAttTab('rollcall')}
+                  className={`flex-1 h-10 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer ${attTab === 'rollcall' ? 'bg-white dark:bg-[#161c2e] brand-text shadow-[0_1px_3px_rgba(0,0,0,0.08)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                >
+                  <Users size={15} /> {isEn ? 'Roll call' : 'রোল কল'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttTab('sheet')}
+                  className={`flex-1 h-10 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer ${attTab === 'sheet' ? 'bg-white dark:bg-[#161c2e] brand-text shadow-[0_1px_3px_rgba(0,0,0,0.08)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                >
+                  <CalendarDays size={15} /> {isEn ? 'Monthly sheet' : 'মাসিক শিট'}
+                </button>
+              </div>
 
-                {classStudents.length === 0 ? (
-                  <div className={`${cardCls} p-8 text-center space-y-2`}>
-                    <Users size={32} className="mx-auto text-[#c3c9d9]" />
-                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{selectedClass}-এ কোনো শিক্ষার্থী পাওয়া যায়নি।</p>
-                  </div>
-                ) : (
-                  classStudents.map(st => {
-                    const currentStatus: AttendanceStatus = (studentAttendanceMap[st.id] as AttendanceStatus) || 'PRESENT';
-                    const stBtn = (status: AttendanceStatus, label: string, activeCls: string) => (
+              {attTab === 'rollcall' ? (
+                <>
+                  {/* Date card — Tutor pattern: nav row, hint, 5 counter chips */}
+                  <div className={`${attCardCls} p-4 space-y-3`}>
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleSetStudentStatus(st.id, status)}
-                        className={`py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 ${
-                          currentStatus === status ? activeCls : 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-400'
-                        }`}
+                        onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
+                        className="h-10 w-10 shrink-0 rounded-xl text-[14px] font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
                       >
-                        {label}
+                        ‹
                       </button>
-                    );
-                    return (
-                      <div key={st.id} className={`${cardCls} p-3.5 flex flex-col gap-3`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
-                              {(st.nameBn || st.name || 'শ').charAt(0)}
-                            </span>
-                            <div>
-                              <h3 className="text-[13px] font-bold leading-tight">{st.nameBn || st.name}</h3>
-                              <p className="text-[11px] text-[#8a93a8]">রোল: {toBn(st.roll || st.rollNumber || '—')}{st.guardianPhone ? ` • ফোন: ${toBn(st.guardianPhone)}` : ''}</p>
-                            </div>
-                          </div>
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${
-                            currentStatus === 'PRESENT' ? 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300' :
-                            currentStatus === 'ABSENT' ? 'bg-[#fee2e2] text-[#991b1b] dark:bg-rose-500/15 dark:text-rose-300' :
-                            currentStatus === 'LATE' ? 'bg-[#fef3c7] text-[#92400e] dark:bg-amber-500/15 dark:text-amber-300' :
-                            'bg-[#dbeafe] text-[#1e40af] dark:bg-blue-500/15 dark:text-blue-300'
-                          }`}>
-                            {currentStatus === 'PRESENT' ? 'উপস্থিত' : currentStatus === 'ABSENT' ? 'অনুপস্থিত' : currentStatus === 'LATE' ? (lateMinutesMap[st.id] ? `দেরি · ${toBn(lateMinutesMap[st.id])} মিনিট` : 'দেরি') : 'ছুটি'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {stBtn('PRESENT', 'উপস্থিত', 'bg-[#10b981] text-white shadow-md shadow-emerald-500/25')}
-                          {stBtn('ABSENT', 'অনুপস্থিত', 'bg-[#ef4444] text-white shadow-md shadow-rose-500/25')}
-                          <button
-                            type="button"
-                            onClick={() => handleLatePress(st.id)}
-                            className={`py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 ${
-                              currentStatus === 'LATE' ? 'bg-[#f59e0b] text-white shadow-md shadow-amber-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-400'
-                            }`}
-                          >
-                            দেরি
-                          </button>
-                          {stBtn('LEAVE', 'ছুটি', 'bg-[#3b82f6] text-white shadow-md shadow-blue-500/25')}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                      <input
+                        type="date"
+                        value={attendanceDate}
+                        onChange={e => e.target.value && setAttendanceDate(e.target.value)}
+                        className="h-10 px-3 rounded-xl text-[14px] font-semibold outline-none flex-1 min-w-0 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 dark:[color-scheme:dark]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
+                        className="h-10 w-10 shrink-0 rounded-xl text-[14px] font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+                      >
+                        ›
+                      </button>
+                    </div>
 
-              {classStudents.length > 0 && (
-                <div className="sticky bottom-[84px] z-30 pt-1">
-                  <button
-                    onClick={handleSaveAttendance}
-                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
-                  >
-                    <Save size={17} />
-                    <span>হাজিরা সংরক্ষণ করুন</span>
-                  </button>
-                </div>
-              )}
-              </>
+                    {!attendanceDayOff && (
+                      <>
+                        <p className="text-[12px] text-[#8a93a8] dark:text-slate-500">
+                          {isEn ? 'Tap a status button to mark attendance' : 'স্ট্যাটাস বাটনে চাপ দিয়ে হাজিরা চিহ্নিত করুন'}
+                        </p>
+                        <div className="flex gap-2 flex-wrap">
+                          {([
+                            { label: isEn ? 'Present' : 'উপস্থিত', value: attendanceStats.present, cls: 'text-[#10b981] dark:text-emerald-300' },
+                            { label: isEn ? 'Late' : 'দেরি', value: attendanceStats.late, cls: 'text-[#d97706] dark:text-amber-300' },
+                            { label: isEn ? 'Absent' : 'অনুপস্থিত', value: attendanceStats.absent, cls: 'text-[#dc2626] dark:text-rose-300' },
+                            { label: isEn ? 'Leave' : 'ছুটি', value: attendanceStats.leave, cls: 'text-[#3b82f6] dark:text-blue-300' },
+                            { label: isEn ? 'Unmarked' : 'চিহ্নিত নয়', value: attendanceStats.unmarked, cls: 'text-[#5b6478] dark:text-slate-400' },
+                          ] as const).map(c => (
+                            <div key={c.label} className="flex-1 min-w-[70px] rounded-xl px-2 py-2 text-center bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10">
+                              <p className={`text-[15px] font-bold ${c.cls}`}>{toBn(c.value)}</p>
+                              <p className="text-[11px] text-[#5b6478] dark:text-slate-400">{c.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {attendanceDayOff ? (
+                    <div className="rounded-2xl p-5 shadow-sm space-y-3 bg-[#dbeafe] dark:bg-blue-500/10 border border-[#e8ecf4] dark:border-white/5">
+                      <div className="flex items-center gap-2.5">
+                        <CalendarDays size={18} className="shrink-0 text-[#3b82f6] dark:text-blue-300" />
+                        <p className="font-bold text-[15px]">
+                          {isEn ? 'Holiday' : 'আজ ছুটি'}{attendanceHoliday ? ` — ${attendanceHoliday.titleBn || attendanceHoliday.title}` : ''}
+                        </p>
+                      </div>
+                      <p className="text-[13px] text-[#5b6478] dark:text-slate-400">
+                        {isEn
+                          ? `No attendance for ${selectedClass} today — the calendar marks it as a holiday.`
+                          : `ক্যালেন্ডার অনুযায়ী আজ ${selectedClass}-এর ছুটির দিন, তাই হাজিরা নেওয়া যাবে না।`}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Roster header — Tutor pattern: count chip + tint buttons */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-3 h-10 rounded-xl text-[13px] font-bold flex items-center gap-1.5 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10">
+                          <Users size={15} className="brand-text" />
+                          {toBn(classStudents.length)} {isEn ? 'students' : 'জন শিক্ষার্থী'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleMarkAllPresent}
+                          disabled={classStudents.length === 0}
+                          className="flex-1 min-w-[130px] h-10 rounded-xl text-[13px] font-bold disabled:opacity-50 bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 cursor-pointer"
+                        >
+                          ✓ {isEn ? 'ALL PRESENT' : 'সবাই উপস্থিত'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleMarkAllAbsent}
+                          disabled={classStudents.length === 0}
+                          className="flex-1 min-w-[130px] h-10 rounded-xl text-[13px] font-bold disabled:opacity-50 bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 cursor-pointer"
+                        >
+                          ✗ {isEn ? 'ALL ABSENT' : 'সবাই অনুপস্থিত'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetAttendance}
+                          disabled={attendanceStats.takenCount === 0}
+                          className="h-10 px-4 rounded-xl text-[13px] font-bold disabled:opacity-50 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+                        >
+                          {isEn ? 'Reset' : 'রিসেট'}
+                        </button>
+                      </div>
+
+                      {/* Roster cards — Tutor pattern: big Present button + 3 below */}
+                      {classStudents.length === 0 ? (
+                        <div className={`${attCardCls} p-8 text-center space-y-2`}>
+                          <Users size={32} className="mx-auto text-[#c3c9d9]" />
+                          <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{selectedClass}-{isEn ? ' no students found.' : 'এ কোনো শিক্ষার্থী পাওয়া যায়নি।'}</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {classStudents.map(st => {
+                            const currentStatus: AttendanceStatus = (studentAttendanceMap[st.id] as AttendanceStatus) || 'PRESENT';
+                            const displayName = st.nameBn || st.name || '';
+                            const tint = attAvatarTint(st.id);
+                            const phone = (st.guardianPhone || '').trim();
+                            const roll = st.roll || st.rollNumber || '';
+                            const badgeCls = currentStatus === 'PRESENT'
+                              ? 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300'
+                              : currentStatus === 'ABSENT'
+                                ? 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300'
+                                : currentStatus === 'LATE'
+                                  ? 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300'
+                                  : 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300';
+                            const badgeLabel = currentStatus === 'PRESENT'
+                              ? (isEn ? 'Present' : 'উপস্থিত')
+                              : currentStatus === 'ABSENT'
+                                ? (isEn ? 'Absent' : 'অনুপস্থিত')
+                                : currentStatus === 'LATE'
+                                  ? (lateMinutesMap[st.id] ? `${isEn ? 'Late' : 'দেরি'} · ${toBn(lateMinutesMap[st.id])} ${isEn ? 'min' : 'মিনিট'}` : (isEn ? 'Late' : 'দেরি'))
+                                  : (isEn ? 'Leave' : 'ছুটি');
+                            const rosterBtn = (status: AttendanceStatus, label: string, solidCls: string, softCls: string) => (
+                              <button
+                                type="button"
+                                onClick={() => status === 'LATE' ? handleLatePress(st.id) : handleSetStudentStatus(st.id, status)}
+                                className={`h-12 rounded-xl text-[13px] font-bold cursor-pointer active:scale-[0.98] transition-all ${currentStatus === status ? solidCls : softCls}`}
+                              >
+                                {label}
+                              </button>
+                            );
+                            return (
+                              <div key={st.id} className={`${attCardCls} p-4 shadow-sm`}>
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-[15px] shrink-0"
+                                    style={{ background: tint.bg, color: tint.color }}
+                                  >
+                                    {attInitials(displayName)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-[15px] truncate">{displayName}</p>
+                                    <p className="flex items-center gap-1 text-[12px] mt-0.5 text-[#5b6478] dark:text-slate-400">
+                                      <Phone size={12} className="shrink-0" />
+                                      <span className="truncate">{phone ? toBn(phone) : '—'}{roll ? ` • ${isEn ? 'Roll' : 'রোল'}: ${toBn(roll)}` : ''}</span>
+                                    </p>
+                                  </div>
+                                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 ${badgeCls}`}>
+                                    {badgeLabel}
+                                  </span>
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                  <div className="flex">
+                                    {rosterBtn('PRESENT', isEn ? 'Present' : 'উপস্থিত', 'bg-[#10b981] text-white w-full', 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300 w-full')}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <div className="flex-1">
+                                      {rosterBtn('ABSENT', isEn ? 'Absent' : 'অনুপস্থিত', 'bg-[#ef4444] text-white w-full', 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 w-full')}
+                                    </div>
+                                    <div className="flex-1">
+                                      {rosterBtn('LATE', isEn ? 'Late' : 'দেরি', 'bg-[#f59e0b] text-white w-full', 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 w-full')}
+                                    </div>
+                                    <div className="flex-1">
+                                      {rosterBtn('LEAVE', isEn ? 'Leave' : 'ছুটি', 'bg-[#3b82f6] text-white w-full', 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300 w-full')}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Save bar — KEPT (LDSDM's own flow: save defaults unmarked to PRESENT) */}
+                      {classStudents.length > 0 && (
+                        <div className="sticky bottom-[84px] z-30 pt-1">
+                          <button
+                            onClick={handleSaveAttendance}
+                            className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                          >
+                            <Save size={17} />
+                            <span>{isEn ? 'Save attendance' : 'হাজিরা সংরক্ষণ করুন'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               ) : (
-              <div className="space-y-4">
-                <div className={`${cardCls} p-4 space-y-3`}>
-                  <div className="flex items-center gap-2">
-                    <div className={`flex-1 flex items-center gap-2 ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5`}>
-                      <CalendarDays size={15} className="text-[#8a93a8]" />
+                <div className="space-y-4">
+                  {/* Print + month stepper — Tutor placement: print row, stepper centered */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        disabled={classStudents.length === 0}
+                        className="flex-1 h-11 px-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 text-white whitespace-nowrap disabled:opacity-50 brand-grad cursor-pointer"
+                      >
+                        <Printer size={16} /> {isEn ? 'Print' : 'প্রিন্ট'}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { const y = Number(sheetMonth.slice(0, 4)); const mi = Number(sheetMonth.slice(5, 7)) - 2; const d = new Date(y, mi, 1); setSheetMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); }}
+                        className="h-11 w-11 shrink-0 rounded-xl text-[14px] font-bold bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+                      >
+                        ‹
+                      </button>
                       <input
                         type="month"
                         value={sheetMonth}
-                        onChange={e => setSheetMonth(e.target.value)}
-                        className="bg-transparent text-xs font-semibold focus:outline-none w-full dark:[color-scheme:dark]"
+                        onChange={e => e.target.value && setSheetMonth(e.target.value)}
+                        className="h-11 px-3 rounded-xl text-[14px] font-semibold outline-none min-w-0 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 dark:[color-scheme:dark]"
                       />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => window.print()}
-                      className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-xs font-bold cursor-pointer active:scale-95"
-                    >
-                      প্রিন্ট
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setSheetView('cards')}
-                      className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${sheetView === 'cards' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
-                    >
-                      কার্ড
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSheetView('grid')}
-                      className={`py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${sheetView === 'grid' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300'}`}
-                    >
-                      গ্রিড
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-[#8a93a8] font-medium leading-relaxed">
-                    ✓ উপস্থিত • দেরি • ✗ অনুপস্থিত • ছুটি • শুক্রবার = সাপ্তাহিক ছুটি • ক্যালেন্ডার ছুটি আলাদা চিহ্নে
-                  </p>
-                </div>
-
-                {sheetView === 'cards' ? (
-                  <div className="space-y-2.5">
-                    {classStudents.length === 0 ? (
-                      <div className={`${cardCls} p-8 text-center space-y-2`}>
-                        <Users size={32} className="mx-auto text-[#c3c9d9]" />
-                        <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{selectedClass}-এ কোনো শিক্ষার্থী পাওয়া যায়নি।</p>
-                      </div>
-                    ) : (
-                      classStudents.map(st => {
-                        const s = dailyAttendanceService.getStudentMonthlySummary(st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
-                        const studentMonthRecs: DailyStudentAttendanceRecord[] = sheetByStudent.get(st.id) ? Array.from(sheetByStudent.get(st.id)!.values()) : [];
-                        const lateTotal = studentMonthRecs.reduce((sum, r) => sum + (r.status === 'LATE' ? (r.lateMinutes || 0) : 0), 0);
-                        return (
-                          <div key={st.id} className={`${cardCls} p-4 space-y-2.5`}>
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
-                                  {(st.nameBn || st.name || 'শ').charAt(0)}
-                                </span>
-                                <div className="min-w-0">
-                                  <h3 className="text-[13px] font-bold leading-tight truncate">{st.nameBn || st.name}</h3>
-                                  <p className="text-[11px] text-[#8a93a8]">রোল: {toBn(st.roll || st.rollNumber || '—')}</p>
-                                </div>
-                              </div>
-                              <span className="text-[11px] font-black px-2.5 py-1.5 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#065f46] dark:text-emerald-300 shrink-0">
-                                {toBn(s.percentage)}%
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-4 gap-1.5 text-center text-[11px]">
-                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#059669]">{toBn(s.presentDays)}</span><span className="text-[#8a93a8]">উপস্থিত</span></div>
-                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#d97706]">{toBn(s.lateDays)}</span><span className="text-[#8a93a8]">দেরি</span></div>
-                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#dc2626]">{toBn(s.absentDays)}</span><span className="text-[#8a93a8]">অনুপস্থিত</span></div>
-                              <div className={`${softBg} p-2 rounded-xl`}><span className="block font-black text-[#1e40af]">{toBn(s.leaveDays)}</span><span className="text-[#8a93a8]">ছুটি</span></div>
-                            </div>
-                            <p className="text-[11px] text-[#8a93a8] font-medium">
-                              রেকর্ডকৃত {toBn(s.workingDays)} দিন{lateTotal > 0 ? ` • মোট দেরি ${toBn(lateTotal)} মিনিট` : ''}
-                            </p>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                ) : (
-                  <div className={`${cardCls} p-3 overflow-x-auto`}>
-                    <table className="border-collapse text-[11px] min-w-max">
-                      <thead>
-                        <tr>
-                          <th className="sticky left-0 bg-white dark:bg-[#161c2e] text-left font-bold px-2 py-2 min-w-[110px]">শিক্ষার্থী</th>
-                          {sheetDays.map(d => (
-                            <th
-                              key={d.dateStr}
-                              className={`px-1 py-2 text-center font-bold w-[30px] ${d.holiday ? 'text-[#d97706]' : d.isFriday ? 'text-[#8a93a8]' : ''}`}
-                              title={d.holiday || (d.isFriday ? 'সাপ্তাহিক ছুটি (শুক্রবার)' : d.dateStr)}
-                            >
-                              {toBn(d.day)}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {classStudents.map(st => {
-                          const recs = sheetByStudent.get(st.id);
-                          return (
-                            <tr key={st.id} className="border-t border-[#e8ecf4] dark:border-white/5">
-                              <td className="sticky left-0 bg-white dark:bg-[#161c2e] px-2 py-2 font-semibold whitespace-nowrap">
-                                {(st.nameBn || st.name || '').split(' ')[0]}
-                              </td>
-                              {sheetDays.map(d => {
-                                const rec = recs?.get(d.dateStr);
-                                const cell = rec
-                                  ? (rec.status === 'PRESENT' ? '✓' : rec.status === 'LATE' ? 'দে' : rec.status === 'ABSENT' ? '✗' : 'ছ')
-                                  : (d.holiday ? 'ছু' : d.isFriday ? 'শু' : '–');
-                                const cls = rec
-                                  ? (rec.status === 'PRESENT' ? 'text-[#059669]' : rec.status === 'LATE' ? 'text-[#d97706]' : rec.status === 'ABSENT' ? 'text-[#dc2626]' : 'text-[#1e40af]')
-                                  : (d.holiday ? 'text-[#d97706] font-black' : d.isFriday ? 'text-[#8a93a8]' : 'text-[#c3c9d9]');
-                                return (
-                                  <td key={d.dateStr} className={`px-1 py-2 text-center font-bold ${cls}`} title={rec && rec.status === 'LATE' && rec.lateMinutes ? `দেরি ${toBn(rec.lateMinutes)} মিনিট` : (d.holiday || undefined)}>
-                                    {cell}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-              )}
-
-              {latePicker && (
-                <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setLatePicker(null)}>
-                  <div className="w-full max-w-sm bg-white dark:bg-[#161c2e] rounded-[24px] p-5 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black">দেরির সময়</h3>
-                      <button type="button" onClick={() => setLatePicker(null)} className="p-1.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 cursor-pointer">
-                        <X size={15} />
+                      <button
+                        type="button"
+                        onClick={() => { const y = Number(sheetMonth.slice(0, 4)); const mi = Number(sheetMonth.slice(5, 7)); const d = new Date(y, mi, 1); setSheetMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); }}
+                        className="h-11 w-11 shrink-0 rounded-xl text-[14px] font-bold bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+                      >
+                        ›
                       </button>
                     </div>
-                    <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">
-                      {(classStudents.find(s => s.id === latePicker.studentId)?.nameBn || classStudents.find(s => s.id === latePicker.studentId)?.name || '')} কতক্ষণ দেরি করেছে?
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className={`${softBg} p-3 rounded-2xl text-center space-y-2`}>
-                        <span className="text-[11px] font-semibold text-[#8a93a8] block">ঘণ্টা</span>
-                        <div className="flex items-center justify-center gap-3">
-                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, hours: Math.max(0, p.hours - 1) } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">−</button>
-                          <span className="text-xl font-black w-8">{toBn(latePicker.hours)}</span>
-                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, hours: Math.min(12, p.hours + 1) } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">+</button>
-                        </div>
-                      </div>
-                      <div className={`${softBg} p-3 rounded-2xl text-center space-y-2`}>
-                        <span className="text-[11px] font-semibold text-[#8a93a8] block">মিনিট</span>
-                        <div className="flex items-center justify-center gap-3">
-                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, minutes: (p.minutes + 55) % 60 } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">−</button>
-                          <span className="text-xl font-black w-8">{toBn(latePicker.minutes)}</span>
-                          <button type="button" onClick={() => setLatePicker(p => p ? { ...p, minutes: (p.minutes + 5) % 60 } : p)} className="w-8 h-8 rounded-full bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 font-black cursor-pointer">+</button>
-                        </div>
-                      </div>
+                  </div>
+
+                  {/* View toggle — Tutor pill */}
+                  <div className="flex rounded-full p-1 gap-1 brand-soft">
+                    {([
+                      { key: 'cards' as const, label: isEn ? 'Cards' : 'কার্ড' },
+                      { key: 'grid' as const, label: isEn ? 'Grid' : 'গ্রিড' },
+                    ]).map(opt => {
+                      const active = sheetView === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setSheetView(opt.key)}
+                          className={`flex-1 text-[12px] px-2.5 py-1.5 rounded-full transition-colors cursor-pointer ${active ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-white font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'bg-transparent text-[#8a93a8] dark:text-slate-500 font-medium'}`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Sheet card — Tutor header + views */}
+                  <div className="rounded-2xl shadow-sm overflow-hidden bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5">
+                    <div className="p-5 text-center border-b border-[#e8ecf4] dark:border-white/5">
+                      <p className="text-[12px] font-semibold uppercase tracking-wide brand-text">
+                        {isEn ? 'Monthly attendance sheet' : 'মাসিক হাজিরা শিট'}
+                      </p>
+                      <h2 className="text-[18px] font-bold mt-1">{selectedClass}</h2>
+                      <p className="text-[12px] mt-0.5 text-[#5b6478] dark:text-slate-400">
+                        {isEn
+                          ? `${EN_MONTHS[Number(sheetMonth.slice(5, 7)) - 1] || ''} ${sheetMonth.slice(0, 4)}`
+                          : bnMonthLabel(sheetMonth)}
+                      </p>
                     </div>
-                    <p className="text-center text-xs font-bold">মোট: {toBn(latePicker.hours * 60 + latePicker.minutes)} মিনিট</p>
-                    <button
-                      type="button"
-                      onClick={handleLateConfirm}
-                      className="w-full py-3.5 rounded-[20px] brand-grad text-white font-bold text-sm shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
-                    >
-                      নিশ্চিত করুন
-                    </button>
+
+                    {classStudents.length === 0 ? (
+                      <p className="p-8 text-center text-[13px] text-[#5b6478] dark:text-slate-400">
+                        {selectedClass}-{isEn ? ' no students found.' : 'এ কোনো শিক্ষার্থী পাওয়া যায়নি।'}
+                      </p>
+                    ) : sheetView === 'grid' ? (
+                      <div className="overflow-auto" style={{ maxHeight: 'min(70vh, 560px)', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+                        <table className="w-full text-[12px] border-collapse">
+                          <thead>
+                            <tr>
+                              <th className="px-3 py-2.5 text-left font-bold sticky left-0 top-0 z-30 min-w-[140px] bg-[#f4f6fb] dark:bg-[#161c2e]">
+                                {isEn ? 'Name' : 'নাম'}
+                              </th>
+                              {sheetDays.map(d => {
+                                const wd = new Date(Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)) - 1, d.day).getDay();
+                                const isToday = d.dateStr === new Date().toISOString().split('T')[0];
+                                return (
+                                  <th
+                                    key={d.dateStr}
+                                    title={d.holiday || (d.isFriday ? (isEn ? 'Weekly holiday (Friday)' : 'সাপ্তাহিক ছুটি (শুক্রবার)') : d.dateStr)}
+                                    className={`px-1 py-2 text-center font-bold sticky top-0 z-20 min-w-[36px] ${isToday ? 'bg-[#ede9fe] dark:bg-violet-500/15 brand-text' : 'bg-[#f4f6fb] dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-400'}`}
+                                  >
+                                    <span className="block text-[12px]">{toBn(d.day)}</span>
+                                    <span className="block text-[10px] font-semibold opacity-70">
+                                      {(isEn ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['র', 'সো', 'ম', 'বু', 'বৃ', 'শু', 'শ'])[wd]}
+                                    </span>
+                                  </th>
+                                );
+                              })}
+                              <th className="px-2 py-2.5 text-center font-bold sticky right-0 top-0 z-30 min-w-[76px] bg-[#f4f6fb] dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-400">
+                                {isEn ? 'Present/Total' : 'উপস্থিত/মোট'}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {classStudents.map(st => {
+                              const recs = sheetByStudent.get(st.id);
+                              const s = dailyAttendanceService.getStudentMonthlySummary(st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
+                              return (
+                                <tr key={st.id} className="border-t border-[#e8ecf4] dark:border-white/5">
+                                  <td className="px-3 py-2 font-semibold sticky left-0 z-10 max-w-[140px] truncate bg-white dark:bg-[#161c2e]">
+                                    {st.nameBn || st.name}
+                                  </td>
+                                  {sheetDays.map(d => {
+                                    const rec = recs?.get(d.dateStr);
+                                    const sym = rec
+                                      ? (rec.status === 'PRESENT' ? '✓' : rec.status === 'LATE' ? (isEn ? 'L' : 'দে') : rec.status === 'ABSENT' ? '✗' : (isEn ? 'LV' : 'ছ'))
+                                      : (d.holiday ? (isEn ? 'H' : 'ছু') : d.isFriday ? (isEn ? 'F' : 'শু') : '–');
+                                    const chipCls = rec
+                                      ? (rec.status === 'PRESENT' ? 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300'
+                                        : rec.status === 'LATE' ? 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300'
+                                        : rec.status === 'ABSENT' ? 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300'
+                                        : 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300')
+                                      : (d.holiday ? 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300'
+                                        : d.isFriday ? 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-500'
+                                        : 'text-[#c3c9d9] dark:text-slate-600');
+                                    return (
+                                      <td key={d.dateStr} className="px-1 py-2 text-center">
+                                        <span
+                                          className={`inline-flex w-8 h-8 items-center justify-center rounded-lg text-[12px] font-bold ${chipCls}`}
+                                          title={rec && rec.status === 'LATE' && rec.lateMinutes ? `${isEn ? 'Late' : 'দেরি'} ${toBn(rec.lateMinutes)} ${isEn ? 'min' : 'মিনিট'}` : (d.holiday || undefined)}
+                                        >
+                                          {sym}
+                                        </span>
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="px-2 py-2 text-center sticky right-0 z-10 bg-white dark:bg-[#161c2e]">
+                                    <span className="block text-[12px] font-bold">{toBn(s.presentDays)}/{toBn(s.workingDays)}</span>
+                                    <span className="block text-[10px] text-[#5b6478] dark:text-slate-400">{toBn(s.percentage)}%</span>
+                                    {s.leaveDays > 0 && (
+                                      <span className="block text-[10px] font-semibold text-[#3b82f6] dark:text-blue-300">
+                                        {isEn ? 'Leave' : 'ছুটি'} {toBn(s.leaveDays)}
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 pb-3">
+                        <div className="grid grid-cols-7 gap-1 px-3.5 pt-3">
+                          {[6, 0, 1, 2, 3, 4, 5].map(i => (
+                            <span key={i} className="text-center text-[11px] font-bold text-[#8a93a8] dark:text-slate-500">
+                              {(isEn ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['র', 'সো', 'ম', 'বু', 'বৃ', 'শু', 'শ'])[i]}
+                            </span>
+                          ))}
+                        </div>
+                        {classStudents.map(st => {
+                          const s = dailyAttendanceService.getStudentMonthlySummary(st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
+                          const recs = sheetByStudent.get(st.id);
+                          const studentMonthRecs: DailyStudentAttendanceRecord[] = recs ? Array.from(recs.values()) : [];
+                          const lateTotal = studentMonthRecs.reduce((sum, r) => sum + (r.status === 'LATE' ? (r.lateMinutes || 0) : 0), 0);
+                          const displayName = st.nameBn || st.name || '';
+                          const leadingBlanks = (new Date(Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)) - 1, 1).getDay() + 1) % 7;
+                          return (
+                            <div key={st.id} className="rounded-2xl p-3.5 shadow-sm bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 mx-3">
+                              <div className="flex items-center gap-3">
+                                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-[15px] font-bold shrink-0 brand-soft">
+                                  {displayName.trim().charAt(0).toUpperCase()}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-[14px] truncate">{displayName}</p>
+                                  <p className="text-[12px] text-[#5b6478] dark:text-slate-400">
+                                    {toBn(s.presentDays)}/{toBn(s.workingDays)} • {toBn(s.percentage)}%
+                                    {s.leaveDays > 0 ? ` • ${isEn ? 'Leave' : 'ছুটি'} ${toBn(s.leaveDays)}` : ''}
+                                    {lateTotal > 0 ? ` • ${isEn ? 'Total late' : 'মোট দেরি'} ${toBn(lateTotal)} ${isEn ? 'min' : 'মিনিট'}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1.5 mt-3 flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300">
+                                  ✓ {toBn(s.presentDays)}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300">
+                                  {isEn ? 'L' : 'দে'} {toBn(s.lateDays)}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300">
+                                  ✗ {toBn(s.absentDays)}
+                                </span>
+                                {s.leaveDays > 0 && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300">
+                                    {isEn ? 'Leave' : 'ছুটি'} {toBn(s.leaveDays)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-7 gap-1 mt-3">
+                                {Array.from({ length: leadingBlanks }).map((_, i) => (
+                                  <span key={`b${i}`} />
+                                ))}
+                                {sheetDays.map(d => {
+                                  const rec = recs?.get(d.dateStr);
+                                  const isToday = d.dateStr === new Date().toISOString().split('T')[0];
+                                  const cellBg = rec
+                                    ? (rec.status === 'PRESENT' ? 'bg-[#d1fae5] dark:bg-emerald-500/15'
+                                      : rec.status === 'LATE' ? 'bg-[#fef3c7] dark:bg-amber-500/15'
+                                      : rec.status === 'ABSENT' ? 'bg-[#fee2e2] dark:bg-rose-500/15'
+                                      : 'bg-[#dbeafe] dark:bg-blue-500/15')
+                                    : (d.holiday ? 'bg-[#fef3c7] dark:bg-amber-500/15' : '');
+                                  const cellText = rec
+                                    ? (rec.status === 'PRESENT' ? 'text-[#10b981] dark:text-emerald-300'
+                                      : rec.status === 'LATE' ? 'text-[#d97706] dark:text-amber-300'
+                                      : rec.status === 'ABSENT' ? 'text-[#dc2626] dark:text-rose-300'
+                                      : 'text-[#3b82f6] dark:text-blue-300')
+                                    : (d.holiday ? 'text-[#d97706] dark:text-amber-300' : d.isFriday ? 'text-[#8a93a8] dark:text-slate-500' : 'text-[#8a93a8] dark:text-slate-500');
+                                  const sym = rec
+                                    ? (rec.status === 'PRESENT' ? '✓' : rec.status === 'LATE' ? (isEn ? 'L' : 'দে') : rec.status === 'ABSENT' ? '✗' : (isEn ? 'LV' : 'ছ'))
+                                    : (d.holiday ? (isEn ? 'H' : 'ছু') : d.isFriday ? (isEn ? 'F' : 'শু') : '');
+                                  return (
+                                    <div
+                                      key={d.dateStr}
+                                      className={`h-[38px] rounded-lg flex flex-col items-center justify-center ${cellBg} ${cellText} ${isToday ? 'border-[1.5px] border-[color:var(--color-brand)]' : 'border-[1.5px] border-transparent'}`}
+                                      title={rec && rec.status === 'LATE' && rec.lateMinutes ? `${isEn ? 'Late' : 'দেরি'} ${toBn(rec.lateMinutes)} ${isEn ? 'min' : 'মিনিট'}` : (d.holiday || undefined)}
+                                    >
+                                      <span className="text-[12px] font-bold leading-none">{toBn(d.day)}</span>
+                                      <span className="text-[10px] font-bold leading-none mt-0.5">{sym}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Legend — Tutor chip row, symbols matched to this sheet's cells */}
+                  <div className="flex items-center gap-4 flex-wrap text-[12px] text-[#5b6478] dark:text-slate-400">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-[11px] font-bold bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300">✓</span>
+                      {isEn ? 'Present' : 'উপস্থিত'}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-[11px] font-bold bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300">{isEn ? 'L' : 'দে'}</span>
+                      {isEn ? 'Late' : 'দেরি'}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-[11px] font-bold bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300">✗</span>
+                      {isEn ? 'Absent' : 'অনুপস্থিত'}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-[11px] font-bold bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300">{isEn ? 'LV' : 'ছ'}</span>
+                      {isEn ? 'Leave' : 'ছুটি'}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-[11px] font-bold bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300">{isEn ? 'H' : 'ছু'}</span>
+                      {isEn ? 'Calendar holiday' : 'ক্যালেন্ডার ছুটি'}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-[11px] font-bold bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-500">{isEn ? 'F' : 'শু'}</span>
+                      {isEn ? 'Weekly holiday' : 'সাপ্তাহিক ছুটি'}
+                    </span>
                   </div>
                 </div>
               )}
+
+              {/* Late picker — Tutor's drum-wheel sheet (ModalShell pattern) */}
+              {latePicker && (() => {
+                const pickerStudent = classStudents.find(s => s.id === latePicker.studentId);
+                const pickerName = pickerStudent?.nameBn || pickerStudent?.name || '';
+                const total = latePicker.hours * 60 + latePicker.minutes;
+                const mm = String(latePicker.minutes).padStart(2, '0');
+                const tint = attAvatarTint(latePicker.studentId);
+                return (
+                  <div
+                    className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4"
+                    style={{ background: 'rgba(15, 20, 35, 0.45)' }}
+                    onClick={() => setLatePicker(null)}
+                  >
+                    <div
+                      className="w-full sm:max-w-[440px] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10"
+                      onClick={e => e.stopPropagation()}
+                      role="dialog"
+                      aria-modal="true"
+                    >
+                      <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-3">
+                        <h2 className="text-[17px] font-bold">{pickerName}</h2>
+                        <button
+                          type="button"
+                          onClick={() => setLatePicker(null)}
+                          aria-label={isEn ? 'Cancel' : 'বাতিল'}
+                          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-400 cursor-pointer"
+                        >
+                          <X size={17} />
+                        </button>
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-6 pb-4">
+                        <style>{'.late-wheel-scroll::-webkit-scrollbar{display:none}'}</style>
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-[14px] shrink-0"
+                              style={{ background: tint.bg, color: tint.color }}
+                            >
+                              {attInitials(pickerName)}
+                            </div>
+                            <p className="text-[15px] font-bold">
+                              {pickerName} {isEn ? 'was late by how much?' : 'কতক্ষণ দেরি করেছে?'}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl py-3 px-4 text-center bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10">
+                            <p className="text-[38px] leading-none font-extrabold tabular-nums text-[#d97706] dark:text-amber-300" aria-live="polite">
+                              {toBn(latePicker.hours)}:{toBn(mm)}
+                            </p>
+                            <p className="mt-1.5 text-[13px] font-semibold text-[#5b6478] dark:text-slate-400">
+                              {toBn(latePicker.hours)} {isEn ? 'hr' : 'ঘণ্টা'} {toBn(latePicker.minutes)} {isEn ? 'min' : 'মিনিট'}
+                            </p>
+                          </div>
+                          <div>
+                            <div className="flex gap-2 mb-1">
+                              <p className="flex-1 text-center text-[12px] font-bold text-[#5b6478] dark:text-slate-400">
+                                {isEn ? 'Hours' : 'ঘণ্টা'}
+                              </p>
+                              <p className="flex-1 text-center text-[12px] font-bold text-[#5b6478] dark:text-slate-400">
+                                {isEn ? 'Minutes' : 'মিনিট'}
+                              </p>
+                            </div>
+                            <div className="relative">
+                              <div
+                                aria-hidden="true"
+                                className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 border-y border-[#e8ecf4] dark:border-white/10"
+                                style={{ height: 46 }}
+                              />
+                              <div
+                                className="relative flex gap-2"
+                                style={{ maskImage: WHEEL_FADE, WebkitMaskImage: WHEEL_FADE }}
+                              >
+                                <WheelColumn
+                                  values={LATE_HOURS}
+                                  value={latePicker.hours}
+                                  onChange={v => setLatePicker(p => p ? { ...p, hours: v } : p)}
+                                  format={v => toBn(v)}
+                                  ariaLabel={isEn ? 'Hours' : 'ঘণ্টা'}
+                                />
+                                <WheelColumn
+                                  values={LATE_MINUTE_VALUES}
+                                  value={latePicker.minutes}
+                                  onChange={v => setLatePicker(p => p ? { ...p, minutes: v } : p)}
+                                  format={v => toBn(String(v).padStart(2, '0'))}
+                                  ariaLabel={isEn ? 'Minutes' : 'মিনিট'}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {total === 0 && (
+                            <p className="text-center text-[12px] font-bold text-[#dc2626] dark:text-rose-300">
+                              {isEn ? 'Pick at least 1 minute' : 'কমপক্ষে ১ মিনিট বেছে নিন'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div
+                        className="shrink-0 px-5 sm:px-6 pt-3 rounded-b-3xl bg-white dark:bg-[#161c2e] border-t border-[#e8ecf4] dark:border-white/10"
+                        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 14px)' }}
+                      >
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setLatePicker(null)}
+                            className="flex-1 h-12 rounded-xl text-[14px] font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+                          >
+                            {isEn ? 'Cancel' : 'বাতিল'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={total === 0}
+                            onClick={handleLateConfirm}
+                            className="flex-1 h-12 rounded-xl text-[14px] font-bold text-white disabled:opacity-50 bg-[#f59e0b] cursor-pointer"
+                          >
+                            {isEn ? 'Save' : 'সংরক্ষণ করুন'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
