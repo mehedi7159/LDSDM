@@ -374,17 +374,20 @@ const AppContent = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    const font = schoolProfile.banglaFont || 'Noto Sans Bengali';
-    // Unset number font falls back to Hind Siliguri (legible print digits);
-    // a deliberately stored profile value always wins.
-    const numFont = schoolProfile.banglaNumberFont || 'Hind Siliguri';
-    const uiFont = schoolProfile.uiFont || 'Hind Siliguri';
+    // Noto Sans Bengali is purged system-wide (24 Oct 2026): any profile
+    // saved earlier with it migrates to Hind Siliguri here, so the purged
+    // font can never come back through an old saved value.
+    const purgeNoto = (v?: string, fallback = 'Hind Siliguri') =>
+      !v || v === 'Noto Sans Bengali' || v === 'Noto Serif Bengali' ? fallback : v;
+    const font = purgeNoto(schoolProfile.banglaFont);
+    const numFont = purgeNoto(schoolProfile.banglaNumberFont);
+    const uiFont = purgeNoto(schoolProfile.uiFont);
 
-    root.style.setProperty('--bangla-font', `'${font}', 'Noto Sans Bengali', 'Anek Bangla', sans-serif`);
-    root.style.setProperty('--bangla-num-font', `'${numFont}', 'Noto Sans Bengali', 'Anek Bangla', sans-serif`);
-    // On-screen UI font (Phase 3 font settings): Inter keeps Latin text;
-    // Bengali glyphs + Bengali digits render in the chosen UI font.
-    root.style.setProperty('--ui-font', `'Inter', '${uiFont}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif`);
+    root.style.setProperty('--bangla-font', `'${font}', 'Hind Siliguri', 'Anek Bangla', sans-serif`);
+    root.style.setProperty('--bangla-num-font', `'${numFont}', 'Hind Siliguri', 'Anek Bangla', sans-serif`);
+    // On-screen UI font: Inter keeps Latin text; Bengali glyphs + Bengali
+    // digits render in the chosen UI font (Hind Siliguri by default).
+    root.style.setProperty('--ui-font', `'Inter', '${uiFont}', 'Hind Siliguri', sans-serif`);
   }, [schoolProfile.banglaFont, schoolProfile.banglaNumberFont, schoolProfile.uiFont]);
 
 

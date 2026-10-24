@@ -22,10 +22,10 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
+              sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
               inter: ['Inter', 'sans-serif'],
-              hind: ['Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
-              mono: ['Inter', 'Hind Siliguri', 'Noto Sans Bengali', 'monospace']
+              hind: ['Hind Siliguri', 'sans-serif'],
+              mono: ['Inter', 'Hind Siliguri', 'monospace']
             },
             boxShadow: {
               'soft': '0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.02)',
@@ -53,20 +53,20 @@
       })();
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Alkatra:wght@400;500;600;700&family=Anek+Bangla:wght@300;400;500;600;700;800&family=Atma:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700;800&family=Galada&family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Mina:wght@400;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700;800;900&family=Noto+Serif+Bengali:wght@300;400;500;600;700;800;900&family=Tiro+Bangla:ital@0;1&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Alkatra:wght@400;500;600;700&family=Anek+Bangla:wght@300;400;500;600;700;800&family=Atma:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700;800&family=Galada&family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Mina:wght@400;700&family=Tiro+Bangla:ital@0;1&display=swap');
       
       :root {
         --color-brand: #4f46e5;
         --color-brand-hover: #4338ca;
         --color-brand-light: #eef2ff;
         --color-brand-ring: #6366f1;
-        --bangla-font: 'Hind Siliguri', 'Noto Sans Bengali', 'Anek Bangla', sans-serif;
-        --bangla-num-font: 'Noto Sans Bengali', 'Anek Bangla', sans-serif;
+        --bangla-font: 'Hind Siliguri', 'Anek Bangla', sans-serif;
+        --bangla-num-font: 'Hind Siliguri', 'Anek Bangla', sans-serif;
         /* On-screen UI font (Phase 3): Latin from Inter; Bengali glyphs AND Bengali
            digits fall through to Hind Siliguri (Inter has no Bengali coverage).
            The print/result-card fonts stay profile-driven via --bangla-font /
            --bangla-num-font above — do not route those through --ui-font. */
-        --ui-font: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+        --ui-font: 'Inter', 'Hind Siliguri', sans-serif;
       }
 
       [data-theme="indigo"] {
@@ -113,13 +113,6 @@
         color: #f1f5f9 !important;
       }
       
-      @font-face {
-        font-family: 'Kalpurush';
-        src: url('https://fonts.gstatic.com/s/hindsiliguri/v12/ijwTs5OBPpxv18956WySev98Z-7S_A.woff2') format('woff2');
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-      }
       
       body {
         font-family: var(--ui-font);
@@ -136,7 +129,7 @@
       }
 
       .font-mono {
-        font-family: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', monospace !important;
+        font-family: 'Inter', 'Hind Siliguri', monospace !important;
         font-variant-numeric: tabular-nums;
       }
 
@@ -152,35 +145,31 @@
       }
 
       .font-anek {
-        font-family: 'Anek Bangla', 'Noto Sans Bengali', sans-serif !important;
-      }
-
-      .font-noto {
-        font-family: 'Noto Sans Bengali', sans-serif !important;
+        font-family: 'Anek Bangla', 'Hind Siliguri', sans-serif !important;
       }
 
       .font-baloo {
-        font-family: 'Baloo Da 2', 'Noto Sans Bengali', sans-serif !important;
+        font-family: 'Baloo Da 2', 'Hind Siliguri', sans-serif !important;
       }
 
       .font-mina {
-        font-family: 'Mina', 'Noto Sans Bengali', sans-serif !important;
+        font-family: 'Mina', 'Hind Siliguri', sans-serif !important;
       }
 
       .font-atma {
-        font-family: 'Atma', 'Noto Sans Bengali', cursive !important;
+        font-family: 'Atma', 'Hind Siliguri', cursive !important;
       }
 
       .font-galada {
-        font-family: 'Galada', 'Noto Sans Bengali', cursive !important;
+        font-family: 'Galada', 'Hind Siliguri', cursive !important;
       }
 
       .font-alkatra {
-        font-family: 'Alkatra', 'Noto Sans Bengali', cursive !important;
+        font-family: 'Alkatra', 'Hind Siliguri', cursive !important;
       }
 
       .font-serif-bn {
-        font-family: 'Noto Serif Bengali', serif !important;
+        font-family: 'Hind Siliguri', serif !important;
       }
 
       .font-inter {
@@ -188,7 +177,7 @@
       }
 
       .font-hind {
-        font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif !important;
+        font-family: 'Hind Siliguri', sans-serif !important;
       }
 
       /* Notice Board Marquee Animation */

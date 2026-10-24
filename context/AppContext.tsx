@@ -354,9 +354,10 @@ const defaultSchoolProfile: SchoolProfile = {
   resultCardTemplate: 'Classic',
   showHeadmasterSignature: true,
   showGuardianSignature: true,
-  banglaFont: 'Noto Sans Bengali',
-  // Phase 3: Hind Siliguri default — its Bengali digits (১, ২…) stay legible
-  // in print where Noto Sans Bengali's digit forms were hard to read.
+  // Noto Sans Bengali was PURGED from the system (24 Oct 2026): its Bengali
+  // digit forms (especially ১) were hard to read at small sizes on screen
+  // and in print. Hind Siliguri is now the only Bengali font default.
+  banglaFont: 'Hind Siliguri',
   banglaNumberFont: 'Hind Siliguri',
   uiFont: 'Hind Siliguri',
 };

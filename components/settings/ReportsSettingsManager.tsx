@@ -798,7 +798,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                 },
                 {
                   field: 'banglaFont' as const,
-                  fallback: 'Noto Sans Bengali',
+                  fallback: 'Hind Siliguri',
                   label: isBn ? 'ছাপার বাংলা ফন্ট' : 'Print Bangla Font',
                   hint: isBn ? 'রেজাল্ট কার্ড ও মার্কশিটের বাংলা লেখায়' : 'Bangla text on printed result cards & marksheets'
                 },
@@ -822,7 +822,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                         onChange={handleProfileChange}
                         className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
                       >
-                        {['Hind Siliguri', 'Noto Sans Bengali', 'Baloo Da 2', 'Tiro Bangla'].map(f => (
+                        {['Hind Siliguri', 'Baloo Da 2', 'Tiro Bangla'].map(f => (
                           <option key={f} value={f}>{f}</option>
                         ))}
                       </select>
@@ -833,20 +833,20 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
                       <p
                         className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed"
-                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif` }}
+                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', sans-serif` }}
                       >
                         আমার সোনার বাংলা, আমি তোমায় ভালোবাসি।
                       </p>
                       <p
                         className="text-slate-800 dark:text-slate-100"
-                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif` }}
+                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', sans-serif` }}
                       >
                         <span className="text-[26px] leading-none font-bold align-middle">১ ২</span>
                         <span className="text-base font-semibold ml-3">০ ১ ২ ৩ ৪ ৫ ৬ ৭ ৮ ৯</span>
                       </p>
                       <p
                         className="text-xs text-slate-500 dark:text-slate-400"
-                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif` }}
+                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', sans-serif` }}
                       >
                         মোট নম্বর ১২৫ • রোল ২১ • জিপিএ ৫.০০
                       </p>

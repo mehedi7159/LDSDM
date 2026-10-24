@@ -341,19 +341,19 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট পরীক্ষা ও টার্ম' : 'Total Exams'}</div>
             <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.totalExamsCount, 'bn')} টি</div>
-            <div className="text-[10px] text-indigo-300 font-medium truncate">{kpis.activeExamName}</div>
+            <div className="text-[11px] text-indigo-200 font-semibold truncate">{kpis.activeExamName}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মূল্যায়নকৃত নম্বর' : 'Recorded Marks'}</div>
             <div className="text-xl font-black text-indigo-300 mt-0.5">{formatNumber(kpis.totalMarksEntries, 'bn')} টি</div>
-            <div className="text-[10px] text-slate-400 font-medium">{formatNumber(kpis.evaluatedStudentsCount, 'bn')} জন শিক্ষার্থী</div>
+            <div className="text-[11px] text-slate-300 font-semibold">{formatNumber(kpis.evaluatedStudentsCount, 'bn')} জন শিক্ষার্থী</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'প্রাতিষ্ঠানিক পাশের হার' : 'Avg Pass Rate'}</div>
             <div className="text-xl font-black text-emerald-300 mt-0.5">{kpis.passRate}%</div>
-            <div className="text-[10px] text-emerald-400/90 font-medium">{isBn ? 'চলমান পরীক্ষায়' : 'Current Exam'}</div>
+            <div className="text-[11px] text-emerald-300 font-semibold">{isBn ? 'চলমান পরীক্ষায়' : 'Current Exam'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
