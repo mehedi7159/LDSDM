@@ -571,3 +571,5 @@ export const MadrasaReports: React.FC = () => {
     </div>
   );
 };
+
+// Report center live-check marker (24 Oct 2026): figures are live records only.
