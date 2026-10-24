@@ -780,8 +780,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'attendance', title: 'দৈনিক হাজিরা গ্রহণ', subtitle: `${selectedClass}`, icon: CheckSquare, moduleKey: 'teacher_attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'students_dues', title: 'আমার ক্লাসের ছাত্র ও বকেয়া', icon: Users, moduleKey: 'teacher_students_dues', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
         { id: 'marks', title: 'পরীক্ষার নম্বর এন্ট্রি', subtitle: `${selectedClass}`, icon: PenTool, moduleKey: 'teacher_marks', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-        { id: 'routine', title: 'আমার রুটিন', icon: CalendarDays, moduleKey: 'teacher_routine', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
-        { id: 'notices', title: 'মাদরাসা নোটিশ বোর্ড', icon: Bell, moduleKey: 'teacher_notices', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+        { id: 'routine', title: 'আমার রুটিন', icon: CalendarDays, moduleKey: 'teacher_routine', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
       ];
     } else if (userRole === 'cashier') {
       return [
@@ -799,8 +798,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return [
         { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'guardian_portal', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
         { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', icon: CheckSquare, moduleKey: 'guardian_portal', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'guardian_portal', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
-        { id: 'notices', title: 'মাদরাসার নোটিশ ও ডায়রি', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+        { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'guardian_portal', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' }
       ];
     }
     if (userRole === 'principal') {
@@ -808,15 +806,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
         { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-        { id: 'notices', title: 'নোটিশ বোর্ড', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+        { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' }
       ];
     }
     return [
       { id: 'students', title: 'নতুন শিক্ষার্থী ভর্তি ও তালিকা', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
       { id: 'id_cards', title: 'আইডি কার্ড ও সনদপত্র', icon: CreditCard, moduleKey: 'student_id_cards', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
-      { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-      { id: 'notices', title: 'নোটিশ বোর্ড ম্যানেজমেন্ট', icon: Bell, moduleKey: 'notice_board', chip: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300' }
+      { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' }
     ];
   }, [userRole, selectedClass]);
 
@@ -3819,8 +3815,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <p className="text-[11px] font-bold uppercase tracking-wider text-white/70 mt-5 mb-2.5">
               {isEn ? 'Quick actions' : 'দ্রুত কাজ'}
             </p>
-            <div className="grid grid-cols-4 gap-2">
-              {roleActions.map(a => {
+            <div className={`grid ${roleActions.filter(a => a.id !== 'notices').length === 3 ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
+              {roleActions.filter(a => a.id !== 'notices').map(a => {
                 const TileIcon = a.icon;
                 return (
                   <button

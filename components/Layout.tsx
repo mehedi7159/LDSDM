@@ -58,8 +58,6 @@ import {
   Boxes,
   HeartPulse,
   Palette,
-  Sun,
-  Moon,
   Bot
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -162,7 +160,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   };
 
   // Theme & Mobile Navigation Sheet states
-  const { darkMode, toggleDarkMode } = useTheme();
+  useTheme();
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
@@ -1207,26 +1205,32 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
           {/* Quick Nav Icon Buttons with tooltips */}
           <div className="flex flex-col items-center gap-1.5 w-full px-2">
-            {[
-              // First entry is the user's home: 'dashboard' for admin-tier,
-              // the role home for non-admin roles. The other entries use
-              // REAL tab ids ('routine'/'notices' were bogus ids that set a
-              // non-existent tab and fell through to the Dashboard) and are
-              // filtered to tabs this role can actually open.
-              { id: homeTab, label: homeTab === 'dashboard' ? (language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : (language === 'bn' ? 'হোম' : 'Home'), icon: homeTab === 'dashboard' ? LayoutDashboard : Home },
-              { id: 'students', label: language === 'bn' ? 'শিক্ষার্থী' : 'Students', icon: Users },
-              { id: 'attendance', label: language === 'bn' ? 'হাজিরা' : 'Attendance', icon: UserCheck },
-              { id: 'results', label: language === 'bn' ? 'ফলাফল' : 'Results', icon: Award },
-              { id: 'finance', label: language === 'bn' ? 'হিসাব' : 'Finance', icon: Wallet },
-              { id: 'class_routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
-              { id: 'notice_board', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
-              { id: 'settings', label: language === 'bn' ? 'সেটিংস' : 'Settings', icon: Settings }
-            ].filter(item => item.id === homeTab || canOpenRailTab(item.id)).map(item => {
+            {(() => {
+              const railItems = [
+                // First entry is the user's home: 'dashboard' for admin-tier,
+                // the role home for non-admin roles. The other entries use
+                // REAL tab ids and are filtered to tabs this role can actually open.
+                { id: homeTab, label: homeTab === 'dashboard' ? (language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : (language === 'bn' ? 'হোম' : 'Home'), icon: homeTab === 'dashboard' ? LayoutDashboard : Home },
+                { id: 'students', label: language === 'bn' ? 'শিক্ষার্থী' : 'Students', icon: Users },
+                { id: 'attendance', label: language === 'bn' ? 'হাজিরা' : 'Attendance', icon: UserCheck },
+                { id: 'results', label: language === 'bn' ? 'ফলাফল' : 'Results', icon: Award },
+                { id: 'finance', label: language === 'bn' ? 'হিসাব' : 'Finance', icon: Wallet },
+                { id: 'class_routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
+                { id: 'notice_board', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
+                { id: 'settings', label: language === 'bn' ? 'সেটিংস' : 'Settings', icon: Settings }
+              ];
+              const seen = new Set<string>();
+              return railItems.filter(item => {
+                if (seen.has(item.id)) return false;
+                seen.add(item.id);
+                return item.id === homeTab || canOpenRailTab(item.id);
+              });
+            })().map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
                 <button
-                  key={item.id}
+                  key={`rail-nav-${item.id}`}
                   type="button"
                   onClick={() => handleTabClick(item.id)}
                   title={item.label}
@@ -1271,16 +1275,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           >
             <Palette size={18} />
           </button>
-
-          {/* Dark Mode Button */}
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            title={darkMode ? (language === 'bn' ? 'লাইট মোড' : 'Light Mode') : (language === 'bn' ? 'ডার্ক মোড' : 'Dark Mode')}
-            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
-          >
-            {darkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
-          </button>
         </div>
       </aside>
 
@@ -1324,16 +1318,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               >
                 <Palette size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span className="hidden lg:inline">{language === 'bn' ? 'থিম' : 'Theme'}</span>
-              </button>
-
-              {/* Dark Mode toggle */}
-              <button
-                type="button"
-                onClick={toggleDarkMode}
-                className="flex items-center justify-center p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px] min-w-[36px]"
-                title={darkMode ? (language === 'bn' ? 'লাইট মোড' : 'Light Mode') : (language === 'bn' ? 'ডার্ক মোড' : 'Dark Mode')}
-              >
-                {darkMode ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-slate-600 dark:text-slate-300" />}
               </button>
 
               {/* PWA In-App Install Button */}

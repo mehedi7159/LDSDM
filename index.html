@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="মাদ্রাসা" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
@@ -22,10 +22,10 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
+              sans: ['Inter', 'Anek Bangla', 'sans-serif'],
               inter: ['Inter', 'sans-serif'],
-              hind: ['Hind Siliguri', 'sans-serif'],
-              mono: ['Inter', 'Hind Siliguri', 'monospace']
+              bangla: ['Anek Bangla', 'sans-serif'],
+              mono: ['Inter', 'Anek Bangla', 'monospace']
             },
             boxShadow: {
               'soft': '0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.02)',
@@ -60,13 +60,11 @@
         --color-brand-hover: #4338ca;
         --color-brand-light: #eef2ff;
         --color-brand-ring: #6366f1;
-        --bangla-font: 'Hind Siliguri', 'Anek Bangla', sans-serif;
-        --bangla-num-font: 'Hind Siliguri', 'Anek Bangla', sans-serif;
-        /* On-screen UI font (Phase 3): Latin from Inter; Bengali glyphs AND Bengali
-           digits fall through to Hind Siliguri (Inter has no Bengali coverage).
-           The print/result-card fonts stay profile-driven via --bangla-font /
-           --bangla-num-font above — do not route those through --ui-font. */
-        --ui-font: 'Inter', 'Hind Siliguri', sans-serif;
+        --bangla-font: 'Anek Bangla', sans-serif;
+        --bangla-num-font: 'Anek Bangla', sans-serif;
+        /* On-screen UI font: Latin from Inter; Bengali glyphs and Bengali
+           digits render with Anek Bangla (crystal-clear, never clips numbers). */
+        --ui-font: 'Inter', 'Anek Bangla', sans-serif;
       }
 
       [data-theme="indigo"] {
@@ -129,7 +127,7 @@
       }
 
       .font-mono {
-        font-family: 'Inter', 'Hind Siliguri', monospace !important;
+        font-family: 'Inter', 'Anek Bangla', monospace !important;
         font-variant-numeric: tabular-nums;
       }
 
@@ -145,31 +143,31 @@
       }
 
       .font-anek {
-        font-family: 'Anek Bangla', 'Hind Siliguri', sans-serif !important;
+        font-family: 'Anek Bangla', sans-serif !important;
       }
 
       .font-baloo {
-        font-family: 'Baloo Da 2', 'Hind Siliguri', sans-serif !important;
+        font-family: 'Baloo Da 2', 'Anek Bangla', sans-serif !important;
       }
 
       .font-mina {
-        font-family: 'Mina', 'Hind Siliguri', sans-serif !important;
+        font-family: 'Mina', 'Anek Bangla', sans-serif !important;
       }
 
       .font-atma {
-        font-family: 'Atma', 'Hind Siliguri', cursive !important;
+        font-family: 'Atma', 'Anek Bangla', cursive !important;
       }
 
       .font-galada {
-        font-family: 'Galada', 'Hind Siliguri', cursive !important;
+        font-family: 'Galada', 'Anek Bangla', cursive !important;
       }
 
       .font-alkatra {
-        font-family: 'Alkatra', 'Hind Siliguri', cursive !important;
+        font-family: 'Alkatra', 'Anek Bangla', cursive !important;
       }
 
       .font-serif-bn {
-        font-family: 'Hind Siliguri', serif !important;
+        font-family: 'Tiro Bangla', 'Anek Bangla', serif !important;
       }
 
       .font-inter {
@@ -177,7 +175,7 @@
       }
 
       .font-hind {
-        font-family: 'Hind Siliguri', sans-serif !important;
+        font-family: 'Anek Bangla', sans-serif !important;
       }
 
       /* Notice Board Marquee Animation */

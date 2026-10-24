@@ -511,12 +511,12 @@ export const MadrasaReports: React.FC = () => {
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4">{isBn ? 'হাজিরা — এই মাসে' : 'Attendance — This Month'}</h4>
             <div className="space-y-2.5">
               {classAttendanceMonth.map(c => (
-                <div key={c.name} className="flex items-center gap-2 text-xs">
-                  <span className="w-20 shrink-0 font-bold text-slate-700 dark:text-slate-200 truncate">{c.name}</span>
+                <div key={c.name} className="flex items-center gap-2 text-xs min-h-[22px]">
+                  <span className="w-16 sm:w-20 shrink-0 font-bold text-slate-700 dark:text-slate-200 truncate" title={c.name}>{c.name}</span>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div className={`h-full rounded-full ${c.pct === null ? '' : c.pct >= 85 ? 'bg-emerald-500' : c.pct >= 70 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${c.pct ?? 0}%` }} />
                   </div>
-                  <span className="w-10 text-right font-black text-slate-900 dark:text-white">
+                  <span className="shrink-0 min-w-[64px] text-right font-black text-slate-900 dark:text-white whitespace-nowrap text-[11px] sm:text-xs">
                     {c.pct === null ? (isBn ? 'রেকর্ড নেই' : 'No record') : `${num(c.pct)}%`}
                   </span>
                 </div>
@@ -532,12 +532,12 @@ export const MadrasaReports: React.FC = () => {
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4">{isBn ? 'ফলাফল — সাম্প্রতিক পরীক্ষা' : 'Results — Latest Exam'}</h4>
             <div className="space-y-2.5">
               {classResults.map(c => (
-                <div key={c.name} className="flex items-center gap-2 text-xs">
-                  <span className="w-20 shrink-0 font-bold text-slate-700 dark:text-slate-200 truncate">{c.name}</span>
+                <div key={c.name} className="flex items-center gap-2 text-xs min-h-[22px]">
+                  <span className="w-16 sm:w-20 shrink-0 font-bold text-slate-700 dark:text-slate-200 truncate" title={c.name}>{c.name}</span>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div className={`h-full rounded-full ${c.passRate === null ? '' : c.passRate >= 80 ? 'bg-emerald-500' : c.passRate >= 60 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${c.passRate ?? 0}%` }} />
                   </div>
-                  <span className="w-10 text-right font-black text-slate-900 dark:text-white">
+                  <span className="shrink-0 min-w-[64px] text-right font-black text-slate-900 dark:text-white whitespace-nowrap text-[11px] sm:text-xs">
                     {c.passRate === null ? (isBn ? 'নম্বর নেই' : 'No marks') : `${num(c.passRate)}%`}
                   </span>
                 </div>
@@ -553,12 +553,12 @@ export const MadrasaReports: React.FC = () => {
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4">{isBn ? 'বকেয়া — ক্লাসভিত্তিক' : 'Dues — By Class'}</h4>
             <div className="space-y-2.5">
               {classDues.map(c => (
-                <div key={c.name} className="flex items-center gap-2 text-xs">
-                  <span className="w-20 shrink-0 font-bold text-slate-700 dark:text-slate-200 truncate">{c.name}</span>
+                <div key={c.name} className="flex items-center gap-2 text-xs min-h-[22px]">
+                  <span className="w-16 sm:w-20 shrink-0 font-bold text-slate-700 dark:text-slate-200 truncate" title={c.name}>{c.name}</span>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div className="h-full bg-rose-400 rounded-full" style={{ width: `${Math.round((c.totalDue / classDueMax) * 100)}%` }} />
                   </div>
-                  <span className="w-16 text-right font-black text-slate-900 dark:text-white">{money(c.totalDue)}</span>
+                  <span className="shrink-0 min-w-[64px] text-right font-black text-slate-900 dark:text-white whitespace-nowrap text-[11px] sm:text-xs">{money(c.totalDue)}</span>
                 </div>
               ))}
               {classDues.length === 0 && (

@@ -105,14 +105,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return 'indigo';
   });
 
-  const [darkMode, setDarkModeState] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ldsdm_dark_mode');
-      if (saved !== null) return saved === 'true';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return false;
-  });
+  // Permanently locked to light mode
+  const darkMode = false;
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -128,27 +122,27 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('ldsdm_accent_theme', accentTheme);
   }, [accentTheme]);
 
-  // Apply dark mode class to document root
+  // Permanently remove dark mode class from document root and clean storage
   useEffect(() => {
     const root = document.documentElement;
-    if (darkMode) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
+    root.classList.remove('dark');
+    try {
+      localStorage.removeItem('ldsdm_dark_mode');
+    } catch {
+      // ignore
     }
-    localStorage.setItem('ldsdm_dark_mode', String(darkMode));
-  }, [darkMode]);
+  }, []);
 
   const setAccentTheme = useCallback((id: AccentThemeId) => {
     setAccentThemeState(id);
   }, []);
 
-  const setDarkMode = useCallback((dark: boolean) => {
-    setDarkModeState(dark);
+  const setDarkMode = useCallback((_dark: boolean) => {
+    // Night mode permanently disabled
   }, []);
 
   const toggleDarkMode = useCallback(() => {
-    setDarkModeState(prev => !prev);
+    // Night mode permanently disabled
   }, []);
 
   const removeToast = useCallback((id: string) => {

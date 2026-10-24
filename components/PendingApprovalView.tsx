@@ -10,8 +10,8 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({ onLogo
   const { authUser, currentMember, schoolProfile, language } = useApp();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-indigo-50 to-slate-200 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80 animate-in fade-in zoom-in-95 duration-200">
         {/* Header decoration */}
         <div className={`p-6 text-white text-center relative overflow-hidden ${
           currentMember?.status === 'suspended'

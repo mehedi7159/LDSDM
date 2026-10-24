@@ -792,24 +792,25 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               {([
                 {
                   field: 'uiFont' as const,
-                  fallback: 'Hind Siliguri',
+                  fallback: 'Anek Bangla',
                   label: isBn ? 'স্ক্রিনের UI ফন্ট' : 'On-screen UI Font',
                   hint: isBn ? 'ড্যাশবোর্ড, মেনু, মোবাইল অ্যাপ — পুরো সিস্টেমের স্ক্রিনে' : 'Dashboard, menus and the mobile app — the whole on-screen system'
                 },
                 {
                   field: 'banglaFont' as const,
-                  fallback: 'Hind Siliguri',
+                  fallback: 'Anek Bangla',
                   label: isBn ? 'ছাপার বাংলা ফন্ট' : 'Print Bangla Font',
                   hint: isBn ? 'রেজাল্ট কার্ড ও মার্কশিটের বাংলা লেখায়' : 'Bangla text on printed result cards & marksheets'
                 },
                 {
                   field: 'banglaNumberFont' as const,
-                  fallback: 'Hind Siliguri',
+                  fallback: 'Anek Bangla',
                   label: isBn ? 'ছাপার সংখ্যার ফন্ট' : 'Print Number Font',
                   hint: isBn ? 'রেজাল্ট কার্ড ও মার্কশিটের নম্বর/সংখ্যায়' : 'Digits & marks on printed result cards & marksheets'
                 }
               ]).map(({ field, fallback, label, hint }) => {
-                const selected = profileData[field] || fallback;
+                const rawVal = profileData[field];
+                const selected = (!rawVal || rawVal === 'Hind Siliguri' || rawVal.includes('Noto')) ? fallback : rawVal;
                 return (
                   <div key={field} className="space-y-2.5">
                     <div>
@@ -822,7 +823,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                         onChange={handleProfileChange}
                         className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
                       >
-                        {['Hind Siliguri', 'Baloo Da 2', 'Tiro Bangla'].map(f => (
+                        {['Anek Bangla', 'Baloo Da 2', 'Tiro Bangla'].map(f => (
                           <option key={f} value={f}>{f}</option>
                         ))}
                       </select>
@@ -833,20 +834,20 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
                       <p
                         className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed"
-                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', sans-serif` }}
+                        style={{ fontFamily: `'${selected}', 'Anek Bangla', sans-serif` }}
                       >
                         আমার সোনার বাংলা, আমি তোমায় ভালোবাসি।
                       </p>
                       <p
                         className="text-slate-800 dark:text-slate-100"
-                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', sans-serif` }}
+                        style={{ fontFamily: `'${selected}', 'Anek Bangla', sans-serif` }}
                       >
                         <span className="text-[26px] leading-none font-bold align-middle">১ ২</span>
                         <span className="text-base font-semibold ml-3">০ ১ ২ ৩ ৪ ৫ ৬ ৭ ৮ ৯</span>
                       </p>
                       <p
                         className="text-xs text-slate-500 dark:text-slate-400"
-                        style={{ fontFamily: `'${selected}', 'Hind Siliguri', sans-serif` }}
+                        style={{ fontFamily: `'${selected}', 'Anek Bangla', sans-serif` }}
                       >
                         মোট নম্বর ১২৫ • রোল ২১ • জিপিএ ৫.০০
                       </p>

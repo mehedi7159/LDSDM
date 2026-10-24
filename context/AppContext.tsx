@@ -354,12 +354,10 @@ const defaultSchoolProfile: SchoolProfile = {
   resultCardTemplate: 'Classic',
   showHeadmasterSignature: true,
   showGuardianSignature: true,
-  // Noto Sans Bengali was PURGED from the system (24 Oct 2026): its Bengali
-  // digit forms (especially ১) were hard to read at small sizes on screen
-  // and in print. Hind Siliguri is now the only Bengali font default.
-  banglaFont: 'Hind Siliguri',
-  banglaNumberFont: 'Hind Siliguri',
-  uiFont: 'Hind Siliguri',
+  // Anek Bangla is the system-wide Bengali font: numbers never clip and remain crystal-clear.
+  banglaFont: 'Anek Bangla',
+  banglaNumberFont: 'Anek Bangla',
+  uiFont: 'Anek Bangla',
 };
 
 const defaultClasses: SchoolClass[] = [
@@ -419,7 +417,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfile>(() => {
     const saved = localStorage.getItem('schoolProfile');
-    return saved ? JSON.parse(saved) : defaultSchoolProfile;
+    const raw = saved ? JSON.parse(saved) : defaultSchoolProfile;
+    return {
+      ...raw,
+      banglaFont: (!raw.banglaFont || raw.banglaFont === 'Hind Siliguri' || raw.banglaFont.includes('Noto')) ? 'Anek Bangla' : raw.banglaFont,
+      banglaNumberFont: (!raw.banglaNumberFont || raw.banglaNumberFont === 'Hind Siliguri' || raw.banglaNumberFont.includes('Noto')) ? 'Anek Bangla' : raw.banglaNumberFont,
+      uiFont: (!raw.uiFont || raw.uiFont === 'Hind Siliguri' || raw.uiFont.includes('Noto')) ? 'Anek Bangla' : raw.uiFont,
+    };
   });
 
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => {

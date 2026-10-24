@@ -11,8 +11,6 @@ import {
   Settings, 
   ShieldCheck, 
   Palette, 
-  Moon, 
-  Sun,
   Languages,
   ChevronRight,
   LogOut,
@@ -37,7 +35,7 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
   activeTab
 }) => {
   const { language, setLanguage, logoutAdmin, currentUser, isOwnerAdmin, isSuperAdmin } = useApp();
-  const { accentTheme, setAccentTheme, darkMode, toggleDarkMode } = useTheme();
+  const { accentTheme, setAccentTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
 
   if (!isOpen) return null;
@@ -238,24 +236,15 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
               ))}
             </div>
 
-            {/* Mode & Language toggles */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={toggleDarkMode}
-                className="min-h-[44px] p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition cursor-pointer"
-              >
-                {darkMode ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} />}
-                <span>{darkMode ? (isBn ? 'লাইট মোড' : 'Light Mode') : (isBn ? 'ডার্ক মোড' : 'Dark Mode')}</span>
-              </button>
-
+            {/* Language toggle */}
+            <div>
               <button
                 type="button"
                 onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')}
-                className="min-h-[44px] p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition cursor-pointer"
+                className="w-full min-h-[44px] p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <Languages size={15} className="text-indigo-600 dark:text-indigo-400" />
-                <span>{language === 'en' ? 'বাংলা' : 'English'}</span>
+                <span>{language === 'en' ? 'বাংলা সংস্করণ' : 'English Version'}</span>
               </button>
             </div>
           </div>

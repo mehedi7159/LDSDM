@@ -384,20 +384,19 @@ const AppContent = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    // Noto Sans Bengali is purged system-wide (24 Oct 2026): any profile
-    // saved earlier with it migrates to Hind Siliguri here, so the purged
-    // font can never come back through an old saved value.
-    const purgeNoto = (v?: string, fallback = 'Hind Siliguri') =>
-      !v || v === 'Noto Sans Bengali' || v === 'Noto Serif Bengali' ? fallback : v;
-    const font = purgeNoto(schoolProfile.banglaFont);
-    const numFont = purgeNoto(schoolProfile.banglaNumberFont);
-    const uiFont = purgeNoto(schoolProfile.uiFont);
+    // Hind Siliguri and Noto fonts were purged system-wide: digits in Hind Siliguri
+    // clipped vertically and were illegible. Anek Bangla is the clean, unclipped default.
+    const sanitizeFont = (v?: string, fallback = 'Anek Bangla') =>
+      !v || v === 'Hind Siliguri' || v === 'Noto Sans Bengali' || v === 'Noto Serif Bengali' ? fallback : v;
+    const font = sanitizeFont(schoolProfile.banglaFont);
+    const numFont = sanitizeFont(schoolProfile.banglaNumberFont);
+    const uiFont = sanitizeFont(schoolProfile.uiFont);
 
-    root.style.setProperty('--bangla-font', `'${font}', 'Hind Siliguri', 'Anek Bangla', sans-serif`);
-    root.style.setProperty('--bangla-num-font', `'${numFont}', 'Hind Siliguri', 'Anek Bangla', sans-serif`);
+    root.style.setProperty('--bangla-font', `'${font}', 'Anek Bangla', sans-serif`);
+    root.style.setProperty('--bangla-num-font', `'${numFont}', 'Anek Bangla', sans-serif`);
     // On-screen UI font: Inter keeps Latin text; Bengali glyphs + Bengali
-    // digits render in the chosen UI font (Hind Siliguri by default).
-    root.style.setProperty('--ui-font', `'Inter', '${uiFont}', 'Hind Siliguri', sans-serif`);
+    // digits render in the chosen UI font (Anek Bangla by default, numbers never clip).
+    root.style.setProperty('--ui-font', `'Inter', '${uiFont}', 'Anek Bangla', sans-serif`);
   }, [schoolProfile.banglaFont, schoolProfile.banglaNumberFont, schoolProfile.uiFont]);
 
 

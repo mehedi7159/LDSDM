@@ -1,5 +1,5 @@
 import React from 'react';
-import { Palette, Check, Sun, Moon, X, Sparkles } from 'lucide-react';
+import { Palette, Check, X } from 'lucide-react';
 import { useTheme, ACCENT_THEMES, AccentThemeId } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
 
@@ -9,7 +9,7 @@ interface ThemeSwitcherModalProps {
 }
 
 export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, onClose }) => {
-  const { accentTheme, setAccentTheme, darkMode, toggleDarkMode, showSuccess } = useTheme();
+  const { accentTheme, setAccentTheme, showSuccess } = useTheme();
   const { language } = useApp();
 
   if (!isOpen) return null;
@@ -103,34 +103,6 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
                 </button>
               );
             })}
-          </div>
-        </div>
-
-        {/* Dark Mode Toggle Card */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              {darkMode ? <Moon size={18} className="text-indigo-400" /> : <Sun size={18} className="text-amber-500" />}
-              <div>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white block">
-                  {darkMode ? (isBn ? 'ডার্ক মোড সক্রিয়' : 'Dark Mode Enabled') : (isBn ? 'লাইট মোড সক্রিয়' : 'Light Mode Enabled')}
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {isBn ? 'সফট শ্যাডো ও হাই কনট্রাস্ট' : 'Soft layered shadows & high contrast'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={toggleDarkMode}
-              className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                darkMode
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white border border-slate-300 text-slate-700 shadow-xs'
-              }`}
-            >
-              {darkMode ? (isBn ? 'সুইচ লাইট' : 'To Light') : (isBn ? 'সুইচ ডার্ক' : 'To Dark')}
-            </button>
           </div>
         </div>
 
