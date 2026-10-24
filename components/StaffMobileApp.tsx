@@ -13,6 +13,7 @@ import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMes
 import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod } from '../types';
 import {
   Home,
+  LayoutGrid,
   CheckSquare,
   PenTool,
   Users,
@@ -200,6 +201,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     homeOverride && availableHomes.includes(homeOverride) ? homeOverride : primaryHome;
 
   const [activeBottomNav, setActiveBottomNav] = useState<string>('home');
+  const [moreOpen, setMoreOpen] = useState(false);
   const [activeSubModule, setActiveSubModule] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -551,16 +553,19 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     ];
   }, [userRole, selectedClass]);
 
-  // Bottom Nav items per Role (+ Profile)
+  // Bottom Nav items per Role — Tutor App pattern: the first 4 tabs are
+  // this role's own targets (unchanged), the 5th is "More", which opens
+  // a bottom sheet with the role's remaining modules. The profile
+  // screen moved into the More sheet (it is still the same screen).
   const bottomNavItems = useMemo(() => {
-    const profile = { id: 'profile', label: 'প্রোফাইল', icon: User, targetModule: null as string | null };
+    const more = { id: 'more', label: 'আরও', icon: LayoutGrid, targetModule: null as string | null };
     if (userRole === 'teacher') {
       return [
         { id: 'home', label: 'হোম', icon: Home, targetModule: null as string | null },
         { id: 'action1', label: 'হাজিরা', icon: CheckSquare, targetModule: 'teacher_attendance' as string | null },
         { id: 'action2', label: 'বকেয়া', icon: DollarSign, targetModule: 'teacher_students_dues' as string | null },
         { id: 'action3', label: 'নম্বর', icon: PenTool, targetModule: 'teacher_marks' as string | null },
-        profile
+        more
       ];
     } else if (userRole === 'cashier') {
       return [
@@ -568,7 +573,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'action1', label: 'ফি আদায়', icon: Wallet, targetModule: 'cashier_collect' as string | null },
         { id: 'action2', label: 'রিপোর্ট', icon: FileSpreadsheet, targetModule: 'finance_reports' as string | null },
         { id: 'action3', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
-        profile
+        more
       ];
     } else if (userRole === 'parent') {
       // Bottom nav opens the guardian portal (own children only) on
@@ -578,7 +583,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'action1', label: 'ফলাফল', icon: Award, targetModule: 'guardian_portal' as string | null },
         { id: 'action2', label: 'হাজিরা', icon: CheckSquare, targetModule: 'guardian_portal' as string | null },
         { id: 'action3', label: 'ফি', icon: Wallet, targetModule: 'guardian_portal' as string | null },
-        profile
+        more
       ];
     }
     return [
@@ -586,9 +591,57 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       { id: 'action1', label: 'ছাত্র', icon: Users, targetModule: 'students' as string | null },
       { id: 'action2', label: 'আইডি কার্ড', icon: CreditCard, targetModule: 'student_id_cards' as string | null },
       { id: 'action3', label: 'নোটিশ', icon: Bell, targetModule: 'notice_board' as string | null },
-      profile
+      more
     ];
   }, [userRole]);
+
+  // "More" sheet items per role — ONLY modules this app already routes
+  // to for this role (the roleActions leftovers + the home report
+  // destinations) plus the profile screen. No invented entries. A badge
+  // appears only where a real count already exists (unread notices).
+  const moreItems = useMemo(() => {
+    type MoreItem = { id: string; label: string; icon: any; moduleKey: string | null; badge?: number };
+    const profileItem: MoreItem = { id: 'profile', label: 'প্রোফাইল', icon: User, moduleKey: null };
+    const noticeBadge = notices.length > 0 ? notices.length : undefined;
+    if (userRole === 'teacher') {
+      return [
+        { id: 'routine', label: 'রুটিন', icon: CalendarDays, moduleKey: 'teacher_routine' },
+        { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'teacher_notices', badge: noticeBadge },
+        { id: 'report_attendance', label: 'হাজিরা রিপোর্ট', icon: BarChart3, moduleKey: 'teacher_report_attendance' },
+        { id: 'report_result', label: 'ফলাফল রিপোর্ট', icon: Award, moduleKey: 'teacher_report_result' },
+        profileItem
+      ] as MoreItem[];
+    }
+    if (userRole === 'cashier') {
+      return [
+        { id: 'finance_expense', label: 'খরচ এন্ট্রি', icon: Receipt, moduleKey: 'finance' },
+        profileItem
+      ] as MoreItem[];
+    }
+    if (userRole === 'parent') {
+      return [
+        { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'notice_board', badge: noticeBadge },
+        profileItem
+      ] as MoreItem[];
+    }
+    return [
+      { id: 'attendance', label: 'হাজিরা', icon: CheckSquare, moduleKey: 'attendance' },
+      profileItem
+    ] as MoreItem[];
+  }, [userRole, notices.length]);
+
+  // The More button counts as active when the open screen is one of the
+  // More-sheet destinations (or the profile screen reached from it).
+  const moreActive = showProfile ||
+    (activeSubModule !== null && moreItems.some(m => m.moduleKey !== null && m.moduleKey === activeSubModule));
+
+  // Lock body scroll while the More sheet is open (Tutor pattern).
+  useEffect(() => {
+    if (!moreOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [moreOpen]);
 
   const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result', 'teacher_routine', 'cashier_collect'];
 
@@ -604,6 +657,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   const handleBottomNavClick = (nav: typeof bottomNavItems[0]) => {
     setActiveBottomNav(nav.id);
+    if (nav.id === 'more') {
+      setMoreOpen(true);
+      return;
+    }
     if (nav.id === 'profile') {
       setActiveSubModule(null);
       setShowProfile(true);
@@ -624,6 +681,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const goHome = () => {
     setActiveSubModule(null);
     setShowProfile(false);
+    setMoreOpen(false);
     setActiveBottomNav('home');
   };
 
@@ -977,34 +1035,126 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     `}</style>
   );
 
+  // Bottom nav — Tutor App pattern: white/95 blur bar, top border,
+  // icon + label, active item in accent colour with a small dot below,
+  // safe-area padding. The 5th tab is "More" (bottom sheet), not profile.
   const BottomNav = (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#161c2e]/95 backdrop-blur-xl border-t border-[#e8ecf4] dark:border-white/5 shadow-[0_-4px_24px_rgba(30,36,51,0.06)]">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#161c2e]/95 backdrop-blur-xl border-t border-[#e8ecf4] dark:border-white/5 shadow-[0_-8px_24px_-12px_rgba(30,36,51,0.18)]"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       {brandCss}
-      <div className="grid grid-cols-5 h-[68px] px-1">
+      <div className="grid grid-cols-5 h-[68px]">
         {bottomNavItems.map(item => {
           const Icon = item.icon;
           const isActive =
             (item.id === 'home' && !activeSubModule && !showProfile) ||
-            (item.id === 'profile' && showProfile) ||
+            (item.id === 'more' && moreActive) ||
             (item.targetModule !== null && item.targetModule === activeSubModule);
           return (
             <button
               key={item.id}
               onClick={() => handleBottomNavClick(item)}
+              aria-label={item.label}
               className="relative flex flex-col items-center justify-center gap-1 min-h-[56px] cursor-pointer"
             >
-              <span className={`flex items-center justify-center w-12 h-[30px] rounded-full transition-all ${isActive ? 'brand-soft' : ''}`}>
-                <Icon size={21} className={isActive ? 'brand-text' : 'text-[#8a93a8] dark:text-slate-500'} />
-              </span>
-              <span className={`text-[11px] leading-none ${isActive ? 'font-bold brand-text' : 'font-medium text-[#8a93a8] dark:text-slate-500'}`}>
+              <Icon
+                size={22}
+                strokeWidth={isActive ? 2.4 : 2}
+                className={isActive ? 'brand-text' : 'text-[#8a93a8] dark:text-slate-500'}
+              />
+              <span className={`text-[11px] font-semibold leading-none ${isActive ? 'brand-text' : 'text-[#8a93a8] dark:text-slate-500'}`}>
                 {item.label}
               </span>
               <span className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full brand-bg transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`} />
+              {/* Teacher dues tab: real count of students with dues in
+                  the teacher's class (Tutor's Fees badge equivalent). */}
+              {item.id === 'action2' && userRole === 'teacher' && classDuesSummary.dueStudentsCount > 0 && (
+                <span className="absolute top-1 right-1/2 translate-x-5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#dc2626] text-white text-[10px] font-bold flex items-center justify-center">
+                  {classDuesSummary.dueStudentsCount > 99 ? '99+' : toBn(classDuesSummary.dueStudentsCount)}
+                </span>
+              )}
+              {/* More dot: shown only when a More-sheet tile carries a
+                  real badge (unread notices) and More is not active. */}
+              {item.id === 'more' && !moreActive && notices.length > 0 && (
+                <span className="absolute top-2 right-1/2 translate-x-6 w-2.5 h-2.5 rounded-full bg-[#dc2626]" />
+              )}
             </button>
           );
         })}
       </div>
     </nav>
+  );
+
+  // "More" bottom sheet — Tutor App pattern: translucent backdrop,
+  // sheet slides up from the bottom, 2-column tile grid. Tiles only
+  // open modules this role already uses (see moreItems).
+  const MoreSheet = moreOpen && (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45"
+      onClick={() => setMoreOpen(false)}
+    >
+      <div
+        className="w-full max-h-[78vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-[#161c2e] border-t border-[#e8ecf4] dark:border-white/10 p-5"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-label="আরও"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-black">আরও</h2>
+          <button
+            onClick={() => setMoreOpen(false)}
+            aria-label="বন্ধ করুন"
+            className="w-11 h-11 rounded-xl bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
+          {moreItems.map(item => {
+            const ItemIcon = item.icon;
+            const isActive = item.moduleKey !== null ? item.moduleKey === activeSubModule : showProfile;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setMoreOpen(false);
+                  if (item.moduleKey === null) {
+                    setActiveSubModule(null);
+                    setShowProfile(true);
+                  } else {
+                    handleOpenModule(item.moduleKey);
+                  }
+                }}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex items-center gap-3 p-3.5 rounded-2xl min-h-[60px] text-left cursor-pointer active:scale-[0.98] transition-all ${
+                  isActive
+                    ? 'brand-soft'
+                    : 'bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10'
+                }`}
+              >
+                <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isActive
+                    ? 'brand-grad text-white'
+                    : 'bg-white dark:bg-[#161c2e] brand-text border border-[#e8ecf4] dark:border-white/10'
+                }`}>
+                  <ItemIcon size={19} />
+                </span>
+                <span className={`text-[13.5px] font-semibold flex-1 ${isActive ? 'brand-text' : ''}`}>
+                  {item.label}
+                </span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#dc2626] text-white text-[11px] font-bold flex items-center justify-center">
+                    {item.badge > 99 ? '99+' : toBn(item.badge)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 
   const successToast = saveSuccessNotice && (
@@ -1992,6 +2142,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         </main>
 
         {BottomNav}
+        {MoreSheet}
       </div>
     );
   }
@@ -2138,6 +2289,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         </main>
 
         {BottomNav}
+        {MoreSheet}
         <OfflineIndicator />
       </div>
     );
@@ -2227,14 +2379,18 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       {successToast}
 
       <main className="flex-1 p-4 space-y-4 anim-stagger">
-        {/* HERO — gradient greeting + quick actions inside (Tutor App pattern) */}
-        <section className="relative overflow-hidden rounded-[28px] brand-grad text-white p-5 shadow-xl">
+        {/* HERO — gradient greeting + quick actions inside (Tutor App pattern:
+            greeting, "Today at a glance", QUICK ACTIONS row) */}
+        <section className="relative overflow-hidden rounded-3xl brand-grad text-white p-5 shadow-xl">
           <div className="absolute w-40 h-40 -top-10 -right-10 rounded-full bg-white/[0.14] pointer-events-none" />
           <div className="absolute w-24 h-24 bottom-2 right-32 rounded-full bg-white/[0.10] pointer-events-none" />
           <div className="relative">
             <p className="text-[13px] font-medium text-white/85">{todayGreeting.fullDateText}</p>
             <h2 className="text-[22px] font-black mt-0.5 leading-snug">{roleTitleBengali[userRole]}</h2>
             <p className="text-[13px] text-white/80 mt-0.5">{schoolProfile.nameBn || schoolProfile.name}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-white/70 mt-3">
+              {isEn ? 'Today at a glance' : 'আজকের সারসংক্ষেপ'}
+            </p>
 
             <div className="flex flex-wrap gap-1.5 mt-3">
               {roleBadges.map((b, i) => (
@@ -2655,6 +2811,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       </main>
 
       {BottomNav}
+      {MoreSheet}
       <OfflineIndicator />
     </div>
   );
