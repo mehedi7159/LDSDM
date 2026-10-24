@@ -9,7 +9,7 @@ import { OfflineIndicator } from './ui/OfflineIndicator';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
-import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, StudentDueProfile } from '../services/studentDuesService';
+import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, StudentDueProfile, FeeAging } from '../services/studentDuesService';
 import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod } from '../types';
 import {
   Home,
@@ -75,6 +75,15 @@ interface StaffMobileAppProps {
 
 const cardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-[24px] shadow-[0_2px_12px_rgba(30,36,51,0.05)]';
 const softBg = 'bg-[#f4f6fb] dark:bg-white/5';
+
+// Short Bengali month names for report bars ("2026-09" -> "সেপ ২০২৬" via bnMonth below).
+const BN_MONTH_SHORT = ['জান', 'ফেব', 'মার', 'এপ্র', 'মে', 'জুন', 'জুল', 'আগ', 'সেপ', 'অক্ট', 'নভে', 'ডিস'];
+const bnMonthLabel = (yyyyMm: string): string => {
+  const y = yyyyMm.slice(0, 4);
+  const m = Number(yyyyMm.slice(5, 7));
+  if (!y || !m || m < 1 || m > 12) return yyyyMm;
+  return `${BN_MONTH_SHORT[m - 1]} ${y}`;
+};
 
 export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, renderModuleContent }) => {
   const {
@@ -736,6 +745,18 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
   };
 
+  // Phase 2: WhatsApp reminder for AGED dues (old months included).
+  // Unlike getDueReminderMessage (which says "চলতি মাসের ফি বাবদ"),
+  // this text honestly says the total covers old months too. Used
+  // only by the new mobile Due report rows.
+  const agedWhatsappLink = (student: Student, totalAged: number) => {
+    const phone = String(student.guardianPhone || '').replace(/[^0-9]/g, '');
+    if (!phone) return null;
+    const intl = phone.startsWith('880') ? phone : '880' + phone.replace(/^0/, '');
+    const text = `আসসালামু আলাইকুম। ${schoolProfile.nameBn || schoolProfile.name}-এর শিক্ষার্থী ${student.nameBn || student.name} (${student.classLevel})-এর পুরনো মাসসহ মোট ৳${totalAged.toLocaleString()} বকেয়া রয়েছে। অনুগ্রহপূর্বক দ্রুত বকেয়া পরিশোধ করার অনুরোধ করা হলো। জাযাকাল্লাহু খাইরান।`;
+    return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+  };
+
   // -------------------------------------------------------------
   // Phase 2 additions: marks-entry permission gate + class reports
   // -------------------------------------------------------------
@@ -818,6 +839,148 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       .sort((a, b) => b.dueThisMonth - a.dueThisMonth)
       .slice(0, 5);
   }, [allDuesSummary]);
+
+  // -------------------------------------------------------------
+  // Phase 2 additions: Tutor-style report sections for the homes.
+  // Every number below comes from an existing memo/service — no new
+  // metrics, no desktop-screen behaviour change. Fee aging is the
+  // additive calculateFeeAging only (see services/studentDuesService).
+  // -------------------------------------------------------------
+  // Fee aging per student (transactions pre-grouped once, so this is
+  // not O(students x transactions) through the service filter).
+  const agingByStudent = useMemo(() => {
+    const byId = new Map<string, FinanceTransaction[]>();
+    transactions.forEach(tx => {
+      if (tx.type === 'INCOME' && tx.studentId) {
+        const arr = byId.get(tx.studentId) || [];
+        arr.push(tx);
+        byId.set(tx.studentId, arr);
+      }
+    });
+    const out = new Map<string, FeeAging>();
+    students.forEach(st => {
+      const mine = [...(byId.get(st.id) || [])];
+      if (st.studentId && st.studentId !== st.id) mine.push(...(byId.get(st.studentId) || []));
+      out.set(st.id, calculateFeeAging(st, feeStructures, mine));
+    });
+    return out;
+  }, [students, feeStructures, transactions]);
+
+  const summarizeAging = (list: Student[]) => {
+    const rows = list.map(st => ({
+      student: st,
+      profile: allDuesSummary.profiles.find(p => p.student.id === st.id) || null,
+      aging: agingByStudent.get(st.id)
+    })).filter(r => !!r.aging) as { student: Student; profile: StudentDueProfile | null; aging: FeeAging }[];
+    const oneMonthOld = rows.reduce((s, r) => s + r.aging.oneMonthOld, 0);
+    const twoPlus = rows.reduce((s, r) => s + r.aging.twoPlusMonthsOld, 0);
+    const agedRows = rows
+      .filter(r => r.aging.totalAged > 0)
+      .sort((a, b) => b.aging.totalAged - a.aging.totalAged);
+    return { oneMonthOld, twoPlus, totalAged: oneMonthOld + twoPlus, agedRows };
+  };
+
+  // Teacher: aging over the selected assigned class only.
+  const teacherAging = useMemo(
+    () => summarizeAging(classStudents),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [classStudents, agingByStudent, allDuesSummary]
+  );
+
+  // Cashier: aging over all active students.
+  const cashierAging = useMemo(() => {
+    const active = students.filter(s => s.status === 'Active' && !s.isFormer);
+    return summarizeAging(active);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [students, agingByStudent, allDuesSummary]);
+
+  // Cashier: fee collection per month for the last 6 months (by the
+  // date the money was received — real INCOME rows only) + this
+  // month's expected vs collected from the existing dues summary.
+  const monthlyCollectionTrend = useMemo(() => {
+    const keys: string[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    const sums = new Map<string, number>(keys.map(k => [k, 0]));
+    transactions.forEach(t => {
+      if (t.type !== 'INCOME') return;
+      const k = (t.date || '').slice(0, 7);
+      if (sums.has(k)) sums.set(k, sums.get(k)! + (Number(t.amount) || 0));
+    });
+    const months = keys.map(k => ({ month: k, collected: sums.get(k) || 0 }));
+    return {
+      months,
+      max: Math.max(...months.map(m => m.collected), 1),
+      thisMonthExpected: allDuesSummary.totalExpected,
+      thisMonthPaid: allDuesSummary.totalPaid
+    };
+  }, [transactions, allDuesSummary]);
+
+  // Teacher: this month's attendance rate per assigned class (same
+  // recorded-only counting as monthlyAttendance, per class).
+  const teacherClassAttendance = useMemo(() => {
+    if (userRole !== 'teacher') return [];
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return teacherClasses.map(cls => {
+      let total = 0;
+      let present = 0;
+      const days = new Set<string>();
+      for (let d = 1; d <= 31; d++) {
+        const dateStr = `${prefix}-${String(d).padStart(2, '0')}`;
+        const recs = dailyAttendanceService.getRecordsByDateAndClass(dateStr, cls);
+        if (recs.length > 0) days.add(dateStr);
+        recs.forEach(r => {
+          total++;
+          if (r.status === 'PRESENT' || r.status === 'LATE') present++;
+        });
+      }
+      return { className: cls, rate: total > 0 ? Math.round((present / total) * 100) : 0, days: days.size };
+    });
+  }, [userRole, teacherClasses, attendanceDate]);
+
+  // Staff: active students grouped by class, in class order.
+  const staffByClass = useMemo(() => {
+    const active = students.filter(s => s.status === 'Active' && !s.isFormer);
+    const counts = new Map<string, number>();
+    active.forEach(s => counts.set(s.classLevel, (counts.get(s.classLevel) || 0) + 1));
+    const ordered = classes.map(c => c.name).filter(n => counts.has(n));
+    const rest = [...counts.keys()].filter(n => !ordered.includes(n)).sort();
+    return [...ordered, ...rest].map(n => ({ className: n, count: counts.get(n) || 0 }));
+  }, [students, classes]);
+
+  // Guardian: per-child report rows — own children ONLY (same resolver
+  // and recorded-only attendance as the existing guardian memos).
+  const guardianChildReports = useMemo(() => {
+    if (!guardianChildren) return null;
+    const exam = exams.length > 0 ? exams[exams.length - 1] : null;
+    return guardianChildren.map(child => {
+      const att = dailyAttendanceService.calculateStudentAttendanceForExam(child.id);
+      const due = calculateSingleStudentDue(child, feeStructures, transactions);
+      const aging = agingByStudent.get(child.id) || null;
+      let examRes: { gpa: number; isFail: boolean; has: boolean } | null = null;
+      if (exam) {
+        const has = marks.some(m => m.studentId === child.id && m.examId === exam.id);
+        const res = calculateTotalGPA(
+          subjects.filter(s => s.classLevel === child.classLevel || (s as any).classId === child.classLevel),
+          marks, child.id, exam.id, child.group, exams
+        );
+        examRes = { gpa: res.gpa, isFail: res.isFail, has };
+      }
+      return {
+        child,
+        attendanceRate: att.workingDays > 0 ? Math.round((att.totalPresent / att.workingDays) * 100) : 0,
+        recordedDays: att.workingDays,
+        due,
+        aging,
+        exam,
+        examRes
+      };
+    });
+  }, [guardianChildren, exams, marks, subjects, feeStructures, transactions, agingByStudent]);
 
   // -------------------------------------------------------------
   // Phase 4 additions: teacher class routine + native cashier fee entry
@@ -2765,6 +2928,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <p className="text-[11px] text-[#8a93a8]">{p.student.classLevel || ''}</p>
                   </div>
                   <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(p.dueThisMonth.toLocaleString())}</span>
+                  {/* Phase 2: one-tap Collect reuses the existing collect
+                      flow (preselects the student, same receipt path). */}
+                  {canCollectFees && (
+                    <button
+                      onClick={() => { handleSelectFeeStudent(p); handleOpenModule('cashier_collect'); }}
+                      className="px-3 h-9 rounded-full bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 text-[11px] font-black flex items-center gap-1 shrink-0 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Wallet size={13} />
+                      {isEn ? 'Collect' : 'আদায়'}
+                    </button>
+                  )}
                   {p.guardianPhone && (
                     <>
                       <a
@@ -2789,6 +2963,383 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               ))}
             </div>
           </section>
+        )}
+
+        {/* TEACHER: Due report — current month + aging buckets (Tutor
+            pattern). Aging comes from the additive calculateFeeAging:
+            September's unpaid fee counts from Oct 1, never before. */}
+        {userRole === 'teacher' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 flex items-center justify-center">
+                  <Wallet size={15} />
+                </span>
+                {isEn ? 'Due report' : 'বকেয়া রিপোর্ট'}
+              </h3>
+              <button
+                onClick={() => handleOpenModule('teacher_students_dues')}
+                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+              >
+                {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'This month' : 'চলতি মাস'}</p>
+                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(classDuesSummary.totalDue.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '1 month old' : '১ মাস আগের'}</p>
+                <p className="text-[14px] font-black text-[#d97706] dark:text-amber-300 mt-1">৳{toBn(teacherAging.oneMonthOld.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '2+ months old' : '২+ মাস আগের'}</p>
+                <p className="text-[14px] font-black text-[#7c3aed] dark:text-violet-300 mt-1">৳{toBn(teacherAging.twoPlus.toLocaleString())}</p>
+              </div>
+            </div>
+            {teacherAging.agedRows.length === 0 ? (
+              <p className="text-xs font-semibold text-[#059669] dark:text-emerald-300 py-1">
+                {isEn ? 'No dues from finished months ✓' : 'শেষ হওয়া মাসের কোনো বকেয়া নেই ✓'}
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {teacherAging.agedRows.slice(0, 5).map(r => {
+                  const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
+                  return (
+                    <div key={r.student.id} className="flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                        {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold truncate">{r.student.nameBn || r.student.name}</p>
+                        <p className="text-[11px] text-[#8a93a8]">
+                          {r.student.classLevel}
+                          {r.aging.byMonth.length > 0 ? ` • ${isEn ? 'oldest' : 'সবচেয়ে পুরনো'} ${toBn(bnMonthLabel(r.aging.byMonth[0].month))}` : ''}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(r.aging.totalAged.toLocaleString())}</span>
+                      {wa && (
+                        <a
+                          href={wa}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label="WhatsApp reminder"
+                          className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                        >
+                          <MessageCircle size={15} />
+                        </a>
+                      )}
+                      {r.student.guardianPhone && (
+                        <a
+                          href={`tel:${r.student.guardianPhone}`}
+                          aria-label="Call guardian"
+                          className="w-9 h-9 rounded-full bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                        >
+                          <Phone size={15} />
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* TEACHER: attendance per assigned class (only when the teacher
+            has more than one class — otherwise the monthly card above
+            already covers it). */}
+        {userRole === 'teacher' && teacherClasses.length > 1 && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <h3 className="text-sm font-black flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                <BarChart3 size={15} />
+              </span>
+              {isEn ? 'Attendance by class — this month' : 'প্রতি ক্লাসের হাজিরা — এই মাস'}
+            </h3>
+            <div className="space-y-3">
+              {teacherClassAttendance.map(c => (
+                <button
+                  key={c.className}
+                  onClick={() => handleOpenModule('teacher_report_attendance')}
+                  className="w-full text-left cursor-pointer active:scale-[0.99] transition-all"
+                >
+                  <div className="flex items-center justify-between text-[12px] font-semibold mb-1.5">
+                    <span>{c.className}</span>
+                    <span className="text-[#059669] dark:text-emerald-300 font-black">{toBn(c.rate)}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${c.rate}%` }} />
+                  </div>
+                  <p className="text-[11px] text-[#8a93a8] mt-1">{isEn ? 'School days' : 'কর্মদিবস'} {toBn(c.days)} {isEn ? 'days' : 'দিন'}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* CASHIER: fee collection trend — last 6 months, real INCOME
+            rows by receipt date, plus this month's expected vs paid. */}
+        {userRole === 'cashier' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
+                  <TrendingUp size={15} />
+                </span>
+                {isEn ? 'Collection trend — 6 months' : 'আদায় ট্রেন্ড — ৬ মাস'}
+              </h3>
+              <button
+                onClick={() => handleOpenModule('finance_reports')}
+                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+              >
+                {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="space-y-2.5">
+              {monthlyCollectionTrend.months.map(m => (
+                <div key={m.month}>
+                  <div className="flex items-center justify-between text-[12px] font-semibold mb-1">
+                    <span>{toBn(bnMonthLabel(m.month))}</span>
+                    <span className="text-[#059669] dark:text-emerald-300 font-black">৳{toBn(m.collected.toLocaleString())}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${Math.round((m.collected / monthlyCollectionTrend.max) * 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-dashed border-[#e8ecf4] dark:border-white/10">
+              <span className="text-xs font-bold">{isEn ? 'This month: expected' : 'এই মাসে ধার্য'}</span>
+              <span className="text-xs font-bold">
+                ৳{toBn(monthlyCollectionTrend.thisMonthPaid.toLocaleString())} / ৳{toBn(monthlyCollectionTrend.thisMonthExpected.toLocaleString())}
+                {monthlyCollectionTrend.thisMonthExpected > 0 ? ` (${toBn(Math.round((monthlyCollectionTrend.thisMonthPaid / monthlyCollectionTrend.thisMonthExpected) * 100))}%)` : ''}
+              </span>
+            </div>
+          </section>
+        )}
+
+        {/* CASHIER: Due report with aging buckets (Tutor pattern). */}
+        {userRole === 'cashier' && (
+          <section className={`${cardCls} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 flex items-center justify-center">
+                  <Wallet size={15} />
+                </span>
+                {isEn ? 'Due report' : 'বকেয়া রিপোর্ট'}
+              </h3>
+              <button
+                onClick={() => handleOpenModule('cashier_collect')}
+                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+              >
+                {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'This month' : 'চলতি মাস'}</p>
+                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(allDuesSummary.totalDue.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '1 month old' : '১ মাস আগের'}</p>
+                <p className="text-[14px] font-black text-[#d97706] dark:text-amber-300 mt-1">৳{toBn(cashierAging.oneMonthOld.toLocaleString())}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '2+ months old' : '২+ মাস আগের'}</p>
+                <p className="text-[14px] font-black text-[#7c3aed] dark:text-violet-300 mt-1">৳{toBn(cashierAging.twoPlus.toLocaleString())}</p>
+              </div>
+            </div>
+            {cashierAging.agedRows.length === 0 ? (
+              <p className="text-xs font-semibold text-[#059669] dark:text-emerald-300 py-1">
+                {isEn ? 'No dues from finished months ✓' : 'শেষ হওয়া মাসের কোনো বকেয়া নেই ✓'}
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {cashierAging.agedRows.slice(0, 5).map(r => {
+                  const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
+                  return (
+                    <div key={r.student.id} className="flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                        {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold truncate">{r.student.nameBn || r.student.name}</p>
+                        <p className="text-[11px] text-[#8a93a8]">
+                          {r.student.classLevel}
+                          {r.aging.byMonth.length > 0 ? ` • ${isEn ? 'oldest' : 'সবচেয়ে পুরনো'} ${toBn(bnMonthLabel(r.aging.byMonth[0].month))}` : ''}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(r.aging.totalAged.toLocaleString())}</span>
+                      {canCollectFees && r.profile && (
+                        <button
+                          onClick={() => { handleSelectFeeStudent(r.profile!); handleOpenModule('cashier_collect'); }}
+                          className="px-3 h-9 rounded-full bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 text-[11px] font-black flex items-center gap-1 shrink-0 active:scale-95 transition-all cursor-pointer"
+                        >
+                          <Wallet size={13} />
+                          {isEn ? 'Collect' : 'আদায়'}
+                        </button>
+                      )}
+                      {wa && (
+                        <a
+                          href={wa}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label="WhatsApp reminder"
+                          className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                        >
+                          <MessageCircle size={15} />
+                        </a>
+                      )}
+                      {r.student.guardianPhone && (
+                        <a
+                          href={`tel:${r.student.guardianPhone}`}
+                          aria-label="Call guardian"
+                          className="w-9 h-9 rounded-full bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                        >
+                          <Phone size={15} />
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* GUARDIAN: per-child report cards — own children ONLY. The
+            no-link state above stays exactly as it is. */}
+        {userRole === 'parent' && guardianChildReports && guardianChildReports.length > 0 && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-black flex items-center gap-2 px-0.5">
+              <span className="w-1 h-4 rounded-full brand-bg" />
+              {isEn ? 'My children — reports' : 'সন্তানের রিপোর্ট'}
+            </h3>
+            {guardianChildReports.map(r => {
+              const totalDue = r.due.dueThisMonth + (r.aging ? r.aging.totalAged : 0);
+              return (
+                <button
+                  key={r.child.id}
+                  onClick={() => { setPortalTabHint('results'); handleOpenModule('guardian_portal'); }}
+                  className={`${cardCls} p-5 w-full text-left space-y-3 cursor-pointer active:scale-[0.99] transition-all`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-xl brand-soft flex items-center justify-center font-black text-sm shrink-0">
+                      {(r.child.nameBn || r.child.name || 'শ')[0]}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-black truncate">{r.child.nameBn || r.child.name}</p>
+                      <p className="text-[11px] font-medium text-[#5b6478] dark:text-slate-400">
+                        {r.child.classLevel}{r.child.roll ? ` • ${isEn ? 'Roll' : 'রোল'} ${toBn(r.child.roll)}` : ''}
+                      </p>
+                    </div>
+                    <ChevronRight size={15} className="text-[#c3c9d9] shrink-0" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                      <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'Attendance' : 'হাজিরা'}</p>
+                      <p className="text-[14px] font-black text-[#059669] dark:text-emerald-300 mt-1">
+                        {r.recordedDays > 0 ? `${toBn(r.attendanceRate)}%` : (isEn ? 'No record' : 'রেকর্ড নেই')}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                      <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'Total due' : 'মোট বকেয়া'}</p>
+                      <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(totalDue.toLocaleString())}</p>
+                      {r.aging && r.aging.totalAged > 0 && (
+                        <p className="text-[10px] text-[#8a93a8] mt-0.5">{isEn ? 'incl. old' : 'এর মধ্যে পুরনো'} ৳{toBn(r.aging.totalAged.toLocaleString())}</p>
+                      )}
+                    </div>
+                    <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
+                      <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'Latest exam' : 'সর্বশেষ পরীক্ষা'}</p>
+                      <p className="text-[14px] font-black brand-text mt-1">
+                        {!r.exam ? (isEn ? 'No exam' : 'পরীক্ষা হয়নি')
+                          : !r.examRes || !r.examRes.has ? (isEn ? 'No marks' : 'নম্বর নেই')
+                          : `GPA ${toBn(r.examRes.gpa.toFixed(2))}${r.examRes.isFail ? (isEn ? ' • Fail' : ' • ফেল') : ''}`}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </section>
+        )}
+
+        {/* STAFF: students by class + notices as report cards. */}
+        {userRole === 'staff' && (
+          <>
+            <section className={`${cardCls} p-5 space-y-3`}>
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center">
+                  <Users size={15} />
+                </span>
+                {isEn ? 'Students by class' : 'শ্রেণিভিত্তিক শিক্ষার্থী'}
+              </h3>
+              {staffByClass.length === 0 ? (
+                <p className="text-xs text-[#8a93a8] font-medium py-1">{isEn ? 'No active students yet.' : 'এখনো সক্রিয় শিক্ষার্থী নেই।'}</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {staffByClass.map(c => (
+                    <button
+                      key={c.className}
+                      onClick={() => handleOpenModule('students')}
+                      className="w-full text-left cursor-pointer active:scale-[0.99] transition-all"
+                    >
+                      <div className="flex items-center justify-between text-[12px] font-semibold mb-1">
+                        <span>{c.className}</span>
+                        <span>{toBn(c.count)} {isEn ? 'students' : 'জন'}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full brand-grad"
+                          style={{ width: `${Math.round((c.count / Math.max(...staffByClass.map(x => x.count), 1)) * 100)}%` }}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+            <section className={`${cardCls} p-5 space-y-3`}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 flex items-center justify-center">
+                    <Bell size={15} />
+                  </span>
+                  {isEn ? 'Notice board' : 'নোটিশ বোর্ড'}
+                </h3>
+                <button
+                  onClick={() => handleOpenModule('notice_board')}
+                  className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
+                >
+                  {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+                </button>
+              </div>
+              {notices.length === 0 ? (
+                <p className="text-xs text-[#8a93a8] font-medium py-1">{isEn ? 'No notices yet.' : 'এখনো কোনো নোটিশ নেই।'}</p>
+              ) : (
+                <div className="space-y-2">
+                  {notices.slice(0, 5).map(n => (
+                    <button
+                      key={n.id}
+                      onClick={() => handleOpenModule('notice_board')}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 text-left active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      <span className="w-9 h-9 rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 flex items-center justify-center shrink-0">
+                        <Bell size={14} />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13px] font-bold truncate">{n.title}</span>
+                        <span className="block text-[11px] text-[#8a93a8]">{toBn(n.publishDate || (n as any).date || '')}</span>
+                      </span>
+                      <ChevronRight size={14} className="text-[#c3c9d9] shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
         )}
 
         {/* Next-task nudge (all roles) */}
