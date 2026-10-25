@@ -1,8 +1,8 @@
-import { SUPER_ADMIN_EMAIL } from '../services/appConfig.ts';
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import type { IncomingMessage, ServerResponse } from 'http';
 import fs from 'fs';
 import path from 'path';
-import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
 const PRIMARY_OWNER_EMAIL = SUPER_ADMIN_EMAIL;
@@ -42,7 +42,7 @@ function getServiceAccountCredential() {
   return null;
 }
 
-function getAdminApp(): App | null {
+export function getAdminApp(): App | null {
   const credential = getServiceAccountCredential();
   if (!credential) {
     return null;

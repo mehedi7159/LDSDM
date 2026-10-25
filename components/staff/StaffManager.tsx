@@ -348,8 +348,21 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setIsAddEditModalOpen(true);
   };
 
+  // Firebase sync failure note for the edit-save toast (Bangla/English).
+  const syncFailureNote = (reason: string, bn: boolean): string => {
+    if (!bn) return reason;
+    switch (reason) {
+      case 'service-account-missing': return 'server-এ service account সেট করা নেই';
+      case 'admin-not-signed-in': return 'admin Firebase login-এ নেই';
+      case 'not-authorized': return 'এই কাজের অনুমতি নেই';
+      case 'target-protected': return 'এই অ্যাকাউন্ট পরিবর্তন করা যাবে না';
+      case 'user-not-found': return 'Firebase-এ এই staff-এর অ্যাকাউন্ট নেই';
+      default: return 'আবার চেষ্টা করুন';
+    }
+  };
+
   // Handle save teacher
-  const handleSaveTeacher = (e: React.FormEvent) => {
+  const handleSaveTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teacherFormData.name?.trim()) {
       showToast(isBn ? 'দয়া করে শিক্ষকের নাম প্রদান করুন' : 'Please provide staff name');
@@ -361,7 +374,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     const additionalRoles = formAdditionalRoles.filter(r => r !== formLoginRole);
 
     if (editingTeacher) {
-      updateTeacher({
+      const sync = await updateTeacher({
         ...editingTeacher,
         ...teacherFormData,
         name: teacherFormData.name.trim(),
@@ -369,7 +382,13 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         password: rawPassword,
         additionalRoles
       } as AcademicTeacher, formLoginRole);
-      showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
+      if (sync.status === 'failed') {
+        showToast(isBn ? `তথ্য আপডেট হয়েছে, তবে Firebase sync হয়নি (${syncFailureNote(sync.reason, true)})` : `Information updated, but Firebase sync failed (${sync.reason})`);
+      } else if (sync.status === 'skipped' && sync.reason === 'no-email') {
+        showToast(isBn ? 'তথ্য আপডেট হয়েছে; এই staff-এর email নেই বলে Firebase sync হয়নি' : 'Information updated; no email, so Firebase sync did not run');
+      } else {
+        showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
+      }
     } else {
       const addRes = addTeacher({
         name: teacherFormData.name.trim(),

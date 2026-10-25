@@ -65,7 +65,8 @@ import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../t
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
-import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isProvisionableEmail, isStaffProvisioningRole } from '../services/staffProvisioning';
+import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isProvisionableEmail, isStaffProvisioningRole, shouldHealPortalLogin, resolveCredentialSyncNeed } from '../services/staffProvisioning';
+import { syncStaffCredentialToFirebase, type StaffCredentialSyncStatus } from '../services/staffCredentialSync';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { 
   signInWithPopup, 
@@ -244,7 +245,7 @@ interface AppContextType extends AppState {
   archiveSubject: (id: string) => void;
   deleteSubject: (id: string) => void;
   addTeacher: (teacher: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => { success: boolean; message?: string };
-  updateTeacher: (teacher: AcademicTeacher, loginRole?: UserRole) => void;
+  updateTeacher: (teacher: AcademicTeacher, loginRole?: UserRole) => Promise<StaffCredentialSyncStatus>;
   deleteTeacher: (teacherId: string) => Promise<{ success: boolean; message?: string }>;
   archiveTeacher: (id: string) => void;
   staffLeaves: StaffLeaveRecord[];
@@ -1389,7 +1390,32 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // Role portal session
     const isOwner = (user.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     const isAdministrative = user.role === 'super_admin' || user.role === 'principal' || isOwner;
-    setAuthUser(null);
+    // Portal-login self-heal (25 Oct 2026 follow-up): mirror the main
+    // login's self-heal — a staff member logging in through the portal
+    // gets a Firebase session too, so their writes sync to the cloud.
+    // Same gates: stored password matched, real email from the matched
+    // record (never the typed identifier, which may be a phone number),
+    // staff roles only. Guardians and every failure keep the local
+    // session exactly as before.
+    let portalAuthed = false;
+    if (shouldHealPortalLogin(user.role, user.email, user.password, cleanPass)) {
+      try {
+        const signed = await signInWithEmailAndPassword(auth, user.email!.trim().toLowerCase(), cleanPass);
+        setAuthUser(signed.user);
+        portalAuthed = true;
+      } catch (fbErr: any) {
+        if (fbErr?.code === 'auth/user-not-found' || fbErr?.code === 'auth/invalid-credential') {
+          try {
+            const healed = await createPrimaryFirebaseUser(auth, user.email!, cleanPass);
+            if (healed === 'created' && auth.currentUser) {
+              setAuthUser(auth.currentUser);
+              portalAuthed = true;
+            }
+          } catch {}
+        }
+      }
+    }
+    if (!portalAuthed) setAuthUser(null);
     setAdminEmail(user.email || '');
     setIsAdmin(isAdministrative);
     setAuthRole(user.role);
@@ -3511,7 +3537,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return { success: true, message: 'শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট সম্পূর্ণভাবে মুছে ফেলা হয়েছে।' };
   };
 
-  const updateTeacher = (updatedTeacher: AcademicTeacher, loginRole?: UserRole) => {
+  const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus> => {
     const existing = teachers.find(t => t.id === updatedTeacher.id);
     // Keep the login role in step with the staff form's role choice;
     // without an explicit choice, derive it from the designation.
@@ -3589,6 +3615,33 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' },
         before: existing ? { name: existing.name, designation: existing.designation, status: existing.status } : null
       });
+    }
+
+    // Firebase credential sync (25 Oct 2026 follow-up): the app record
+    // above is authoritative and already saved; the Firebase user still
+    // holds the old credentials. Sync only when a credential actually
+    // changed — the local change is never blocked and this never throws.
+    const syncNeed = resolveCredentialSyncNeed(
+      existing ? { password: existing.password, email: existing.email } : undefined,
+      rawPassword,
+      cleanEmail,
+      effectiveRole
+    );
+    if (syncNeed === 'not-needed') return { status: 'not-needed' };
+    if (syncNeed === 'skipped-no-prior') return { status: 'skipped', reason: 'no-prior-record' };
+    if (syncNeed === 'skipped-non-staff') return { status: 'skipped', reason: 'non-staff-role' };
+    if (syncNeed === 'skipped-no-email') return { status: 'skipped', reason: 'no-email' };
+    try {
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      if (!token) return { status: 'failed', reason: 'admin-not-signed-in' };
+      return await syncStaffCredentialToFirebase({
+        idToken: token,
+        oldEmail: existing?.email?.trim().toLowerCase() || undefined,
+        email: cleanEmail,
+        password: rawPassword !== existing?.password ? rawPassword : undefined,
+      });
+    } catch {
+      return { status: 'failed', reason: 'network' };
     }
   };
 

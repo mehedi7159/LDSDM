@@ -113,6 +113,62 @@ export async function provisionStaffFirebaseUser(
 }
 
 /**
+ * Portal-login heal gate (25 Oct 2026 follow-up): the portal path
+ * (loginWithEmailOrPhone) matches by phone OR email and verifies only
+ * the local password, so it needs the same gates as the main login's
+ * self-heal. The email must come from the matched RECORD (never the
+ * typed identifier, which may be a phone number), and the stored
+ * password must exist and match what was typed — a wrong password or
+ * a passwordless record never heals.
+ */
+export function shouldHealPortalLogin(
+  role: string | undefined | null,
+  email: string | undefined | null,
+  storedPassword: string | undefined | null,
+  typedPassword: string
+): boolean {
+  return (
+    !!storedPassword &&
+    storedPassword === typedPassword &&
+    isStaffProvisioningRole(role) &&
+    isProvisionableEmail(email)
+  );
+}
+
+export type CredentialSyncNeed =
+  | 'sync'
+  | 'not-needed'
+  | 'skipped-no-prior'
+  | 'skipped-non-staff'
+  | 'skipped-no-email';
+
+/**
+ * Admin-edit sync decision (25 Oct 2026 follow-up): decides whether an
+ * updateTeacher edit needs a Firebase credential sync. Only credential
+ * changes matter — a name/class/status edit returns 'not-needed' without
+ * any server call. A sync needs at least one usable email (old for
+ * lookup, new for update/create); if the email was removed but the old
+ * one is still usable, the password still syncs to the old Firebase
+ * user. Never invents an email.
+ */
+export function resolveCredentialSyncNeed(
+  existing: { password?: string; email?: string } | undefined,
+  rawPassword: string,
+  cleanEmail: string | undefined,
+  role: string
+): CredentialSyncNeed {
+  if (!existing) return 'skipped-no-prior';
+  if (!isStaffProvisioningRole(role)) return 'skipped-non-staff';
+  const passwordChanged = existing.password !== rawPassword;
+  const emailChanged = (existing.email?.toLowerCase() || undefined) !== cleanEmail;
+  if (!passwordChanged && !emailChanged) return 'not-needed';
+  const oldUsable = isProvisionableEmail(existing.email);
+  const newUsable = isProvisionableEmail(cleanEmail);
+  if (!oldUsable && !newUsable) return 'skipped-no-email';
+  return 'sync';
+}
+
+/**
  * Login-time self-heal path: create the Firebase user on the PRIMARY
  * auth. createUserWithEmailAndPassword also signs the SDK session in as
  * the new user, which is exactly what the caller wants (the session
