@@ -124,6 +124,12 @@ export interface AcademicTeacher {
   email?: string;
   phone?: string;
   password?: string;
+  /**
+   * How this staff record's login was created. 'google' records have
+   * NO password by design — password-login must always be denied for
+   * them (see services/googleSignupRules). Absent = legacy record.
+   */
+  authProvider?: 'google' | 'email';
   status: TeacherStatus;
   assignedClasses?: string[];
   assignedSubjects?: string[];

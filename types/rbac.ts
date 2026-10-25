@@ -172,6 +172,12 @@ export interface InstitutionMember {
   displayName?: string;
   phone?: string;
   password?: string; // Stored securely for fallback authentication
+  /**
+   * How this member account was created. 'google' members have NO
+   * password by design — password-login must always be denied for
+   * them (see googleSignupRules). Absent = legacy/email member.
+   */
+  authProvider?: 'google' | 'email';
   roleId: string; // References CustomRole.id in the same institution
   /**
    * Multi-role support: additional CustomRole ids held alongside

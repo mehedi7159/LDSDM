@@ -488,6 +488,12 @@ export interface AppUser {
   email?: string;
   phone?: string;
   password?: string;
+  /**
+   * How this account was created. 'google' accounts have NO password
+   * by design — password-login must always be denied for them
+   * (see services/googleSignupRules). Absent = legacy/email account.
+   */
+  authProvider?: 'google' | 'email';
   role: UserRole;
   /**
    * Multi-role support: extra roles this person holds on top of `role`

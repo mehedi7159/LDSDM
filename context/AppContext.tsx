@@ -53,6 +53,14 @@ import {
   roleKeyToRoleId
 } from '../services/roleResolution';
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
+import {
+  GOOGLE_PASSWORD_LOGIN_DENIED,
+  GOOGLE_SIGNUP_EXISTING_MEMBER,
+  approvalPasswordFor,
+  buildGoogleSignupMember,
+  googlePopupErrorMessage,
+  isGoogleOnlyAccount
+} from '../services/googleSignupRules';
 import { buildMainStorePayload } from '../services/mainStorePayload';
 import { buildPublicPortalData } from '../services/publicPortal';
 import {
@@ -351,6 +359,7 @@ interface AppContextType extends AppState {
   loginWithGoogle: () => Promise<boolean>;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUpWithEmail: (email: string, password: string, displayName: string, requestedRole: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
+  signUpWithGoogle: (requestedRole: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   loginAsDemoRole: (roleKey: 'superadmin' | 'principal' | 'teacher' | 'accountant' | 'office_staff' | 'guardian') => Promise<void>;
   logoutAdmin: () => Promise<void>;
@@ -922,13 +931,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           } : u);
         }
         if (target) {
+          // Google-only members must NEVER get the legacy '123456'
+          // fallback: a stamped default password would open portal
+          // password-login for an account that was never given one.
+          const googleOnly = isGoogleOnlyAccount(target);
+          const approvalPassword = approvalPasswordFor(target);
           const newUser: AppUser = {
             id: target.uid,
             name: target.displayName || 'User',
             nameBn: target.displayName || 'ব্যবহারকারী',
             phone: target.phone || '',
             email: target.email || undefined,
-            password: target.password || '123456',
+            ...(googleOnly ? { authProvider: 'google' as const } : {}),
+            ...(approvalPassword !== undefined ? { password: approvalPassword } : {}),
             role: cleanRole,
             assignedClasses,
             status: 'active',
@@ -941,6 +956,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
       // If teacher, ensure present and ACTIVE in academic teachers list
       if (cleanRole === 'teacher' && target) {
+        // Same Google-only rule as the account record above: no
+        // stamped '123456' password for Google-only members.
+        const teacherGoogleOnly = isGoogleOnlyAccount(target);
+        const teacherApprovalPassword = approvalPasswordFor(target);
         setTeachers(prev => {
           const exists = prev.find(t => t.id === uid || (target.email && t.email?.toLowerCase() === target.email.toLowerCase()) || (target.phone && t.phone === target.phone));
           if (exists) {
@@ -955,7 +974,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
               nameBn: target.displayName || 'শিক্ষক',
               phone: target.phone || '',
               email: target.email,
-              password: target.password || '123456',
+              ...(teacherGoogleOnly ? { authProvider: 'google' as const } : {}),
+              ...(teacherApprovalPassword !== undefined ? { password: teacherApprovalPassword } : {}),
               designation: target.requestedRole || 'সহকারী শিক্ষক',
               status: 'ACTIVE',
               assignedClasses,
@@ -1404,6 +1424,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           phone: teacher.phone || '',
           email: teacher.email || undefined,
           password: teacher.password || '123456',
+          authProvider: teacher.authProvider,
           role: deriveRoleFromDesignation(teacher.designation),
           additionalRoles: sanitizeAdditionalRoles(teacher.additionalRoles, deriveRoleFromDesignation(teacher.designation)) as UserRole[],
           designation: teacher.designation || 'সহকারী শিক্ষক',
@@ -1437,6 +1458,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return {
         success: false,
         message: 'এই মোবাইল বা ইমেইলে কোনো ব্যবহারকারী খুঁজে পাওয়া যায়নি। সঠিক তথ্য দিন অথবা অ্যাডমিনের সাথে যোগাযোগ করুন।'
+      };
+    }
+
+    // Google-only accounts can never use password-login: they were
+    // never given a password, and no '123456' fallback may stand in
+    // for one (see approvalPasswordFor). This check runs before the
+    // password comparison, which skips password-less records.
+    if (isGoogleOnlyAccount(user)) {
+      return {
+        success: false,
+        message: GOOGLE_PASSWORD_LOGIN_DENIED
       };
     }
 
@@ -1605,18 +1637,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
               designation: isOwnerAccount ? 'প্রতিষ্ঠাতা ও সুপার অ্যাডমিন' : (updatedList[existingIdx].designation || 'সদস্য'),
               status: 'active'
             };
-          } else {
+          } else if (isOwnerAccount) {
             const newUser: AppUser = {
               id: user.uid,
               name: realName,
               nameBn: realNameBn,
               email: user.email || undefined,
-              role: isOwnerAccount ? 'super_admin' : 'teacher',
-              designation: isOwnerAccount ? 'প্রতিষ্ঠাতা ও সুপার অ্যাডমিন' : 'মুয়াল্লিম',
+              role: 'super_admin',
+              designation: 'প্রতিষ্ঠাতা ও সুপার অ্যাডমিন',
               status: 'active',
               createdAt: new Date().toISOString()
             };
             updatedList = [newUser, ...prevUsers];
+          } else {
+            // SAFEGUARD (b): never mint a local teacher/active entry
+            // for an unmatched non-owner Firebase user. A Google
+            // sign-up's role lives ONLY in its pending member doc —
+            // the pending gate blocks entry until approval, and
+            // approval writes the real account record. Minting here
+            // used to leak a users-only teacher card into the staff
+            // directory before approval (and, once auto-synced, back
+            // into the cloud users array). Existing/approved users
+            // are untouched: they match the branch above.
+            updatedList = prevUsers;
           }
           try {
             localStorage.setItem('madrasha_app_users', JSON.stringify(updatedList));
@@ -2824,6 +2867,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const member = allMembers.find(m => m.email.toLowerCase() === trimmedEmail.toLowerCase());
 
       if (member) {
+        // Google-only members have no password: the check below skips
+        // password-less records, so deny explicitly before it.
+        if (isGoogleOnlyAccount(member)) {
+          return { success: false, error: GOOGLE_PASSWORD_LOGIN_DENIED };
+        }
         if (member.password && member.password !== password) {
           return { success: false, error: 'ভুল পাসওয়ার্ড প্রদান করা হয়েছে।' };
         }
@@ -2889,6 +2937,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     ));
 
     if (foundUser) {
+      // Google-only accounts: same explicit deny as the member path.
+      if (isGoogleOnlyAccount(foundUser)) {
+        return { success: false, error: GOOGLE_PASSWORD_LOGIN_DENIED };
+      }
       if (foundUser.password && foundUser.password !== password) {
         return { success: false, error: 'ভুল পাসওয়ার্ড প্রদান করা হয়েছে।' };
       }
@@ -3053,6 +3105,96 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // Local membership application created (no elevated or remote admin privileges)
     setAuthUser(null);
     setAdminEmail(trimmedEmail);
+    setIsAdmin(false);
+    setAuthRole(memberData.roleId);
+    setModeState('viewer');
+
+    setCurrentMember(memberData);
+    localStorage.setItem('madrasha_active_auth_session', JSON.stringify(memberData));
+
+    return { success: true };
+  };
+
+  // Google Sign-Up (25 Oct 2026): register view's "Google দিয়ে নিবন্ধন করুন".
+  // Mirrors email sign-up's approval model, but the Firebase user
+  // already exists after the popup — so the member doc id MUST be the
+  // Firebase uid (boot lookup uses authUser.uid), status is ALWAYS
+  // pending, and NO password and NO teachers-list entry are created.
+  // Role comes only from this member doc (never from the auth-state
+  // stamp, which no longer mints teacher/active entries for unmatched
+  // non-owner users). Approval then resolves the active role.
+  const signUpWithGoogle = async (
+    requestedRole: string,
+    phone?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    let result: any = null;
+    try {
+      result = await signInWithPopup(auth, googleProvider);
+    } catch (err: any) {
+      console.warn('Google sign-up popup notice:', err?.code);
+      return { success: false, error: googlePopupErrorMessage(err?.code) };
+    }
+
+    const user = result?.user;
+    const email = (user?.email || '').trim();
+    if (!user || !email) {
+      try { await signOut(auth); } catch {}
+      return { success: false, error: 'Google নিবন্ধন সম্পন্ন হয়নি। আবার চেষ্টা করুন।' };
+    }
+
+    // Owner email can never self-register (same rule as email sign-up).
+    if (email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
+      try { await signOut(auth); } catch {}
+      return {
+        success: false,
+        error: 'প্রধান অ্যাডমিন অ্যাকাউন্ট পাবলিক রেজিস্ট্রেশন থেকে তৈরি করা যাবে না। Google দিয়ে প্রবেশ করতে লগইন ব্যবহার করুন।'
+      };
+    }
+
+    // Existing member → must log in, never a duplicate member doc.
+    try {
+      const allMembers = await getAllInstitutionMembers('inst_madrasah_primary');
+      const existing = allMembers.find(m => m.email.toLowerCase() === email.toLowerCase());
+      if (existing) {
+        try { await signOut(auth); } catch {}
+        return { success: false, error: GOOGLE_SIGNUP_EXISTING_MEMBER };
+      }
+    } catch (e) {}
+
+    const displayName = user.displayName || email.split('@')[0] || 'User';
+
+    // Member construction lives in googleSignupRules so the verify
+    // script tests the real builder (uid = Firebase uid, pending,
+    // no password, authProvider 'google').
+    const memberData: InstitutionMember = {
+      ...buildGoogleSignupMember({
+        uid: user.uid,
+        email,
+        displayName,
+        phone,
+        requestedRole,
+      }),
+      institutionId: 'inst_madrasah_primary',
+    };
+
+    try {
+      await setInstitutionMember('inst_madrasah_primary', memberData, user.uid);
+    } catch (e) {
+      console.warn('Google sign-up member write notice:', e);
+      try { await signOut(auth); } catch {}
+      return { success: false, error: 'Google নিবন্ধন সম্পন্ন হয়নি। আবার চেষ্টা করুন।' };
+    }
+
+    // NO teachers-list entry here (unlike email sign-up): a pending
+    // applicant must not appear in the staff directory before approval.
+    // Approval creates the account/teacher records, with no password.
+
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      setCachedGoogleAccessToken(credential.accessToken);
+    }
+    setAuthUser(user);
+    setAdminEmail(email);
     setIsAdmin(false);
     setAuthRole(memberData.roleId);
     setModeState('viewer');
@@ -4805,6 +4947,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       seedDemoMadrashaData,
       clearAllDemoData,
       loginWithGoogle,
+      signUpWithGoogle,
       signInWithEmail,
       signUpWithEmail,
       resetPassword,
