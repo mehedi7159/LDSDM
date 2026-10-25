@@ -19,15 +19,15 @@
  * FIREBASE_SERVICE_ACCOUNT is not configured, the handler returns a
  * clear SERVICE_ACCOUNT_REQUIRED error instead of crashing.
  */
-import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig.js';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { getAuth } from 'firebase-admin/auth';
-import { getAdminApp } from './adminApi';
+import { getAdminApp } from './adminApi.js';
 import {
   isSyncCallerAuthorized,
   isProtectedTargetEmail,
   isUsableStaffEmail,
-} from './staffSyncPolicy';
+} from './staffSyncPolicy.js';
 
 const OWNER_EMAIL = SUPER_ADMIN_EMAIL;
 
