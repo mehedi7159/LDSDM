@@ -9,7 +9,7 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { AccessRestrictedView } from './components/AccessRestrictedView';
 import { Button } from './components/ui/Button';
-import { Download, Loader2, Smartphone } from 'lucide-react';
+import { Download, Loader2, LogOut, Smartphone } from 'lucide-react';
 import { VerifiedResultModal } from './components/VerifiedResultModal';
 import { LocalDataRecoveryModal } from './components/LocalDataRecoveryModal';
 import { AuthPage } from './components/AuthPage';
@@ -761,6 +761,17 @@ const AppContent = () => {
                     {language === 'bn'
                       ? 'এই অ্যাকাউন্টটি শুধু মোবাইল ফোন থেকে ব্যবহার করা যায়। অনুগ্রহ করে আপনার মোবাইল ফোন থেকে খুলুন।'
                       : 'This account can only be used from a mobile phone. Please open it on your phone.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => logoutAdmin()}
+                    className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-5 py-3 text-sm font-bold text-white shadow-sm hover:opacity-90 active:scale-[0.99]"
+                  >
+                    <LogOut size={17} />
+                    {language === 'bn' ? 'লগআউট' : 'Log out'}
+                  </button>
+                  <p className="mt-2 text-xs text-[#5b6478]">
+                    {language === 'bn' ? 'অন্য অ্যাকাউন্ট দিয়ে লগইন করুন' : 'Log in with another account'}
                   </p>
                 </div>
               </div>
