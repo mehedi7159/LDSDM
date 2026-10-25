@@ -48,6 +48,7 @@ import { deriveRoleFromDesignation } from '../../services/utils';
 import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { decideStaffLeave } from '../../services/staffSelfService';
 import { PageHeader } from '../ui/PageHeader';
+import { TestAccountCleanup } from './TestAccountCleanup';
 
 export type StaffSubTab = 
   | 'directory' 
@@ -744,6 +745,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         {/* 1. Staff & Faculty Directory */}
         {activeTab === 'directory' && (
           <div className="space-y-4">
+            <TestAccountCleanup />
             {/* Pending Approvals Notice for Staff */}
             {pendingStaffApprovals.length > 0 && (
               <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 shadow-xs space-y-3 animate-in fade-in">
