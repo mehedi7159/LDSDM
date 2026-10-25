@@ -51,5 +51,5 @@ export default async function handler(
   }
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify({ stages }));
+  res.end(JSON.stringify({ node: process.version, stages }));
 }
