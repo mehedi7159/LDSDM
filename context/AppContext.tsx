@@ -85,8 +85,10 @@ import {
 import { 
   buildCreateStudentPayload, 
   buildUpdateStudentPayload, 
-  recordStudentAuditEvent 
+  recordStudentAuditEvent,
+  hydrateStudentLifecycle
 } from '../services/studentService';
+import { confirmDeleteCloudSync } from '../services/staffDeletion';
 import {
   buildCreateAcademicYearPayload,
   buildUpdateAcademicYearPayload,
@@ -1652,7 +1654,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('schoolProfile', JSON.stringify(data.schoolProfile)); } catch {}
     }
     if (data.students && Array.isArray(data.students)) {
-      const cleanStudents = data.students.filter(s => !s.id?.startsWith('demo-std-') && s.id !== 'st-1' && s.id !== 'st-2');
+      const cleanStudents = data.students
+        .filter(s => !s.id?.startsWith('demo-std-') && s.id !== 'st-1' && s.id !== 'st-2')
+        .map(hydrateStudentLifecycle);
       setStudents(cleanStudents);
       try { localStorage.setItem('students', JSON.stringify(cleanStudents)); } catch {}
     }
@@ -3525,6 +3529,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return { success: false, message: 'প্রধান অ্যাডমিনের অ্যাকাউন্ট এখান থেকে মোছা যাবে না।' };
     }
 
+    // Lists as they must look after this delete — computed from the same
+    // closure values the guard above used, so the forced cloud write
+    // below carries exactly the deletion (React state updates are async,
+    // so awaiting the regular forcePushToCloud here would still push the
+    // OLD lists containing the deleted record).
+    const remainingTeachers = teachers.filter(t => !matches(t));
+    const remainingUsers = users.filter(u => !matches(u));
+
     setTeachers(prev => prev.filter(t => !matches(t)));
     setUsers(prev => prev.filter(u => !matches(u)));
     try {
@@ -3534,6 +3546,31 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
     } catch {}
     try { await refreshPendingMembers(); } catch {}
+
+    // Cloud confirmation (25 Oct 2026 follow-up): previously this returned
+    // success unconditionally while the real cloud write lived in the
+    // debounced auto-sync and could fail silently (unauthenticated
+    // session, offline) — so a "deleted" record came back on the next
+    // hydration. Now the main_store teachers/users write is awaited here
+    // and a failure is reported plainly instead of a false success. The
+    // write touches ONLY teachers/users (+ metadata) so no other
+    // collection can be disturbed; the regular auto-sync still runs after
+    // the state change and rewrites the same filtered lists. Guard above
+    // is untouched (including the super_admin / Arafat case).
+    const cloudSync = await confirmDeleteCloudSync(() =>
+      setDoc(doc(db, 'institution', 'main_store'), {
+        teachers: remainingTeachers,
+        users: remainingUsers,
+        updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user',
+        updatedAt: new Date().toISOString(),
+      }, { merge: true })
+    );
+    if (!cloudSync.success) {
+      setCloudStatus('error');
+      return { success: false, message: cloudSync.message };
+    }
+    setCloudStatus('connected');
+    setCloudLastSynced(new Date().toLocaleTimeString());
     return { success: true, message: 'শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট সম্পূর্ণভাবে মুছে ফেলা হয়েছে।' };
   };
 

@@ -113,6 +113,31 @@ export function normalizeStudent(
 }
 
 /**
+ * Hydration-time lifecycle default (25 Oct 2026 follow-up).
+ *
+ * Problem: legacy/imported cloud student records carry NO `status` field
+ * at all, but the teacher home filters `status === 'Active'` — so every
+ * such student was excluded and teacher homes showed "0 students" even
+ * though the class had students (Class 9: 27 in cloud, 0 shown).
+ *
+ * This fills ONLY the missing pieces at hydration time: a missing/empty
+ * status becomes 'Active', a missing isFormer becomes false. Existing
+ * values are kept byte-identical — an explicit 'Former' (or isFormer
+ * true) still excludes the student, and 'Inactive'/other statuses are
+ * untouched. Stored records are never rewritten by this; it only shapes
+ * the in-memory (and localStorage-cache) copy that views filter on.
+ * Deliberately NOT normalizeStudent: that rebuilds the whole object
+ * (ids, classId, metadata, ...), which hydration must not do.
+ */
+export function hydrateStudentLifecycle(s: any): any {
+  return {
+    ...s,
+    status: s.status ? s.status : 'Active',
+    isFormer: s.isFormer ?? false,
+  };
+}
+
+/**
  * Filter and search students with multi-criteria support
  */
 export function filterStudents(
