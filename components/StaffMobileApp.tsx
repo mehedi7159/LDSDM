@@ -8,11 +8,12 @@ import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
-import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
+import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
+import { STAFF_LEAVE_TYPE_OPTIONS, computeLeaveDays, buildStaffLeaveRequest, sanitizeProfileEdit } from '../services/staffSelfService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
 import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, StudentDueProfile, FeeAging } from '../services/studentDuesService';
-import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod } from '../types';
+import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod, StaffLeaveRecord } from '../types';
 import {
   Home,
   LayoutGrid,
@@ -227,6 +228,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     confirmAttendanceCloudSync,
     confirmFeeCloudSync,
     confirmMarksCloudSync,
+    confirmLeavesCloudSync,
+    confirmStaffCloudSync,
+    updateTeacher,
+    staffLeaves = [],
+    setStaffLeaves,
     updateStudent,
     deleteStudent,
     bulkUpdateMarks,
@@ -340,6 +346,27 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [moreOpen, setMoreOpen] = useState(false);
   const [activeSubModule, setActiveSubModule] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Step 4 (25 Oct 2026): staff leave request screen (NOT self-attendance —
+  // staff attendance stays admin-only). Staff-submitted requests are
+  // always PENDING; approval happens on desktop.
+  const [showLeave, setShowLeave] = useState(false);
+  const [leaveType, setLeaveType] = useState<StaffLeaveRecord['leaveType']>('CASUAL');
+  const [leaveStart, setLeaveStart] = useState(() => new Date().toISOString().split('T')[0]);
+  const [leaveEnd, setLeaveEnd] = useState(() => new Date().toISOString().split('T')[0]);
+  const [leaveReason, setLeaveReason] = useState('');
+  const [leaveFailure, setLeaveFailure] = useState<string | null>(null);
+  const [leaveSuccess, setLeaveSuccess] = useState<string | null>(null);
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+
+  // Step 4: own profile edit — display fields only (name, nameBn,
+  // employeeCode). Credential/designation/class fields stay admin-only.
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editNameBn, setEditNameBn] = useState('');
+  const [editEmployeeCode, setEditEmployeeCode] = useState('');
+  const [profileFailure, setProfileFailure] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   // Tutor-style accent + mode picker in the shell top bar (all roles).
   // Popup stays open on selection (like Tutor) — only an outside tap closes it.
@@ -964,6 +991,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const moreItems = useMemo(() => {
     type MoreItem = { id: string; label: string; icon: any; moduleKey: string | null; badge?: number };
     const profileItem: MoreItem = { id: 'profile', label: 'প্রোফাইল', icon: User, moduleKey: null };
+    // Step 4: staff leave request (mobile). NOT self-attendance — staff
+    // attendance stays admin-only. Principal/guardian do not file leaves.
+    const leaveItem: MoreItem = { id: 'leave', label: 'ছুটির আবেদন', icon: Clock, moduleKey: null };
     const noticeBadge = notices.length > 0 ? notices.length : undefined;
     if (userRole === 'teacher') {
       return [
@@ -971,12 +1001,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'teacher_notices', badge: noticeBadge },
         { id: 'report_attendance', label: 'হাজিরা রিপোর্ট', icon: BarChart3, moduleKey: 'teacher_report_attendance' },
         { id: 'report_result', label: 'ফলাফল রিপোর্ট', icon: Award, moduleKey: 'teacher_report_result' },
+        leaveItem,
         profileItem
       ] as MoreItem[];
     }
     if (userRole === 'cashier') {
       return [
         { id: 'finance_expense', label: 'খরচ এন্ট্রি', icon: Receipt, moduleKey: 'finance' },
+        leaveItem,
         profileItem
       ] as MoreItem[];
     }
@@ -999,13 +1031,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     return [
       { id: 'attendance', label: 'হাজিরা', icon: CheckSquare, moduleKey: 'attendance' },
+      leaveItem,
       profileItem
     ] as MoreItem[];
   }, [userRole, notices.length]);
 
   // The More button counts as active when the open screen is one of the
   // More-sheet destinations (or the profile screen reached from it).
-  const moreActive = showProfile ||
+  const moreActive = showProfile || showLeave ||
     (activeSubModule !== null && moreItems.some(m => m.moduleKey !== null && m.moduleKey === activeSubModule));
 
   // Lock body scroll while the More sheet is open (Tutor pattern).
@@ -1025,6 +1058,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       setActiveTab(moduleKey as any);
     }
     setShowProfile(false);
+    setShowLeave(false);
     setActiveSubModule(moduleKey);
   };
 
@@ -1040,6 +1074,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return;
     }
     setShowProfile(false);
+    setShowLeave(false);
     if (nav.targetModule) {
       // Guardian bottom nav: open the portal on the tapped tab.
       if (nav.targetModule === 'guardian_portal') {
@@ -1054,6 +1089,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const goHome = () => {
     setActiveSubModule(null);
     setShowProfile(false);
+    setShowLeave(false);
     setMoreOpen(false);
     setActiveBottomNav('home');
   };
@@ -1547,6 +1583,112 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     );
   }, [myTeacherRecord, currentUser, authUser]);
 
+  // ---------------------------------------------------------------
+  // Step 4 handlers: staff leave request + own profile edit.
+  // Leave requests are ALWAYS PENDING (buildStaffLeaveRequest hard-codes
+  // it) and follow the truthful-save pattern: success only after the
+  // awaited cloud confirmation, otherwise an honest failure banner with
+  // a retry that re-confirms the still-local records (no re-filing).
+  // Staff self-attendance is deliberately NOT here (admin-only).
+  // ---------------------------------------------------------------
+  const myLeaveIdentity = myTeacherRecord?.id || currentUser?.id || '';
+  const myLeaves = useMemo(
+    () => (staffLeaves || []).filter((l) => l.teacherId === myLeaveIdentity),
+    [staffLeaves, myLeaveIdentity]
+  );
+
+  const handleSubmitLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (leaveSubmitting) return;
+    const days = computeLeaveDays(leaveStart, leaveEnd);
+    if (!days) {
+      setLeaveFailure(isEn ? 'End date must not be before start date.' : 'শেষ তারিখ শুরুর তারিখের আগে হতে পারবে না।');
+      return;
+    }
+    if (!myLeaveIdentity) {
+      setLeaveFailure(isEn ? 'No staff record is linked to this account — please contact the office.' : 'এই অ্যাকাউন্টের সাথে কোনো স্টাফ রেকর্ড যুক্ত নেই — অফিসে যোগাযোগ করুন।');
+      return;
+    }
+    setLeaveSubmitting(true);
+    try {
+      const record = buildStaffLeaveRequest(
+        {
+          teacherId: myLeaveIdentity,
+          teacherName: myTeacherRecord?.nameBn || myTeacherRecord?.name || displayName,
+          designation: myTeacherRecord?.designation || currentUser?.designation || '',
+          leaveType,
+          startDate: leaveStart,
+          endDate: leaveEnd,
+          reason: leaveReason.trim(),
+        },
+        `leave_${Date.now()}`
+      );
+      const next = [record, ...staffLeaves];
+      setStaffLeaves(next);
+      const result = await confirmLeavesCloudSync(next);
+      if (result.success) {
+        setLeaveFailure(null);
+        setLeaveSuccess(isEn ? 'Leave request submitted — pending approval.' : 'ছুটির আবেদন জমা হয়েছে — অনুমোদনের অপেক্ষায় আছে।');
+        setLeaveReason('');
+        setTimeout(() => setLeaveSuccess(null), 3500);
+      } else {
+        setLeaveFailure(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+      }
+    } finally {
+      setLeaveSubmitting(false);
+    }
+  };
+
+  const retryLeaveCloudSync = async () => {
+    const result = await confirmLeavesCloudSync();
+    if (result.success) {
+      setLeaveFailure(null);
+      setLeaveSuccess(isEn ? 'Leave request synced to cloud.' : 'ছুটির আবেদন cloud-এ পৌঁছেছে।');
+      setTimeout(() => setLeaveSuccess(null), 3500);
+    } else {
+      setLeaveFailure(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  const startProfileEdit = () => {
+    if (!myTeacherRecord) return;
+    setEditName(myTeacherRecord.name || '');
+    setEditNameBn(myTeacherRecord.nameBn || '');
+    setEditEmployeeCode(myTeacherRecord.employeeCode || '');
+    setProfileFailure(null);
+    setEditingProfile(true);
+  };
+
+  const handleSaveProfileEdit = async () => {
+    if (!myTeacherRecord) return;
+    const updated = sanitizeProfileEdit(myTeacherRecord, {
+      name: editName,
+      nameBn: editNameBn,
+      employeeCode: editEmployeeCode,
+    });
+    const res = await updateTeacher(updated);
+    const result = await confirmStaffCloudSync(res.nextTeachers, res.nextUsers);
+    if (result.success) {
+      setProfileFailure(null);
+      setProfileSuccess(isEn ? 'Profile updated.' : 'প্রোফাইল আপডেট হয়েছে।');
+      setEditingProfile(false);
+      setTimeout(() => setProfileSuccess(null), 3500);
+    } else {
+      setProfileFailure(result.message || STAFF_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  const retryProfileCloudSync = async () => {
+    const result = await confirmStaffCloudSync();
+    if (result.success) {
+      setProfileFailure(null);
+      setProfileSuccess(isEn ? 'Profile synced to cloud.' : 'প্রোফাইল cloud-এ পৌঁছেছে।');
+      setTimeout(() => setProfileSuccess(null), 3500);
+    } else {
+      setProfileFailure(result.message || STAFF_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
   const activeRoutineItems = useMemo(() => {
     return (classRoutines || []).filter(r => !r.status || r.status === 'ACTIVE');
   }, [classRoutines]);
@@ -1838,13 +1980,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         <div className="grid grid-cols-2 gap-2.5">
           {moreItems.map(item => {
             const ItemIcon = item.icon;
-            const isActive = item.moduleKey !== null ? item.moduleKey === activeSubModule : showProfile;
+            const isActive = item.id === 'leave' ? showLeave : (item.moduleKey !== null ? item.moduleKey === activeSubModule : showProfile);
             return (
               <button
                 key={item.id}
                 onClick={() => {
                   setMoreOpen(false);
-                  if (item.moduleKey === null) {
+                  if (item.id === 'leave') {
+                    setActiveSubModule(null);
+                    setShowLeave(true);
+                  } else if (item.moduleKey === null) {
                     setActiveSubModule(null);
                     setShowProfile(true);
                   } else {
@@ -3726,6 +3871,100 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </div>
           </div>
 
+          {/* Step 4: own profile edit — display fields only (name, Bangla
+              name, employee code). Email, phone, password, designation and
+              class assignments stay admin-only: they feed login identity,
+              provisioning, role derivation and access scoping. */}
+          <div className={`${cardCls} p-5 space-y-3`}>
+            <p className="text-xs font-bold">{isEn ? 'Edit my information' : 'আমার তথ্য সম্পাদনা'}</p>
+            {profileSuccess && (
+              <div className="p-3 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-[#065f46] dark:text-emerald-300 text-xs font-bold">
+                {profileSuccess}
+              </div>
+            )}
+            {profileFailure && (
+              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
+                <span>{profileFailure}</span>
+                <button type="button" onClick={retryProfileCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+              </div>
+            )}
+            {!myTeacherRecord ? (
+              <p className="text-xs font-semibold text-[#8a93a8]">
+                {isEn ? 'No staff record is linked to this account — please contact the office to update your information.' : 'এই অ্যাকাউন্টের সাথে কোনো স্টাফ রেকর্ড যুক্ত নেই — তথ্য বদলাতে অফিসে যোগাযোগ করুন।'}
+              </p>
+            ) : !editingProfile ? (
+              <>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#8a93a8] font-semibold">{isEn ? 'Name' : 'নাম'}</span>
+                  <span className="font-bold">{myTeacherRecord.name}</span>
+                </div>
+                <div className="h-px bg-[#e8ecf4] dark:bg-white/5" />
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#8a93a8] font-semibold">{isEn ? 'Bangla name' : 'বাংলা নাম'}</span>
+                  <span className="font-bold">{myTeacherRecord.nameBn || '—'}</span>
+                </div>
+                <div className="h-px bg-[#e8ecf4] dark:bg-white/5" />
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#8a93a8] font-semibold">{isEn ? 'Employee code' : 'কর্মী কোড'}</span>
+                  <span className="font-bold">{myTeacherRecord.employeeCode || '—'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={startProfileEdit}
+                  className="w-full py-3 rounded-2xl text-xs font-bold brand-grad text-white active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  {isEn ? 'Edit' : 'সম্পাদনা করুন'}
+                </button>
+                <p className="text-[11px] font-semibold text-[#8a93a8]">
+                  {isEn ? 'Email, phone, password, designation and class assignments can only be changed by the office.' : 'ইমেইল, ফোন নম্বর, পাসওয়ার্ড, পদবি ও ক্লাস বণ্টন বদলাতে অফিসে যোগাযোগ করুন।'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-xs font-bold block mb-1.5">{isEn ? 'Name' : 'নাম'}</label>
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full py-3 px-3 rounded-2xl text-sm font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold block mb-1.5">{isEn ? 'Bangla name' : 'বাংলা নাম'}</label>
+                  <input
+                    value={editNameBn}
+                    onChange={(e) => setEditNameBn(e.target.value)}
+                    className="w-full py-3 px-3 rounded-2xl text-sm font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold block mb-1.5">{isEn ? 'Employee code' : 'কর্মী কোড'}</label>
+                  <input
+                    value={editEmployeeCode}
+                    onChange={(e) => setEditEmployeeCode(e.target.value)}
+                    className="w-full py-3 px-3 rounded-2xl text-sm font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveProfileEdit}
+                    className="py-3 rounded-2xl text-xs font-bold brand-grad text-white active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    {isEn ? 'Save' : 'সংরক্ষণ করুন'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingProfile(false)}
+                    className="py-3 rounded-2xl text-xs font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 text-[#5b6478] dark:text-slate-300 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    {isEn ? 'Cancel' : 'বাতিল'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Appearance: display mode, accent colour, language */}
           <div className={`${cardCls} p-5 space-y-5`}>
             <div>
@@ -3811,6 +4050,124 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <LogOut size={16} />
             <span>লগআউট / একাউন্ট পরিবর্তন</span>
           </button>
+        </main>
+
+        {BottomNav}
+        {MoreSheet}
+        <OfflineIndicator />
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // STAFF LEAVE REQUEST (Step 4) — staff-submitted requests are ALWAYS
+  // PENDING here; approval happens on desktop. Staff self-attendance is
+  // deliberately not offered (admin-only, user's decision).
+  // -------------------------------------------------------------
+  if (showLeave) {
+    const leaveDaysPreview = computeLeaveDays(leaveStart, leaveEnd);
+    return (
+      <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] text-[#1e2433] dark:text-slate-100 flex flex-col pb-24">
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#161c2e]/95 backdrop-blur-xl border-b border-[#e8ecf4] dark:border-white/5 px-4 py-3.5">
+          <h1 className="text-base font-black">{isEn ? 'Leave Request' : 'ছুটির আবেদন'}</h1>
+        </header>
+
+        <main className="p-4 space-y-4">
+          {leaveSuccess && (
+            <div className="p-3 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-[#065f46] dark:text-emerald-300 text-xs font-bold">
+              {leaveSuccess}
+            </div>
+          )}
+          {leaveFailure && (
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
+              <span>{leaveFailure}</span>
+              <button type="button" onClick={retryLeaveCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+            </div>
+          )}
+
+          {!myLeaveIdentity ? (
+            <div className={`${cardCls} p-5 text-xs font-bold text-[#5b6478] dark:text-slate-300`}>
+              {isEn ? 'No staff record is linked to this account — please contact the office to file leave.' : 'এই অ্যাকাউন্টের সাথে কোনো স্টাফ রেকর্ড যুক্ত নেই — ছুটির আবেদন করতে অফিসে যোগাযোগ করুন।'}
+            </div>
+          ) : (
+            <form onSubmit={handleSubmitLeave} className={`${cardCls} p-5 space-y-4`}>
+              <div>
+                <label className="text-xs font-bold block mb-1.5">{isEn ? 'Leave type' : 'ছুটির ধরন'}</label>
+                <select
+                  value={leaveType}
+                  onChange={(e) => setLeaveType(e.target.value as StaffLeaveRecord['leaveType'])}
+                  className="w-full py-3 px-3 rounded-2xl text-sm font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10"
+                >
+                  {STAFF_LEAVE_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{isEn ? o.labelEn : o.labelBn}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold block mb-1.5">{isEn ? 'From' : 'শুরু'}</label>
+                  <input
+                    type="date"
+                    value={leaveStart}
+                    onChange={(e) => setLeaveStart(e.target.value)}
+                    className="w-full py-3 px-3 rounded-2xl text-sm font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold block mb-1.5">{isEn ? 'To' : 'শেষ'}</label>
+                  <input
+                    type="date"
+                    value={leaveEnd}
+                    onChange={(e) => setLeaveEnd(e.target.value)}
+                    className="w-full py-3 px-3 rounded-2xl text-sm font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10"
+                  />
+                </div>
+              </div>
+              {leaveDaysPreview > 0 && (
+                <p className="text-xs font-bold text-[#5b6478] dark:text-slate-300">
+                  {isEn ? `Total: ${leaveDaysPreview} day(s)` : `মোট: ${toBn(leaveDaysPreview)} দিন`}
+                </p>
+              )}
+              <div>
+                <label className="text-xs font-bold block mb-1.5">{isEn ? 'Reason' : 'কারণ'}</label>
+                <textarea
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                  rows={3}
+                  className="w-full py-3 px-3 rounded-2xl text-sm font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={leaveSubmitting}
+                className="w-full py-3.5 rounded-[20px] brand-grad text-white text-sm font-bold active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isEn ? 'Submit leave request' : 'ছুটির আবেদন জমা দিন'}
+              </button>
+              <p className="text-[11px] font-semibold text-[#8a93a8]">
+                {isEn ? 'Your request goes to the principal/admin as pending — it counts only after approval.' : 'আবেদনটি অধ্যক্ষ/প্রশাসনের কাছে অপেক্ষমাণ হিসেবে যাবে — অনুমোদন হলেই শুধু গণনায় আসবে।'}
+              </p>
+            </form>
+          )}
+
+          <div className={`${cardCls} p-5 space-y-3`}>
+            <p className="text-xs font-bold">{isEn ? 'My leave requests' : 'আমার ছুটির আবেদন'}</p>
+            {myLeaves.length === 0 ? (
+              <p className="text-xs font-semibold text-[#8a93a8]">{isEn ? 'No leave requests yet.' : 'এখনো কোনো ছুটির আবেদন নেই।'}</p>
+            ) : (
+              myLeaves.map((l) => (
+                <div key={l.id} className="flex items-center justify-between gap-3 py-2 border-b border-[#e8ecf4] dark:border-white/5 last:border-0">
+                  <div className="text-xs">
+                    <p className="font-bold">{l.startDate}{l.startDate !== l.endDate ? ` → ${l.endDate}` : ''}</p>
+                    <p className="text-[#8a93a8] font-semibold">{l.reason || (isEn ? 'No reason given' : 'কারণ দেওয়া হয়নি')}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${l.status === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' : l.status === 'PENDING' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300'}`}>
+                    {l.status === 'APPROVED' ? (isEn ? 'Approved' : 'অনুমোদিত') : l.status === 'PENDING' ? (isEn ? 'Pending' : 'অপেক্ষমাণ') : (isEn ? 'Rejected' : 'বাতিল')}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </main>
 
         {BottomNav}

@@ -98,6 +98,7 @@ import {
   writeStaffFieldsToCloud,
   writeNoticesFieldToCloud,
   writeScheduleFieldsToCloud,
+  writeStaffLeavesFieldToCloud,
   confirmCloudWrite,
   ATTENDANCE_CLOUD_FAILURE_MESSAGE,
   FEE_CLOUD_FAILURE_MESSAGE,
@@ -107,6 +108,7 @@ import {
   STAFF_CLOUD_FAILURE_MESSAGE,
   NOTICES_CLOUD_FAILURE_MESSAGE,
   SCHEDULE_CLOUD_FAILURE_MESSAGE,
+  LEAVE_CLOUD_FAILURE_MESSAGE,
   queuePendingConfirm,
   clearPendingConfirm,
   readPendingConfirms,
@@ -318,6 +320,7 @@ interface AppContextType extends AppState {
   confirmStaffCloudSync: (nextTeachers?: AcademicTeacher[], nextUsers?: AppUser[]) => Promise<CloudConfirmResult>;
   confirmNoticesCloudSync: (nextNotices?: NoticeItem[]) => Promise<CloudConfirmResult>;
   confirmScheduleCloudSync: () => Promise<CloudConfirmResult>;
+  confirmLeavesCloudSync: (nextLeaves?: StaffLeaveRecord[]) => Promise<CloudConfirmResult>;
   updateTransaction: (transaction: FinanceTransaction) => void;
   deleteTransaction: (id: string) => void;
   setTransactions: (transactions: FinanceTransaction[]) => void;
@@ -538,6 +541,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     } catch {}
     return [];
   });
+  // Fresh-reader for the leave cloud-confirm retry (same pattern as
+  // transactionsRef): confirm functions run from effects whose closures
+  // may hold stale state, so the retry reads through this ref instead.
+  const staffLeavesRef = useRef<StaffLeaveRecord[]>([]);
+  useEffect(() => {
+    staffLeavesRef.current = staffLeaves;
+  }, [staffLeaves]);
 
   // Daily attendance records (student + staff). Previously these lived ONLY
   // in dailyAttendanceService's localStorage on a single device — never in
@@ -3853,6 +3863,30 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return result;
   };
 
+  // Step 4 (25 Oct 2026): staff leave records — staff-submitted requests
+  // (always PENDING) and admin approve/reject decisions share this one
+  // confirmed write. Admin-entered leaves keep their existing direct
+  // setStaffLeaves path; only the mobile request and the decision
+  // transitions go through here.
+  const confirmLeavesCloudSync = async (
+    nextLeaves?: StaffLeaveRecord[]
+  ): Promise<CloudConfirmResult> => {
+    const list = nextLeaves ?? staffLeavesRef.current;
+    const result = await confirmCloudWrite(
+      () => writeStaffLeavesFieldToCloud(list, confirmActorName()),
+      LEAVE_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('leaves');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('leaves');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
   // Retry for the truthful-save paths (no general sync queue).
   // Runs on app start, when the user returns to the foreground, when the
   // device comes back online, and when a signed-in session appears
@@ -3878,6 +3912,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (pending.includes('staff')) await confirmStaffCloudSync();
       if (pending.includes('notices')) await confirmNoticesCloudSync();
       if (pending.includes('schedule')) await confirmScheduleCloudSync();
+      if (pending.includes('leaves')) await confirmLeavesCloudSync();
     } finally {
       retryInFlightRef.current = false;
     }
@@ -4728,6 +4763,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       confirmStaffCloudSync,
       confirmNoticesCloudSync,
       confirmScheduleCloudSync,
+      confirmLeavesCloudSync,
       updateTransaction,
       deleteTransaction,
       setTransactions,

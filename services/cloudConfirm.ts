@@ -55,7 +55,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { DailyStudentAttendanceRecord } from './dailyAttendanceService';
-import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem } from '../types';
+import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem, StaffLeaveRecord } from '../types';
 import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../types/academic';
 
 export const ATTENDANCE_CLOUD_FAILURE_MESSAGE =
@@ -87,6 +87,12 @@ export const NOTICE_DELETE_CLOUD_FAILURE_MESSAGE =
 export const SCHEDULE_CLOUD_FAILURE_MESSAGE =
   'রুটিন/সিলেবাস/ক্যালেন্ডার এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
+// Step 4 (25 Oct 2026): staff-submitted leave requests use the same
+// truthful-save pattern. The request itself is always PENDING (see
+// services/staffSelfService.ts) — this message only covers its cloud write.
+export const LEAVE_CLOUD_FAILURE_MESSAGE =
+  'ছুটির আবেদন এই ফোনে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
 export const feeCloudFailureMessage = (voucherNo: string): string =>
   `রসিদ নং ${voucherNo} এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — প্রিন্সিপালের খাতায় এখনো ওঠেনি। আবার চেষ্টা করুন।`;
 
@@ -106,7 +112,8 @@ export type PendingConfirmKind =
   | 'studentDelete'
   | 'staff'
   | 'notices'
-  | 'schedule';
+  | 'schedule'
+  | 'leaves';
 
 export type CloudConfirmResult = { success: boolean; message?: string };
 
@@ -259,6 +266,18 @@ export async function writeScheduleFieldsToCloud(
   );
 }
 
+/** Step 4 (25 Oct 2026): staff leave records (staffLeaves field only). */
+export async function writeStaffLeavesFieldToCloud(
+  leaves: StaffLeaveRecord[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldToCloud('staffLeaves', leaves, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'leaves cloud confirm'
+  );
+}
+
 /** Runs a caller-supplied write and maps its outcome (deleteTeacher template). */
 export async function confirmCloudWrite(
   write: () => Promise<void>,
@@ -289,7 +308,8 @@ export function readPendingConfirms(): PendingConfirmKind[] {
         k === 'studentDelete' ||
         k === 'staff' ||
         k === 'notices' ||
-        k === 'schedule'
+        k === 'schedule' ||
+        k === 'leaves'
     );
   } catch {
     return [];

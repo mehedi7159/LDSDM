@@ -20,6 +20,7 @@ import {
   Filter, 
   CheckCircle2, 
   AlertCircle, 
+  Check,
   X, 
   Save, 
   Copy, 
@@ -44,7 +45,8 @@ import { dailyAttendanceService, DailyStaffAttendanceRecord } from '../../servic
 import { AcademicTeacher } from '../../types/academic';
 import { FinanceTransaction, UserRole, StaffLeaveRecord } from '../../types';
 import { deriveRoleFromDesignation } from '../../services/utils';
-import { STAFF_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
+import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
+import { decideStaffLeave } from '../../services/staffSelfService';
 import { PageHeader } from '../ui/PageHeader';
 
 export type StaffSubTab = 
@@ -80,6 +82,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     deleteTeacher,
     staffLeaves = [],
     setStaffLeaves,
+    confirmLeavesCloudSync,
     users = [], 
     setUsers,
     pendingMembers = [],
@@ -510,6 +513,30 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setLeaves(prev => [record, ...prev]);
     setIsLeaveModalOpen(false);
     showToast(isBn ? 'ছুটির আবেদন সফলভাবে রেকর্ড করা হয়েছে' : 'Leave record added successfully');
+  };
+
+  // Step 4 (25 Oct 2026): approve/reject for STAFF-SUBMITTED (PENDING)
+  // requests only. Admin-entered leaves above keep their existing
+  // behavior (recorded APPROVED directly). The decision is confirmed
+  // against the cloud: on failure the row reverts to PENDING and a
+  // failure toast shows — the admin is never told a decision landed
+  // when it did not. REJECTED rows stay listed in this tab but are
+  // excluded from every report count (reports filter APPROVED only).
+  const handleLeaveDecision = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
+    const target = leaves.find((l) => l.id === id);
+    if (!target || target.status !== 'PENDING') return;
+    const decidedBy = isOwnerAdmin ? 'অধ্যক্ষ / প্রধান' : 'প্রশাসন';
+    const next = decideStaffLeave(leaves, id, decision, decidedBy);
+    setLeaves(next);
+    const result = await confirmLeavesCloudSync(next);
+    if (result.success) {
+      showToast(decision === 'APPROVED'
+        ? (isBn ? 'ছুটি অনুমোদিত হয়েছে' : 'Leave approved')
+        : (isBn ? 'ছুটি বাতিল করা হয়েছে' : 'Leave rejected'));
+    } else {
+      setLeaves(leaves);
+      showToast(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+    }
   };
 
   // Sub-tabs list
@@ -1093,6 +1120,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           {l.leaveType === 'CASUAL' ? (isBn ? 'নৈমিত্তিক ছুটি' : 'Casual Leave') :
                            l.leaveType === 'SICK' ? (isBn ? 'অসুস্থতাজনিত ছুটি' : 'Sick Leave') :
                            l.leaveType === 'HAJJ_UMRAH' ? (isBn ? 'হজ্ব/ওমরাহ ছুটি' : 'Hajj/Umrah') :
+                           l.leaveType === 'MATERNITY' ? (isBn ? 'মাতৃত্বকালীন ছুটি' : 'Maternity Leave') :
                            (isBn ? 'বিশেষ ছুটি' : 'Special Leave')}
                         </td>
                         <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
@@ -1119,6 +1147,26 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           {l.approvedBy || (isBn ? 'অধ্যক্ষ' : 'Principal')}
                         </td>
                         <td className="py-3.5 px-4 text-right">
+                          {l.status === 'PENDING' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleLeaveDecision(l.id, 'APPROVED')}
+                                className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+                                title={isBn ? 'অনুমোদন করুন' : 'Approve'}
+                              >
+                                <Check size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleLeaveDecision(l.id, 'REJECTED')}
+                                className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                                title={isBn ? 'বাতিল করুন' : 'Reject'}
+                              >
+                                <X size={14} />
+                              </button>
+                            </>
+                          )}
                           <button
                             type="button"
                             onClick={() => { setLeaves(prev => prev.filter(x => x.id !== l.id)); showToast(isBn ? 'ছুটির রেকর্ড মুছে ফেলা হয়েছে' : 'Leave record removed'); }}
