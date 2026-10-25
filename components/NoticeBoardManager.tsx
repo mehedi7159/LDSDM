@@ -27,9 +27,10 @@ import { Button } from './ui/Button';
 import { PageHeader } from './ui/PageHeader';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { NoticeBulkEmailModule } from './NoticeBulkEmailModule';
+import { RETRY_LABEL, NOTICES_CLOUD_FAILURE_MESSAGE, NOTICE_DELETE_CLOUD_FAILURE_MESSAGE } from '../services/cloudConfirm';
 
 export const NoticeBoardManager: React.FC = () => {
-  const { notices = [], addNotice, updateNotice, deleteNotice, isAdmin, isSuperAdmin, authUser, language, classes = [], schoolProfile } = useApp();
+  const { notices = [], addNotice, updateNotice, deleteNotice, confirmNoticesCloudSync, isAdmin, isSuperAdmin, authUser, language, classes = [], schoolProfile } = useApp();
   const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
 
@@ -41,6 +42,15 @@ export const NoticeBoardManager: React.FC = () => {
   const [editingNotice, setEditingNotice] = useState<NoticeItem | null>(null);
   const [noticeToPrint, setNoticeToPrint] = useState<NoticeItem | null>(null);
   const [noticeToDelete, setNoticeToDelete] = useState<NoticeItem | null>(null);
+  // Truthful-save Step 2: notices previously saved with NO feedback at
+  // all — a failed cloud write looked identical to a synced one. These
+  // states carry the honest success/failure feedback + retry.
+  const [noticeSaveSuccess, setNoticeSaveSuccess] = useState(false);
+  const [noticeSaveError, setNoticeSaveError] = useState<string | null>(null);
+  const [pendingNoticeSave, setPendingNoticeSave] = useState<NoticeItem[] | null>(null);
+  const [noticeDeleteError, setNoticeDeleteError] = useState<string | null>(null);
+  const [pendingNoticeDelete, setPendingNoticeDelete] = useState<NoticeItem[] | null>(null);
+  const [isNoticeDeleting, setIsNoticeDeleting] = useState(false);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -53,6 +63,8 @@ export const NoticeBoardManager: React.FC = () => {
   const [authorName, setAuthorName] = useState(authUser?.displayName || 'অধ্যক্ষ / প্রশাসন কার্যালয়');
 
   const openCompose = (noticeToEdit?: NoticeItem) => {
+    setNoticeSaveError(null);
+    setPendingNoticeSave(null);
     if (noticeToEdit) {
       setEditingNotice(noticeToEdit);
       setTitle(noticeToEdit.title);
@@ -77,12 +89,19 @@ export const NoticeBoardManager: React.FC = () => {
     setIsComposeModalOpen(true);
   };
 
-  const handleSaveNotice = (e: React.FormEvent) => {
+  const handleSaveNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
+    setNoticeSaveError(null);
+    setPendingNoticeSave(null);
 
+    // Truthful save (Step 2): the local mutation runs first, then the
+    // awaited cloud confirmation decides the feedback. On failure the
+    // modal stays open with an honest error + retry — previously there
+    // was NO feedback at all, so a failed save looked synced.
+    let nextNotices: NoticeItem[];
     if (editingNotice) {
-      updateNotice({
+      const stored = updateNotice({
         ...editingNotice,
         title: title.trim(),
         content: content.trim(),
@@ -93,8 +112,9 @@ export const NoticeBoardManager: React.FC = () => {
         isPinned,
         authorName: authorName.trim() || 'প্রশাসন',
       });
+      nextNotices = notices.map(n => n.id === stored.id ? stored : n);
     } else {
-      addNotice({
+      const created = addNotice({
         title: title.trim(),
         content: content.trim(),
         category,
@@ -106,10 +126,36 @@ export const NoticeBoardManager: React.FC = () => {
         authorName: authorName.trim() || 'প্রশাসন',
         authorRole: 'অধ্যক্ষ'
       });
+      nextNotices = [created, ...notices];
     }
 
+    const result = await confirmNoticesCloudSync(nextNotices);
+    if (!result.success) {
+      setPendingNoticeSave(nextNotices);
+      setNoticeSaveError(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+      return;
+    }
+
+    setNoticeSaveSuccess(true);
+    setTimeout(() => setNoticeSaveSuccess(false), 3000);
     setIsComposeModalOpen(false);
     setEditingNotice(null);
+  };
+
+  // Retry re-confirms the still-local notice save (no re-save needed).
+  const retryNoticeSave = async () => {
+    if (!pendingNoticeSave) return;
+    const result = await confirmNoticesCloudSync(pendingNoticeSave);
+    if (result.success) {
+      setPendingNoticeSave(null);
+      setNoticeSaveError(null);
+      setNoticeSaveSuccess(true);
+      setTimeout(() => setNoticeSaveSuccess(false), 3000);
+      setIsComposeModalOpen(false);
+      setEditingNotice(null);
+    } else {
+      setNoticeSaveError(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+    }
   };
 
   // Filtered notices
@@ -180,6 +226,13 @@ export const NoticeBoardManager: React.FC = () => {
           </Button>
         )}
       </PageHeader>
+
+      {/* Truthful-save success banner (Step 2): notices previously had no save feedback at all. */}
+      {noticeSaveSuccess && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-bold">
+          {language === 'bn' ? '✓ নোটিশ সফলভাবে সংরক্ষিত হয়েছে!' : '✓ Notice saved successfully!'}
+        </div>
+      )}
 
       {/* Main Tab Navigation for Notice Board */}
       <div className="flex border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-xs gap-1.5 print:hidden">
@@ -454,6 +507,14 @@ export const NoticeBoardManager: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveNotice} className="p-6 space-y-4">
+              {noticeSaveError && (
+                <div className="p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 rounded-xl text-xs font-bold flex flex-col gap-2">
+                  <span>{noticeSaveError}</span>
+                  {pendingNoticeSave && (
+                    <button type="button" onClick={retryNoticeSave} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
                   {language === 'bn' ? 'শিরোনাম *' : 'Title *'}
@@ -600,19 +661,40 @@ export const NoticeBoardManager: React.FC = () => {
       {/* Delete Notice Confirmation */}
       <ConfirmDialog
         isOpen={!!noticeToDelete}
-        onClose={() => setNoticeToDelete(null)}
-        onConfirm={() => {
-          if (noticeToDelete) {
-            deleteNotice(noticeToDelete.id);
-            setNoticeToDelete(null);
+        onClose={() => { setNoticeToDelete(null); setNoticeDeleteError(null); setPendingNoticeDelete(null); }}
+        onConfirm={async () => {
+          if (!noticeToDelete) return;
+          // Truthful delete (Step 2): the local delete runs once, then
+          // the awaited cloud confirmation decides. On failure the
+          // dialog stays open showing the honest error, and the confirm
+          // button becomes a retry for the already-local delete.
+          setIsNoticeDeleting(true);
+          try {
+            const pending = pendingNoticeDelete ?? (() => {
+              deleteNotice(noticeToDelete.id);
+              const next = notices.filter(n => n.id !== noticeToDelete.id);
+              setPendingNoticeDelete(next);
+              return next;
+            })();
+            const result = await confirmNoticesCloudSync(pending);
+            if (result.success) {
+              setPendingNoticeDelete(null);
+              setNoticeDeleteError(null);
+              setNoticeToDelete(null);
+            } else {
+              setNoticeDeleteError(result.message || NOTICE_DELETE_CLOUD_FAILURE_MESSAGE);
+            }
+          } finally {
+            setIsNoticeDeleting(false);
           }
         }}
         title={language === 'bn' ? 'নোটিশ ডিলিট নিশ্চিতকরণ' : 'Confirm Notice Deletion'}
-        message={language === 'bn' ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this notice?'}
+        message={noticeDeleteError || (language === 'bn' ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this notice?')}
         highlightText={noticeToDelete ? noticeToDelete.title : undefined}
-        confirmLabel={language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        confirmLabel={noticeDeleteError ? RETRY_LABEL : (language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete')}
         cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
         variant="danger"
+        isLoading={isNoticeDeleting}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import type { TrashItem } from '../context/AppContext';
 import { Student } from '../types';
 import { formatNumber } from '../services/utils';
 import { Button } from './ui/Button';
@@ -36,6 +37,7 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { validateStudent } from '../services/studentValidation';
+import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE } from '../services/cloudConfirm';
 import { recordStudentAuditEvent } from '../services/studentService';
 import { StudentProfileModal } from './StudentProfileModal';
 import { AccessRestrictedView } from './AccessRestrictedView';
@@ -74,6 +76,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     addStudent, 
     updateStudent, 
     deleteStudent, 
+    confirmStudentsCloudSync,
+    confirmStudentDeleteCloudSync,
     classes, 
     t, 
     language,
@@ -141,6 +145,13 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Truthful-save Step 2: a failed cloud confirmation keeps the local
+  // save and stores the next-list here, so the banner's retry button
+  // re-confirms exactly what was saved (no re-save, no stale list).
+  const [pendingStudentSave, setPendingStudentSave] = useState<Student[] | null>(null);
+  const [pendingStudentDelete, setPendingStudentDelete] = useState<{ students: Student[]; trashBin: TrashItem[] } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isStudentDeleting, setIsStudentDeleting] = useState(false);
 
   // Modals for moving to former, restoring, and deleting
   const [studentToMoveFormer, setStudentToMoveFormer] = useState<Student | null>(null);
@@ -230,9 +241,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     return true;
   };
 
-  const handleSave = (stayInModal: boolean = false) => {
+  const handleSave = async (stayInModal: boolean = false) => {
     setError(null);
     setSuccess(false);
+    setPendingStudentSave(null);
 
     if (!validateForm()) return;
 
@@ -258,8 +270,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     };
 
     try {
+      // Truthful save (Step 2): the local mutation runs first, then the
+      // awaited cloud confirmation decides the feedback. On failure the
+      // modal stays open with an honest error + retry — never a false
+      // success, and the local record is never dropped.
+      let nextStudents: Student[];
       if (editingId) {
-        updateStudent({ ...dataToSave, id: editingId });
+        const res = updateStudent({ ...dataToSave, id: editingId });
+        nextStudents = res.students;
         if (authUser) {
           recordStudentAuditEvent({
             action: 'STUDENT_UPDATED',
@@ -272,7 +290,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           });
         }
       } else {
-        addStudent(dataToSave);
+        const res = addStudent(dataToSave);
+        nextStudents = res.students;
         if (authUser) {
           recordStudentAuditEvent({
             action: 'STUDENT_CREATED',
@@ -284,6 +303,13 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             }
           });
         }
+      }
+
+      const confirmResult = await confirmStudentsCloudSync(nextStudents);
+      if (!confirmResult.success) {
+        setPendingStudentSave(nextStudents);
+        setError(confirmResult.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+        return;
       }
 
       setSuccess(true);
@@ -300,6 +326,23 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     } catch (err) {
       console.error('Failed to save student:', err);
       setError('Failed to save student. Please try again.');
+    }
+  };
+
+  // Retry re-confirms the still-local student save (no re-save needed).
+  // On success the modal closes — re-saving would duplicate the record.
+  const retryStudentSave = async () => {
+    if (!pendingStudentSave) return;
+    const result = await confirmStudentsCloudSync(pendingStudentSave);
+    if (result.success) {
+      setPendingStudentSave(null);
+      setError(null);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+      setIsModalOpen(false);
+      resetForm();
+    } else {
+      setError(result.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
     }
   };
 
@@ -1587,6 +1630,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold flex items-center gap-2">
                   <ShieldAlert size={16} className="shrink-0" />
                   <span>{error}</span>
+                  {pendingStudentSave && (
+                    <button type="button" onClick={retryStudentSave} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+                  )}
                 </div>
               )}
               {success && (
@@ -1891,19 +1937,41 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!studentToDelete}
-        onClose={() => setStudentToDelete(null)}
-        onConfirm={() => {
-          if (studentToDelete) {
-            deleteStudent(studentToDelete.id);
-            setStudentToDelete(null);
+        onClose={() => { setStudentToDelete(null); setDeleteError(null); setPendingStudentDelete(null); }}
+        onConfirm={async () => {
+          if (!studentToDelete) return;
+          // Truthful delete (Step 2): the local delete runs once, then
+          // the awaited cloud confirmation decides. On failure the
+          // dialog stays open showing the honest error, and the confirm
+          // button becomes a retry for the already-local delete.
+          setIsStudentDeleting(true);
+          try {
+            const pending = pendingStudentDelete ?? (() => {
+              const res = deleteStudent(studentToDelete.id);
+              if (!res) { setStudentToDelete(null); return null; }
+              setPendingStudentDelete(res);
+              return res;
+            })();
+            if (!pending) return;
+            const result = await confirmStudentDeleteCloudSync(pending.students, pending.trashBin);
+            if (result.success) {
+              setPendingStudentDelete(null);
+              setDeleteError(null);
+              setStudentToDelete(null);
+            } else {
+              setDeleteError(result.message || STUDENT_DELETE_CLOUD_FAILURE_MESSAGE);
+            }
+          } finally {
+            setIsStudentDeleting(false);
           }
         }}
         title={language === 'bn' ? 'শিক্ষার্থী ডিলিট নিশ্চিতকরণ' : 'Confirm Student Deletion'}
-        message={language === 'bn' 
+        message={deleteError || (language === 'bn' 
           ? 'আপনি কি নিশ্চিত যে এই শিক্ষার্থীর সকল তথ্য ও রেকর্ড ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)' 
-          : 'Are you sure you want to delete this student record? (It will be moved to the Trash Bin)'}
+          : 'Are you sure you want to delete this student record? (It will be moved to the Trash Bin)')}
+        confirmLabel={deleteError ? RETRY_LABEL : undefined}
+        isLoading={isStudentDeleting}
         highlightText={studentToDelete ? `${language === 'bn' ? (studentToDelete.nameBn || studentToDelete.name) : studentToDelete.name} • ${studentToDelete.classLevel} ${studentToDelete.studentId ? `(${studentToDelete.studentId})` : ''}` : undefined}
-        confirmLabel={language === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
         cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
         variant="danger"
       />

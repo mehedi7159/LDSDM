@@ -24,8 +24,22 @@
  * the caller shows an honest failure notice with a retry action. The
  * queue is retried automatically on app start, on returning to the
  * foreground, and when the device comes back online (AppContext effect).
- * The queue holds only the KIND ('attendance' | 'fee') — the retry always
- * re-reads the current local data, so it can never push a stale snapshot.
+ * The queue holds only the KIND ('attendance' | 'fee' | 'marks' |
+ * 'students' | 'studentDelete' | 'staff' | 'notices' | 'schedule') —
+ * the retry always re-reads the current local data, so it can never
+ * push a stale snapshot.
+ *
+ * STEP 2 (25 Oct 2026) extends the same pattern to the remaining save
+ * paths: teacher marks, student admission/edits, student delete (students
+ * + trashBin in one write), staff create/edit (teachers + users in one
+ * write), notices, and routine/calendar/syllabus (three fields in one
+ * write, read from academicScheduleService — the same service-singleton
+ * pattern as attendance). The localStorage→bridge hop for schedule saves
+ * is synchronous (the service emits and the AppContext subscription
+ * mirrors immediately), so by confirm time the service data is the
+ * source of truth; a failed localStorage write itself has no
+ * confirmation and would surface as the confirm writing stale data —
+ * that hop is NOT covered here, only the bridge→cloud hop is.
  *
  * Honest limits (do not paper over these):
  * - A 15 s timeout bounds the confirmation: a write that never settles
@@ -41,13 +55,37 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { DailyStudentAttendanceRecord } from './dailyAttendanceService';
-import type { FinanceTransaction } from '../types';
+import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem } from '../types';
+import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../types/academic';
 
 export const ATTENDANCE_CLOUD_FAILURE_MESSAGE =
   'হাজিরা এই ফোনে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
 export const FEE_CLOUD_FAILURE_MESSAGE =
   'ফি এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+// Step 2 failure messages — same honest shape as Step 1: saved locally,
+// NOT yet in cloud, retry action. Never "saved" without confirmation.
+export const MARKS_CLOUD_FAILURE_MESSAGE =
+  'নম্বর এই ফোনে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const STUDENTS_CLOUD_FAILURE_MESSAGE =
+  'শিক্ষার্থীর তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const STUDENT_DELETE_CLOUD_FAILURE_MESSAGE =
+  'শিক্ষার্থী এই ডিভাইসে ট্র্যাশে গেছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const STAFF_CLOUD_FAILURE_MESSAGE =
+  'শিক্ষক/কর্মচারীর তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const NOTICES_CLOUD_FAILURE_MESSAGE =
+  'নোটিশ এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const NOTICE_DELETE_CLOUD_FAILURE_MESSAGE =
+  'নোটিশ এই ডিভাইসে মুছে গেছে, কিন্তু cloud-এ যায়নি — আবার চেষ্টা না করলে পরের বার ফিরে আসতে পারে। ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const SCHEDULE_CLOUD_FAILURE_MESSAGE =
+  'রুটিন/সিলেবাস/ক্যালেন্ডার এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
 export const feeCloudFailureMessage = (voucherNo: string): string =>
   `রসিদ নং ${voucherNo} এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — প্রিন্সিপালের খাতায় এখনো ওঠেনি। আবার চেষ্টা করুন।`;
@@ -60,7 +98,15 @@ export const RETRY_LABEL = 'আবার চেষ্টা করুন';
 const CONFIRM_TIMEOUT_MS = 15000;
 const PENDING_KEY = 'ldsdm_pending_cloud_confirms';
 
-export type PendingConfirmKind = 'attendance' | 'fee';
+export type PendingConfirmKind =
+  | 'attendance'
+  | 'fee'
+  | 'marks'
+  | 'students'
+  | 'studentDelete'
+  | 'staff'
+  | 'notices'
+  | 'schedule';
 
 export type CloudConfirmResult = { success: boolean; message?: string };
 
@@ -89,22 +135,27 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-async function writeFieldToCloud(
-  field: 'dailyStudentAttendance' | 'transactions',
-  localRecords: { id: string }[],
+async function writeFieldsToCloud(
+  fields: Record<string, { id: string }[]>,
   updatedBy: string
 ): Promise<void> {
   const ref = doc(db, 'institution', 'main_store');
   const snap = await getDoc(ref);
-  const existing = (snap.exists() ? (snap.data() as Record<string, unknown>)[field] : undefined) as
-    | { id: string }[]
-    | undefined;
-  const merged = mergeRecordsById(existing || [], localRecords);
-  await setDoc(
-    ref,
-    { [field]: merged, updatedBy, updatedAt: new Date().toISOString() },
-    { merge: true }
-  );
+  const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
+  const payload: Record<string, unknown> = { updatedBy, updatedAt: new Date().toISOString() };
+  for (const [field, localRecords] of Object.entries(fields)) {
+    const existing = data[field] as { id: string }[] | undefined;
+    payload[field] = mergeRecordsById(existing || [], localRecords);
+  }
+  await setDoc(ref, payload, { merge: true });
+}
+
+async function writeFieldToCloud(
+  field: string,
+  localRecords: { id: string }[],
+  updatedBy: string
+): Promise<void> {
+  await writeFieldsToCloud({ [field]: localRecords }, updatedBy);
 }
 
 export async function writeAttendanceFieldToCloud(
@@ -126,6 +177,85 @@ export async function writeTransactionsFieldToCloud(
     writeFieldToCloud('transactions', transactions, updatedBy),
     CONFIRM_TIMEOUT_MS,
     'fee cloud confirm'
+  );
+}
+
+// --- Step 2 field writers (same one-write, union-by-id, merge:true shape) ---
+// Every record type here carries a stable `id` (marks, students, staff,
+// users, notices, trash entries, routine/syllabus/calendar items), so the
+// union never drops a record. A record without an id is skipped by
+// mergeRecordsById — that invariant is what the verify script pins.
+
+export async function writeMarksFieldToCloud(
+  marks: MarkRecord[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldToCloud('marks', marks, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'marks cloud confirm'
+  );
+}
+
+export async function writeStudentsFieldToCloud(
+  students: Student[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldToCloud('students', students, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'students cloud confirm'
+  );
+}
+
+/** Student delete touches two fields at once (students + trashBin), so one write carries both — never a half-deleted state. */
+export async function writeStudentDeleteFieldsToCloud(
+  students: Student[],
+  trashBin: { id: string }[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldsToCloud({ students, trashBin }, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'student delete cloud confirm'
+  );
+}
+
+/** Staff create/edit touches teachers + users at once (deleteTeacher template) — one write carries both. */
+export async function writeStaffFieldsToCloud(
+  teachers: AcademicTeacher[],
+  users: AppUser[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldsToCloud({ teachers, users }, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'staff cloud confirm'
+  );
+}
+
+export async function writeNoticesFieldToCloud(
+  notices: NoticeItem[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldToCloud('notices', notices, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'notices cloud confirm'
+  );
+}
+
+/** Routine + syllabus + calendar travel together (one editor save can touch all three via the bridge) — one write carries all three. */
+export async function writeScheduleFieldsToCloud(
+  routines: ClassRoutineItem[],
+  syllabusItems: SyllabusItem[],
+  calendarEvents: AcademicCalendarEvent[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldsToCloud({ classRoutines: routines, syllabusItems, calendarEvents }, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'schedule cloud confirm'
   );
 }
 
@@ -151,7 +281,15 @@ export function readPendingConfirms(): PendingConfirmKind[] {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
-      (k): k is PendingConfirmKind => k === 'attendance' || k === 'fee'
+      (k): k is PendingConfirmKind =>
+        k === 'attendance' ||
+        k === 'fee' ||
+        k === 'marks' ||
+        k === 'students' ||
+        k === 'studentDelete' ||
+        k === 'staff' ||
+        k === 'notices' ||
+        k === 'schedule'
     );
   } catch {
     return [];

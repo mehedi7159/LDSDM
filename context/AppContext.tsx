@@ -92,9 +92,21 @@ import { confirmDeleteCloudSync } from '../services/staffDeletion';
 import {
   writeAttendanceFieldToCloud,
   writeTransactionsFieldToCloud,
+  writeMarksFieldToCloud,
+  writeStudentsFieldToCloud,
+  writeStudentDeleteFieldsToCloud,
+  writeStaffFieldsToCloud,
+  writeNoticesFieldToCloud,
+  writeScheduleFieldsToCloud,
   confirmCloudWrite,
   ATTENDANCE_CLOUD_FAILURE_MESSAGE,
   FEE_CLOUD_FAILURE_MESSAGE,
+  MARKS_CLOUD_FAILURE_MESSAGE,
+  STUDENTS_CLOUD_FAILURE_MESSAGE,
+  STUDENT_DELETE_CLOUD_FAILURE_MESSAGE,
+  STAFF_CLOUD_FAILURE_MESSAGE,
+  NOTICES_CLOUD_FAILURE_MESSAGE,
+  SCHEDULE_CLOUD_FAILURE_MESSAGE,
   queuePendingConfirm,
   clearPendingConfirm,
   readPendingConfirms,
@@ -250,15 +262,15 @@ interface AppContextType extends AppState {
   deleteSection: (id: string) => void;
   setSections: (sections: Section[]) => void;
   archiveClass: (id: string) => void;
-  addStudent: (student: Omit<Student, 'id'>) => void;
-  updateStudent: (student: Student) => void;
-  deleteStudent: (id: string) => void;
+  addStudent: (student: Omit<Student, 'id'>) => { student: Student; students: Student[] };
+  updateStudent: (student: Student) => { student: Student; students: Student[] };
+  deleteStudent: (id: string) => { students: Student[]; trashBin: TrashItem[] } | null;
   addSubject: (subject: Omit<Subject, 'id'>) => void;
   updateSubject: (subject: Subject) => void;
   archiveSubject: (id: string) => void;
   deleteSubject: (id: string) => void;
-  addTeacher: (teacher: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => { success: boolean; message?: string };
-  updateTeacher: (teacher: AcademicTeacher, loginRole?: UserRole) => Promise<StaffCredentialSyncStatus>;
+  addTeacher: (teacher: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => Promise<{ success: boolean; message?: string; provisioning?: 'synced' | 'skipped' | 'failed'; nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[] }>;
+  updateTeacher: (teacher: AcademicTeacher, loginRole?: UserRole) => Promise<StaffCredentialSyncStatus & { nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[] }>;
   deleteTeacher: (teacherId: string) => Promise<{ success: boolean; message?: string }>;
   archiveTeacher: (id: string) => void;
   staffLeaves: StaffLeaveRecord[];
@@ -284,7 +296,7 @@ interface AppContextType extends AppState {
   archiveClassTeacherAssignment: (id: string) => void;
   setClassTeacherAssignments: (assignments: ClassTeacherAssignment[]) => void;
   updateMark: (mark: Omit<MarkRecord, 'id'> & { id?: string }) => void;
-  bulkUpdateMarks: (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => void;
+  bulkUpdateMarks: (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => MarkRecord[];
   addExam: (name: string, category: Exam['category'], nameBn?: string, details?: Partial<Exam>) => void;
   updateExam: (exam: Exam) => void;
   archiveExam: (id: string) => void;
@@ -300,13 +312,19 @@ interface AppContextType extends AppState {
   addTransaction: (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
   confirmAttendanceCloudSync: () => Promise<CloudConfirmResult>;
   confirmFeeCloudSync: (nextTransactions?: FinanceTransaction[], failureMessage?: string) => Promise<CloudConfirmResult>;
+  confirmMarksCloudSync: (nextMarks?: MarkRecord[]) => Promise<CloudConfirmResult>;
+  confirmStudentsCloudSync: (nextStudents?: Student[]) => Promise<CloudConfirmResult>;
+  confirmStudentDeleteCloudSync: (nextStudents?: Student[], nextTrashBin?: TrashItem[]) => Promise<CloudConfirmResult>;
+  confirmStaffCloudSync: (nextTeachers?: AcademicTeacher[], nextUsers?: AppUser[]) => Promise<CloudConfirmResult>;
+  confirmNoticesCloudSync: (nextNotices?: NoticeItem[]) => Promise<CloudConfirmResult>;
+  confirmScheduleCloudSync: () => Promise<CloudConfirmResult>;
   updateTransaction: (transaction: FinanceTransaction) => void;
   deleteTransaction: (id: string) => void;
   setTransactions: (transactions: FinanceTransaction[]) => void;
   updateFeeStructure: (structure: ClassFeeStructure) => void;
   setFeeStructures: (structures: ClassFeeStructure[]) => void;
-  addNotice: (notice: Omit<NoticeItem, 'id' | 'createdAt'>) => void;
-  updateNotice: (notice: NoticeItem) => void;
+  addNotice: (notice: Omit<NoticeItem, 'id' | 'createdAt'>) => NoticeItem;
+  updateNotice: (notice: NoticeItem) => NoticeItem;
   deleteNotice: (id: string) => void;
   setNotices: (notices: NoticeItem[]) => void;
   togglePinNotice: (id: string) => void;
@@ -706,6 +724,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     transactionsRef.current = transactions;
   }, [transactions]);
 
+  // Fresh-readers for the Step 2 cloud-confirm retries (same pattern as
+  // transactionsRef): save-time confirms pass explicit next-lists (state
+  // has not landed yet), while the foreground/online/login retry reads
+  // through these refs, which are fresh by then.
+  const studentsRef = useRef<Student[]>([]);
+  useEffect(() => { studentsRef.current = students; }, [students]);
+  const marksRef = useRef<MarkRecord[]>([]);
+  useEffect(() => { marksRef.current = marks; }, [marks]);
+  const teachersRef = useRef<AcademicTeacher[]>([]);
+  useEffect(() => { teachersRef.current = teachers; }, [teachers]);
+  const trashBinRef = useRef<TrashItem[]>([]);
+  useEffect(() => { trashBinRef.current = trashBin; }, [trashBin]);
+  // noticesRef + usersRef live after their state declarations below
+  // (notices/users state is declared after this block) — see below.
+
   const [feeStructures, setFeeStructures] = useState<ClassFeeStructure[]>(() => {
     const saved = localStorage.getItem('madrasha_fee_structures');
     if (saved) {
@@ -753,10 +786,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       createdAt: new Date().toISOString()
     };
     setNotices(prev => [newNotice, ...prev]);
+    return newNotice;
   };
 
   const updateNotice = (updatedNotice: NoticeItem) => {
-    setNotices(prev => prev.map(n => n.id === updatedNotice.id ? { ...updatedNotice, updatedAt: new Date().toISOString() } : n));
+    // Truthful-save Step 2: return the stored object (with the fresh
+    // updatedAt) so the caller confirms exactly what was saved.
+    const stored: NoticeItem = { ...updatedNotice, updatedAt: new Date().toISOString() };
+    setNotices(prev => prev.map(n => n.id === stored.id ? stored : n));
+    return stored;
   };
 
   const deleteNotice = (id: string) => {
@@ -967,6 +1005,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       localStorage.setItem('madrasha_app_users', JSON.stringify(users));
     } catch (e) {}
   }, [users]);
+
+  // Step 2 fresh-readers (declared here because notices/users state is
+  // declared after the transactionsRef block above).
+  const noticesRef = useRef<NoticeItem[]>([]);
+  useEffect(() => { noticesRef.current = notices; }, [notices]);
+  const usersRef = useRef<AppUser[]>([]);
+  useEffect(() => { usersRef.current = users; }, [users]);
 
   const [activeAppUserId, setActiveAppUserId] = useState<string | null>(() => {
     try {
@@ -3302,7 +3347,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
     const { student: newStudent } = buildCreateStudentPayload(student, 'inst_madrasah_primary', actor);
     const finalStudent = newStudent || ({ ...student, id: generateId() } as Student);
-    setStudents(prev => [...prev, finalStudent]);
+    // Truthful-save Step 2: compute the next list once, set it, and
+    // return it — the caller passes it to confirmStudentsCloudSync, so
+    // the cloud write carries exactly what was saved (never a stale
+    // render-time list, never a re-derived one).
+    const nextStudents = [...students, finalStudent];
+    setStudents(nextStudents);
     if (authUser) {
       recordStudentAuditEvent({
         action: 'STUDENT_CREATED',
@@ -3310,6 +3360,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
       });
     }
+    return { student: finalStudent, students: nextStudents };
   };
 
   const updateStudent = (updatedStudent: Student) => {
@@ -3318,7 +3369,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const { student: finalStudent } = existing 
       ? buildUpdateStudentPayload(existing, updatedStudent, actor)
       : { student: updatedStudent };
-    setStudents(prev => prev.map(s => s.id === finalStudent.id ? finalStudent : s));
+    const nextStudents = students.map(s => s.id === finalStudent.id ? finalStudent : s);
+    setStudents(nextStudents);
     if (authUser) {
       recordStudentAuditEvent({
         action: 'STUDENT_UPDATED',
@@ -3327,21 +3379,25 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         before: existing ? { name: existing.name, classLevel: existing.classLevel, status: existing.status } : null
       });
     }
+    return { student: finalStudent, students: nextStudents };
   };
 
   const deleteStudent = (id: string) => {
     const st = students.find(s => s.id === id);
-    if (st) {
-      setTrashBin(prev => [{ id: generateId(), type: 'student', data: st, deletedAt: new Date().toLocaleString() }, ...prev]);
-      setStudents(prev => prev.filter(s => s.id !== id));
-      if (authUser) {
-        recordStudentAuditEvent({
-          action: 'STUDENT_ARCHIVED',
-          student: st,
-          actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
-        });
-      }
+    if (!st) return null;
+    const trashEntry: TrashItem = { id: generateId(), type: 'student', data: st, deletedAt: new Date().toLocaleString() };
+    const nextTrashBin = [trashEntry, ...trashBin];
+    const nextStudents = students.filter(s => s.id !== id);
+    setTrashBin(nextTrashBin);
+    setStudents(nextStudents);
+    if (authUser) {
+      recordStudentAuditEvent({
+        action: 'STUDENT_ARCHIVED',
+        student: st,
+        actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
+      });
     }
+    return { students: nextStudents, trashBin: nextTrashBin };
   };
 
   const bulkPromoteStudents = async (
@@ -3430,7 +3486,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   // Academic Teacher handlers
-  const addTeacher = (teacherData: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole): { success: boolean; message?: string } => {
+  const addTeacher = async (teacherData: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole): Promise<{ success: boolean; message?: string; provisioning?: 'synced' | 'skipped' | 'failed'; nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[] }> => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
     const { teacher, error } = buildCreateTeacherPayload(teacherData, 'inst_madrasah_primary', actor, teachers);
     if (!teacher) {
@@ -3460,7 +3516,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         status: teacherData.status || 'ACTIVE'
       };
 
-      setTeachers(prev => [...prev, teacherWithCredentials]);
+      // Truthful-save Step 2: next lists computed once, set, and
+      // returned — the caller passes them to confirmStaffCloudSync.
+      const nextTeachers = [...teachers, teacherWithCredentials];
+      setTeachers(nextTeachers);
       
       // Auto-sync into institution members store with teacher.id as UID
       const memberData: InstitutionMember = {
@@ -3497,14 +3556,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         createdAt: teacher.createdAt || new Date().toISOString()
       };
 
-      setUsers(prev => {
-        const filtered = prev.filter(u => 
+      const nextUsers = [
+        userObj,
+        ...users.filter(u => 
           u.id !== teacher.id && 
           (!cleanEmail || u.email?.toLowerCase() !== cleanEmail) &&
           (!cleanPhone || u.phone !== cleanPhone)
-        );
-        return [userObj, ...filtered];
-      });
+        )
+      ];
+      setUsers(nextUsers);
 
       if (authUser) {
         recordTeacherAuditEvent({
@@ -3514,19 +3574,26 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         });
       }
 
-      // Auto-provisioning, creation-time (25 Oct 2026): fire-and-forget
-      // on a secondary app instance, so the admin's session is never
-      // disturbed. Real email + stored password only — phone-only
-      // records (no email) are skipped and self-heal on first login
-      // instead. A failure here never blocks creation: it only warns,
-      // and the staff member's next login retries automatically.
+      // Auto-provisioning, creation-time (25 Oct 2026): on a secondary
+      // app instance, so the admin's session is never disturbed. Real
+      // email + stored password only — phone-only records (no email)
+      // are skipped and self-heal on first login instead. Step 2
+      // truthfulness change: the result is now AWAITED and reported
+      // instead of fire-and-forget — the old create toast claimed
+      // "login account created" even when provisioning failed. The
+      // provisioning mechanism itself is unchanged; a failure still
+      // never blocks creation, it only changes the toast, and the
+      // staff member's next login still retries automatically.
+      let provisioning: 'synced' | 'skipped' | 'failed' = 'skipped';
       if (cleanEmail && rawPassword) {
-        provisionStaffFirebaseUser(cleanEmail, rawPassword).then((result) => {
-          if (result === 'failed') {
-            console.warn('[StaffProvisioning] Creation-time provisioning did not complete; it will retry automatically on the staff member\'s next login.');
-          }
-        }).catch(() => {});
+        try {
+          const result = await provisionStaffFirebaseUser(cleanEmail, rawPassword);
+          provisioning = result === 'failed' ? 'failed' : 'synced';
+        } catch {
+          provisioning = 'failed';
+        }
       }
+      return { success: true, provisioning, nextTeachers, nextUsers };
     }
     return { success: true };
   };
@@ -3646,7 +3713,132 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return result;
   };
 
-  // Retry for the two truthful-save paths only (no general sync queue).
+  // Truthful-save Step 2 (25 Oct 2026): the same pattern for marks,
+  // students, student delete, staff, notices, and schedule. Save-time
+  // callers pass explicit next-lists (state has not landed yet); the
+  // no-arg retry path reads through the refs above. Schedule reads the
+  // academicScheduleService singleton (always fresh, like attendance).
+  const confirmMarksCloudSync = async (
+    nextMarks?: MarkRecord[]
+  ): Promise<CloudConfirmResult> => {
+    const list = nextMarks ?? marksRef.current;
+    const result = await confirmCloudWrite(
+      () => writeMarksFieldToCloud(list, confirmActorName()),
+      MARKS_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('marks');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('marks');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  const confirmStudentsCloudSync = async (
+    nextStudents?: Student[]
+  ): Promise<CloudConfirmResult> => {
+    const list = nextStudents ?? studentsRef.current;
+    const result = await confirmCloudWrite(
+      () => writeStudentsFieldToCloud(list, confirmActorName()),
+      STUDENTS_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('students');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('students');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  const confirmStudentDeleteCloudSync = async (
+    nextStudents?: Student[],
+    nextTrashBin?: TrashItem[]
+  ): Promise<CloudConfirmResult> => {
+    const studentList = nextStudents ?? studentsRef.current;
+    const trashList = nextTrashBin ?? trashBinRef.current;
+    const result = await confirmCloudWrite(
+      () => writeStudentDeleteFieldsToCloud(studentList, trashList, confirmActorName()),
+      STUDENT_DELETE_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('studentDelete');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('studentDelete');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  const confirmStaffCloudSync = async (
+    nextTeachers?: AcademicTeacher[],
+    nextUsers?: AppUser[]
+  ): Promise<CloudConfirmResult> => {
+    const teacherList = nextTeachers ?? teachersRef.current;
+    const userList = nextUsers ?? usersRef.current;
+    const result = await confirmCloudWrite(
+      () => writeStaffFieldsToCloud(teacherList, userList, confirmActorName()),
+      STAFF_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('staff');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('staff');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  const confirmNoticesCloudSync = async (
+    nextNotices?: NoticeItem[]
+  ): Promise<CloudConfirmResult> => {
+    const list = nextNotices ?? noticesRef.current;
+    const result = await confirmCloudWrite(
+      () => writeNoticesFieldToCloud(list, confirmActorName()),
+      NOTICES_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('notices');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('notices');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  const confirmScheduleCloudSync = async (): Promise<CloudConfirmResult> => {
+    const result = await confirmCloudWrite(
+      () => writeScheduleFieldsToCloud(
+        academicScheduleService.getRoutines(),
+        academicScheduleService.getSyllabusItems(),
+        academicScheduleService.getCalendarEvents(),
+        confirmActorName()
+      ),
+      SCHEDULE_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('schedule');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('schedule');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  // Retry for the truthful-save paths (no general sync queue).
   // Runs on app start, when the user returns to the foreground, when the
   // device comes back online, and when a signed-in session appears
   // (covers a fresh login healing a previously local-only session).
@@ -3665,6 +3857,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     try {
       if (pending.includes('attendance')) await confirmAttendanceCloudSync();
       if (pending.includes('fee')) await confirmFeeCloudSync();
+      if (pending.includes('marks')) await confirmMarksCloudSync();
+      if (pending.includes('students')) await confirmStudentsCloudSync();
+      if (pending.includes('studentDelete')) await confirmStudentDeleteCloudSync();
+      if (pending.includes('staff')) await confirmStaffCloudSync();
+      if (pending.includes('notices')) await confirmNoticesCloudSync();
+      if (pending.includes('schedule')) await confirmScheduleCloudSync();
     } finally {
       retryInFlightRef.current = false;
     }
@@ -3692,7 +3890,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser]);
 
-  const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus> => {
+  const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus & { nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[] }> => {
     const existing = teachers.find(t => t.id === updatedTeacher.id);
     // Keep the login role in step with the staff form's role choice;
     // without an explicit choice, derive it from the designation.
@@ -3722,10 +3920,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       status: updatedTeacher.status || teacher.status || 'ACTIVE'
     };
 
-    setTeachers(prev => prev.map(t => t.id === teacher.id ? teacherWithCredentials : t));
+    // Truthful-save Step 2: next lists computed once (same mapping the
+    // setters used to do inline), set, and returned — the caller passes
+    // them to confirmStaffCloudSync.
+    const nextTeachers = teachers.map(t => t.id === teacher.id ? teacherWithCredentials : t);
+    setTeachers(nextTeachers);
 
     // Update in users
-    setUsers(prev => prev.map(u => {
+    const nextUsers = users.map(u => {
       if (u.id === teacher.id || (cleanEmail && u.email?.toLowerCase() === cleanEmail) || (cleanPhone && u.phone === cleanPhone)) {
         return {
           ...u,
@@ -3742,7 +3944,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         };
       }
       return u;
-    }));
+    });
+    setUsers(nextUsers);
 
     // Update in institution members
     const memberData: InstitutionMember = {
@@ -3782,21 +3985,22 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       cleanEmail,
       effectiveRole
     );
-    if (syncNeed === 'not-needed') return { status: 'not-needed' };
-    if (syncNeed === 'skipped-no-prior') return { status: 'skipped', reason: 'no-prior-record' };
-    if (syncNeed === 'skipped-non-staff') return { status: 'skipped', reason: 'non-staff-role' };
-    if (syncNeed === 'skipped-no-email') return { status: 'skipped', reason: 'no-email' };
+    if (syncNeed === 'not-needed') return { status: 'not-needed', nextTeachers, nextUsers };
+    if (syncNeed === 'skipped-no-prior') return { status: 'skipped', reason: 'no-prior-record', nextTeachers, nextUsers };
+    if (syncNeed === 'skipped-non-staff') return { status: 'skipped', reason: 'non-staff-role', nextTeachers, nextUsers };
+    if (syncNeed === 'skipped-no-email') return { status: 'skipped', reason: 'no-email', nextTeachers, nextUsers };
     try {
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      if (!token) return { status: 'failed', reason: 'admin-not-signed-in' };
-      return await syncStaffCredentialToFirebase({
+      if (!token) return { status: 'failed', reason: 'admin-not-signed-in', nextTeachers, nextUsers };
+      const credential = await syncStaffCredentialToFirebase({
         idToken: token,
         oldEmail: existing?.email?.trim().toLowerCase() || undefined,
         email: cleanEmail,
         password: rawPassword !== existing?.password ? rawPassword : undefined,
       });
+      return { ...credential, nextTeachers, nextUsers };
     } catch {
-      return { status: 'failed', reason: 'network' };
+      return { status: 'failed', reason: 'network', nextTeachers, nextUsers };
     }
   };
 
@@ -4000,27 +4204,31 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const bulkUpdateMarks = (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => {
-    if (!newMarks || newMarks.length === 0) return;
+    if (!newMarks || newMarks.length === 0) return [] as MarkRecord[];
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
 
-    setMarks(prev => {
-      const marksMap = new Map();
-      prev.forEach(m => marksMap.set(`${m.studentId}-${m.subjectId}-${m.examId}`, m));
+    // Truthful-save Step 2: the merged list is computed once (same
+    // merge the setter used to do inline), set, and returned — the
+    // caller passes it to confirmMarksCloudSync. Note: this reads the
+    // render-time `marks` instead of the setter's `prev`; every caller
+    // today invokes it once per save event, so the two are identical.
+    const marksMap = new Map<string, MarkRecord>();
+    marks.forEach(m => marksMap.set(`${m.studentId}-${m.subjectId}-${m.examId}`, m));
 
-      newMarks.forEach(newData => {
-        const key = `${newData.studentId}-${newData.subjectId}-${newData.examId}`;
-        const existing = marksMap.get(key);
-        const sub = subjects.find(s => s.id === newData.subjectId);
-        const exSub = examSubjectAssignments.find(es => es.examId === newData.examId && es.subjectId === newData.subjectId);
-        const exam = exams.find(e => e.id === newData.examId);
+    newMarks.forEach(newData => {
+      const key = `${newData.studentId}-${newData.subjectId}-${newData.examId}`;
+      const existing = marksMap.get(key);
+      const sub = subjects.find(s => s.id === newData.subjectId);
+      const exSub = examSubjectAssignments.find(es => es.examId === newData.examId && es.subjectId === newData.subjectId);
+      const exam = exams.find(e => e.id === newData.examId);
 
-        const { mark } = buildUpsertMarkPayload(newData, existing, sub, exSub, exam, actor);
-        const finalMark = mark || (existing ? { ...existing, ...newData } : { ...newData, id: generateId() } as MarkRecord);
-        marksMap.set(key, finalMark);
-      });
-
-      return Array.from(marksMap.values());
+      const { mark } = buildUpsertMarkPayload(newData, existing, sub, exSub, exam, actor);
+      const finalMark = mark || (existing ? { ...existing, ...newData } : { ...newData, id: generateId() } as MarkRecord);
+      marksMap.set(key, finalMark);
     });
+
+    const mergedMarks = Array.from(marksMap.values());
+    setMarks(mergedMarks);
 
     if (authUser && newMarks.length > 0) {
       recordMarksAuditEvent({
@@ -4032,6 +4240,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'teacher' }
       });
     }
+    return mergedMarks;
   };
 
   // Exam handlers
@@ -4498,6 +4707,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       addTransaction,
       confirmAttendanceCloudSync,
       confirmFeeCloudSync,
+      confirmMarksCloudSync,
+      confirmStudentsCloudSync,
+      confirmStudentDeleteCloudSync,
+      confirmStaffCloudSync,
+      confirmNoticesCloudSync,
+      confirmScheduleCloudSync,
       updateTransaction,
       deleteTransaction,
       setTransactions,

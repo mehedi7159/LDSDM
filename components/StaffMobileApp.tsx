@@ -8,7 +8,7 @@ import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
-import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
+import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
 import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, StudentDueProfile, FeeAging } from '../services/studentDuesService';
@@ -225,6 +225,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     addTransaction,
     confirmAttendanceCloudSync,
     confirmFeeCloudSync,
+    confirmMarksCloudSync,
     updateStudent,
     deleteStudent,
     bulkUpdateMarks,
@@ -357,6 +358,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // banner stays until a retry confirms the write.
   const [attendanceCloudFailure, setAttendanceCloudFailure] = useState<string | null>(null);
   const [feeCloudFailure, setFeeCloudFailure] = useState<string | null>(null);
+  const [marksCloudFailure, setMarksCloudFailure] = useState<string | null>(null);
 
   // Helper for Bengali number formatting
   const toBn = (num: number | string | undefined | null) => {
@@ -705,7 +707,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     setMarksInputMap(initialMap);
   }, [selectedExamId, selectedSubjectId, classStudents, marks]);
 
-  const handleSaveMarks = () => {
+  const handleSaveMarks = async () => {
     if (!canEnterMarks) return; // Permission gate: admin has not enabled entry
     if (!selectedExamId || !selectedSubjectId) return;
     const markRecordsToUpdate: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
@@ -729,9 +731,30 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     });
 
     if (markRecordsToUpdate.length > 0) {
-      bulkUpdateMarks(markRecordsToUpdate);
+      // Truthful save (Step 2): success only after the awaited cloud
+      // confirmation; on failure the marks stay local and an honest
+      // failure banner with a retry action is shown instead.
+      const nextMarks = bulkUpdateMarks(markRecordsToUpdate);
+      const result = await confirmMarksCloudSync(nextMarks);
+      if (result.success) {
+        setMarksCloudFailure(null);
+        setSaveSuccessNotice('✓ নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
+        setTimeout(() => setSaveSuccessNotice(null), 3000);
+      } else {
+        setMarksCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+      }
+    }
+  };
+
+  // Retry re-confirms the still-local marks (no re-save needed).
+  const retryMarksCloudSync = async () => {
+    const result = await confirmMarksCloudSync();
+    if (result.success) {
+      setMarksCloudFailure(null);
       setSaveSuccessNotice('✓ নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
       setTimeout(() => setSaveSuccessNotice(null), 3000);
+    } else {
+      setMarksCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
     }
   };
 
@@ -2853,6 +2876,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   );
                 })}
               </div>
+
+              {/* Truthful-save failure banner (Step 2): marks stay local until a retry confirms the cloud write. */}
+              {marksCloudFailure && (
+                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
+                  <span>{marksCloudFailure}</span>
+                  <button type="button" onClick={retryMarksCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+                </div>
+              )}
 
               {canEnterMarks && classStudents.length > 0 && (
                 <div className="sticky bottom-[84px] z-30 pt-1">

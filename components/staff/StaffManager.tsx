@@ -44,6 +44,7 @@ import { dailyAttendanceService, DailyStaffAttendanceRecord } from '../../servic
 import { AcademicTeacher } from '../../types/academic';
 import { FinanceTransaction, UserRole, StaffLeaveRecord } from '../../types';
 import { deriveRoleFromDesignation } from '../../services/utils';
+import { STAFF_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { PageHeader } from '../ui/PageHeader';
 
 export type StaffSubTab = 
@@ -75,6 +76,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setTeachers,
     addTeacher,
     updateTeacher,
+    confirmStaffCloudSync,
     deleteTeacher,
     staffLeaves = [],
     setStaffLeaves,
@@ -382,7 +384,20 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         password: rawPassword,
         additionalRoles
       } as AcademicTeacher, formLoginRole);
-      if (sync.status === 'failed') {
+      // Truthful save (Step 2): the credential sync above never covered
+      // the main_store record write — confirm it here, and let the
+      // record's cloud status lead the toast (credential status second).
+      const record = await confirmStaffCloudSync(sync.nextTeachers, sync.nextUsers);
+      if (!record.success) {
+        const credClause = sync.status === 'failed'
+          ? (isBn ? ' Firebase sync-ও হয়নি।' : ' Firebase sync also failed.')
+          : (sync.status === 'skipped' && sync.reason === 'no-email')
+            ? (isBn ? ' Firebase sync হয়নি (email নেই)।' : ' Firebase sync did not run (no email).')
+            : '';
+        showToast(isBn
+          ? `${STAFF_CLOUD_FAILURE_MESSAGE}${credClause}`
+          : `Staff information saved on this device, but not yet in cloud — check internet/login and retry.${credClause}`);
+      } else if (sync.status === 'failed') {
         showToast(isBn ? `তথ্য আপডেট হয়েছে, তবে Firebase sync হয়নি (${syncFailureNote(sync.reason, true)})` : `Information updated, but Firebase sync failed (${sync.reason})`);
       } else if (sync.status === 'skipped' && sync.reason === 'no-email') {
         showToast(isBn ? 'তথ্য আপডেট হয়েছে; এই staff-এর email নেই বলে Firebase sync হয়নি' : 'Information updated; no email, so Firebase sync did not run');
@@ -390,7 +405,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
       }
     } else {
-      const addRes = addTeacher({
+      const addRes = await addTeacher({
         name: teacherFormData.name.trim(),
         nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
         employeeCode: teacherFormData.employeeCode || `MDR-T${Date.now().toString().slice(-3)}`,
@@ -407,7 +422,29 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         showToast(addRes.message || (isBn ? 'যুক্ত করা যায়নি — তথ্য যাচাই করুন' : 'Could not add — please check the information'));
         return;
       }
-      showToast(isBn ? 'নতুন শিক্ষক/কর্মচারী ও লগইন অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে' : 'New staff member and login account added successfully');
+      // Truthful save (Step 2): the old toast claimed the login account
+      // was created even when provisioning failed or was skipped, and
+      // never confirmed the record write. Both outcomes are now stated
+      // plainly; provisioning itself is unchanged (failure still never
+      // blocks creation, next login still retries).
+      const record = await confirmStaffCloudSync(addRes.nextTeachers, addRes.nextUsers);
+      const provBn = addRes.provisioning === 'synced'
+        ? 'লগইন অ্যাকাউন্ট তৈরি হয়েছে।'
+        : addRes.provisioning === 'failed'
+          ? 'লগইন অ্যাকাউন্ট তৈরি হয়নি — কর্মীর পরের লগইনে আবার চেষ্টা হবে।'
+          : 'email নেই বলে লগইন অ্যাকাউন্ট তৈরি হয়নি।';
+      const provEn = addRes.provisioning === 'synced'
+        ? 'Login account created.'
+        : addRes.provisioning === 'failed'
+          ? 'Login account could not be created — it will retry on the staff member\'s next login.'
+          : 'No email, so no login account was created.';
+      if (!record.success) {
+        showToast(isBn
+          ? `${STAFF_CLOUD_FAILURE_MESSAGE} ${provBn}`
+          : `Staff information saved on this device, but not yet in cloud — check internet/login and retry. ${provEn}`);
+      } else {
+        showToast(isBn ? `নতুন শিক্ষক/কর্মচারী সফলভাবে যুক্ত হয়েছে। ${provBn}` : `New staff member added successfully. ${provEn}`);
+      }
     }
 
     setIsAddEditModalOpen(false);

@@ -6,6 +6,7 @@ import { formatNumber } from '../../services/utils';
 import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { SCHEDULE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
 import { 
   FileText, 
   Plus, 
@@ -26,8 +27,18 @@ import {
 } from 'lucide-react';
 
 export const SyllabusPlannerView: React.FC = () => {
-  const { classes, subjects, language } = useApp();
+  const { classes, subjects, language, confirmScheduleCloudSync } = useApp();
   const isBn = language === 'bn';
+
+  // Truthful-save Step 2: service saves are local-only until the awaited
+  // cloud confirmation; on failure this banner + retry appears (the data
+  // stays in the service, never dropped).
+  const [scheduleCloudFailure, setScheduleCloudFailure] = useState<string | null>(null);
+  const confirmSchedule = async () => {
+    const result = await confirmScheduleCloudSync();
+    if (result.success) setScheduleCloudFailure(null);
+    else setScheduleCloudFailure(result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE);
+  };
 
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '১ম শ্রেণি');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('ALL');
@@ -139,7 +150,7 @@ export const SyllabusPlannerView: React.FC = () => {
   };
 
   // Save Syllabus Item
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formState.title.trim()) return;
 
@@ -163,10 +174,11 @@ export const SyllabusPlannerView: React.FC = () => {
     academicScheduleService.saveSyllabusItem(payload);
     setIsModalOpen(false);
     setVersion(v => v + 1);
+    await confirmSchedule();
   };
 
   // Quick Period Progress Update
-  const handleQuickProgress = (item: SyllabusItem, delta: number) => {
+  const handleQuickProgress = async (item: SyllabusItem, delta: number) => {
     const total = item.totalPeriods || 1;
     const nextCompleted = Math.max(0, Math.min(total, (item.completedPeriods || 0) + delta));
     let nextStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' = item.status;
@@ -176,6 +188,7 @@ export const SyllabusPlannerView: React.FC = () => {
 
     academicScheduleService.updateLessonProgress(item.id, nextCompleted, nextStatus);
     setVersion(v => v + 1);
+    await confirmSchedule();
   };
 
   // Delete
@@ -192,6 +205,13 @@ export const SyllabusPlannerView: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Truthful-save failure banner (Step 2): schedule data stays in the service until a retry confirms the cloud write. */}
+      {scheduleCloudFailure && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 rounded-xl text-xs font-bold flex flex-col gap-2">
+          <span>{scheduleCloudFailure}</span>
+          <button type="button" onClick={confirmSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+        </div>
+      )}
       {/* Top Header */}
       <PageHeader
         icon={FileText}
@@ -638,11 +658,12 @@ export const SyllabusPlannerView: React.FC = () => {
       <ConfirmDialog
         isOpen={!!topicToDelete}
         onClose={() => setTopicToDelete(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (topicToDelete) {
             academicScheduleService.deleteSyllabusItem(topicToDelete);
             setVersion(v => v + 1);
             setTopicToDelete(null);
+            await confirmSchedule();
           }
         }}
         title={isBn ? 'অধ্যায় ডিলিট নিশ্চিতকরণ' : 'Confirm Topic Deletion'}

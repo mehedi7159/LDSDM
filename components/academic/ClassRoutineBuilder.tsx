@@ -10,6 +10,7 @@ import { formatNumber } from '../../services/utils';
 import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { SCHEDULE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
 import { 
   Calendar, 
   Clock, 
@@ -30,9 +31,19 @@ import {
 } from 'lucide-react';
 
 export const ClassRoutineBuilder: React.FC = () => {
-  const { classes, subjects, teachers, language } = useApp();
+  const { classes, subjects, teachers, language, confirmScheduleCloudSync } = useApp();
   const isBn = language === 'bn';
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Truthful-save Step 2: the service save below is local-only until the
+  // awaited cloud confirmation; on failure this banner + retry appears
+  // (the data stays in the service, never dropped).
+  const [scheduleCloudFailure, setScheduleCloudFailure] = useState<string | null>(null);
+  const confirmSchedule = async () => {
+    const result = await confirmScheduleCloudSync();
+    if (result.success) setScheduleCloudFailure(null);
+    else setScheduleCloudFailure(result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE);
+  };
 
   // Active View Mode: 'by_class' (Class view) or 'by_teacher' (Teacher view)
   const [viewMode, setViewMode] = useState<'by_class' | 'by_teacher'>('by_class');
@@ -132,7 +143,7 @@ export const ClassRoutineBuilder: React.FC = () => {
   };
 
   // Save routine period
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formState.subjectId) {
       setConflictError(isBn ? 'অনুগ্রহ করে একটি বিষয় নির্বাচন করুন।' : 'Please select a subject.');
@@ -168,6 +179,7 @@ export const ClassRoutineBuilder: React.FC = () => {
     setIsModalOpen(false);
     setConflictError(null);
     setVersion(v => v + 1);
+    await confirmSchedule();
   };
 
   // Delete routine period
@@ -203,6 +215,13 @@ export const ClassRoutineBuilder: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Truthful-save failure banner (Step 2): schedule data stays in the service until a retry confirms the cloud write. */}
+      {scheduleCloudFailure && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 rounded-xl text-xs font-bold flex flex-col gap-2">
+          <span>{scheduleCloudFailure}</span>
+          <button type="button" onClick={confirmSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+        </div>
+      )}
       {/* Top Header & Mode Toggle */}
       <PageHeader
         icon={Clock}
@@ -650,11 +669,12 @@ export const ClassRoutineBuilder: React.FC = () => {
       <ConfirmDialog
         isOpen={!!periodToDelete}
         onClose={() => setPeriodToDelete(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (periodToDelete) {
             academicScheduleService.deleteRoutineItem(periodToDelete);
             setVersion(v => v + 1);
             setPeriodToDelete(null);
+            await confirmSchedule();
           }
         }}
         title={isBn ? 'পিরিয়ড ডিলিট নিশ্চিতকরণ' : 'Confirm Period Deletion'}
