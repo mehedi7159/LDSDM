@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatSafeDate } from '../../services/utils';
-import { dailyAttendanceService } from '../../services/dailyAttendanceService';
+import { summarizeStudentRecords, summarizeStaffRecords } from '../../services/dailyAttendanceService';
 import { Button } from '../ui/Button';
 import { 
   Calendar, 
@@ -44,12 +44,14 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
   initialSubTab = 'students',
   onNavigateTab
 }) => {
-  const { 
-    students = [], 
-    classes = [], 
-    teachers = [], 
-    exams = [], 
-    language 
+  const {
+    students = [],
+    classes = [],
+    teachers = [],
+    exams = [],
+    dailyStudentAttendance = [],
+    dailyStaffAttendance = [],
+    language
   } = useApp();
   const isBn = language === 'bn';
 
@@ -72,9 +74,14 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
   // over recorded entries only and are null until at least one record
   // exists; the header then shows the "not taken yet" state plus how
   // many students/staff are still pending.
+  // 24 Oct 2026 visibility fix: KPIs read the REACTIVE context arrays
+  // (same recorded-only semantics). The old service-singleton reads sat
+  // in this memo keyed only on students/teachers/selectedDate, so an
+  // already-open admin session never recomputed them when cloud records
+  // arrived via hydration.
   const kpis = useMemo(() => {
     const totalEnrolled = students.filter(s => s.status === 'Active' && !s.isFormer).length;
-    const summary = dailyAttendanceService.getDaySummary(selectedDate);
+    const summary = summarizeStudentRecords(dailyStudentAttendance, selectedDate);
     const recordedStudents = summary.totalStudents;
     const presentRecorded = summary.presentCount + summary.lateCount;
     const absentRecorded = summary.absentCount;
@@ -83,9 +90,9 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
       : null;
 
     // Staff attendance for date (recorded entries only)
-    const staffRecords = dailyAttendanceService.getStaffAttendanceByDate(selectedDate);
-    const staffRecorded = staffRecords.length;
-    const staffPresentRecorded = staffRecords.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
+    const staffSummary = summarizeStaffRecords(dailyStaffAttendance, selectedDate);
+    const staffRecorded = staffSummary.total;
+    const staffPresentRecorded = staffSummary.present;
     const staffRate = staffRecorded > 0
       ? Math.round((staffPresentRecorded / staffRecorded) * 100)
       : null;
@@ -102,7 +109,7 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
       staffRate,
       totalTeachers: teachers.length
     };
-  }, [students, teachers, selectedDate]);
+  }, [students, teachers, selectedDate, dailyStudentAttendance, dailyStaffAttendance]);
 
   // Sub-navigation tabs
   const tabs: { id: AttendanceSubTab; labelBn: string; labelEn: string; icon: any; badge?: string }[] = [

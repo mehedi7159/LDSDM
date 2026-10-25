@@ -4,7 +4,7 @@ import {
   Users, GraduationCap, Phone, MessageCircle, ClipboardList, TrendingUp, BarChart3
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { dailyAttendanceService } from '../services/dailyAttendanceService';
+import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
 import { calculateClassDuesSummary } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 
@@ -54,6 +54,7 @@ export const MadrasaReports: React.FC = () => {
   const {
     students = [], subjects = [], marks = [], exams = [],
     transactions = [], feeStructures = [], staffLeaves = [],
+    dailyStudentAttendance = [], dailyStaffAttendance = [],
     language = 'bn'
   } = useApp();
   const isBn = language === 'bn';
@@ -70,7 +71,14 @@ export const MadrasaReports: React.FC = () => {
   );
 
   // ---------- TODAY ----------
-  const todayAtt = useMemo(() => dailyAttendanceService.getDaySummary(todayIso), [todayIso]);
+  // 24 Oct 2026 visibility fix: attendance reads the REACTIVE context
+  // arrays (not the service singleton). The old singleton reads sat in
+  // useMemos keyed only on todayIso, so an already-open admin session
+  // never recomputed them when cloud records arrived.
+  const todayAtt = useMemo(
+    () => summarizeStudentRecords(dailyStudentAttendance, todayIso),
+    [dailyStudentAttendance, todayIso]
+  );
   const todayTx = useMemo(() => {
     const todays = (transactions || []).filter(t => t.date === todayIso);
     return {
@@ -84,11 +92,10 @@ export const MadrasaReports: React.FC = () => {
     [staffLeaves, todayIso]
   );
   const staffAttToday = useMemo(() => {
-    const recs = dailyAttendanceService.getStaffAttendanceByDate(todayIso);
-    if (recs.length === 0) return null;
-    const present = recs.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
-    return { recorded: recs.length, pct: Math.round((present / recs.length) * 100) };
-  }, [todayIso]);
+    const s = summarizeStaffRecords(dailyStaffAttendance, todayIso);
+    if (s.total === 0) return null;
+    return { recorded: s.total, pct: Math.round((s.present / s.total) * 100) };
+  }, [dailyStaffAttendance, todayIso]);
   const last7 = useMemo(() => {
     const days: Array<{ label: string; amount: number; isToday: boolean }> = [];
     for (let i = 6; i >= 0; i--) {
@@ -120,7 +127,7 @@ export const MadrasaReports: React.FC = () => {
   const monthAtt = useMemo(() => {
     const pcts: number[] = [];
     for (let day = 1; day <= now.getDate(); day++) {
-      const s = dailyAttendanceService.getDaySummary(isoDay(new Date(now.getFullYear(), now.getMonth(), day)));
+      const s = summarizeStudentRecords(dailyStudentAttendance, isoDay(new Date(now.getFullYear(), now.getMonth(), day)));
       if (s.totalStudents > 0) pcts.push(s.attendancePercentage);
     }
     return {
@@ -128,7 +135,7 @@ export const MadrasaReports: React.FC = () => {
       avg: pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayIso]);
+  }, [dailyStudentAttendance, todayIso]);
   const newAdmissions = useMemo(
     () => activeStudents.filter(s =>
       String(s.admissionDate || '').startsWith(monthPrefix) ||
@@ -189,14 +196,14 @@ export const MadrasaReports: React.FC = () => {
       let recorded = 0;
       let present = 0;
       for (let day = 1; day <= now.getDate(); day++) {
-        const s = dailyAttendanceService.getDaySummary(isoDay(new Date(now.getFullYear(), now.getMonth(), day)), cls);
+        const s = summarizeStudentRecords(dailyStudentAttendance, isoDay(new Date(now.getFullYear(), now.getMonth(), day)), cls);
         recorded += s.totalStudents;
         present += s.presentCount + s.lateCount;
       }
       return { name: cls, recorded, pct: recorded > 0 ? Math.round((present / recorded) * 100) : null };
     }).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classLevels, todayIso]);
+  }, [classLevels, dailyStudentAttendance, todayIso]);
   const classResults = useMemo(() => {
     try {
       const exam = exams.length > 0 ? exams[exams.length - 1] : null;

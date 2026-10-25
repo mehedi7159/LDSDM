@@ -36,6 +36,7 @@ import {
   ArrowLeft,
   X,
   Phone,
+  Palette,
   Printer,
   Search,
   MessageCircle,
@@ -335,6 +336,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [activeSubModule, setActiveSubModule] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  // Tutor-style accent + mode picker in the shell top bar (all roles).
+  // Popup stays open on selection (like Tutor) — only an outside tap closes it.
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const themePickerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onOutsideTap = (e: MouseEvent) => {
+      if (themePickerRef.current && !themePickerRef.current.contains(e.target as Node)) setShowThemePicker(false);
+    };
+    document.addEventListener('mousedown', onOutsideTap);
+    return () => document.removeEventListener('mousedown', onOutsideTap);
+  }, []);
   const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
 
@@ -351,19 +363,27 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   };
 
   // 2. Class Scope Isolation for Teacher — only the classes they are assigned to
+  // 24 Oct 2026 visibility fix: NO silent fallback to the first class.
+  // A teacher whose record carries no assignedClasses used to be handed
+  // classes[0] (and the switcher only renders for >1 class, so they
+  // could not even switch away) — their saves then landed under a class
+  // no class view queries for them. No assigned class now means an
+  // honest empty state in the attendance module (see below), never a
+  // wrong class's roster.
   const teacherClasses = useMemo(() => {
     const assigned = currentMember?.assignedClasses || currentUser?.assignedClasses || [];
-    if (assigned.length > 0) return assigned;
-    return classes.length > 0 ? [classes[0].name] : ['Class 1'];
-  }, [currentMember, currentUser, classes]);
+    return assigned.length > 0 ? assigned : [];
+  }, [currentMember, currentUser]);
 
   const [selectedClass, setSelectedClass] = useState<string>(() => {
-    return teacherClasses[0] || (classes[0]?.name || 'Class 1');
+    return teacherClasses[0] || '';
   });
 
   useEffect(() => {
     if (teacherClasses.length > 0 && !teacherClasses.includes(selectedClass)) {
       setSelectedClass(teacherClasses[0]);
+    } else if (teacherClasses.length === 0 && selectedClass !== '') {
+      setSelectedClass('');
     }
   }, [teacherClasses, selectedClass]);
 
@@ -1846,12 +1866,23 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     </span>
                     <h2 className="text-sm font-bold">{isEn ? 'Daily attendance' : 'দৈনিক হাজিরা গ্রহণ'}</h2>
                   </div>
-                  <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">
-                    {selectedClass}
-                  </span>
+                  {selectedClass ? (
+                    <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">
+                      {selectedClass}
+                    </span>
+                  ) : null}
                 </div>
 
                 {classSwitcher}
+
+                {/* No assigned class: honest empty state (never a wrong class's roster). */}
+                {teacherClasses.length === 0 && (
+                  <p className="text-[13px] font-semibold leading-relaxed text-[#dc2626] dark:text-rose-300">
+                    {isEn
+                      ? 'No class has been assigned to you yet — please contact the office.'
+                      : 'আপনার জন্য এখনো কোনো ক্লাস নির্ধারণ করা হয়নি — অফিসে যোগাযোগ করুন।'}
+                  </p>
+                )}
               </div>
 
               {/* Tabs — Tutor pattern: page-bg bar, active tab = card + shadow + accent text */}
@@ -3727,6 +3758,64 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         >
           {darkMode ? <Sun size={17} /> : <Moon size={17} />}
         </button>
+        {/* Tutor-style accent + mode picker — one tap applies app-wide
+            via ThemeContext (accent + dark mode persist to localStorage). */}
+        <div className="relative shrink-0" ref={themePickerRef}>
+          <button
+            onClick={() => setShowThemePicker(o => !o)}
+            aria-label={isEn ? 'Accent color and mode' : 'অ্যাকসেন্ট কালার ও মোড'}
+            title={isEn ? 'Accent color and mode' : 'অ্যাকসেন্ট কালার ও মোড'}
+            className="w-10 h-10 rounded-xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 flex items-center justify-center text-[#5b6478] dark:text-slate-300 cursor-pointer active:scale-95 transition-all shrink-0"
+          >
+            <Palette size={19} />
+          </button>
+
+          {showThemePicker && (
+            <div className="absolute right-0 mt-2 w-64 rounded-2xl p-4 shadow-xl z-50 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10">
+              <p className="text-[13px] font-semibold mb-2.5 text-[#1e2433] dark:text-slate-100">
+                {isEn ? 'Accent color' : 'অ্যাকসেন্ট কালার'}
+              </p>
+              <div className="flex items-center gap-2.5 mb-4">
+                {ACCENT_THEMES.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setAccentTheme(t.id)}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shrink-0"
+                    style={{
+                      background: t.primary,
+                      outline: accentTheme === t.id ? `2px solid ${t.primary}` : 'none',
+                      outlineOffset: '3px',
+                    }}
+                    title={isEn ? t.nameEn : t.nameBn}
+                    aria-label={isEn ? t.nameEn : t.nameBn}
+                  >
+                    {accentTheme === t.id && <Check size={16} className="text-white" />}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-[13px] font-semibold mb-2.5 text-[#1e2433] dark:text-slate-100">
+                {isEn ? 'Mode' : 'মোড'}
+              </p>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#f4f6fb] dark:bg-white/5">
+                <button
+                  onClick={() => setDarkMode(false)}
+                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${!darkMode ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.12)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                >
+                  <Sun size={16} />
+                  {isEn ? 'Light' : 'লাইট'}
+                </button>
+                <button
+                  onClick={() => setDarkMode(true)}
+                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${darkMode ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.12)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                >
+                  <Moon size={16} />
+                  {isEn ? 'Dark' : 'ডার্ক'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <button
           onClick={() => setShowNotifications(!showNotifications)}
           aria-label="Notifications"

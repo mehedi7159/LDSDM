@@ -115,6 +115,38 @@ class DailyAttendanceService {
     try { this.saveToStorage(); } finally { this.suppressNotify = false; }
   }
 
+  /**
+   * Merge cloud records into the local map (24 Oct 2026 visibility fix).
+   * Union by record id; the INCOMING record wins on id conflict. Local
+   * records absent from the incoming array are PRESERVED — this is what
+   * wholesale replace() got wrong: the live cloud attendance array is
+   * empty (no teacher session has ever synced it), so every snapshot /
+   * getDoc hydration replaced the teacher's phone-local records with
+   * [] and wiped them before any sync could upload them. Merge keeps
+   * the backlog alive so the next authed sync uploads it. Silent
+   * persist, like replace* (hydration never echoes into the bridge).
+   * Trade-off (accepted: attendance has no delete UI): a record
+   * deleted from the cloud alone resurrects from a device that still
+   * holds it. That is strictly better than silently deleting local
+   * records nobody deleted.
+   */
+  public mergeStudentRecords(records: DailyStudentAttendanceRecord[]) {
+    (records || []).forEach(r => {
+      if (r && r.date && r.studentId) this.studentRecords[`${r.date}_${r.studentId}`] = r;
+    });
+    this.suppressNotify = true;
+    try { this.saveToStorage(); } finally { this.suppressNotify = false; }
+  }
+
+  /** Staff counterpart of mergeStudentRecords (same union semantics). */
+  public mergeStaffRecords(records: DailyStaffAttendanceRecord[]) {
+    (records || []).forEach(r => {
+      if (r && r.date && r.staffId) this.staffRecords[`${r.date}_${r.staffId}`] = r;
+    });
+    this.suppressNotify = true;
+    try { this.saveToStorage(); } finally { this.suppressNotify = false; }
+  }
+
   private loadFromStorage() {
     try {
       const savedStudents = localStorage.getItem(STORAGE_KEY_STUDENTS);
@@ -184,30 +216,7 @@ class DailyAttendanceService {
   }
 
   public getDaySummary(date: string, classLevel?: string): DayAttendanceSummary {
-    const records = Object.values(this.studentRecords).filter(
-      r => r.date === date && (!classLevel || classLevel === 'All' || r.classLevel === classLevel)
-    );
-
-    const totalStudents = records.length;
-    const presentCount = records.filter(r => r.status === 'PRESENT').length;
-    const absentCount = records.filter(r => r.status === 'ABSENT').length;
-    const lateCount = records.filter(r => r.status === 'LATE').length;
-    const leaveCount = records.filter(r => r.status === 'LEAVE').length;
-
-    const effectivePresent = presentCount + lateCount;
-    const attendancePercentage = totalStudents > 0 
-      ? Math.round((effectivePresent / totalStudents) * 100) 
-      : 0;
-
-    return {
-      date,
-      totalStudents,
-      presentCount,
-      absentCount,
-      lateCount,
-      leaveCount,
-      attendancePercentage
-    };
+    return summarizeStudentRecords(Object.values(this.studentRecords), date, classLevel);
   }
 
   public getAbsentStudents(date: string, classLevel?: string): DailyStudentAttendanceRecord[] {
@@ -310,6 +319,48 @@ class DailyAttendanceService {
     });
     this.saveToStorage();
   }
+}
+
+/**
+ * Pure, array-based summaries (24 Oct 2026 visibility fix). The admin
+ * report center and attendance hub used to read the service singleton
+ * inside useMemos whose deps never included attendance data — and cloud
+ * hydration is deliberately silent — so an already-open admin session
+ * never recomputed attendance even after records arrived. These helpers
+ * take the REACTIVE context arrays instead, so the memos recompute
+ * whenever the arrays change. Semantics are byte-identical to the
+ * singleton methods they replace (recorded-only, present+late counted
+ * as present, 0 when nothing is recorded).
+ */
+export function summarizeStudentRecords(
+  records: DailyStudentAttendanceRecord[],
+  date: string,
+  classLevel?: string
+): DayAttendanceSummary {
+  const filtered = (records || []).filter(
+    r => r.date === date && (!classLevel || classLevel === 'All' || r.classLevel === classLevel)
+  );
+  const totalStudents = filtered.length;
+  const presentCount = filtered.filter(r => r.status === 'PRESENT').length;
+  const absentCount = filtered.filter(r => r.status === 'ABSENT').length;
+  const lateCount = filtered.filter(r => r.status === 'LATE').length;
+  const leaveCount = filtered.filter(r => r.status === 'LEAVE').length;
+  const effectivePresent = presentCount + lateCount;
+  const attendancePercentage = totalStudents > 0
+    ? Math.round((effectivePresent / totalStudents) * 100)
+    : 0;
+  return { date, totalStudents, presentCount, absentCount, lateCount, leaveCount, attendancePercentage };
+}
+
+export function summarizeStaffRecords(
+  records: DailyStaffAttendanceRecord[],
+  date: string
+): { total: number; present: number } {
+  const filtered = (records || []).filter(r => r.date === date);
+  return {
+    total: filtered.length,
+    present: filtered.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length,
+  };
 }
 
 export const dailyAttendanceService = new DailyAttendanceService();

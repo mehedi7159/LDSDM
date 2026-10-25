@@ -1684,16 +1684,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setStaffLeaves(data.staffLeaves);
       try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(data.staffLeaves)); } catch {}
     }
-    // Attendance + schedule hydration also pushes the data into the local
-    // services (silently — their replace* methods persist to the service
-    // localStorage keys without notifying the sync bridge).
+    // Attendance hydration MERGES into the local services (24 Oct 2026
+    // visibility fix) — it must never wholesale-replace. The live cloud
+    // attendance arrays were empty (no teacher session has ever synced
+    // them), so replace() wiped every teacher's phone-local records on
+    // the next snapshot/getDoc before any sync could upload them. Merge
+    // keeps local records (incoming wins on id conflict) and the state
+    // is then read back from the merged service, so the next authed
+    // sync uploads the backlog instead of an empty array. Schedule
+    // hydration below keeps replace* (routines/calendar have no
+    // equivalent phone-local backlog; same-pattern risk noted).
     if (data.dailyStudentAttendance && Array.isArray(data.dailyStudentAttendance)) {
-      setDailyStudentAttendance(data.dailyStudentAttendance);
-      dailyAttendanceService.replaceStudentRecords(data.dailyStudentAttendance);
+      dailyAttendanceService.mergeStudentRecords(data.dailyStudentAttendance);
+      setDailyStudentAttendance(dailyAttendanceService.getAllStudentRecords());
     }
     if (data.dailyStaffAttendance && Array.isArray(data.dailyStaffAttendance)) {
-      setDailyStaffAttendance(data.dailyStaffAttendance);
-      dailyAttendanceService.replaceStaffRecords(data.dailyStaffAttendance);
+      dailyAttendanceService.mergeStaffRecords(data.dailyStaffAttendance);
+      setDailyStaffAttendance(dailyAttendanceService.getAllStaffRecords());
     }
     if (data.classRoutines && Array.isArray(data.classRoutines)) {
       setClassRoutines(data.classRoutines);
