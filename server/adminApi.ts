@@ -1,73 +1,39 @@
+/**
+ * Vercel Serverless Function: POST /api/admin/bootstrap-owner
+ *
+ * Production counterpart of the Vite dev middleware / standalone server
+ * route. The request handling logic lives here and is shared unchanged
+ * between all three environments (Vite dev, server.ts, Vercel). The
+ * strict owner-email check inside this handler is NOT weakened: only
+ * the designated owner account, verified with a real Firebase ID token,
+ * can receive the admin custom claim.
+ *
+ * Required environment variable (set in the Vercel project settings):
+ *   FIREBASE_SERVICE_ACCOUNT — the full service-account JSON (single line)
+ *   for the Firebase project. On Vercel there are no local key files, so
+ *   this env var is the supported credential source; the handler also
+ *   accepts it being a path, which only applies to the standalone server.
+ *
+ * NOTE (25 Oct 2026): this handler no longer imports firebase-admin.
+ * Vercel compiles these functions to CommonJS, and firebase-admin/auth
+ * crashes there (jwks-rsa requires the ESM-only jose package). Token
+ * verification and user management now go through Google REST APIs
+ * (server/firebaseRestAuth.ts, node:crypto + fetch only). Behaviour,
+ * codes, and response shapes are unchanged.
+ */
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig.js';
 import type { IncomingMessage, ServerResponse } from 'http';
-import fs from 'fs';
-import path from 'path';
-import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import {
+  TokenVerificationError,
+  getServiceAccountCredential,
+  resolveProjectId,
+  getServiceAccountAccessToken,
+  verifyFirebaseIdToken,
+  lookupUserByUid,
+  updateRestUser,
+} from './firebaseRestAuth.js';
 
 const PRIMARY_OWNER_EMAIL = SUPER_ADMIN_EMAIL;
-let adminAppInstance: App | null = null;
-
-function getServiceAccountCredential() {
-  // Check local server files
-  const candidates = ['serviceAccountKey.json', 'firebase-service-account.json', 'admin-key.json'];
-  for (const file of candidates) {
-    const p = path.resolve(file);
-    if (fs.existsSync(p)) {
-      try {
-        const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-        if (parsed.client_email && parsed.private_key) {
-          return cert(parsed);
-        }
-      } catch (err) {
-        console.warn(`Error reading ${file}:`, err);
-      }
-    }
-  }
-
-  // Check server environment variables
-  const envCred = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (envCred) {
-    try {
-      if (envCred.trim().startsWith('{')) {
-        return cert(JSON.parse(envCred));
-      } else if (fs.existsSync(envCred)) {
-        return cert(JSON.parse(fs.readFileSync(envCred, 'utf8')));
-      }
-    } catch (e) {
-      console.warn('Error reading FIREBASE_SERVICE_ACCOUNT env:', e);
-    }
-  }
-
-  return null;
-}
-
-export function getAdminApp(): App | null {
-  const credential = getServiceAccountCredential();
-  if (!credential) {
-    return null;
-  }
-
-  // If already initialized with valid credentials
-  if (getApps().length > 0) {
-    return getApps()[0];
-  }
-
-  let activeProjectId = 'gen-lang-client-0692995380';
-  try {
-    const configPath = path.resolve('firebase-applet-config.json');
-    if (fs.existsSync(configPath)) {
-      const parsedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      if (parsedConfig.projectId) activeProjectId = parsedConfig.projectId;
-    }
-  } catch {}
-
-  adminAppInstance = initializeApp({
-    credential,
-    projectId: activeProjectId
-  });
-  return adminAppInstance;
-}
 
 export async function handleAdminBootstrapApi(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== 'POST') {
@@ -90,16 +56,16 @@ export async function handleAdminBootstrapApi(req: IncomingMessage, res: ServerR
       if (!idToken) {
         res.statusCode = 400;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ 
-          success: false, 
-          code: 'ID_TOKEN_REQUIRED', 
-          message: 'Firebase user ID token is required.' 
+        res.end(JSON.stringify({
+          success: false,
+          code: 'ID_TOKEN_REQUIRED',
+          message: 'Firebase user ID token is required.'
         }));
         return;
       }
 
-      const adminApp = getAdminApp();
-      if (!adminApp) {
+      const cred = getServiceAccountCredential();
+      if (!cred) {
         res.statusCode = 400;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({
@@ -109,11 +75,31 @@ export async function handleAdminBootstrapApi(req: IncomingMessage, res: ServerR
         }));
         return;
       }
+      const projectId = resolveProjectId(cred);
+      const accessToken = await getServiceAccountAccessToken(cred);
 
-      const adminAuth = getAuth(adminApp);
-      
-      // Verify caller's ID token using Firebase Admin SDK
-      const decoded = await adminAuth.verifyIdToken(idToken, true);
+      // Verify caller's ID token (signature + aud/iss/exp + revocation).
+      let decoded;
+      try {
+        decoded = await verifyFirebaseIdToken(idToken, projectId, {
+          lookupValidSince: async (uid: string) => {
+            const user = await lookupUserByUid(accessToken, projectId, uid);
+            return user ? (user.validSince ?? null) : null;
+          },
+        });
+      } catch (err: any) {
+        if (err instanceof TokenVerificationError) {
+          res.statusCode = err.statusCode;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: false,
+            code: err.code,
+            message: err.message,
+          }));
+          return;
+        }
+        throw err;
+      }
       const userEmail = decoded.email;
 
       // Strict Security Check: Only the authorized owner email can be granted admin claims via this endpoint
@@ -129,9 +115,8 @@ export async function handleAdminBootstrapApi(req: IncomingMessage, res: ServerR
       }
 
       // Assign Custom Claim { role: 'admin', isSuperAdmin: true }
-      await adminAuth.setCustomUserClaims(decoded.uid, {
-        role: 'admin',
-        isSuperAdmin: true
+      await updateRestUser(accessToken, projectId, decoded.uid, {
+        customAttributes: JSON.stringify({ role: 'admin', isSuperAdmin: true }),
       });
 
       console.log(`[Admin API] Successfully granted role: 'admin' (isSuperAdmin: true) to ${userEmail} (UID: ${decoded.uid})`);

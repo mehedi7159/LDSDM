@@ -5,15 +5,22 @@
  * Problem it solves: the Firebase client SDK lets a user change only
  * their OWN password, so an admin editing a staff member's password or
  * email in updateTeacher cannot sync the Firebase Auth user from the
- * app. This endpoint does it server-side with the Firebase Admin SDK.
+ * app. This endpoint does it server-side.
  *
  * Pattern mirrors server/adminApi.ts (bootstrap-owner): same method +
- * body handling, same getAdminApp() credential source (FIREBASE_SERVICE_ACCOUNT
+ * body handling, same credential source (FIREBASE_SERVICE_ACCOUNT
  * env or local key file), same ID-token verification. Authorization is
  * bootstrap-owner's model extended for admins: the caller must be the
  * designated owner email OR hold an admin custom claim (role 'admin'
  * or isSuperAdmin true). The owner/super_admin account itself can never
  * be changed through this endpoint.
+ *
+ * NOTE (25 Oct 2026): this handler no longer imports firebase-admin.
+ * Vercel compiles these functions to CommonJS, and firebase-admin/auth
+ * crashes there (jwks-rsa requires the ESM-only jose package). Token
+ * verification and user management now go through Google REST APIs
+ * (server/firebaseRestAuth.ts, node:crypto + fetch only). Behaviour,
+ * codes, and response shapes are unchanged.
  *
  * Passwords are never logged (email/uid/action only). If
  * FIREBASE_SERVICE_ACCOUNT is not configured, the handler returns a
@@ -21,8 +28,19 @@
  */
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig.js';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { getAuth } from 'firebase-admin/auth';
-import { getAdminApp } from './adminApi.js';
+import {
+  TokenVerificationError,
+  IdentityToolkitError,
+  getServiceAccountCredential,
+  resolveProjectId,
+  getServiceAccountAccessToken,
+  verifyFirebaseIdToken,
+  lookupUserByEmail,
+  lookupUserByUid,
+  updateRestUser,
+  createRestUser,
+  isInvalidPasswordError,
+} from './firebaseRestAuth.js';
 import {
   isSyncCallerAuthorized,
   isProtectedTargetEmail,
@@ -70,8 +88,8 @@ export async function handleStaffPasswordSyncApi(
         return;
       }
 
-      const adminApp = getAdminApp();
-      if (!adminApp) {
+      const cred = getServiceAccountCredential();
+      if (!cred) {
         sendJson(res, 400, {
           success: false,
           code: 'SERVICE_ACCOUNT_REQUIRED',
@@ -79,11 +97,29 @@ export async function handleStaffPasswordSyncApi(
         });
         return;
       }
+      const projectId = resolveProjectId(cred);
+      const accessToken = await getServiceAccountAccessToken(cred);
 
-      const adminAuth = getAuth(adminApp);
-
-      // Verify caller's ID token using Firebase Admin SDK.
-      const decoded = await adminAuth.verifyIdToken(idToken, true);
+      // Verify caller's ID token (signature + aud/iss/exp + revocation).
+      let decoded;
+      try {
+        decoded = await verifyFirebaseIdToken(idToken, projectId, {
+          lookupValidSince: async (uid: string) => {
+            const user = await lookupUserByUid(accessToken, projectId, uid);
+            return user ? (user.validSince ?? null) : null;
+          },
+        });
+      } catch (err: any) {
+        if (err instanceof TokenVerificationError) {
+          sendJson(res, err.statusCode, {
+            success: false,
+            code: err.code,
+            message: err.message,
+          });
+          return;
+        }
+        throw err;
+      }
       if (!isSyncCallerAuthorized(decoded, OWNER_EMAIL)) {
         sendJson(res, 403, {
           success: false,
@@ -123,29 +159,29 @@ export async function handleStaffPasswordSyncApi(
       }
 
       try {
-        const target = await adminAuth.getUserByEmail(lookupEmail ?? newEmail!);
+        const target = await lookupUserByEmail(accessToken, projectId, lookupEmail ?? newEmail!);
         const update: { email?: string; password?: string } = {};
         if (newEmail && newEmail !== target.email?.toLowerCase()) update.email = newEmail;
         if (newPassword) update.password = newPassword;
         if (Object.keys(update).length === 0) {
-          sendJson(res, 200, { success: true, action: 'no-change', uid: target.uid });
+          sendJson(res, 200, { success: true, action: 'no-change', uid: target.localId });
           return;
         }
-        await adminAuth.updateUser(target.uid, update);
-        console.log(`[StaffPasswordSync] Updated Firebase user ${target.uid} (${target.email})`);
-        sendJson(res, 200, { success: true, action: 'updated', uid: target.uid });
+        await updateRestUser(accessToken, projectId, target.localId, update);
+        console.log(`[StaffPasswordSync] Updated Firebase user ${target.localId} (${target.email})`);
+        sendJson(res, 200, { success: true, action: 'updated', uid: target.localId });
       } catch (lookupErr: any) {
-        if (lookupErr?.code === 'auth/user-not-found') {
+        if (lookupErr instanceof IdentityToolkitError && lookupErr.restCode === 'USER_NOT_FOUND') {
           // Email added later (or never provisioned): create the user so
           // the staff member's cloud sync starts working immediately.
           if (newEmail && newPassword) {
             try {
-              const created = await adminAuth.createUser({ email: newEmail, password: newPassword });
-              console.log(`[StaffPasswordSync] Created Firebase user ${created.uid} (${newEmail})`);
-              sendJson(res, 200, { success: true, action: 'created', uid: created.uid });
+              const created = await createRestUser(accessToken, projectId, newEmail, newPassword);
+              console.log(`[StaffPasswordSync] Created Firebase user ${created.localId} (${newEmail})`);
+              sendJson(res, 200, { success: true, action: 'created', uid: created.localId });
               return;
             } catch (createErr: any) {
-              if (createErr?.code === 'auth/invalid-password') {
+              if (isInvalidPasswordError(createErr)) {
                 sendJson(res, 400, {
                   success: false,
                   code: 'INVALID_PASSWORD',
@@ -163,7 +199,7 @@ export async function handleStaffPasswordSyncApi(
           });
           return;
         }
-        if (lookupErr?.code === 'auth/invalid-password') {
+        if (isInvalidPasswordError(lookupErr)) {
           sendJson(res, 400, {
             success: false,
             code: 'INVALID_PASSWORD',
