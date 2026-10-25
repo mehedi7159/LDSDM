@@ -40,6 +40,7 @@ import {
   SchoolClass 
 } from '../../types';
 import { formatBanglaNumber, generateVoucherNo, amountToBengaliWords } from '../../services/utils';
+import { feeCloudFailureMessage } from '../../services/cloudConfirm';
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DuesPrintModal } from './DuesPrintModal';
@@ -57,6 +58,12 @@ interface StudentFeeCollectionProps {
   onShowReceipt: (tx: FinanceTransaction) => void;
   showToast: (msg: string) => void;
   onNavigateTab?: (tab: string) => void;
+  // Truthful receipt (25 Oct 2026): awaited cloud confirmation for the
+  // new receipt; when absent, the old immediate-success behavior stays.
+  onConfirmFeeCloudSync?: (nextTransactions: FinanceTransaction[], failureMessage?: string) => Promise<{ success: boolean; message?: string }>;
+  // Called with the confirmation outcome BEFORE onShowReceipt, so the
+  // print modal can mark a local-only receipt honestly.
+  onReceiptCloudStatus?: (confirmed: boolean) => void;
 }
 
 export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
@@ -69,6 +76,8 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   onShowReceipt,
   showToast,
   onNavigateTab,
+  onConfirmFeeCloudSync,
+  onReceiptCloudStatus,
 }) => {
   const isBn = language === 'bn';
   const { schoolProfile } = useApp();
@@ -525,8 +534,12 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     return { gross, discount, net };
   }, [feeItems]);
 
-  // Form Submit
-  const handleSubmit = (e: React.FormEvent) => {
+  // Form Submit — truthful receipt (25 Oct 2026): the "successfully
+  // deposited" toast fires ONLY after the awaited cloud confirmation.
+  // On failure the receipt still opens (the guardian needs the paper)
+  // but is marked local-only via onReceiptCloudStatus, and the toast
+  // says so plainly instead of claiming a deposit.
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentId) {
       showToast(isBn ? 'দয়া করে একজন ছাত্র নির্বাচন করুন!' : 'Please select a student!');
@@ -589,7 +602,19 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     };
 
     const created = onAddTransaction(newTx);
-    showToast(isBn ? `রসিদ নং ${nextVoucher} সফলভাবে জমা হয়েছে!` : `Receipt ${nextVoucher} created!`);
+    const failureMsg = isBn
+      ? feeCloudFailureMessage(nextVoucher)
+      : `Receipt ${nextVoucher} saved on this device only — not yet in the cloud. Please retry.`;
+    const confirmResult = onConfirmFeeCloudSync
+      ? await onConfirmFeeCloudSync([created, ...transactions], failureMsg)
+      : { success: true };
+    const confirmed = confirmResult.success;
+    onReceiptCloudStatus?.(confirmed);
+    if (confirmed) {
+      showToast(isBn ? `রসিদ নং ${nextVoucher} সফলভাবে জমা হয়েছে!` : `Receipt ${nextVoucher} created!`);
+    } else {
+      showToast(failureMsg);
+    }
     onShowReceipt(created);
   };
 

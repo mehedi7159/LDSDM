@@ -90,6 +90,17 @@ import {
 } from '../services/studentService';
 import { confirmDeleteCloudSync } from '../services/staffDeletion';
 import {
+  writeAttendanceFieldToCloud,
+  writeTransactionsFieldToCloud,
+  confirmCloudWrite,
+  ATTENDANCE_CLOUD_FAILURE_MESSAGE,
+  FEE_CLOUD_FAILURE_MESSAGE,
+  queuePendingConfirm,
+  clearPendingConfirm,
+  readPendingConfirms,
+  type CloudConfirmResult,
+} from '../services/cloudConfirm';
+import {
   buildCreateAcademicYearPayload,
   buildUpdateAcademicYearPayload,
   setCurrentAcademicYear,
@@ -287,6 +298,8 @@ interface AppContextType extends AppState {
   updateClass: (cls: SchoolClass) => void;
   deleteClass: (id: string) => void;
   addTransaction: (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
+  confirmAttendanceCloudSync: () => Promise<CloudConfirmResult>;
+  confirmFeeCloudSync: (nextTransactions?: FinanceTransaction[], failureMessage?: string) => Promise<CloudConfirmResult>;
   updateTransaction: (transaction: FinanceTransaction) => void;
   deleteTransaction: (id: string) => void;
   setTransactions: (transactions: FinanceTransaction[]) => void;
@@ -684,6 +697,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
     return [];
   });
+
+  // Fresh-reader for the fee cloud-confirm retry: confirm functions run
+  // from effects whose closures may hold stale state, so the retry reads
+  // through this ref instead of the render-time `transactions` value.
+  const transactionsRef = useRef<FinanceTransaction[]>([]);
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
 
   const [feeStructures, setFeeStructures] = useState<ClassFeeStructure[]>(() => {
     const saved = localStorage.getItem('madrasha_fee_structures');
@@ -3574,6 +3595,103 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return { success: true, message: 'শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট সম্পূর্ণভাবে মুছে ফেলা হয়েছে।' };
   };
 
+  // Truthful-save cloud confirmation (25 Oct 2026) — teacher attendance
+  // and accountant fee collections only. Both previously showed success
+  // on local save while the real cloud write lived in the debounced
+  // auto-sync and could fail silently. These functions await a targeted
+  // one-field main_store write (deleteTeacher template) and report the
+  // truth: success only on a confirmed write, otherwise a failure that
+  // keeps the data local and queues it for retry. They never drop local
+  // data, never touch other fields, and never change the auto-sync
+  // behavior for other operations.
+  const confirmActorName = () =>
+    currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user';
+
+  const confirmAttendanceCloudSync = async (): Promise<CloudConfirmResult> => {
+    const result = await confirmCloudWrite(
+      () => writeAttendanceFieldToCloud(dailyAttendanceService.getAllStudentRecords(), confirmActorName()),
+      ATTENDANCE_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('attendance');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('attendance');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  const confirmFeeCloudSync = async (
+    nextTransactions?: FinanceTransaction[],
+    failureMessage?: string
+  ): Promise<CloudConfirmResult> => {
+    // Callers pass the post-add list ([created, ...prev]) because the
+    // setState from addTransaction has not landed yet at save time.
+    // The no-arg retry path reads through transactionsRef instead.
+    const list = nextTransactions ?? transactionsRef.current;
+    const result = await confirmCloudWrite(
+      () => writeTransactionsFieldToCloud(list, confirmActorName()),
+      failureMessage || FEE_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('fee');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('fee');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  // Retry for the two truthful-save paths only (no general sync queue).
+  // Runs on app start, when the user returns to the foreground, when the
+  // device comes back online, and when a signed-in session appears
+  // (covers a fresh login healing a previously local-only session).
+  // Silent in both directions: a failed retry stays queued for the next
+  // trigger, and the user is never spammed — the save-time failure
+  // notice is where the retry action lives. Skipped without an identity
+  // (the write rule would deny it) or while offline.
+  const retryInFlightRef = useRef(false);
+  const retryPendingCloudConfirms = async (): Promise<void> => {
+    if (retryInFlightRef.current) return;
+    const pending = readPendingConfirms();
+    if (pending.length === 0) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    if (!auth.currentUser) return;
+    retryInFlightRef.current = true;
+    try {
+      if (pending.includes('attendance')) await confirmAttendanceCloudSync();
+      if (pending.includes('fee')) await confirmFeeCloudSync();
+    } finally {
+      retryInFlightRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    retryPendingCloudConfirms();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') retryPendingCloudConfirms();
+    };
+    const onOnline = () => retryPendingCloudConfirms();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onOnline);
+    };
+    // Intentionally once: the retry reads fresh data through the service
+    // singleton / transactionsRef, never through render-time state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (authUser) retryPendingCloudConfirms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser]);
+
   const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus> => {
     const existing = teachers.find(t => t.id === updatedTeacher.id);
     // Keep the login role in step with the staff form's role choice;
@@ -4378,6 +4496,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       updateClass,
       deleteClass,
       addTransaction,
+      confirmAttendanceCloudSync,
+      confirmFeeCloudSync,
       updateTransaction,
       deleteTransaction,
       setTransactions,

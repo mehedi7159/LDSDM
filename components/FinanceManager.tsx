@@ -61,7 +61,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     deleteTransaction, 
     updateFeeStructure, 
     language, 
-    isAdmin 
+    isAdmin,
+    confirmFeeCloudSync
   } = useApp();
 
   const isBn = language === 'bn';
@@ -75,6 +76,14 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   }, [initialTab]);
 
   const [selectedVoucherForPrint, setSelectedVoucherForPrint] = useState<FinanceTransaction | null>(null);
+  // Truthful receipt (25 Oct 2026): false only when the fee collection's
+  // awaited cloud confirmation failed. Reset on every other voucher open
+  // and on close, so unrelated entries never inherit a stale flag.
+  const [voucherCloudConfirmed, setVoucherCloudConfirmed] = useState(true);
+  const openVoucher = (tx: FinanceTransaction) => {
+    setVoucherCloudConfirmed(true);
+    setSelectedVoucherForPrint(tx);
+  };
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -362,7 +371,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             feeStructures={feeStructures}
             language={language}
             onNavigateTab={(t) => setActiveTab(t as FinanceTab)}
-            onOpenReceipt={(tx) => setSelectedVoucherForPrint(tx)}
+            onOpenReceipt={openVoucher}
           />
         )}
 
@@ -377,6 +386,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
             showToast={showToast}
             onNavigateTab={(t) => setActiveTab(t as FinanceTab)}
+            onConfirmFeeCloudSync={confirmFeeCloudSync}
+            onReceiptCloudStatus={setVoucherCloudConfirmed}
           />
         )}
 
@@ -385,7 +396,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
-            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
+            onShowReceipt={openVoucher}
             showToast={showToast}
           />
         )}
@@ -395,7 +406,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
-            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
+            onShowReceipt={openVoucher}
             showToast={showToast}
           />
         )}
@@ -405,7 +416,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
-            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
+            onShowReceipt={openVoucher}
             showToast={showToast}
           />
         )}
@@ -415,7 +426,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
-            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
+            onShowReceipt={openVoucher}
             showToast={showToast}
           />
         )}
@@ -424,7 +435,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
           <FinanceLedger
             transactions={transactions}
             language={language}
-            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
+            onShowReceipt={openVoucher}
             onDeleteTransaction={deleteTransaction}
             showToast={showToast}
           />
@@ -451,7 +462,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
           transaction={selectedVoucherForPrint}
           schoolProfile={schoolProfile}
           language={language}
-          onClose={() => setSelectedVoucherForPrint(null)}
+          cloudConfirmed={voucherCloudConfirmed}
+          onClose={() => { setSelectedVoucherForPrint(null); setVoucherCloudConfirmed(true); }}
         />
       )}
     </div>

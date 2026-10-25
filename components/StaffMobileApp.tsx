@@ -8,6 +8,7 @@ import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
+import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
 import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, StudentDueProfile, FeeAging } from '../services/studentDuesService';
@@ -222,6 +223,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     calendarEvents = [],
     teachers = [],
     addTransaction,
+    confirmAttendanceCloudSync,
+    confirmFeeCloudSync,
     updateStudent,
     deleteStudent,
     bulkUpdateMarks,
@@ -349,6 +352,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   }, []);
   const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
+  // Truthful-save failure notices (25 Oct 2026): set only when the
+  // awaited cloud confirmation fails. Local data is never dropped — the
+  // banner stays until a retry confirms the write.
+  const [attendanceCloudFailure, setAttendanceCloudFailure] = useState<string | null>(null);
+  const [feeCloudFailure, setFeeCloudFailure] = useState<string | null>(null);
 
   // Helper for Bengali number formatting
   const toBn = (num: number | string | undefined | null) => {
@@ -626,7 +634,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return () => { document.body.style.overflow = prev; };
   }, [latePicker]);
 
-  const handleSaveAttendance = () => {
+  // Truthful save (25 Oct 2026): the success notice fires ONLY after the
+  // awaited cloud confirmation. On failure the records stay in the local
+  // service store (never dropped) and an honest failure banner with a
+  // retry action is shown instead of a false success.
+  const handleSaveAttendance = async () => {
     const records: DailyStudentAttendanceRecord[] = classStudents.map(st => {
       const status = studentAttendanceMap[st.id] || 'PRESENT';
       const mins = status === 'LATE' ? (lateMinutesMap[st.id] || 0) : 0;
@@ -644,8 +656,26 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     });
 
     dailyAttendanceService.batchSaveStudentAttendance(records);
-    setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
-    setTimeout(() => setSaveSuccessNotice(null), 3000);
+    const result = await confirmAttendanceCloudSync();
+    if (result.success) {
+      setAttendanceCloudFailure(null);
+      setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
+      setTimeout(() => setSaveSuccessNotice(null), 3000);
+    } else {
+      setAttendanceCloudFailure(result.message || ATTENDANCE_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  // Retry re-confirms the still-local records (no re-save needed).
+  const retryAttendanceCloudSync = async () => {
+    const result = await confirmAttendanceCloudSync();
+    if (result.success) {
+      setAttendanceCloudFailure(null);
+      setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
+      setTimeout(() => setSaveSuccessNotice(null), 3000);
+    } else {
+      setAttendanceCloudFailure(result.message || ATTENDANCE_CLOUD_FAILURE_MESSAGE);
+    }
   };
 
   // 4. Marks Entry state (teacher)
@@ -1570,7 +1600,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [feeMethod, setFeeMethod] = useState<PaymentMethod>('CASH');
   const [feeRefNo, setFeeRefNo] = useState('');
   const [feeNote, setFeeNote] = useState('');
-  const [lastReceipt, setLastReceipt] = useState<{ tx: FinanceTransaction; remainingDue: number } | null>(null);
+  const [lastReceipt, setLastReceipt] = useState<{ tx: FinanceTransaction; remainingDue: number; cloudConfirmed: boolean } | null>(null);
 
   // Phase 3: cashier fee-month view (same targetMonth mechanism as
   // the teacher dues page; the collect form itself still records the
@@ -1614,7 +1644,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     setLastReceipt(null);
   };
 
-  const handleCollectFee = () => {
+  const handleCollectFee = async () => {
     if (!canCollectFees || !selectedFeeProfile || typeof addTransaction !== 'function') return;
     const st = selectedFeeProfile.student;
     const amount = Number(feeAmount) || 0;
@@ -1651,9 +1681,30 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
     const created = addTransaction(newTx);
     const remaining = calculateSingleStudentDue(st, feeStructures, [...transactions, created]).dueThisMonth;
-    setLastReceipt({ tx: created, remainingDue: remaining });
-    setSaveSuccessNotice(isEn ? `✓ Receipt ${created.voucherNo} saved!` : `✓ রসিদ নং ${created.voucherNo} সংরক্ষিত হয়েছে!`);
-    setTimeout(() => setSaveSuccessNotice(null), 3500);
+    // Truthful receipt (25 Oct 2026): the receipt is shown as fully saved
+    // ONLY after the awaited cloud confirmation. On failure the receipt
+    // still opens (the guardian needs the paper) but is marked local-only
+    // with a retry action — never presented as deposited.
+    const feeResult = await confirmFeeCloudSync([created, ...transactions], feeCloudFailureMessage(created.voucherNo));
+    setLastReceipt({ tx: created, remainingDue: remaining, cloudConfirmed: feeResult.success });
+    if (feeResult.success) {
+      setFeeCloudFailure(null);
+      setSaveSuccessNotice(isEn ? `✓ Receipt ${created.voucherNo} saved!` : `✓ রসিদ নং ${created.voucherNo} সংরক্ষিত হয়েছে!`);
+      setTimeout(() => setSaveSuccessNotice(null), 3500);
+    } else {
+      setFeeCloudFailure(feeResult.message || feeCloudFailureMessage(created.voucherNo));
+    }
+  };
+
+  // Retry re-confirms the still-local transactions (no re-collection).
+  const retryFeeCloudSync = async () => {
+    const result = await confirmFeeCloudSync();
+    if (result.success && lastReceipt) {
+      setLastReceipt({ ...lastReceipt, cloudConfirmed: true });
+      setFeeCloudFailure(null);
+      setSaveSuccessNotice(isEn ? `✓ Receipt ${lastReceipt.tx.voucherNo} saved!` : `✓ রসিদ নং ${lastReceipt.tx.voucherNo} সংরক্ষিত হয়েছে!`);
+      setTimeout(() => setSaveSuccessNotice(null), 3500);
+    }
   };
 
   // -------------------------------------------------------------
@@ -1806,6 +1857,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     </div>
   );
 
+  // Truthful-save failure banner (25 Oct 2026): shown instead of the
+  // success toast when the cloud confirmation fails. Local data is safe;
+  // the retry button re-confirms it.
+  const attendanceCloudFailureToast = attendanceCloudFailure && (
+    <div className="mx-4 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
+      <span>{attendanceCloudFailure}</span>
+      <button type="button" onClick={retryAttendanceCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+    </div>
+  );
+
   const classSwitcher = teacherClasses.length > 1 && (
     <div className="flex flex-wrap gap-1.5">
       {teacherClasses.map(clsName => (
@@ -1851,6 +1912,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         </header>
 
         {successToast}
+        {attendanceCloudFailureToast}
 
         <main className="flex-1 p-4 space-y-4 anim-stagger">
 
@@ -3118,6 +3180,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <h2 className="text-base font-black">{isEn ? 'Fee received!' : 'ফি গৃহীত হয়েছে!'}</h2>
                       <p className="text-[11px] text-[#8a93a8]">{schoolProfile.nameBn || schoolProfile.name}</p>
                     </div>
+                    {/* Truthful receipt (25 Oct 2026): when the cloud
+                        confirmation failed, the receipt is paper-valid but
+                        NOT yet in the principal's ledger — say so plainly
+                        with a retry action. */}
+                    {!lastReceipt.cloudConfirmed && (
+                      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold space-y-2">
+                        <p>{isEn ? 'This receipt is only on this device for now — not yet in the cloud.' : RECEIPT_LOCAL_ONLY_NOTE}</p>
+                        {feeCloudFailure && <p>{feeCloudFailure}</p>}
+                        <button type="button" onClick={retryFeeCloudSync} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{isEn ? 'Retry' : RETRY_LABEL}</button>
+                      </div>
+                    )}
                     <div className="h-px bg-[#e8ecf4] dark:bg-white/5" />
                     {([
                       [isEn ? 'Receipt No' : 'রসিদ নং', lastReceipt.tx.voucherNo],
@@ -3850,6 +3923,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       </header>
 
       {successToast}
+      {attendanceCloudFailureToast}
 
       <main className="flex-1 p-4 space-y-4 anim-stagger">
         {/* HERO — gradient greeting + quick actions inside (Tutor App pattern:

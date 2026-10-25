@@ -20,11 +20,17 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FinanceTransaction } from '../../types';
 import { formatBanglaNumber, amountToBengaliWords, amountToEnglishWords } from '../../services/utils';
+import { RECEIPT_LOCAL_ONLY_NOTE } from '../../services/cloudConfirm';
 import { FUND_METAS } from './types';
 import { Button } from '../ui/Button';
 
 interface VoucherPrintModalProps {
   transaction: FinanceTransaction;
+  // Truthful receipt (25 Oct 2026): when explicitly false, the receipt
+  // was saved locally but its cloud confirmation failed — the modal says
+  // so plainly. Undefined/true keeps the old appearance (other entries
+  // do not report confirmation yet).
+  cloudConfirmed?: boolean;
   schoolProfile: {
     name: string;
     nameBn?: string;
@@ -44,6 +50,7 @@ export const VoucherPrintModal: React.FC<VoucherPrintModalProps> = ({
   schoolProfile,
   language,
   onClose,
+  cloudConfirmed = true,
 }) => {
   const isBn = language === 'bn';
   const printContentRef = useRef<HTMLDivElement>(null);
@@ -170,6 +177,15 @@ export const VoucherPrintModal: React.FC<VoucherPrintModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Truthful receipt (25 Oct 2026): screen-only notice (hidden in
+            print — the paper receipt itself stays valid proof of payment)
+            when this receipt's cloud confirmation failed. */}
+        {cloudConfirmed === false && (
+          <div className="mx-4 mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold print:hidden">
+            {isBn ? RECEIPT_LOCAL_ONLY_NOTE : 'This receipt is only on this device for now — not yet in the cloud.'}
+          </div>
+        )}
 
         {/* ==================================================== */}
         {/* PRINTABLE DUAL-COPY VOUCHER (Wrapped in print-container) */}
