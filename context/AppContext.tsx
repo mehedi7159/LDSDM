@@ -65,6 +65,7 @@ import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../t
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
+import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isProvisionableEmail, isStaffProvisioningRole } from '../services/staffProvisioning';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { 
   signInWithPopup, 
@@ -2647,6 +2648,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
 
     const isOwnerAccount = trimmedEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    // Firebase sign-in failure code, captured so the local-fallback steps
+    // below can decide whether a login-time self-heal is warranted.
+    let firebaseSignInCode: string | undefined;
 
     // 1. Try Firebase Auth
     try {
@@ -2673,6 +2677,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         return { success: true };
       }
     } catch (firebaseErr: any) {
+      firebaseSignInCode = firebaseErr?.code;
       console.warn('Firebase signIn notice:', firebaseErr?.code, firebaseErr?.message);
 
       if (isOwnerAccount) {
@@ -2718,6 +2723,31 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
               }
             : member;
 
+        // Auto-provisioning, login-time self-heal (25 Oct 2026): this
+        // member passed the local password check but step 1 failed, so
+        // they have no Firebase user yet. Create it now on the primary
+        // auth with the verified password, and the session becomes
+        // authed (cloud writes pass the rule). Staff roles only, real
+        // emails only, and only when a stored password actually matched
+        // — a wrong password returns early above and never reaches here.
+        // Best-effort: any failure just keeps the local session.
+        const healEmailStep2 = member.email;
+        if (
+          member.password &&
+          healEmailStep2 &&
+          isProvisionableEmail(healEmailStep2) &&
+          isStaffProvisioningRole(normalizeRoleKey(sessionMember.roleId)) &&
+          (firebaseSignInCode === 'auth/user-not-found' || firebaseSignInCode === 'auth/invalid-credential')
+        ) {
+          try {
+            const healed = await createPrimaryFirebaseUser(auth, healEmailStep2, password);
+            if (healed === 'created' && auth.currentUser) {
+              setAuthUser(auth.currentUser);
+              if (auth.currentUser.email) setAdminEmail(auth.currentUser.email);
+            }
+          } catch {}
+        }
+
         // Local portal session only (Never synthetic authUser for cloud operations)
         setActiveAppUserId(sessionMember.uid);
         setCurrentMember(sessionMember);
@@ -2742,6 +2772,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
       if (foundUser.status === 'blocked') {
         return { success: false, error: 'আপনার অ্যাকাউন্টটি স্থগিত (Blocked) করা হয়েছে।' };
+      }
+
+      // Auto-provisioning, login-time self-heal (25 Oct 2026): same as
+      // step 2 — local password matched but no Firebase user yet, so
+      // create it on the primary auth and the session becomes authed.
+      // Staff roles only (principal / admin / super_admin are untouched:
+      // they already use Firebase), real emails only, verified password
+      // only. Best-effort: failure keeps the local session.
+      const healEmailStep3 = foundUser.email;
+      if (
+        foundUser.password &&
+        healEmailStep3 &&
+        isProvisionableEmail(healEmailStep3) &&
+        isStaffProvisioningRole(foundUser.role) &&
+        (firebaseSignInCode === 'auth/user-not-found' || firebaseSignInCode === 'auth/invalid-credential')
+      ) {
+        try {
+          const healed = await createPrimaryFirebaseUser(auth, healEmailStep3, password);
+          if (healed === 'created' && auth.currentUser) {
+            setAuthUser(auth.currentUser);
+            if (auth.currentUser.email) setAdminEmail(auth.currentUser.email);
+          }
+        } catch {}
       }
 
       setActiveAppUserId(foundUser.id);
@@ -3408,6 +3461,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           teacher: teacherWithCredentials,
           actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
         });
+      }
+
+      // Auto-provisioning, creation-time (25 Oct 2026): fire-and-forget
+      // on a secondary app instance, so the admin's session is never
+      // disturbed. Real email + stored password only — phone-only
+      // records (no email) are skipped and self-heal on first login
+      // instead. A failure here never blocks creation: it only warns,
+      // and the staff member's next login retries automatically.
+      if (cleanEmail && rawPassword) {
+        provisionStaffFirebaseUser(cleanEmail, rawPassword).then((result) => {
+          if (result === 'failed') {
+            console.warn('[StaffProvisioning] Creation-time provisioning did not complete; it will retry automatically on the staff member\'s next login.');
+          }
+        }).catch(() => {});
       }
     }
     return { success: true };
