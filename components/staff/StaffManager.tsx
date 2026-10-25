@@ -453,14 +453,30 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setIsAddEditModalOpen(false);
   };
 
-  // Handle 1-click approve staff
+  // Handle 1-click approve staff (truthful-save Step 2-বাকি):
+  // success toast only after the cloud write lands. The teacher
+  // update is awaited now (it was fire-and-forget, which also left a
+  // latent unhandled rejection); failure shows the honest message
+  // instead of the old unconditional success toast. Retry comes from
+  // the 'staff' auto-retry queue + the next save (toast takes a
+  // string only — same Step 2 StaffManager limitation).
   const handleQuickApproveStaff = async (staff: AcademicTeacher) => {
     try {
       if (approveMember) {
         await approveMember(staff.id, `role_${deriveRoleFromDesignation(staff.designation)}`, staff.assignedClasses || [], staff.assignedSubjects || []);
       }
-      updateTeacher({ ...staff, status: 'ACTIVE' });
-      setUsers(prev => prev.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u));
+      const updateResult = await updateTeacher({ ...staff, status: 'ACTIVE' });
+      // updateTeacher already maps the linked user to 'active' for
+      // id/email/phone matches; keep the handler's id-or-email rule
+      // on top of its returned list when available.
+      const mergedUsers = updateResult.nextUsers
+        ? updateResult.nextUsers.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u)
+        : undefined;
+      if (mergedUsers) {
+        setUsers(mergedUsers);
+      } else {
+        setUsers(prev => prev.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u));
+      }
       try {
         const stored = localStorage.getItem('madrasha_app_users');
         if (stored) {
@@ -472,6 +488,13 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       if (refreshPendingMembers) {
         await refreshPendingMembers();
+      }
+      // confirmStaffCloudSync falls back to the refs when a list is
+      // undefined, so the merged users list is always confirmed.
+      const confirmResult = await confirmStaffCloudSync(updateResult.nextTeachers, mergedUsers);
+      if (!confirmResult.success) {
+        showToast(confirmResult.message || STAFF_CLOUD_FAILURE_MESSAGE);
+        return;
       }
       showToast(isBn ? 'শিক্ষকের অ্যাকাউন্ট সফলভাবে অনুমোদন ও সক্রিয় করা হয়েছে!' : 'Staff account approved successfully!');
     } catch (err: any) {

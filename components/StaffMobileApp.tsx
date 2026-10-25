@@ -8,12 +8,12 @@ import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
-import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
+import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { STAFF_LEAVE_TYPE_OPTIONS, computeLeaveDays, buildStaffLeaveRequest, sanitizeProfileEdit } from '../services/staffSelfService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
 import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, StudentDueProfile, FeeAging } from '../services/studentDuesService';
-import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod, StaffLeaveRecord } from '../types';
+import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod, StaffLeaveRecord, TrashItem } from '../types';
 import {
   Home,
   LayoutGrid,
@@ -230,6 +230,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     confirmMarksCloudSync,
     confirmLeavesCloudSync,
     confirmStaffCloudSync,
+    confirmStudentsCloudSync,
+    confirmStudentDeleteCloudSync,
     updateTeacher,
     staffLeaves = [],
     setStaffLeaves,
@@ -1153,6 +1155,81 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [studentsClass, setStudentsClass] = useState<string>('all');
   const [studentsStatus, setStudentsStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  // Truthful-save Step 2-বাকি: student toggle/delete failure state.
+  // The local change always stays; retry re-confirms only.
+  const [studentCloudFailure, setStudentCloudFailure] = useState<string | null>(null);
+  const [pendingStudentToggle, setPendingStudentToggle] = useState<Student[] | null>(null);
+  const [pendingStudentDelete, setPendingStudentDelete] = useState<{ students: Student[]; trashBin: TrashItem[] } | null>(null);
+
+  // Student status toggle with truthful-save: success notice only
+  // after the cloud write lands; failure shows the amber banner.
+  const handleToggleStudentStatus = async (st: Student, active: boolean) => {
+    if (!updateStudent) return;
+    const result = updateStudent({ ...st, status: active ? 'Inactive' : 'Active' });
+    const confirmResult = await confirmStudentsCloudSync(result.students);
+    if (confirmResult.success) {
+      setStudentCloudFailure(null);
+      setPendingStudentToggle(null);
+      setSaveSuccessNotice(isEn ? '✓ Student status updated!' : '✓ শিক্ষার্থীর স্ট্যাটাস আপডেট হয়েছে!');
+      setTimeout(() => setSaveSuccessNotice(null), 3000);
+    } else {
+      setStudentCloudFailure(confirmResult.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+      setPendingStudentToggle(result.students);
+    }
+  };
+
+  // Retry re-confirms the last failed toggle/delete list (never re-applies).
+  const handleRetryStudentCloudSync = async () => {
+    if (pendingStudentDelete) {
+      const result = await confirmStudentDeleteCloudSync(pendingStudentDelete.students, pendingStudentDelete.trashBin);
+      if (result.success) {
+        setStudentCloudFailure(null);
+        setPendingStudentDelete(null);
+        setStudentToDelete(null);
+        setSaveSuccessNotice(isEn ? '✓ Student deleted!' : '✓ শিক্ষার্থী ডিলিট হয়েছে!');
+        setTimeout(() => setSaveSuccessNotice(null), 3000);
+      } else {
+        setStudentCloudFailure(result.message || STUDENT_DELETE_CLOUD_FAILURE_MESSAGE);
+      }
+      return;
+    }
+    if (!pendingStudentToggle) return;
+    const result = await confirmStudentsCloudSync(pendingStudentToggle);
+    if (result.success) {
+      setStudentCloudFailure(null);
+      setPendingStudentToggle(null);
+      setSaveSuccessNotice(isEn ? '✓ Student status updated!' : '✓ শিক্ষার্থীর স্ট্যাটাস আপডেট হয়েছে!');
+      setTimeout(() => setSaveSuccessNotice(null), 3000);
+    } else {
+      setStudentCloudFailure(result.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  // Student delete confirm: dialog stays open on cloud failure, its
+  // confirm button becomes the retry (re-confirm only, never re-deletes).
+  const handleConfirmStudentDelete = async () => {
+    if (pendingStudentDelete) {
+      await handleRetryStudentCloudSync();
+      return;
+    }
+    if (!studentToDelete || !deleteStudent) return;
+    const result = deleteStudent(studentToDelete.id);
+    if (!result) {
+      setStudentToDelete(null);
+      return;
+    }
+    const confirmResult = await confirmStudentDeleteCloudSync(result.students, result.trashBin);
+    if (confirmResult.success) {
+      setStudentCloudFailure(null);
+      setPendingStudentDelete(null);
+      setStudentToDelete(null);
+      setSaveSuccessNotice(isEn ? '✓ Student deleted!' : '✓ শিক্ষার্থী ডিলিট হয়েছে!');
+      setTimeout(() => setSaveSuccessNotice(null), 3000);
+    } else {
+      setStudentCloudFailure(confirmResult.message || STUDENT_DELETE_CLOUD_FAILURE_MESSAGE);
+      setPendingStudentDelete({ students: result.students, trashBin: result.trashBin });
+    }
+  };
   const canManageStudents = useMemo(() => {
     try {
       if (typeof hasPermission !== 'function') return false;
@@ -3629,6 +3706,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           {/* ============ MOBILE: STUDENTS (Tutor pattern, native) ============ */}
           {activeSubModule === 'mobile_students' && (
             <div className="space-y-4">
+              {/* Truthful-save Step 2-বাকি: toggle/delete cloud-failure banner */}
+              {studentCloudFailure && (
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
+                  <span>{studentCloudFailure}</span>
+                  <button type="button" onClick={handleRetryStudentCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+                </div>
+              )}
               <div className={`${cardCls} p-4 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -3760,7 +3844,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                               </button>
                               <button
                                 type="button"
-                                onClick={() => updateStudent && updateStudent({ ...st, status: active ? 'Inactive' : 'Active' })}
+                                onClick={() => handleToggleStudentStatus(st, active)}
                                 className="px-3 py-2 rounded-xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 text-[11px] font-bold cursor-pointer"
                               >
                                 {active ? (isEn ? 'Deactivate' : 'নিষ্ক্রিয় করুন') : (isEn ? 'Activate' : 'সক্রিয় করুন')}
@@ -3788,17 +3872,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
               <ConfirmDialog
                 isOpen={!!studentToDelete}
-                onClose={() => setStudentToDelete(null)}
-                onConfirm={() => {
-                  if (studentToDelete && deleteStudent) deleteStudent(studentToDelete.id);
-                  setStudentToDelete(null);
-                }}
+                onClose={() => { setStudentToDelete(null); setPendingStudentDelete(null); }}
+                onConfirm={handleConfirmStudentDelete}
                 title={isEn ? 'Confirm student deletion' : 'শিক্ষার্থী ডিলিট নিশ্চিতকরণ'}
-                message={isEn
-                  ? 'Are you sure you want to delete this student record? (It will be moved to the Trash Bin)'
-                  : 'আপনি কি নিশ্চিত যে এই শিক্ষার্থীর সকল তথ্য ও রেকর্ড ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)'}
+                message={pendingStudentDelete
+                  ? (STUDENT_DELETE_CLOUD_FAILURE_MESSAGE)
+                  : (isEn
+                    ? 'Are you sure you want to delete this student record? (It will be moved to the Trash Bin)'
+                    : 'আপনি কি নিশ্চিত যে এই শিক্ষার্থীর সকল তথ্য ও রেকর্ড ডিলিট করতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)')}
                 highlightText={studentToDelete ? `${studentToDelete.nameBn || studentToDelete.name} • ${studentToDelete.classLevel}` : undefined}
                 variant="danger"
+                confirmLabel={pendingStudentDelete ? RETRY_LABEL : undefined}
               />
             </div>
           )}

@@ -17,7 +17,8 @@ import {
   Award
 } from 'lucide-react';
 import { Button } from './ui/Button';
-import { recordStudentAuditEvent } from '../services/studentService';
+import { recordStudentAuditEvent, buildUpdateStudentPayload } from '../services/studentService';
+import { STUDENTS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 
 interface StudentPromotionModalProps {
   isOpen: boolean;
@@ -32,7 +33,8 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
 }) => {
   const { 
     students, 
-    updateStudent, 
+    bulkUpdateStudents,
+    confirmStudentsCloudSync,
     classes, 
     language, 
     authUser, 
@@ -64,6 +66,10 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
   const [customRolls, setCustomRolls] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [promotionSuccess, setPromotionSuccess] = useState<string | null>(null);
+  // Truthful-save Step 2-বাকি: the last promotion list whose cloud
+  // confirmation failed — kept for the retry button (re-confirm only,
+  // never re-promotes).
+  const [pendingPromotion, setPendingPromotion] = useState<{ list: Student[]; successText: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Eligible students in 'fromClass' (Active & non-former)
@@ -113,6 +119,19 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
     setCustomRolls(prev => ({ ...prev, [studentId]: value }));
   };
 
+  // Retry re-confirms the last failed promotion list (never re-promotes).
+  const handleRetryPromotionConfirm = async () => {
+    if (!pendingPromotion) return;
+    const result = await confirmStudentsCloudSync(pendingPromotion.list);
+    if (result.success) {
+      setPromotionSuccess(pendingPromotion.successText);
+      setErrorMessage(null);
+      setPendingPromotion(null);
+    } else {
+      setErrorMessage(result.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
   const handlePromote = async () => {
     if (selectedStudentIds.size === 0) {
       setErrorMessage(language === 'bn' ? 'দয়া করে কমপক্ষে একজন শিক্ষার্থী নির্বাচন করুন।' : 'Please select at least one student.');
@@ -132,7 +151,13 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
       const isGraduation = toClass === 'GRADUATED';
       let promotedCount = 0;
 
-      // Process students in their sorted order
+      // Process students in their sorted order. Truthful-save Step
+      // 2-বাকি: updateStudent reads render-time `students`, so calling
+      // it in this loop would keep only the last student's change
+      // (last setState wins). Collect every promoted record first
+      // (with the same buildUpdateStudentPayload normalization
+      // updateStudent applies), then set the whole list once below.
+      const promotedById = new Map<string, Student>();
       eligibleStudents.forEach((student, index) => {
         if (!selectedStudentIds.has(student.id)) return;
 
@@ -163,7 +188,11 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
               updatedBy: authUser?.email || 'admin'
             };
 
-        updateStudent(updatedStudent);
+        // Same normalization updateStudent applies (merge + ID
+        // immutability + validation fallback to the existing record).
+        const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
+        const { student: finalStudent } = buildUpdateStudentPayload(student, updatedStudent, actor);
+        promotedById.set(student.id, finalStudent);
         promotedCount++;
 
         if (authUser) {
@@ -184,15 +213,26 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
         }
       });
 
-      setPromotionSuccess(
+      const successText =
         language === 'bn'
           ? `আলহামদুলিল্লাহ! ${promotedCount} জন শিক্ষার্থী সফলভাবে "${toClass === 'GRADUATED' ? 'উত্তীর্ণ ও কোর্স সম্পন্ন' : toClass}" শ্রেণিতে প্রমোশন পেয়েছে।`
-          : `Successfully promoted ${promotedCount} students to "${toClass === 'GRADUATED' ? 'Graduated' : toClass}".`
-      );
+          : `Successfully promoted ${promotedCount} students to "${toClass === 'GRADUATED' ? 'Graduated' : toClass}".`;
+      // One batched set + awaited cloud confirmation (truthful-save):
+      // success only after the cloud write lands, failure keeps the
+      // list local with a retry (re-confirm only, never re-promotes).
+      const nextStudents = students.map(s => promotedById.get(s.id) ?? s);
+      bulkUpdateStudents(nextStudents);
+      const confirmResult = await confirmStudentsCloudSync(nextStudents);
+      if (confirmResult.success) {
+        setPromotionSuccess(successText);
+        setPendingPromotion(null);
+      } else {
+        setPromotionSuccess(null);
+        setErrorMessage(confirmResult.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+        setPendingPromotion({ list: nextStudents, successText });
+      }
 
-      setTimeout(() => {
-        setIsProcessing(false);
-      }, 500);
+      setIsProcessing(false);
     } catch (err: any) {
       console.error('Promotion error:', err);
       setErrorMessage(err?.message || 'Error occurred while promoting students.');
@@ -238,6 +278,15 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
             <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center gap-3 animate-in fade-in">
               <AlertCircle size={20} className="text-rose-600 shrink-0" />
               <div className="flex-1 text-xs font-bold leading-relaxed">{errorMessage}</div>
+              {pendingPromotion && (
+                <button
+                  type="button"
+                  onClick={handleRetryPromotionConfirm}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold cursor-pointer"
+                >
+                  {language === 'bn' ? RETRY_LABEL : 'Retry'}
+                </button>
+              )}
             </div>
           )}
 

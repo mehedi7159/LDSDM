@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
+import { STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { 
   Users, 
   Globe, 
@@ -125,6 +126,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     schoolProfile, 
     language, 
     addStudent,
+    confirmStudentsCloudSync,
     addTransaction
   } = useApp();
 
@@ -268,8 +270,10 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     });
   }, [admissions, admissionFilterStatus, admissionFilterClass, admissionSearch]);
 
-  // Admit applicant directly into Students Database
-  const handleAdmitApplicant = (app: AdmissionApplication) => {
+  // Admit applicant directly into Students Database (truthful-save
+  // Step 2-বাকি: success only after the cloud write lands; failure
+  // shows the honest error and the local record + tracker stay).
+  const handleAdmitApplicant = async (app: AdmissionApplication) => {
     const nextRoll = String(students.filter(s => s.classLevel === app.desiredClass).length + 1);
     const newStudentData = {
       studentId: `STD-${new Date().getFullYear().toString().slice(-2)}${Math.floor(1000 + Math.random() * 9000)}`,
@@ -289,10 +293,17 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
       dateOfBirth: app.dateOfBirth
     };
 
-    addStudent(newStudentData as any);
+    const added = addStudent(newStudentData as any);
 
     const updated = admissions.map(a => a.id === app.id ? { ...a, status: 'admitted' as const } : a);
     saveAdmissions(updated);
+
+    const result = await confirmStudentsCloudSync(added.students);
+    if (result.success) {
+      showSuccess(isBn ? 'আবেদনকারী সফলভাবে শিক্ষার্থী হিসেবে ভর্তি হয়েছেন!' : 'Applicant admitted as a student successfully!');
+    } else {
+      showError(result.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+    }
   };
 
   // ----------------------------------------------------

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
+import { MARKS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle } from 'lucide-react';
 import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
 import { EmptyState } from './ui/EmptyState';
@@ -108,6 +109,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     exams, 
     classes, 
     bulkUpdateMarks, 
+    confirmMarksCloudSync,
     t, 
     language, 
     authContext,
@@ -123,6 +125,11 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'idle'>('saved');
+  // Truthful-save Step 2-বাকি: the last marks list whose cloud
+  // confirmation failed — kept for the retry button (re-confirm only,
+  // the marks themselves are already saved locally).
+  const [cloudFailure, setCloudFailure] = useState<string | null>(null);
+  const lastFailedMarksRef = useRef<MarkRecord[] | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'id'>('name');
 
   // Local state to store edits for fast snappy input response
@@ -190,15 +197,15 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     });
 
   // Flush any pending auto-save immediately, skipping any invalid records
-  const flushPendingSave = useCallback(() => {
+  const flushPendingSave = useCallback(async (): Promise<'saved' | 'error' | 'idle'> => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
     
-    if (!currentSubject || !selectedExamId || isExamLocked) return;
+    if (!currentSubject || !selectedExamId || isExamLocked) return 'idle';
     const studentIds = Object.keys(pendingUpdatesRef.current);
-    if (studentIds.length === 0) return;
+    if (studentIds.length === 0) return 'idle';
 
     const updates: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
     const remainingPending: Record<string, EditableMark> = {};
@@ -234,17 +241,47 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       });
     });
 
+    // Truthful-save Step 2-বাকি: 'সংরক্ষিত' দেখায় শুধু cloud
+    // confirm হলে। Failure-এ নম্বর ফোনেই থাকে (কখনো মোছা হয় না),
+    // error দেখায় + retry-র জন্য list ধরে রাখে (auto-retry-ও চলে)।
+    let nextMarks: MarkRecord[] | null = null;
     if (updates.length > 0) {
-      bulkUpdateMarks(updates);
+      nextMarks = bulkUpdateMarks(updates);
     }
     
     pendingUpdatesRef.current = remainingPending;
+    if (nextMarks) {
+      const result = await confirmMarksCloudSync(nextMarks);
+      if (!result.success) {
+        setCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+        lastFailedMarksRef.current = nextMarks;
+        setSaveStatus('error');
+        return 'error';
+      }
+      setCloudFailure(null);
+      lastFailedMarksRef.current = null;
+    }
     if (Object.keys(remainingPending).length > 0) {
       setSaveStatus('error');
-    } else {
-      setSaveStatus('saved');
+      return 'error';
     }
-  }, [currentSubject, selectedExamId, bulkUpdateMarks, language, isExamLocked]);
+    setSaveStatus('saved');
+    return 'saved';
+  }, [currentSubject, selectedExamId, bulkUpdateMarks, confirmMarksCloudSync, language, isExamLocked]);
+
+  // Retry re-confirms the last failed marks list (never re-saves).
+  const retryMarksCloudSync = async () => {
+    const list = lastFailedMarksRef.current;
+    if (!list) return;
+    const result = await confirmMarksCloudSync(list);
+    if (result.success) {
+      setCloudFailure(null);
+      lastFailedMarksRef.current = null;
+      setSaveStatus('saved');
+    } else {
+      setCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+    }
+  };
 
   // Initialize local state when selection changes
   useEffect(() => {
@@ -269,7 +306,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       });
     }
     setLocalMarks(initialMarks);
-    setSaveStatus('saved');
+    // Truthful-save Step 2-বাকি: flush নিজেই terminal status
+    // ('saved'/'error') সেট করে — এখানে আর unconditional 'saved'
+    // বসানো যাবে না, নইলে cloud-failure ঢাকা পড়বে।
   }, [selectedClass, selectedSubjectId, selectedExamId, currentSubject?.id]); 
 
   // Clean up on unmount
@@ -372,6 +411,21 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           </button>
         </div>
       </PageHeader>
+
+      {/* Truthful-save Step 2-বাকি: cloud-failure banner (marks stay local, retry re-confirms only) */}
+      {cloudFailure && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center gap-3">
+          <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
+          <div className="flex-1 text-xs font-bold leading-relaxed">{cloudFailure}</div>
+          <button
+            type="button"
+            onClick={retryMarksCloudSync}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer"
+          >
+            {language === 'bn' ? RETRY_LABEL : 'Retry'}
+          </button>
+        </div>
+      )}
 
       {/* Control Filters */}
       <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">

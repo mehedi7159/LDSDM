@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { AiActionProposal, AiProposedRoutine, AiRoutineSlot } from '../../server/aiAssistantApi';
 import { formatNumber } from '../../services/utils';
+import { NOTICES_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { dailyAttendanceService } from '../../services/dailyAttendanceService';
 import { useVoiceCommand } from '../../hooks/useVoiceCommand';
 
@@ -79,7 +80,9 @@ export const MasterPrincipalAiAdvisor: React.FC<MasterPrincipalAiAdvisorProps> =
     language,
     transactions,
     exams,
-    addNotice
+    notices = [],
+    addNotice,
+    confirmNoticesCloudSync
   } = useApp();
 
   const isBn = language === 'bn';
@@ -423,15 +426,18 @@ ${schoolProfile.nameBn || schoolProfile.name}`
     }
   };
 
-  // Action Executor (Human Approval Gate)
-  const handleExecuteAction = (action: AiActionProposal) => {
+  // Action Executor (Human Approval Gate) — truthful-save Step
+  // 2-বাকি: the two notice-publishing branches confirm the cloud
+  // write before claiming success; failure shows the honest message
+  // (the notice itself stays local, auto-retry covers it).
+  const handleExecuteAction = async (action: AiActionProposal) => {
     if (action.type === 'SWITCH_DASHBOARD_MODE') {
       const mode = action.payload?.mode || 'standard';
       setDashboardMode(mode);
       showToast(isBn ? `ড্যাশবোর্ড মোড সফলভাবে "${mode}"-এ রূপান্তর করা হয়েছে!` : `Dashboard mode changed to "${mode}"!`);
     } else if (action.type === 'PUBLISH_ROUTINE') {
       const rClass = action.payload?.className || routineClass;
-      addNotice({
+      const created = addNotice({
         title: isBn ? `নতুন ক্লাস রুটিন অনুমোদন ও প্রকাশ (${rClass})` : `New Class Routine Published (${rClass})`,
         content: isBn
           ? `সম্মানিত শিক্ষক ও শিক্ষার্থীবৃন্দ, অধ্যক্ষ কার্যালয় কর্তৃক ${rClass}-এর জন্য প্রণীত নতুন সুষম ক্লাস রুটিন অনুমোদন করা হয়েছে। আগামী শনিবার থেকে এই রুটিন অনুযায়ী সকল ক্লাস পরিচালিত হবে।`
@@ -442,10 +448,15 @@ ${schoolProfile.nameBn || schoolProfile.name}`
         authorName: isOwnerAdmin ? 'সুপার অ্যাডমিন' : 'অধ্যক্ষ মহোদয়',
         authorRole: 'অধ্যক্ষ / সুপারিনটেনডেন্ট'
       });
-      showToast(isBn ? `রুটিন অনুমোদিত হয়েছে এবং নোটিশ বোর্ডে স্বয়ংক্রিয়ভাবে প্রকাশিত হয়েছে!` : `Routine approved and published on Notice Board!`);
+      const result = await confirmNoticesCloudSync([created, ...notices]);
+      if (result.success) {
+        showToast(isBn ? `রুটিন অনুমোদিত হয়েছে এবং নোটিশ বোর্ডে স্বয়ংক্রিয়ভাবে প্রকাশিত হয়েছে!` : `Routine approved and published on Notice Board!`);
+      } else {
+        showToast(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+      }
     } else if (action.type === 'DRAFT_NOTICE') {
       const p = action.payload || {};
-      addNotice({
+      const created = addNotice({
         title: p.title || 'জরুরি প্রাতিষ্ঠানিক বিজ্ঞপ্তি',
         content: p.content || '',
         category: p.category || 'urgent',
@@ -454,7 +465,12 @@ ${schoolProfile.nameBn || schoolProfile.name}`
         authorName: isOwnerAdmin ? 'সুপার অ্যাডমিন' : 'অধ্যক্ষ মহোদয়',
         authorRole: 'অধ্যক্ষ / সুপারিনটেনডেন্ট'
       });
-      showToast(isBn ? 'নোটিশটি সফলভাবে নোটিশ বোর্ডে প্রকাশ করা হয়েছে!' : 'Notice successfully published on Notice Board!');
+      const result = await confirmNoticesCloudSync([created, ...notices]);
+      if (result.success) {
+        showToast(isBn ? 'নোটিশটি সফলভাবে নোটিশ বোর্ডে প্রকাশ করা হয়েছে!' : 'Notice successfully published on Notice Board!');
+      } else {
+        showToast(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+      }
     } else if (action.type === 'SMS_CAMPAIGN') {
       showToast(isBn ? 'এসএমএস গেটওয়েতে বার্তা প্রেরণের নির্দেশ অনুমোদিত হয়েছে!' : 'SMS campaign dispatch queued successfully!');
     }

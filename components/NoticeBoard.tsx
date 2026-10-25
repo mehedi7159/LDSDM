@@ -36,6 +36,7 @@ import {
 import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { NOTICES_CLOUD_FAILURE_MESSAGE, NOTICE_DELETE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 
 // =========================================================================
 // HELPER: Category & Priority Badges and Styles
@@ -111,7 +112,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
   onOpenNoticeBoard,
   className = ''
 }) => {
-  const { notices = [], language, isAdmin, isSuperAdmin, authUser, addNotice, classes = [] } = useApp();
+  const { notices = [], language, isAdmin, isSuperAdmin, authUser, addNotice, confirmNoticesCloudSync, classes = [] } = useApp();
   const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
   const isBn = language === 'bn';
@@ -127,6 +128,10 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
   });
 
   const [activeAlertIndex, setActiveAlertIndex] = useState(0);
+  // Truthful-save Step 2-বাকি: quick-post failure state (modal stays
+  // open, retry re-confirms only).
+  const [quickPostError, setQuickPostError] = useState<string | null>(null);
+  const [pendingQuickPost, setPendingQuickPost] = useState<NoticeItem[] | null>(null);
   const [selectedNoticeForModal, setSelectedNoticeForModal] = useState<NoticeItem | null>(null);
   const [isMarqueePaused, setIsMarqueePaused] = useState(false);
   const [isQuickPostOpen, setIsQuickPostOpen] = useState(false);
@@ -194,11 +199,11 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
     setActiveAlertIndex(prev => (prev - 1 + alertNotices.length) % alertNotices.length);
   };
 
-  const handleQuickPostSubmit = (e: React.FormEvent) => {
+  const handleQuickPostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickTitle.trim() || !quickContent.trim()) return;
 
-    addNotice({
+    const created = addNotice({
       title: quickTitle.trim(),
       content: quickContent.trim(),
       category: quickCategory,
@@ -214,12 +219,41 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
       authorRole: isBn ? 'অধ্যক্ষ / প্রশাসন' : 'Principal / Admin'
     });
 
+    // Truthful-save Step 2-বাকি: modal closes only after the cloud
+    // write lands; failure keeps the form (nothing is lost) + retry.
+    const result = await confirmNoticesCloudSync([created, ...notices]);
+    if (!result.success) {
+      setQuickPostError(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+      setPendingQuickPost([created, ...notices]);
+      return;
+    }
+    setQuickPostError(null);
+    setPendingQuickPost(null);
+
     setQuickTitle('');
     setQuickContent('');
     setQuickCategory('urgent');
     setQuickPriority('urgent');
     setQuickTargetClass('');
     setIsQuickPostOpen(false);
+  };
+
+  // Retry re-confirms the last failed quick post (never re-posts).
+  const handleRetryQuickPostConfirm = async () => {
+    if (!pendingQuickPost) return;
+    const result = await confirmNoticesCloudSync(pendingQuickPost);
+    if (result.success) {
+      setQuickPostError(null);
+      setPendingQuickPost(null);
+      setQuickTitle('');
+      setQuickContent('');
+      setQuickCategory('urgent');
+      setQuickPriority('urgent');
+      setQuickTargetClass('');
+      setIsQuickPostOpen(false);
+    } else {
+      setQuickPostError(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+    }
   };
 
   // If no notices are available at all, return null
@@ -676,6 +710,23 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
                 />
               </div>
 
+              {/* Truthful-save Step 2-বাকি: cloud-failure notice (form stays, retry re-confirms only) */}
+              {quickPostError && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                  <div className="flex-1 text-xs font-bold leading-relaxed">{quickPostError}</div>
+                  {pendingQuickPost && (
+                    <button
+                      type="button"
+                      onClick={handleRetryQuickPostConfirm}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer"
+                    >
+                      {isBn ? RETRY_LABEL : 'Retry'}
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Footer Buttons */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
@@ -716,6 +767,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
     updateNotice, 
     deleteNotice, 
     togglePinNotice, 
+    confirmNoticesCloudSync,
     isAdmin, 
     isSuperAdmin, 
     authUser, 
@@ -735,6 +787,12 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
   const [editingNotice, setEditingNotice] = useState<NoticeItem | null>(null);
   const [noticeToDelete, setNoticeToDelete] = useState<NoticeItem | null>(null);
   const [selectedNoticeForModal, setSelectedNoticeForModal] = useState<NoticeItem | null>(null);
+  // Truthful-save Step 2-বাকি: page banner + in-modal/dialog failure
+  // states. Retry re-confirms the held list only (never re-applies).
+  const [boardAction, setBoardAction] = useState<{ type: 'success' | 'error'; message: string; retry?: () => void } | null>(null);
+  const [composeError, setComposeError] = useState<string | null>(null);
+  const [pendingCompose, setPendingCompose] = useState<{ list: NoticeItem[]; successText: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ list: NoticeItem[]; id: string } | null>(null);
 
   // Form states
   const [formTitle, setFormTitle] = useState('');
@@ -780,12 +838,16 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
     setIsComposeModalOpen(true);
   };
 
-  const handleSaveNotice = (e: React.FormEvent) => {
+  const handleSaveNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim() || !formContent.trim()) return;
 
+    // Truthful-save Step 2-বাকি: modal closes only after the cloud
+    // write lands; failure keeps the form (nothing is lost) + retry.
+    let nextNotices: NoticeItem[];
+    let successText: string;
     if (editingNotice) {
-      updateNotice({
+      const stored = updateNotice({
         ...editingNotice,
         title: formTitle.trim(),
         content: formContent.trim(),
@@ -800,8 +862,10 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
         authorRole: formAuthorRole.trim() || undefined,
         updatedAt: new Date().toISOString()
       });
+      nextNotices = notices.map(n => n.id === stored.id ? stored : n);
+      successText = isBn ? 'নোটিশ আপডেট হয়েছে।' : 'Notice updated.';
     } else {
-      addNotice({
+      const created = addNotice({
         title: formTitle.trim(),
         content: formContent.trim(),
         category: formCategory,
@@ -816,9 +880,92 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
         authorName: formAuthorName.trim() || (isBn ? 'প্রশাসন' : 'Administration'),
         authorRole: formAuthorRole.trim() || undefined
       });
+      nextNotices = [created, ...notices];
+      successText = isBn ? 'নোটিশ প্রকাশ হয়েছে।' : 'Notice published.';
     }
 
+    const result = await confirmNoticesCloudSync(nextNotices);
+    if (!result.success) {
+      setComposeError(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+      setPendingCompose({ list: nextNotices, successText });
+      return;
+    }
+    setComposeError(null);
+    setPendingCompose(null);
+    setBoardAction({ type: 'success', message: successText });
     setIsComposeModalOpen(false);
+  };
+
+  // Retry re-confirms the last failed compose list (never re-saves).
+  const handleRetryComposeConfirm = async () => {
+    if (!pendingCompose) return;
+    const result = await confirmNoticesCloudSync(pendingCompose.list);
+    if (result.success) {
+      setComposeError(null);
+      setPendingCompose(null);
+      setBoardAction({ type: 'success', message: pendingCompose.successText });
+      setIsComposeModalOpen(false);
+    } else {
+      setComposeError(result.message || NOTICES_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  // Pin toggle with truthful-save: failure shows a banner + retry
+  // (the pin flip itself stays local until it lands in cloud).
+  const handleTogglePin = async (noticeId: string) => {
+    const nextNotices = notices.map(n => n.id === noticeId ? { ...n, isPinned: !n.isPinned } : n);
+    togglePinNotice(noticeId);
+    const result = await confirmNoticesCloudSync(nextNotices);
+    if (result.success) {
+      setBoardAction({ type: 'success', message: isBn ? 'পিন আপডেট হয়েছে।' : 'Pin updated.' });
+    } else {
+      setBoardAction({
+        type: 'error',
+        message: result.message || NOTICES_CLOUD_FAILURE_MESSAGE,
+        retry: () => handleTogglePinRetry()
+      });
+    }
+  };
+
+  // Pin retry re-confirms the current list (no-arg: fresh by retry time).
+  const handleTogglePinRetry = async () => {
+    const result = await confirmNoticesCloudSync();
+    if (result.success) {
+      setBoardAction({ type: 'success', message: isBn ? 'পিন আপডেট হয়েছে।' : 'Pin updated.' });
+    } else {
+      setBoardAction({
+        type: 'error',
+        message: result.message || NOTICES_CLOUD_FAILURE_MESSAGE,
+        retry: () => handleTogglePinRetry()
+      });
+    }
+  };
+
+  // Delete confirm: dialog stays open on cloud failure, its confirm
+  // button becomes the retry (re-confirm only, never re-deletes).
+  const handleConfirmDelete = async () => {
+    if (pendingDelete) {
+      const result = await confirmNoticesCloudSync(pendingDelete.list);
+      if (result.success) {
+        setPendingDelete(null);
+        setNoticeToDelete(null);
+        setBoardAction({ type: 'success', message: isBn ? 'নোটিশ মুছে ফেলা হয়েছে।' : 'Notice deleted.' });
+      } else {
+        setBoardAction({ type: 'error', message: result.message || NOTICE_DELETE_CLOUD_FAILURE_MESSAGE });
+      }
+      return;
+    }
+    if (!noticeToDelete) return;
+    const nextNotices = notices.filter(n => n.id !== noticeToDelete.id);
+    deleteNotice(noticeToDelete.id);
+    const result = await confirmNoticesCloudSync(nextNotices);
+    if (result.success) {
+      setNoticeToDelete(null);
+      setBoardAction({ type: 'success', message: isBn ? 'নোটিশ মুছে ফেলা হয়েছে।' : 'Notice deleted.' });
+    } else {
+      setPendingDelete({ list: nextNotices, id: noticeToDelete.id });
+      setBoardAction({ type: 'error', message: result.message || NOTICE_DELETE_CLOUD_FAILURE_MESSAGE });
+    }
   };
 
   // Filtered Notices
@@ -858,6 +1005,37 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
       
       {/* 1. TOP MARQUEE & NOTIFICATION ALERT INTEGRATED BANNER */}
       <NoticeBoardAlertBanner />
+
+      {/* Truthful-save Step 2-বাকি: page-level action banner */}
+      {boardAction && (
+        <div className={`p-4 rounded-2xl border flex items-center gap-3 ${
+          boardAction.type === 'success'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            : 'bg-amber-50 border-amber-200 text-amber-900'
+        }`}>
+          {boardAction.type === 'success'
+            ? <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+            : <AlertTriangle size={18} className="text-amber-600 shrink-0" />}
+          <div className="flex-1 text-xs font-bold leading-relaxed">{boardAction.message}</div>
+          {boardAction.retry && (
+            <button
+              type="button"
+              onClick={boardAction.retry}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer"
+            >
+              {isBn ? RETRY_LABEL : 'Retry'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setBoardAction(null)}
+            className="shrink-0 p-1 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+            aria-label={isBn ? 'বন্ধ করুন' : 'Dismiss'}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* 2. NOTICE BOARD HEADER & ACTION BAR */}
       <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -1104,7 +1282,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                     {canManage && (
                       <>
                         <button
-                          onClick={() => togglePinNotice(notice.id)}
+                          onClick={() => handleTogglePin(notice.id)}
                           className={`p-1.5 rounded-lg transition cursor-pointer ${
                             notice.isPinned ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:bg-slate-100'
                           }`}
@@ -1364,6 +1542,23 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                 </Button>
               </div>
 
+              {/* Truthful-save Step 2-বাকি: compose stays open on cloud failure */}
+              {composeError && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                  <div className="flex-1 text-xs font-bold leading-relaxed">{composeError}</div>
+                  {pendingCompose && (
+                    <button
+                      type="button"
+                      onClick={handleRetryComposeConfirm}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer"
+                    >
+                      {isBn ? RETRY_LABEL : 'Retry'}
+                    </button>
+                  )}
+                </div>
+              )}
+
             </form>
           </div>
         </div>
@@ -1373,17 +1568,14 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
       {/* Delete Notice Confirmation */}
       <ConfirmDialog
         isOpen={!!noticeToDelete}
-        onClose={() => setNoticeToDelete(null)}
-        onConfirm={() => {
-          if (noticeToDelete) {
-            deleteNotice(noticeToDelete.id);
-            setNoticeToDelete(null);
-          }
-        }}
+        onClose={() => { setNoticeToDelete(null); setPendingDelete(null); }}
+        onConfirm={handleConfirmDelete}
         title={isBn ? 'নোটিশ ডিলিট নিশ্চিতকরণ' : 'Confirm Notice Deletion'}
-        message={isBn ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?'}
+        message={pendingDelete
+          ? (NOTICE_DELETE_CLOUD_FAILURE_MESSAGE)
+          : (isBn ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?')}
         highlightText={noticeToDelete ? noticeToDelete.title : undefined}
-        confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
+        confirmLabel={pendingDelete ? (isBn ? RETRY_LABEL : 'Retry') : (isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete')}
         cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
         variant="danger"
       />

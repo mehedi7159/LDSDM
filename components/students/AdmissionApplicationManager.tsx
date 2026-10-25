@@ -13,6 +13,7 @@ import {
 } from '../../services/admissionApplicationsService';
 import { Button } from '../ui/Button';
 import { useTheme } from '../../context/ThemeContext';
+import { STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { 
   FileText, 
   Plus, 
@@ -42,7 +43,7 @@ export type AdmissionApplication = OfficeAdmissionApplication;
 export const AdmissionApplicationManager: React.FC<{
   onEnrollStudent?: (app: AdmissionApplication) => void;
 }> = ({ onEnrollStudent }) => {
-  const { classes, addStudent, language } = useApp();
+  const { classes, addStudent, confirmStudentsCloudSync, language } = useApp();
   const { showToast } = useTheme();
   const isBn = language === 'bn';
 
@@ -142,12 +143,15 @@ export const AdmissionApplicationManager: React.FC<{
     });
   };
 
-  const handleApproveAndEnroll = (app: AdmissionApplication) => {
+  // Truthful-save Step 2-বাকি: success toast only after the cloud
+  // write lands; failure shows the honest error instead (the local
+  // record + application tracker stay untouched).
+  const handleApproveAndEnroll = async (app: AdmissionApplication) => {
     // 1. Add as active enrolled student
     const currentYear = new Date().getFullYear();
     const autoStudentId = `${currentYear}${Math.floor(100 + Math.random() * 900)}`;
 
-    addStudent({
+    const added = addStudent({
       name: app.applicantName,
       nameBn: app.applicantNameBn || app.applicantName,
       gender: app.gender,
@@ -176,6 +180,15 @@ export const AdmissionApplicationManager: React.FC<{
 
     if (onEnrollStudent) {
       onEnrollStudent(app);
+    }
+
+    const result = await confirmStudentsCloudSync(added.students);
+    if (!result.success) {
+      showToast({
+        type: 'error',
+        message: result.message || STUDENTS_CLOUD_FAILURE_MESSAGE
+      });
+      return;
     }
 
     showToast({

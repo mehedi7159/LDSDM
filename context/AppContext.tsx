@@ -266,6 +266,7 @@ interface AppContextType extends AppState {
   archiveClass: (id: string) => void;
   addStudent: (student: Omit<Student, 'id'>) => { student: Student; students: Student[] };
   updateStudent: (student: Student) => { student: Student; students: Student[] };
+  bulkUpdateStudents: (nextStudents: Student[]) => Student[];
   deleteStudent: (id: string) => { students: Student[]; trashBin: TrashItem[] } | null;
   addSubject: (subject: Omit<Subject, 'id'>) => void;
   updateSubject: (subject: Subject) => void;
@@ -3407,6 +3408,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return { student: finalStudent, students: nextStudents };
   };
 
+  // Truthful-save Step 2-বাকি: single batched set for callers that
+  // update MANY students in one event (StudentPromotionModal). The
+  // per-student updateStudent reads render-time `students`, so calling
+  // it in a loop keeps only the last student's change (last setState
+  // wins) — this batched setter is the loop-safe path, and the caller
+  // passes the same list to confirmStudentsCloudSync.
+  const bulkUpdateStudents = (nextStudents: Student[]) => {
+    setStudents(nextStudents);
+    return nextStudents;
+  };
+
   const deleteStudent = (id: string) => {
     const st = students.find(s => s.id === id);
     if (!st) return null;
@@ -4742,6 +4754,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setClassTeacherAssignments,
       updateMark,
       bulkUpdateMarks,
+      bulkUpdateStudents,
       addExam,
       updateExam,
       archiveExam,
