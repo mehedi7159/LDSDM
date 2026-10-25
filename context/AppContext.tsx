@@ -2334,13 +2334,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         if (Array.isArray(p.staffLeaves)) setStaffLeaves(p.staffLeaves);
         if (Array.isArray(p.users)) setUsers(p.users);
         if (Array.isArray(p.notices)) setNotices(p.notices);
+        // Attendance resurrection MERGES, never replaces (Step 3 stale-view
+        // / wipe fix). The old replace* calls wiped unsynced phone-local
+        // records whenever this effect ran with an empty/stale restored
+        // array — and the trigger CAN fire while the service singleton
+        // still holds unsynced records: resurrectDataIfEmpty() fires when
+        // the COUNTED local collections total <= 3, but extractSystemCounts
+        // does not count attendance at all, so a device with few counted
+        // records and a populated attendance backlog passed the gate.
+        // Merge (same as the live-feed hydration path) preserves the
+        // backlog; incoming wins on id conflict. The disk keys that
+        // resurrectDataIfEmpty() already overwrote are repaired by the
+        // merge's saveToStorage before any sync reads them, and no
+        // disk-key reader runs between the two. Schedule restore below
+        // keeps replace* deliberately (routines/calendar have no
+        // phone-local backlog).
         if (Array.isArray(p.dailyStudentAttendance)) {
-          setDailyStudentAttendance(p.dailyStudentAttendance);
-          dailyAttendanceService.replaceStudentRecords(p.dailyStudentAttendance);
+          dailyAttendanceService.mergeStudentRecords(p.dailyStudentAttendance);
+          setDailyStudentAttendance(dailyAttendanceService.getAllStudentRecords());
         }
         if (Array.isArray(p.dailyStaffAttendance)) {
-          setDailyStaffAttendance(p.dailyStaffAttendance);
-          dailyAttendanceService.replaceStaffRecords(p.dailyStaffAttendance);
+          dailyAttendanceService.mergeStaffRecords(p.dailyStaffAttendance);
+          setDailyStaffAttendance(dailyAttendanceService.getAllStaffRecords());
         }
         if (Array.isArray(p.classRoutines)) {
           setClassRoutines(p.classRoutines);

@@ -49,6 +49,101 @@ export interface DayAttendanceSummary {
 const STORAGE_KEY_STUDENTS = 'madrasah_daily_student_attendance';
 const STORAGE_KEY_STAFF = 'madrasah_daily_staff_attendance';
 
+// ---------------------------------------------------------------------------
+// Pure record helpers (Step 3, stale-view fix).
+// The service methods below delegate to these. Views that must react to
+// SHARED (context/cloud) attendance state call the pure helpers over the
+// context array instead of the service singleton: the singleton only
+// re-renders a view when that view's own state changes, so an open sheet
+// never refreshed when another device's attendance landed in the cloud.
+// The context array changes on every hydration merge AND every local
+// save (bridge subscription), so views over it recompute on arrival.
+// Logic here is byte-identical to the original method bodies.
+// ---------------------------------------------------------------------------
+
+/** Same predicate as getRecordsByDateAndClass, over any record list. */
+export function filterStudentRecordsByDateAndClass(
+  records: DailyStudentAttendanceRecord[],
+  date: string,
+  classLevel: string
+): DailyStudentAttendanceRecord[] {
+  return (records || []).filter(
+    r => r.date === date && (classLevel === 'All' || r.classLevel === classLevel)
+  );
+}
+
+/** Same arithmetic as calculateStudentAttendanceForExam, over any record list. */
+export function calculateStudentAttendanceForExamFromRecords(
+  records: DailyStudentAttendanceRecord[],
+  studentId: string,
+  startDate?: string,
+  endDate?: string
+): {
+  workingDays: number;
+  totalPresent: number;
+  totalAbsent: number;
+  attendancePercentage: number;
+} {
+  const filtered = (records || []).filter(r => {
+    if (r.studentId !== studentId) return false;
+    if (startDate && r.date < startDate) return false;
+    if (endDate && r.date > endDate) return false;
+    return true;
+  });
+
+  const workingDays = filtered.length;
+  const totalPresent = filtered.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
+  const totalAbsent = filtered.filter(r => r.status === 'ABSENT' || r.status === 'LEAVE').length;
+  // Honest-zero rule: figures derive ONLY from recorded entries.
+  const attendancePercentage = workingDays > 0 ? Math.round((totalPresent / workingDays) * 100) : 0;
+
+  return {
+    workingDays,
+    totalPresent,
+    totalAbsent,
+    attendancePercentage
+  };
+}
+
+/** Same arithmetic as getStudentMonthlySummary, over any record list. */
+export function getStudentMonthlySummaryFromRecords(
+  records: DailyStudentAttendanceRecord[],
+  studentId: string,
+  year: number,
+  month: number
+): {
+  workingDays: number;
+  presentDays: number;
+  absentDays: number;
+  lateDays: number;
+  leaveDays: number;
+  percentage: number;
+} {
+  const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+  const filtered = (records || []).filter(
+    r => r.studentId === studentId && r.date.startsWith(monthPrefix)
+  );
+
+  const workingDays = filtered.length;
+  const presentDays = filtered.filter(r => r.status === 'PRESENT').length;
+  const lateDays = filtered.filter(r => r.status === 'LATE').length;
+  const absentDays = filtered.filter(r => r.status === 'ABSENT').length;
+  const leaveDays = filtered.filter(r => r.status === 'LEAVE').length;
+
+  const effectivePresent = presentDays + lateDays;
+  // Honest-zero rule (see above): a month with no records reports 0.
+  const percentage = workingDays > 0 ? Math.round((effectivePresent / workingDays) * 100) : 0;
+
+  return {
+    workingDays,
+    presentDays,
+    absentDays,
+    lateDays,
+    leaveDays,
+    percentage
+  };
+}
+
 class DailyAttendanceService {
   private studentRecords: Record<string, DailyStudentAttendanceRecord> = {};
   private staffRecords: Record<string, DailyStaffAttendanceRecord> = {};
@@ -185,9 +280,7 @@ class DailyAttendanceService {
   // --- Student Attendance Methods ---
 
   public getRecordsByDateAndClass(date: string, classLevel: string): DailyStudentAttendanceRecord[] {
-    return Object.values(this.studentRecords).filter(
-      r => r.date === date && (classLevel === 'All' || r.classLevel === classLevel)
-    );
+    return filterStudentRecordsByDateAndClass(Object.values(this.studentRecords), date, classLevel);
   }
 
   public getStudentRecord(date: string, studentId: string): DailyStudentAttendanceRecord | undefined {
@@ -237,29 +330,12 @@ class DailyAttendanceService {
     totalAbsent: number;
     attendancePercentage: number;
   } {
-    const records = Object.values(this.studentRecords).filter(r => {
-      if (r.studentId !== studentId) return false;
-      if (startDate && r.date < startDate) return false;
-      if (endDate && r.date > endDate) return false;
-      return true;
-    });
-
-    const workingDays = records.length;
-    const totalPresent = records.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
-    const totalAbsent = records.filter(r => r.status === 'ABSENT' || r.status === 'LEAVE').length;
-    // Honest-zero rule: figures derive ONLY from recorded entries. When a
-    // student has no records the result is 0 across the board — never an
-    // invented "standard" estimate (a previous version returned 90 days /
-    // 85 present / 5 absent here, which then got written into exam remarks
-    // as if it were real attendance).
-    const attendancePercentage = workingDays > 0 ? Math.round((totalPresent / workingDays) * 100) : 0;
-
-    return {
-      workingDays,
-      totalPresent,
-      totalAbsent,
-      attendancePercentage
-    };
+    return calculateStudentAttendanceForExamFromRecords(
+      Object.values(this.studentRecords),
+      studentId,
+      startDate,
+      endDate
+    );
   }
 
   /**
@@ -273,31 +349,12 @@ class DailyAttendanceService {
     leaveDays: number;
     percentage: number;
   } {
-    const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
-    const records = Object.values(this.studentRecords).filter(
-      r => r.studentId === studentId && r.date.startsWith(monthPrefix)
+    return getStudentMonthlySummaryFromRecords(
+      Object.values(this.studentRecords),
+      studentId,
+      year,
+      month
     );
-
-    const workingDays = records.length;
-    const presentDays = records.filter(r => r.status === 'PRESENT').length;
-    const lateDays = records.filter(r => r.status === 'LATE').length;
-    const absentDays = records.filter(r => r.status === 'ABSENT').length;
-    const leaveDays = records.filter(r => r.status === 'LEAVE').length;
-
-    const effectivePresent = presentDays + lateDays;
-    // Honest-zero rule (see calculateStudentAttendanceForExam): a month
-    // with no records reports 0 recorded days and 0%, never an invented
-    // 24-day / 22-present estimate.
-    const percentage = workingDays > 0 ? Math.round((effectivePresent / workingDays) * 100) : 0;
-
-    return {
-      workingDays,
-      presentDays,
-      absentDays,
-      lateDays,
-      leaveDays,
-      percentage
-    };
   }
 
   // --- Staff Attendance Methods ---

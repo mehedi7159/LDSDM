@@ -53,6 +53,8 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     students = [], 
     classes = [], 
     teachers = [], 
+    dailyStudentAttendance = [],
+    dailyStaffAttendance = [],
     exams = [], 
     remarks = [], 
     updateRemark, 
@@ -91,13 +93,25 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   // summary strip may present as fact. The working maps above are
   // pre-filled with PRESENT defaults to make taking attendance one-tap;
   // counting them would invent attendance that was never recorded.
-  const [savedStudentRecords, setSavedStudentRecords] = useState<DailyStudentAttendanceRecord[]>([]);
-  const [savedStaffRecords, setSavedStaffRecords] = useState<DailyStaffAttendanceRecord[]>([]);
+  // Step 3: derived from the SHARED context arrays (not the service
+  // singleton, not local state) with the exact service predicates, so
+  // the strip refreshes when another device's attendance lands in the
+  // cloud. Post-save refreshes are unnecessary — the bridge mirrors
+  // every service write into context, so the memo recomputes on save.
+  const savedStudentRecords = useMemo(() => dailyStudentAttendance.filter(
+    r => r.date === selectedDate && (selectedClass === 'All' || r.classLevel === selectedClass)
+  ), [dailyStudentAttendance, selectedDate, selectedClass]);
+  const savedStaffRecords = useMemo(() => dailyStaffAttendance.filter(
+    r => r.date === selectedDate
+  ), [dailyStaffAttendance, selectedDate]);
 
   // Load student attendance for selectedDate & selectedClass
+  // Step 3: edit maps initialize from the shared-context derivation.
+  // Deps deliberately exclude the context arrays: a cloud arrival
+  // mid-edit must not clobber the admin's unsaved taps (the summary
+  // strip above stays reactive through the memo itself).
   useEffect(() => {
-    const records = dailyAttendanceService.getRecordsByDateAndClass(selectedDate, selectedClass);
-    setSavedStudentRecords(records);
+    const records = savedStudentRecords;
     const newMap: Record<string, { status: AttendanceStatus; timeIn?: string; note?: string }> = {};
 
     classStudents.forEach(student => {
@@ -122,9 +136,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   }, [selectedDate, selectedClass, classStudents]);
 
   // Load staff attendance for selectedDate
+  // Step 3: same editor-state protection as the student map above.
   useEffect(() => {
-    const records = dailyAttendanceService.getStaffAttendanceByDate(selectedDate);
-    setSavedStaffRecords(records);
+    const records = savedStaffRecords;
     const newStaffMap: Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string }> = {};
 
     teachers.forEach(teacher => {
@@ -201,7 +215,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     });
 
     dailyAttendanceService.batchSaveStudentAttendance(recordsToSave);
-    setSavedStudentRecords(dailyAttendanceService.getRecordsByDateAndClass(selectedDate, selectedClass));
+    // Step 3: no manual refresh — the summary strip derives from the
+    // shared context arrays, and the bridge mirrors this save into
+    // context, so it recomputes on the next render.
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2500);
   };
@@ -225,7 +241,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     });
 
     dailyAttendanceService.batchSaveStaffAttendance(recordsToSave);
-    setSavedStaffRecords(dailyAttendanceService.getStaffAttendanceByDate(selectedDate));
+    // Step 3: no manual refresh — same context derivation as above.
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2500);
   };

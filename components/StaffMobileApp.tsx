@@ -7,7 +7,7 @@ import { resolveGuardianChildren } from '../services/guardianScope';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import { dailyAttendanceService, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
+import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
@@ -222,6 +222,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     classRoutines = [],
     calendarEvents = [],
     teachers = [],
+    dailyStudentAttendance = [],
     addTransaction,
     confirmAttendanceCloudSync,
     confirmFeeCloudSync,
@@ -437,12 +438,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     let recorded = 0;
     let present = 0;
     (guardianChildren || []).forEach(child => {
-      const s = dailyAttendanceService.calculateStudentAttendanceForExam(child.id);
+      const s = calculateStudentAttendanceForExamFromRecords(dailyStudentAttendance, child.id);
       recorded += s.workingDays;
       present += s.totalPresent;
     });
     return { recorded, present, rate: recorded > 0 ? Math.round((present / recorded) * 100) : 0 };
-  }, [guardianChildren]);
+  }, [guardianChildren, dailyStudentAttendance]);
 
   // This month's dues summed over the guardian's children only (the
   // parent home previously showed the WHOLE institution's dues here).
@@ -474,8 +475,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [attTab, setAttTab] = useState<'rollcall' | 'sheet'>('rollcall');
   const [sheetMonth, setSheetMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
 
+  // Step 3: the form map reads the SHARED context array (same data as the
+  // singleton at init time). Deps deliberately stay [attendanceDate,
+  // selectedClass]: this is editor state — a cloud arrival mid-edit must
+  // not clobber the teacher's unsaved taps. The display memos below
+  // carry the reactivity instead.
   useEffect(() => {
-    const savedRecords = dailyAttendanceService.getRecordsByDateAndClass(attendanceDate, selectedClass);
+    const savedRecords = filterStudentRecordsByDateAndClass(dailyStudentAttendance, attendanceDate, selectedClass);
     const map: Record<string, AttendanceStatus> = {};
     const mins: Record<string, number> = {};
     savedRecords.forEach(r => {
@@ -501,15 +507,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     });
   };
   const attendanceHoliday = holidayForDate(attendanceDate, selectedClass);
-  const attendanceSavedCount = dailyAttendanceService.getRecordsByDateAndClass(attendanceDate, selectedClass).length;
+  const attendanceSavedCount = filterStudentRecordsByDateAndClass(dailyStudentAttendance, attendanceDate, selectedClass).length;
   const attendanceDayOff = !!attendanceHoliday && attendanceSavedCount === 0;
 
   // Phase 3: monthly-sheet records for the selected class + month.
+  // Step 3: reads the shared context array (reactive to cloud arrivals);
+  // sheetByStudent derives from this memo, so it inherits reactivity.
   const sheetRecords = useMemo(() => {
-    return dailyAttendanceService.getAllStudentRecords().filter(
+    return dailyStudentAttendance.filter(
       r => r.classLevel === selectedClass && r.date.startsWith(sheetMonth)
     );
-  }, [sheetMonth, selectedClass, studentAttendanceMap]);
+  }, [sheetMonth, selectedClass, studentAttendanceMap, dailyStudentAttendance]);
 
   // Phase 3: sheet calendar — one entry per day of the month with its
   // marks. Friday = weekly holiday (academicScheduleService labels
@@ -1225,7 +1233,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     const days = new Set<string>();
     for (let d = 1; d <= 31; d++) {
       const dateStr = `${prefix}-${String(d).padStart(2, '0')}`;
-      const recs = dailyAttendanceService.getRecordsByDateAndClass(dateStr, selectedClass);
+      const recs = filterStudentRecordsByDateAndClass(dailyStudentAttendance, dateStr, selectedClass);
       if (recs.length > 0) days.add(dateStr);
       recs.forEach(r => {
         totalRecords++;
@@ -1241,7 +1249,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     const rate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
     return { schoolDays: days.size, totalRecords, rate, perStudent };
-  }, [selectedClass, attendanceDate]);
+  }, [selectedClass, attendanceDate, dailyStudentAttendance]);
 
   // Latest exam result summary for the teacher's class
   const classResultReport = useMemo(() => {
@@ -1378,14 +1386,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     let total = 0;
     let present = 0;
     classes.forEach(c => {
-      const recs = dailyAttendanceService.getRecordsByDateAndClass(todayStr, c.name || '');
+      const recs = filterStudentRecordsByDateAndClass(dailyStudentAttendance, todayStr, c.name || '');
       recs.forEach(r => {
         total++;
         if (r.status === 'PRESENT' || r.status === 'LATE') present++;
       });
     });
     return { total, present, rate: total > 0 ? Math.round((present / total) * 100) : 0 };
-  }, [userRole, classes, attendanceDate]);
+  }, [userRole, classes, attendanceDate, dailyStudentAttendance]);
 
   // This month: ledger income/expense/net + recorded-days-only
   // attendance (days with at least one record in any class).
@@ -1408,7 +1416,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       const dateStr = `${prefix}-${String(d).padStart(2, '0')}`;
       let dayHas = false;
       classes.forEach(c => {
-        const recs = dailyAttendanceService.getRecordsByDateAndClass(dateStr, c.name || '');
+        const recs = filterStudentRecordsByDateAndClass(dailyStudentAttendance, dateStr, c.name || '');
         if (recs.length > 0) dayHas = true;
         recs.forEach(r => {
           attTotal++;
@@ -1425,7 +1433,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       attRate: attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : 0,
       recordedDays: days.size
     };
-  }, [userRole, transactions, classes]);
+  }, [userRole, transactions, classes, dailyStudentAttendance]);
 
   // Principal stat cards: whole-madrasa figures. Total dues = the
   // existing current-month dues total + the Phase 2 aged total
@@ -1452,7 +1460,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       const days = new Set<string>();
       for (let d = 1; d <= 31; d++) {
         const dateStr = `${prefix}-${String(d).padStart(2, '0')}`;
-        const recs = dailyAttendanceService.getRecordsByDateAndClass(dateStr, cls);
+        const recs = filterStudentRecordsByDateAndClass(dailyStudentAttendance, dateStr, cls);
         if (recs.length > 0) days.add(dateStr);
         recs.forEach(r => {
           total++;
@@ -1461,7 +1469,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       }
       return { className: cls, rate: total > 0 ? Math.round((present / total) * 100) : 0, days: days.size };
     });
-  }, [userRole, teacherClasses, attendanceDate]);
+  }, [userRole, teacherClasses, attendanceDate, dailyStudentAttendance]);
 
   // Staff: active students grouped by class, in class order.
   const staffByClass = useMemo(() => {
@@ -1479,7 +1487,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     if (!guardianChildren) return null;
     const exam = exams.length > 0 ? exams[exams.length - 1] : null;
     return guardianChildren.map(child => {
-      const att = dailyAttendanceService.calculateStudentAttendanceForExam(child.id);
+      const att = calculateStudentAttendanceForExamFromRecords(dailyStudentAttendance, child.id);
       const due = calculateSingleStudentDue(child, feeStructures, transactions);
       const aging = agingByStudent.get(child.id) || null;
       let examRes: { gpa: number; isFail: boolean; has: boolean } | null = null;
@@ -1501,7 +1509,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         examRes
       };
     });
-  }, [guardianChildren, exams, marks, subjects, feeStructures, transactions, agingByStudent]);
+  }, [guardianChildren, exams, marks, subjects, feeStructures, transactions, agingByStudent, dailyStudentAttendance]);
 
   // -------------------------------------------------------------
   // Phase 4 additions: teacher class routine + native cashier fee entry
@@ -2288,7 +2296,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           <tbody>
                             {classStudents.map(st => {
                               const recs = sheetByStudent.get(st.id);
-                              const s = dailyAttendanceService.getStudentMonthlySummary(st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
+                              const s = getStudentMonthlySummaryFromRecords(dailyStudentAttendance, st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
                               return (
                                 <tr key={st.id} className="border-t border-[#e8ecf4] dark:border-white/5">
                                   <td className="px-3 py-2 font-semibold sticky left-0 z-10 max-w-[140px] truncate bg-white dark:bg-[#161c2e]">
@@ -2343,7 +2351,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           ))}
                         </div>
                         {classStudents.map(st => {
-                          const s = dailyAttendanceService.getStudentMonthlySummary(st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
+                          const s = getStudentMonthlySummaryFromRecords(dailyStudentAttendance, st.id, Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)));
                           const recs = sheetByStudent.get(st.id);
                           const studentMonthRecs: DailyStudentAttendanceRecord[] = recs ? Array.from(recs.values()) : [];
                           const lateTotal = studentMonthRecs.reduce((sum, r) => sum + (r.status === 'LATE' ? (r.lateMinutes || 0) : 0), 0);
