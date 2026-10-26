@@ -104,13 +104,13 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
 
   // Sub-navigation tab definitions
   const tabs: { id: AcademicSubTab; labelBn: string; labelEn: string; icon: any; badge?: string }[] = [
-    { id: 'curriculum', labelBn: '১. বিষয় ও কারিকুলাম', labelEn: '1. Subjects & Curriculum', icon: BookOpen },
-    { id: 'classes', labelBn: '২. শ্রেণি, শাখা ও শ্রেণি শিক্ষক', labelEn: '2. Classes & Sections', icon: Layers },
-    { id: 'teachers', labelBn: '৩. শিক্ষক ও বিষয় বণ্টন', labelEn: '3. Teacher Assignment', icon: UserCheck },
-    { id: 'routine', labelBn: '৪. ক্লাস রুটিন ও সময়সূচি', labelEn: '4. Class Routine', icon: Clock, badge: 'Live' },
-    { id: 'syllabus', labelBn: '৫. সিলেবাস ও পাঠ পরিকল্পনা', labelEn: '5. Syllabus & Lesson Plan', icon: FileText },
-    { id: 'calendar', labelBn: '৬. একাডেমিক ক্যালেন্ডার ও ছুটি', labelEn: '6. Academic Calendar', icon: Calendar },
-    { id: 'analytics', labelBn: '৭. একাডেমিক অ্যানালিটিক্স', labelEn: '7. Academic Analytics', icon: BarChart3, badge: 'Report' },
+    { id: 'curriculum', labelBn: 'বিষয়', labelEn: 'Subjects', icon: BookOpen },
+    { id: 'classes', labelBn: 'শ্রেণি', labelEn: 'Classes', icon: Layers },
+    { id: 'teachers', labelBn: 'শিক্ষক বণ্টন', labelEn: 'Teachers', icon: UserCheck },
+    { id: 'routine', labelBn: 'রুটিন', labelEn: 'Routine', icon: Clock, badge: 'Live' },
+    { id: 'syllabus', labelBn: 'সিলেবাস', labelEn: 'Syllabus', icon: FileText },
+    { id: 'calendar', labelBn: 'ক্যালেন্ডার', labelEn: 'Calendar', icon: Calendar },
+    { id: 'analytics', labelBn: 'অ্যানালিটিক্স', labelEn: 'Analytics', icon: BarChart3 },
   ];
 
   return (
@@ -190,7 +190,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs gap-1">
         {tabs.map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;

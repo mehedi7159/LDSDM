@@ -113,12 +113,12 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
 
   // Sub-navigation tabs
   const tabs: { id: AttendanceSubTab; labelBn: string; labelEn: string; icon: any; badge?: string }[] = [
-    { id: 'students', labelBn: '১. শিক্ষার্থীর দৈনিক উপস্থিতি', labelEn: '1. Daily Students', icon: UserCheck },
-    { id: 'staff', labelBn: '২. শিক্ষক ও কর্মচারী উপস্থিতি', labelEn: '2. Staff Attendance', icon: Briefcase },
-    { id: 'absentees', labelBn: '৩. অনুপস্থিত তালিকা ও SMS', labelEn: '3. Absentees & SMS', icon: Phone, badge: kpis.absentRecorded > 0 ? formatNumber(kpis.absentRecorded, language) : undefined },
-    { id: 'register', labelBn: '৪. মাসিক রেজিস্টার শিট', labelEn: '4. Monthly Register', icon: FileSpreadsheet, badge: 'Print' },
-    { id: 'sync', labelBn: '৫. পরীক্ষার মার্কশিটে সিঙ্ক', labelEn: '5. Sync to Marksheet', icon: Sparkles, badge: 'Auto' },
-    { id: 'reports', labelBn: '৬. উপস্থিতি অ্যানালিটিক্স', labelEn: '6. Reports & Analytics', icon: BarChart3, badge: 'Report' },
+    { id: 'students', labelBn: 'শিক্ষার্থী', labelEn: 'Students', icon: UserCheck },
+    { id: 'staff', labelBn: 'স্টাফ', labelEn: 'Staff', icon: Briefcase },
+    { id: 'absentees', labelBn: 'অনুপস্থিত', labelEn: 'Absentees', icon: Phone, badge: kpis.absentRecorded > 0 ? formatNumber(kpis.absentRecorded, language) : undefined },
+    { id: 'register', labelBn: 'রেজিস্টার', labelEn: 'Register', icon: FileSpreadsheet },
+    { id: 'sync', labelBn: 'সিঙ্ক', labelEn: 'Sync', icon: Sparkles },
+    { id: 'reports', labelBn: 'রিপোর্ট', labelEn: 'Reports', icon: BarChart3 },
   ];
 
   return (
@@ -239,7 +239,7 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs gap-1">
         {tabs.map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;

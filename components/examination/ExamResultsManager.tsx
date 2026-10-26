@@ -150,58 +150,52 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
   const tabs = [
     { 
       id: 'setup' as ExamSubTab, 
-      labelBn: '১. পরীক্ষা ও টার্ম সেটআপ', 
-      labelEn: '1. Exams Setup', 
-      icon: Layers, 
-      badge: 'Admin' 
+      labelBn: 'সেটআপ', 
+      labelEn: 'Setup', 
+      icon: Layers 
     },
     { 
       id: 'marks' as ExamSubTab, 
-      labelBn: '২. নম্বর এন্ট্রি ও মূল্যায়ন', 
-      labelEn: '2. Marks Entry', 
+      labelBn: 'নম্বর এন্ট্রি', 
+      labelEn: 'Marks Entry', 
       icon: PenTool,
       badge: kpis.totalMarksEntries > 0 ? `${formatNumber(kpis.totalMarksEntries, 'bn')}` : undefined 
     },
     { 
       id: 'blank_sheet' as ExamSubTab, 
-      labelBn: '৩. ব্লাঙ্ক মার্কশিট প্রিন্ট', 
-      labelEn: '3. Blank Marksheets', 
-      icon: Printer, 
-      badge: 'Print' 
+      labelBn: 'মার্কশিট প্রিন্ট', 
+      labelEn: 'Blank Sheets', 
+      icon: Printer 
     },
     { 
       id: 'cards' as ExamSubTab, 
-      labelBn: '৪. একক ফলাফল ও মার্কশিট', 
-      labelEn: '4. Individual Cards', 
+      labelBn: 'ফলাফল', 
+      labelEn: 'Result Cards', 
       icon: Award 
     },
     { 
       id: 'tabulation' as ExamSubTab, 
-      labelBn: '৫. মেধাতালিকা ও ট্যাবুলেশন', 
-      labelEn: '5. Tabulation Sheet', 
-      icon: FileSpreadsheet, 
-      badge: 'Merit' 
+      labelBn: 'মেধাতালিকা', 
+      labelEn: 'Merit List', 
+      icon: FileSpreadsheet 
     },
     { 
       id: 'web_results' as ExamSubTab, 
-      labelBn: '৬. অনলাইন রেজাল্ট পোর্টাল', 
-      labelEn: '6. Web Results & QR', 
-      icon: Globe, 
-      badge: 'QR' 
+      labelBn: 'পোর্টাল', 
+      labelEn: 'Web Results', 
+      icon: Globe 
     },
     { 
       id: 'sms' as ExamSubTab, 
-      labelBn: '৭. ফলাফল SMS অ্যালার্ট', 
-      labelEn: '7. Result SMS', 
-      icon: MessageSquare, 
-      badge: 'SMS' 
+      labelBn: 'SMS', 
+      labelEn: 'SMS', 
+      icon: MessageSquare 
     },
     { 
       id: 'analytics' as ExamSubTab, 
-      labelBn: '৮. ফলাফল অ্যানালিটিক্স', 
-      labelEn: '8. Exam Analytics', 
-      icon: BarChart3, 
-      badge: 'Report' 
+      labelBn: 'অ্যানালিটিক্স', 
+      labelEn: 'Analytics', 
+      icon: BarChart3 
     },
   ];
 
@@ -380,8 +374,8 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       </div>
 
       {/* Sub-Tabs Navigation Bar */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs overflow-x-auto print:hidden">
-        <div className="flex items-center gap-1.5 min-w-max">
+      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs print:hidden">
+        <div className="flex flex-wrap items-center gap-1.5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

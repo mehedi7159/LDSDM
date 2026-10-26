@@ -180,7 +180,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
     <div className="space-y-4">
       {/* Pillar Selection Chips */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 pb-1 text-xs">
           <button
             onClick={() => setPillarFilter('ALL')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${

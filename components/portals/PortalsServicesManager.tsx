@@ -672,14 +672,14 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         </div>
 
         {/* 2. SUB-TAB NAVIGATION BAR */}
-        <div className="mt-8 pt-4 border-t border-white/10 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <div className="mt-8 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2 pb-1">
           {[
-            { id: 'guardian_portal', labelBn: 'অভিভাবক পোর্টাল', labelEn: 'Guardian Portal', icon: Users, badge: formatNumber(students.length, language) },
-            { id: 'online_admissions', labelBn: 'অনলাইন ভর্তি ট্র্যাকার', labelEn: 'Online Admissions', icon: FileText, badge: formatNumber(admissions.length, language) },
-            { id: 'web_results', labelBn: 'অনলাইন রেজাল্ট ও কিউআর', labelEn: 'Web Results & QR', icon: QrCode, badge: 'Live' },
-            { id: 'sms_gateway', labelBn: 'এসএমএস ও নোটিফিকেশন', labelEn: 'SMS Gateway', icon: MessageSquare, badge: 'Gateway' },
-            { id: 'boarding_mess', labelBn: 'ছাত্রাবাস ও হোস্টেল মেস', labelEn: 'Hostel & Mess', icon: Home, badge: formatNumber(residentialStudents.length, language) },
-            { id: 'islamic_welfare', labelBn: 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল', labelEn: 'Student Welfare & Stipends', icon: HeartHandshake, badge: 'Welfare' }
+            { id: 'guardian_portal', labelBn: 'অভিভাবক', labelEn: 'Guardian', icon: Users, badge: formatNumber(students.length, language) },
+            { id: 'online_admissions', labelBn: 'ভর্তি', labelEn: 'Admissions', icon: FileText, badge: formatNumber(admissions.length, language) },
+            { id: 'web_results', labelBn: 'রেজাল্ট', labelEn: 'Results', icon: QrCode, badge: 'Live' },
+            { id: 'sms_gateway', labelBn: 'SMS', labelEn: 'SMS', icon: MessageSquare },
+            { id: 'boarding_mess', labelBn: 'হোস্টেল', labelEn: 'Hostel', icon: Home, badge: formatNumber(residentialStudents.length, language) },
+            { id: 'islamic_welfare', labelBn: 'কল্যাণ', labelEn: 'Welfare', icon: HeartHandshake }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;

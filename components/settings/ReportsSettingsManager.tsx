@@ -269,53 +269,47 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
   const subTabs = [
     {
       id: 'notices' as ReportsSettingsSubTab,
-      labelBn: 'নোটিশ ও বার্তা',
-      labelEn: 'Notices & Alerts',
+      labelBn: 'নোটিশ',
+      labelEn: 'Notices',
       icon: Megaphone,
       badge: noticeStats.urgent > 0 ? `${noticeStats.urgent} Urgent` : undefined,
       badgeColor: 'bg-rose-500 text-white'
     },
     {
       id: 'admin_reports' as ReportsSettingsSubTab,
-      labelBn: 'সার্বিক প্রশাসনিক রিপোর্ট',
-      labelEn: 'Institutional Reports',
-      icon: BarChart3,
-      badge: 'Executive',
-      badgeColor: 'bg-indigo-600 text-white'
+      labelBn: 'রিপোর্ট',
+      labelEn: 'Reports',
+      icon: BarChart3
     },
     {
       id: 'profile' as ReportsSettingsSubTab,
-      labelBn: 'মাদ্রাসা প্রোফাইল',
-      labelEn: 'Madrasah Profile',
+      labelBn: 'প্রোফাইল',
+      labelEn: 'Profile',
       icon: Building2,
       badge: `${profileCompleteness}%`,
       badgeColor: profileCompleteness === 100 ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'
     },
     {
       id: 'branding' as ReportsSettingsSubTab,
-      labelBn: 'ব্র্যান্ডিং ও প্রিন্ট',
-      labelEn: 'Branding & Seal',
+      labelBn: 'ব্র্যান্ডিং',
+      labelEn: 'Branding',
       icon: Sliders
     },
     {
       id: 'backup' as ReportsSettingsSubTab,
-      labelBn: 'ডাটা সুরক্ষা ও ব্যাকআপ',
-      labelEn: 'Data Vault & Backup',
-      icon: Database,
-      badge: 'Safe',
-      badgeColor: 'bg-blue-600 text-white'
+      labelBn: 'ব্যাকআপ',
+      labelEn: 'Backup',
+      icon: Database
     },
     {
       id: 'audit' as ReportsSettingsSubTab,
-      labelBn: 'সিকিউরিটি অডিট',
-      labelEn: 'Security Audit',
-      icon: ShieldCheck,
-      badge: 'Super',
-      badgeColor: 'bg-purple-600 text-white'
+      labelBn: 'অডিট',
+      labelEn: 'Audit',
+      icon: ShieldCheck
     },
     {
       id: 'diagnostics' as ReportsSettingsSubTab,
-      labelBn: 'সিস্টেম ডায়াগনস্টিকস',
+      labelBn: 'ডায়াগনস্টিকস',
       labelEn: 'Diagnostics',
       icon: Activity
     }
@@ -453,8 +447,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       {/* ========================================================================= */}
       {/* UNIFIED SUB-TABS NAVIGATION BAR                                           */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 shadow-xs print:hidden overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-1.5 min-w-max">
+      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
+        <div className="flex flex-wrap items-center gap-1.5">
           {subTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

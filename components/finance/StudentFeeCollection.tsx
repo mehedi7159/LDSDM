@@ -782,8 +782,8 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       {/* ========================================================================= */}
       {/* 🧭 SUB-NAVIGATION TABS */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-1.5 shadow-xs overflow-x-auto scrollbar-thin">
-        <div className="flex items-center gap-1 min-w-max">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-1.5 shadow-xs">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => setActiveSubTab('collect')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
@@ -793,7 +793,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             }`}
           >
             <Receipt className={`w-4 h-4 ${activeSubTab === 'collect' ? 'text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>{isBn ? '📝 ফি গ্রহণ ও রসিদ তৈরি' : 'Collect Fee & Voucher'}</span>
+            <span>{isBn ? 'ফি গ্রহণ' : 'Collect Fee'}</span>
           </button>
 
           <button
@@ -805,7 +805,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             }`}
           >
             <Users className={`w-4 h-4 ${activeSubTab === 'dues' ? 'text-rose-400' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>{isBn ? '👥 ছাত্র বকেয়া ও পেমেন্ট প্রোফাইল' : 'Student Dues & Profiles'}</span>
+            <span>{isBn ? 'বকেয়া' : 'Dues'}</span>
             {aggregateMetrics.totalDueStudentsCount > 0 && (
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                 activeSubTab === 'dues' ? 'bg-rose-500 text-white' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-400'
@@ -824,7 +824,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             }`}
           >
             <Scale className={`w-4 h-4 ${activeSubTab === 'salary-bridge' ? 'text-amber-400' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>{isBn ? '⚖️ উস্তাদ বেতন কভারেজ ব্রিজ' : 'Teacher Salary Bridge'}</span>
+            <span>{isBn ? 'বেতন ব্রিজ' : 'Salary Bridge'}</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300">
               {salaryBridgeMetrics.coverageRatio}%
             </span>
@@ -839,7 +839,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             }`}
           >
             <TrendingUp className={`w-4 h-4 ${activeSubTab === 'class-breakdown' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>{isBn ? '📊 জামাতভিত্তিক আদায় চিত্র' : 'Class Breakdown'}</span>
+            <span>{isBn ? 'জামাতভিত্তিক' : 'By Class'}</span>
           </button>
 
           <button
@@ -851,7 +851,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             }`}
           >
             <Clock className={`w-4 h-4 ${activeSubTab === 'history' ? 'text-purple-400' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>{isBn ? '📜 সাম্প্রতিক আদায় হিস্ট্রি' : 'Recent Inflow History'}</span>
+            <span>{isBn ? 'হিস্ট্রি' : 'History'}</span>
           </button>
         </div>
       </div>

@@ -53,7 +53,6 @@ export type StaffSubTab =
   | 'assignments' 
   | 'attendance' 
   | 'payroll' 
-  | 'leaves' 
   | 'id_cards' 
   | 'analytics';
 
@@ -107,6 +106,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
   const isBn = language === 'bn';
   const [activeTab, setActiveTab] = useState<StaffSubTab>(initialSubTab);
+  // Design গ (merged tab): 'attendance' holds two inner sections —
+  // daily attendance + leave records. Admin tier sees both; other
+  // attendance viewers see only হাজিরা (ছুটি stays admin-only, as before).
+  const [attendanceSection, setAttendanceSection] = useState<'attendance' | 'leaves'>('attendance');
 
   // Search and filter for Directory
   const [searchQuery, setSearchQuery] = useState('');
@@ -867,51 +870,41 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const tabs = [
     {
       id: 'directory' as StaffSubTab,
-      labelBn: '১. শিক্ষক, কর্মী ও অ্যাকাউন্ট',
-      labelEn: '1. Staff & Accounts',
+      labelBn: 'স্টাফ',
+      labelEn: 'Staff',
       icon: Users,
       badge: `${formatNumber(kpis.totalStaffCount, 'bn')}`
     },
     {
       id: 'assignments' as StaffSubTab,
-      labelBn: '২. দায়িত্ব ও বিষয় বণ্টন',
-      labelEn: '2. Workload & Subjects',
+      labelBn: 'দায়িত্ব',
+      labelEn: 'Workload',
       icon: Briefcase
     },
     {
       id: 'attendance' as StaffSubTab,
-      labelBn: '৩. শিক্ষক-কর্মচারী দৈনিক হাজিরা',
-      labelEn: '3. Staff Daily Attendance',
+      labelBn: 'হাজিরা ও ছুটি',
+      labelEn: 'Attendance & Leave',
       icon: CalendarCheck,
       badge: kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'
     },
     {
       id: 'payroll' as StaffSubTab,
-      labelBn: '৪. বেতন ও মাসিক পে-রোল',
-      labelEn: '4. Payroll & Salary',
-      icon: CreditCard,
-      badge: 'Pay'
-    },
-    {
-      id: 'leaves' as StaffSubTab,
-      labelBn: '৫. ছুটি ও ছুটির আবেদন',
-      labelEn: '5. Leave Records',
-      icon: Clock,
-      badge: kpis.leavesTodayCount > 0 ? `${kpis.leavesTodayCount}` : undefined
+      labelBn: 'বেতন',
+      labelEn: 'Payroll',
+      icon: CreditCard
     },
     {
       id: 'id_cards' as StaffSubTab,
-      labelBn: '৬. স্টাফ আইডি কার্ড ও প্রত্যয়নপত্র',
-      labelEn: '6. ID Cards & NOC',
-      icon: Award,
-      badge: 'Print'
+      labelBn: 'আইডি',
+      labelEn: 'ID Cards',
+      icon: Award
     },
     {
       id: 'analytics' as StaffSubTab,
-      labelBn: '৭. জনবল অ্যানালিটিক্স ও রিপোর্ট',
-      labelEn: '7. HR Analytics & Census',
-      icon: BarChart3,
-      badge: 'Report'
+      labelBn: 'রিপোর্ট',
+      labelEn: 'Reports',
+      icon: BarChart3
     },
   ];
 
@@ -926,9 +919,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     switch (tab.id) {
       case 'directory': return true;
       case 'assignments': return isOwnerAdmin || isSuperAdmin || hasPermission('subjects.view') || hasPermission('teachers.view');
-      case 'attendance': return canViewAttendance;
+      case 'attendance': return canViewAttendance || isAdminTier;
       case 'payroll': return canViewPayroll;
-      case 'leaves': return isAdminTier;
       case 'id_cards': return isAdminTier;
       case 'analytics': return isOwnerAdmin || isSuperAdmin || hasPermission('reports.view');
       default: return true;
@@ -1011,7 +1003,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             {canViewAttendance && (
             <button
               type="button"
-              onClick={() => setActiveTab('attendance')}
+              onClick={() => { setActiveTab('attendance'); setAttendanceSection('attendance'); }}
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600/30 hover:bg-teal-600/50 text-teal-200 border border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <CalendarCheck size={14} />
@@ -1032,8 +1024,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       </PageHeader>
 
 {/* Sub-Tabs Navigation Bar */}
-      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-x-auto print:hidden">
-        <div className="flex items-center gap-1.5 min-w-max">
+      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs print:hidden">
+        <div className="flex flex-wrap items-center gap-1.5">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1517,8 +1509,45 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           </div>
         )}
 
-        {/* 4. Staff Daily Attendance */}
-        {activeTab === 'attendance' && (
+        {/* Merged tab inner switch: হাজিরা / ছুটি (ছুটি is admin-only, as before). */}
+        {activeTab === 'attendance' && isAdminTier && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setAttendanceSection('attendance')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                attendanceSection === 'attendance'
+                  ? 'bg-gradient-to-r from-teal-700 to-cyan-700 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
+              }`}
+            >
+              <CalendarCheck size={15} />
+              <span>{isBn ? 'দৈনিক হাজিরা' : 'Daily Attendance'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAttendanceSection('leaves')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                attendanceSection === 'leaves'
+                  ? 'bg-gradient-to-r from-teal-700 to-cyan-700 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
+              }`}
+            >
+              <Clock size={15} />
+              <span>{isBn ? 'ছুটি ও আবেদন' : 'Leave Records'}</span>
+              {kpis.leavesTodayCount > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                  attendanceSection === 'leaves' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                }`}>
+                  {kpis.leavesTodayCount}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* 4. Staff Daily Attendance (merged tab, হাজিরা section) */}
+        {activeTab === 'attendance' && attendanceSection === 'attendance' && (
           <div className="space-y-4">
             <DailyAttendanceHub initialMode="staff" onNavigateTab={onNavigateTab} />
           </div>
@@ -1595,8 +1624,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           </div>
         )}
 
-        {/* 6. Leave Records */}
-        {activeTab === 'leaves' && (
+        {/* 6. Leave Records (merged tab, ছুটি section — admin-only) */}
+        {activeTab === 'attendance' && attendanceSection === 'leaves' && isAdminTier && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
