@@ -403,7 +403,18 @@ export async function setInstitutionMember(
 
 /**
  * Fetch all members of an institution
+ *
+ * The Firestore read has a quick timeout and the function never throws:
+ * on timeout/error it returns the local-store merge. Callers that must
+ * tell the user "update failed" apart from "no pending applicants" read
+ * getLastMembersSyncStatus() right after awaiting this — it reports
+ * whether the Firestore leg of the most recent call actually landed.
  */
+let lastMembersCloudOk = true;
+export function getLastMembersSyncStatus(): { cloudOk: boolean } {
+  return { cloudOk: lastMembersCloudOk };
+}
+
 export async function getAllInstitutionMembers(institutionId: string): Promise<InstitutionMember[]> {
   const membersMap = new Map<string, InstitutionMember>();
 
@@ -460,8 +471,13 @@ export async function getAllInstitutionMembers(institutionId: string): Promise<I
           membersMap.set(data.uid, data);
         }
       });
+      lastMembersCloudOk = true;
+    } else {
+      // Timeout (null snapshot): Firestore leg did not land.
+      lastMembersCloudOk = false;
     }
   } catch (err) {
+    lastMembersCloudOk = false;
     console.warn(`[RBAC] Firestore member fetch notice (using local store):`, err);
   }
 
@@ -475,9 +491,13 @@ export async function getAllInstitutionMembers(institutionId: string): Promise<I
 }
 
 /**
- * Delete an institution member
+ * Delete an institution member. Returns { ok } instead of silent
+ * void (Phase 2): callers must be able to report a failed member
+ * cleanup instead of claiming a complete delete. A Firestore timeout
+ * still resolves (withTimeout fallback) and reports ok — the timeout
+ * ambiguity is pre-existing; only thrown errors report failure.
  */
-export async function deleteInstitutionMember(institutionId: string, uid: string): Promise<void> {
+export async function deleteInstitutionMember(institutionId: string, uid: string): Promise<{ ok: boolean }> {
   try {
     const saved = localStorage.getItem('madrasha_institution_members');
     if (saved) {
@@ -490,7 +510,25 @@ export async function deleteInstitutionMember(institutionId: string, uid: string
   try {
     const memberDocRef = doc(db, 'institutions', institutionId, 'members', uid);
     await withTimeout(deleteDoc(memberDocRef), 2000, null);
-  } catch (e) {}
+    return { ok: true };
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
+/**
+ * Delete several member docs, reporting exactly which ones failed
+ * (Phase 2). Delete callers run this AFTER the main_store cloud
+ * confirm — never before — so a failed cloud write can never leave
+ * member docs deleted while the staff record survives.
+ */
+export async function deleteInstitutionMembers(institutionId: string, uids: string[]): Promise<{ ok: boolean; failedUids: string[] }> {
+  const failedUids: string[] = [];
+  for (const uid of uids) {
+    const res = await deleteInstitutionMember(institutionId, uid);
+    if (!res.ok) failedUids.push(uid);
+  }
+  return { ok: failedUids.length === 0, failedUids };
 }
 
 /**

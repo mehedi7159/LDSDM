@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { 
-  Users, 
-  UserCheck, 
-  UserPlus, 
-  ShieldCheck, 
-  Briefcase, 
+import {
+  Users,
+  UserCheck,
+  UserPlus,
+  Briefcase,
   Calendar, 
   CreditCard, 
   Clock, 
@@ -37,22 +36,20 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { formatNumber, formatBanglaNumber } from '../../services/utils';
-import { UserRoleManager } from '../UserRoleManager';
 import { SubjectManager } from '../SubjectManager';
 import { DailyAttendanceHub } from '../attendance/DailyAttendanceHub';
 import { TeacherSalaryEntry } from '../finance/TeacherSalaryEntry';
-import { dailyAttendanceService, DailyStaffAttendanceRecord } from '../../services/dailyAttendanceService';
 import { AcademicTeacher } from '../../types/academic';
 import { FinanceTransaction, UserRole, StaffLeaveRecord } from '../../types';
-import { deriveRoleFromDesignation } from '../../services/utils';
-import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
+import { resolveApprovalRoleId, resolveStaffRole, roleLabelBn, DESIGNATION_OPTIONS, DESIGNATION_OTHER, isMappedDesignation } from '../../services/staffRole';
+import { deleteInstitutionMembers } from '../../services/rbac';
+import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, SALARY_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { decideStaffLeave } from '../../services/staffSelfService';
 import { PageHeader } from '../ui/PageHeader';
-import { TestAccountCleanup } from './TestAccountCleanup';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
-export type StaffSubTab = 
-  | 'directory' 
-  | 'roles' 
+export type StaffSubTab =
+  | 'directory'
   | 'assignments' 
   | 'attendance' 
   | 'payroll' 
@@ -84,10 +81,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     staffLeaves = [],
     setStaffLeaves,
     confirmLeavesCloudSync,
+    confirmFeeCloudSync,
+    dailyStaffAttendance = [],
     users = [], 
     setUsers,
     pendingMembers = [],
+    pendingMembersError = null,
     approveMember,
+    rejectMember,
     refreshPendingMembers,
     classes = [], 
     subjects = [], 
@@ -99,7 +100,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     hasPermission, 
     isOwnerAdmin, 
     isAdmin, 
-    isSuperAdmin 
+    isSuperAdmin,
+    currentUser,
+    currentMember
   } = useApp();
 
   const isBn = language === 'bn';
@@ -109,6 +112,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING' | 'INACTIVE'>('ALL');
+  // Phase 4: merged directory view — cards (main) or table (toggle).
+  const [directoryView, setDirectoryView] = useState<'cards' | 'table'>('cards');
 
   // Add/Edit Teacher Modal
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -118,6 +123,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // (e.g. an accountant who also teaches). Saved to the staff record,
   // the linked login account and the member document together.
   const [formAdditionalRoles, setFormAdditionalRoles] = useState<UserRole[]>([]);
+  // Phase 3: designation SELECT state. Mapped option value, or
+  // DESIGNATION_OTHER when the stored designation is legacy free text
+  // (then the text input below holds the custom title; the role still
+  // comes from the explicit Login Role select, never from free text).
+  const [formDesignationSelect, setFormDesignationSelect] = useState<string>(DESIGNATION_OPTIONS[0].value);
   const [teacherFormData, setTeacherFormData] = useState<Partial<AcademicTeacher>>({
     name: '',
     nameBn: '',
@@ -130,6 +140,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     assignedClasses: [],
     assignedSubjects: []
   });
+  // Phase 2 field-level errors: duplicate code / invalid email stay
+  // under the field until fixed — never only a 3.5s toast.
+  const [formErrors, setFormErrors] = useState<{ employeeCode?: string; email?: string; designation?: string }>({});
+  const employeeCodeInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
   // Leave Management State — records live in the shared, cloud-synced store
   // (AppContext staffLeaves) so they survive across devices and admins.
@@ -137,6 +152,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const setLeaves = setStaffLeaves;
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  // Phase 5: leave-add failure keeps the modal open with this error +
+  // a re-confirm-only retry (never a second record).
+  const [leaveError, setLeaveError] = useState<string | null>(null);
   const [newLeaveData, setNewLeaveData] = useState<Partial<StaffLeaveRecord>>({
     teacherId: '',
     leaveType: 'CASUAL',
@@ -146,6 +164,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     reason: '',
     status: 'APPROVED'
   });
+
+  // Phase 4/5: demo-clear (moved from Tab 2): owner-gated, cloud
+  // confirmed, member cleanup after confirm, truthful result.
+  const [showDemoClearConfirm, setShowDemoClearConfirm] = useState(false);
+  const [isClearingDemo, setIsClearingDemo] = useState(false);
 
   // ID Card Generation Selection
   const [selectedTeacherForIdCard, setSelectedTeacherForIdCard] = useState<AcademicTeacher | null>(null);
@@ -166,6 +189,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Receipt Modal State for Salary
   const [salaryReceiptTx, setSalaryReceiptTx] = useState<FinanceTransaction | null>(null);
 
+  // Phase 1 live notice: refresh the pending list every time HR opens,
+  // so an approval made elsewhere (or a fresh application) is never
+  // missed — the realtime members listener in AppContext covers
+  // changes while HR stays open.
+  useEffect(() => {
+    refreshPendingMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Staff removal (confirm dialog) + per-card password reveal
   const [staffToDelete, setStaffToDelete] = useState<AcademicTeacher | null>(null);
   const [isDeletingStaff, setIsDeletingStaff] = useState(false);
@@ -185,17 +217,27 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     }
   };
 
-  // Today's staff attendance data
+  // Today's staff attendance data — Phase 5: reactive to context
+  // arrivals, not only the date string. Cloud hydration lands in
+  // dailyStaffAttendance (AppContext), so the KPI + attendance tab
+  // recompute the moment new records arrive mid-session.
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const todayStaffAttendance = useMemo(() => {
-    return dailyAttendanceService.getStaffAttendanceByDate(todayStr);
-  }, [todayStr]);
+    return dailyStaffAttendance.filter(r => r.date === todayStr);
+  }, [todayStr, dailyStaffAttendance]);
 
-  // Unified Staff list (merging teachers, staff roles from users, and pending members)
+  // Unified Staff list (Phase 1): ACTIVE/INACTIVE staff only — teachers
+  // plus staff-role login accounts. Pending applicants are NOT in
+  // this list anymore: they live only in the pending-applicants strip
+  // below (approve + reject, no edit/delete), so nobody unapproved
+  // can appear in the teacher list.
   const unifiedStaffList = useMemo(() => {
-    const list: AcademicTeacher[] = [...teachers];
+    const list: AcademicTeacher[] = teachers.filter(t =>
+      (t.status || 'ACTIVE').toUpperCase() !== 'PENDING'
+    );
     // If teachers are empty or users have staff not in teachers, complement
     users.forEach(u => {
+      if (u.status === 'pending') return; // pending applicants: strip only
       if ((u.role === 'teacher' || u.role === 'staff' || u.role === 'accountant' || u.role === 'principal') && !list.some(t =>
         t.id === u.id || t.userId === u.id ||
         (u.email && t.email?.toLowerCase() === u.email.toLowerCase()) ||
@@ -208,46 +250,80 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           designation: u.designation || (u.role === 'principal' ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : u.role === 'accountant' ? 'হিসাবরক্ষক' : u.role === 'staff' ? 'অফিস কর্মী' : 'সহকারী শিক্ষক'),
           phone: u.phone,
           email: u.email,
+          password: (u as any).password,
           additionalRoles: (u.additionalRoles || []) as string[],
-          status: (u.status === 'pending') ? 'PENDING' : 'ACTIVE',
+          status: (u.status === 'blocked' || u.status === 'inactive') ? 'INACTIVE' : 'ACTIVE',
           assignedClasses: u.assignedClasses || []
         });
       }
     });
 
-    // Also include pending registered members
-    pendingMembers.forEach(m => {
-      if (!list.some(t => t.id === m.uid || (m.email && t.email?.toLowerCase() === m.email.toLowerCase()))) {
-        list.push({
-          id: m.uid,
-          name: m.displayName || 'Teacher',
-          nameBn: m.displayName || 'শিক্ষক',
-          designation: m.requestedRole || 'মুয়াল্লিম (সহকারী শিক্ষক)',
-          phone: m.phone || '',
-          email: m.email || '',
-          status: 'PENDING',
-          assignedClasses: m.assignedClasses || []
-        });
-      }
-    });
-
     return list;
-  }, [teachers, users, pendingMembers]);
+  }, [teachers, users]);
 
-  // List of pending staff awaiting approval
+  // Pending applicants, kept strictly separate from the directory:
+  // pending member applications + pending login accounts + legacy
+  // PENDING teacher records, deduplicated by id/email. These cards
+  // get approve + reject ONLY — never edit or delete.
   const pendingStaffApprovals = useMemo(() => {
-    return unifiedStaffList.filter(s => 
-      s.status?.toUpperCase() === 'PENDING' ||
-      pendingMembers.some(m => m.uid === s.id || (s.email && m.email?.toLowerCase() === s.email.toLowerCase()))
-    );
-  }, [unifiedStaffList, pendingMembers]);
+    const list: AcademicTeacher[] = [];
+    const seenIds = new Set<string>();
+    const seenEmails = new Set<string>();
+    const pushUnique = (rec: AcademicTeacher) => {
+      const idKey = rec.id || '';
+      const emailKey = (rec.email || '').toLowerCase();
+      if ((idKey && seenIds.has(idKey)) || (emailKey && seenEmails.has(emailKey))) return;
+      if (idKey) seenIds.add(idKey);
+      if (emailKey) seenEmails.add(emailKey);
+      list.push(rec);
+    };
+    pendingMembers.forEach(m => {
+      pushUnique({
+        id: m.uid,
+        name: m.displayName || 'Teacher',
+        nameBn: m.displayName || 'শিক্ষক',
+        designation: m.requestedRole || 'মুয়াল্লিম (সহকারী শিক্ষক)',
+        phone: m.phone || '',
+        email: m.email || '',
+        status: 'PENDING',
+        assignedClasses: m.assignedClasses || [],
+        assignedSubjects: m.assignedSubjects || []
+      });
+    });
+    users.forEach(u => {
+      if (u.status !== 'pending') return;
+      pushUnique({
+        id: u.id,
+        name: u.name,
+        nameBn: u.nameBn,
+        designation: u.designation || (u.role === 'accountant' ? 'হিসাবরক্ষক' : u.role === 'staff' ? 'অফিস কর্মী' : 'সহকারী শিক্ষক'),
+        phone: u.phone || '',
+        email: u.email || '',
+        status: 'PENDING',
+        assignedClasses: u.assignedClasses || [],
+        assignedSubjects: u.assignedSubjects || []
+      });
+    });
+    teachers.forEach(t => {
+      if ((t.status || '').toUpperCase() !== 'PENDING') return;
+      pushUnique({ ...t, status: 'PENDING' });
+    });
+    return list;
+  }, [pendingMembers, users, teachers]);
 
-  // Real-time KPI Calculations
+  // Real-time KPI Calculations — ACTIVE staff only (Phase 1): pending
+  // applicants must never inflate the teacher/staff counts.
   const kpis = useMemo(() => {
-    const totalStaffCount = unifiedStaffList.length;
-    const teachersOnlyCount = unifiedStaffList.filter(s =>
-      deriveRoleFromDesignation(s.designation) === 'teacher'
-    ).length;
+    const activeStaff = unifiedStaffList.filter(s =>
+      (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE'
+    );
+    const totalStaffCount = activeStaff.length;
+    // Phase 3: KPI role comes from the linked account (role +
+    // additionalRoles), never from designation substring matching.
+    const teachersOnlyCount = activeStaff.filter(s => {
+      const r = resolveStaffRole(s, users);
+      return r.role === 'teacher' || r.additionalRoles.includes('teacher');
+    }).length;
 
     const officeStaffCount = totalStaffCount - teachersOnlyCount;
     
@@ -278,6 +354,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       l.endDate >= todayStr
     ).length;
 
+    // Phase 5: monthly approved leaves = APPROVED rows whose startDate
+    // falls inside the current month (never leaves.length — that
+    // counted every status and every month). Reuses the currentMonth
+    // declared above for the salary block.
+    const [y, m] = currentMonth.split('-').map(Number);
+    const monthStart = `${currentMonth}-01`;
+    const monthEnd = new Date(Date.UTC(y, m, 0)).toISOString().split('T')[0];
+    const monthlyApprovedLeavesCount = leaves.filter(l =>
+      l.status === 'APPROVED' &&
+      l.startDate >= monthStart &&
+      l.startDate <= monthEnd
+    ).length;
+
     return {
       totalStaffCount,
       teachersOnlyCount,
@@ -288,9 +377,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       totalDisbursed,
       paidStaffCount,
       avgSalary,
-      leavesTodayCount
+      leavesTodayCount,
+      monthlyApprovedLeavesCount
     };
-  }, [unifiedStaffList, todayStaffAttendance, transactions, todayStr, leaves]);
+  }, [unifiedStaffList, users, todayStaffAttendance, transactions, todayStr, leaves]);
 
   // Filtered staff for directory
   const filteredStaff = useMemo(() => {
@@ -303,24 +393,39 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         (s.designation && s.designation.includes(searchQuery));
       
       const matchStatus = statusFilter === 'ALL' || (s.status || 'ACTIVE').toUpperCase() === statusFilter;
-      const derivedRole = deriveRoleFromDesignation(s.designation);
+      // Phase 3: role filter uses the linked account role +
+      // additionalRoles; designation text never decides the filter.
+      const resolvedRole = resolveStaffRole(s, users);
       const matchRole = roleFilter === 'ALL' ||
-        (roleFilter === 'TEACHER' && derivedRole === 'teacher') ||
-        (roleFilter === 'OFFICE' && derivedRole !== 'teacher');
+        resolvedRole.role === roleFilter ||
+        resolvedRole.additionalRoles.includes(roleFilter as UserRole);
 
       return matchSearch && matchStatus && matchRole;
     });
-  }, [unifiedStaffList, searchQuery, statusFilter, roleFilter]);
+  }, [unifiedStaffList, users, searchQuery, statusFilter, roleFilter]);
 
   // Handle open add modal
+  // Phase 2: next code = max existing numeric suffix + 1 — the old
+    // length+1 reused a deleted code whenever the list shrank.
+    const nextEmployeeCode = () => {
+      let max = 0;
+      unifiedStaffList.forEach(s => {
+        const m = (s.employeeCode || '').match(/(\d+)\s*$/);
+        if (m) max = Math.max(max, parseInt(m[1], 10));
+      });
+      return `MDR-T${String(max + 1).padStart(3, '0')}`;
+    };
+
   const handleOpenAddModal = () => {
     setEditingTeacher(null);
     setFormLoginRole('teacher');
     setFormAdditionalRoles([]);
+    setFormDesignationSelect(DESIGNATION_OPTIONS[0].value);
+    setFormErrors({});
     setTeacherFormData({
       name: '',
       nameBn: '',
-      employeeCode: `MDR-T${String(unifiedStaffList.length + 1).padStart(3, '0')}`,
+      employeeCode: nextEmployeeCode(),
       designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
       phone: '',
       email: '',
@@ -340,13 +445,24 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       (teacher.email && u.email?.toLowerCase() === teacher.email.toLowerCase()) ||
       (teacher.phone && u.phone === teacher.phone)
     );
-    const primaryRole = (linkedUser?.role as UserRole) || deriveRoleFromDesignation(teacher.designation);
+    // Phase 3: single role rule — linked account first, fixed
+    // designation mapping second, legacy fallback flagged (the card
+    // shows the verify mark; the form lets the admin fix it).
+    const primaryRole = resolveStaffRole(teacher, users).role;
     setFormLoginRole(primaryRole);
+    // Phase 3: designation select follows the stored value — mapped
+    // option, or "other" with the legacy text kept for hand-fixing.
+    setFormDesignationSelect(
+      teacher.designation && isMappedDesignation(teacher.designation)
+        ? teacher.designation
+        : (teacher.designation ? DESIGNATION_OTHER : DESIGNATION_OPTIONS[0].value)
+    );
     const storedAdditional =
       (linkedUser?.additionalRoles && linkedUser.additionalRoles.length > 0)
         ? linkedUser.additionalRoles
         : ((teacher.additionalRoles || []) as UserRole[]);
     setFormAdditionalRoles(storedAdditional.filter(r => r !== primaryRole));
+    setFormErrors({});
     setTeacherFormData({
       ...teacher,
       password: teacher.password || '123'
@@ -375,6 +491,38 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       return;
     }
 
+    // Phase 3: "other" designation needs its custom title typed —
+    // an empty custom title saves nothing (the role still comes from
+    // the explicit Login Role select, never from this text).
+    if (formDesignationSelect === DESIGNATION_OTHER && !(teacherFormData.designation || '').trim()) {
+      setFormErrors(prev => ({ ...prev, designation: isBn ? 'অন্যান্য পদবি লিখুন অথবা তালিকা থেকে বাছুন' : 'Type the custom designation or pick from the list' }));
+      showToast(isBn ? 'পদবি বাছুন অথবা অন্যান্য পদবির নাম লিখুন' : 'Pick a designation or type the custom title');
+      return;
+    }
+
+    // Phase 2 field-level validation: duplicate code / invalid email
+    // stay under the field until fixed — never only a 3.5s toast.
+    const code = (teacherFormData.employeeCode || '').trim();
+    const emailVal = (teacherFormData.email || '').trim();
+    const fieldErrs: { employeeCode?: string; email?: string } = {};
+    if (code) {
+      const dup = unifiedStaffList.some(s =>
+        s.id !== editingTeacher?.id &&
+        (s.employeeCode || '').trim().toLowerCase() === code.toLowerCase()
+      );
+      if (dup) fieldErrs.employeeCode = isBn ? 'এই কর্মী কোড ইতিমধ্যে ব্যবহৃত হয়েছে' : 'This employee code is already in use';
+    }
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      fieldErrs.email = isBn ? 'সঠিক ইমেইল ঠিকানা দিন' : 'Enter a valid email address';
+    }
+    if (fieldErrs.employeeCode || fieldErrs.email) {
+      setFormErrors(fieldErrs);
+      if (fieldErrs.employeeCode) employeeCodeInputRef.current?.focus();
+      else emailInputRef.current?.focus();
+      return;
+    }
+    setFormErrors({});
+
     const rawPassword = teacherFormData.password?.trim() || '123';
 
     const additionalRoles = formAdditionalRoles.filter(r => r !== formLoginRole);
@@ -388,6 +536,18 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         password: rawPassword,
         additionalRoles
       } as AcademicTeacher, formLoginRole);
+      // Phase 2 edit validation: a payload error must STOP the save
+      // here — show it under the field, keep the modal open, NEVER
+      // a success toast with the old record saved.
+      if (sync.error) {
+        const msg = sync.error;
+        const isCodeErr = /কোড|code/i.test(msg);
+        const isEmailErr = /ইমেইল|email/i.test(msg);
+        if (isCodeErr) { setFormErrors({ employeeCode: msg }); employeeCodeInputRef.current?.focus(); }
+        else if (isEmailErr) { setFormErrors({ email: msg }); emailInputRef.current?.focus(); }
+        else showToast(msg);
+        return;
+      }
       // Truthful save (Step 2): the credential sync above never covered
       // the main_store record write — confirm it here, and let the
       // record's cloud status lead the toast (credential status second).
@@ -423,7 +583,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         assignedSubjects: teacherFormData.assignedSubjects || []
       }, formLoginRole);
       if (addRes && !addRes.success) {
-        showToast(addRes.message || (isBn ? 'যুক্ত করা যায়নি — তথ্য যাচাই করুন' : 'Could not add — please check the information'));
+        const msg = addRes.message || (isBn ? 'যুক্ত করা যায়নি — তথ্য যাচাই করুন' : 'Could not add — please check the information');
+        const isCodeErr = /কোড|code/i.test(msg);
+        const isEmailErr = /ইমেইল|email/i.test(msg);
+        if (isCodeErr) { setFormErrors({ employeeCode: msg }); employeeCodeInputRef.current?.focus(); }
+        else if (isEmailErr) { setFormErrors({ email: msg }); emailInputRef.current?.focus(); }
+        else showToast(msg);
         return;
       }
       // Truthful save (Step 2): the old toast claimed the login account
@@ -454,19 +619,39 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setIsAddEditModalOpen(false);
   };
 
-  // Handle 1-click approve staff (truthful-save Step 2-বাকি):
-  // success toast only after the cloud write lands. The teacher
-  // update is awaited now (it was fire-and-forget, which also left a
-  // latent unhandled rejection); failure shows the honest message
-  // instead of the old unconditional success toast. Retry comes from
-  // the 'staff' auto-retry queue + the next save (toast takes a
-  // string only — same Step 2 StaffManager limitation).
-  const handleQuickApproveStaff = async (staff: AcademicTeacher) => {
+  // Approval dialog state (Phase 1): approving a teacher must let the
+  // admin pick classes/subjects — the old 1-click approve sent empty
+  // arrays, so approved teachers landed with no classes at all.
+  const [approvingStaff, setApprovingStaff] = useState<AcademicTeacher | null>(null);
+  const [approveClasses, setApproveClasses] = useState<string[]>([]);
+  const [approveSubjects, setApproveSubjects] = useState<string[]>([]);
+  const [isApproving, setIsApproving] = useState(false);
+
+  // Open the approval dialog (single approval path for the pending
+  // strip and the directory card): class/subject picks prefilled from
+  // the application, role resolved by the shared rule (linked account
+  // first, stored roleId second, fixed designation mapping third).
+  const handleQuickApproveStaff = (staff: AcademicTeacher) => {
+    setApprovingStaff(staff);
+    setApproveClasses(staff.assignedClasses || []);
+    setApproveSubjects(staff.assignedSubjects || []);
+  };
+
+  const handleConfirmApproval = async () => {
+    if (!approvingStaff || isApproving) return;
+    const staff = approvingStaff;
+    setIsApproving(true);
     try {
       if (approveMember) {
-        await approveMember(staff.id, `role_${deriveRoleFromDesignation(staff.designation)}`, staff.assignedClasses || [], staff.assignedSubjects || []);
+        await approveMember(staff.id, resolveApprovalRoleId(staff, users), approveClasses, approveSubjects);
       }
-      const updateResult = await updateTeacher({ ...staff, status: 'ACTIVE' });
+      const updateResult = await updateTeacher({ ...staff, status: 'ACTIVE', assignedClasses: approveClasses, assignedSubjects: approveSubjects });
+      // Phase 2: a validation error must stop approval here — never
+      // a success toast while the record stays pending.
+      if (updateResult.error) {
+        showToast(updateResult.error);
+        return;
+      }
       // updateTeacher already maps the linked user to 'active' for
       // id/email/phone matches; keep the handler's id-or-email rule
       // on top of its returned list when available.
@@ -498,13 +683,87 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         return;
       }
       showToast(isBn ? 'শিক্ষকের অ্যাকাউন্ট সফলভাবে অনুমোদন ও সক্রিয় করা হয়েছে!' : 'Staff account approved successfully!');
+      setApprovingStaff(null);
     } catch (err: any) {
       showToast(isBn ? 'অনুমোদনে সমস্যা হয়েছে' : 'Approval failed');
+    } finally {
+      setIsApproving(false);
     }
   };
 
-  // Handle add leave
-  const handleSaveLeave = (e: React.FormEvent) => {
+  // Reject a pending application (pending strip only — never edit or
+  // delete on pending cards; rejection removes the application).
+  const handleRejectApplicant = async (staff: AcademicTeacher) => {
+    try {
+      if (rejectMember) {
+        const res = await rejectMember(staff.id);
+        showToast(res.message || (isBn ? 'আবেদনটি বাতিল করা হয়েছে' : 'Application rejected'));
+      }
+      if (refreshPendingMembers) {
+        await refreshPendingMembers();
+      }
+    } catch (err: any) {
+      showToast(isBn ? 'বাতিল করতে সমস্যা হয়েছে' : 'Could not reject');
+    }
+  };
+
+  // Phase 4/5: demo-clear, moved from the removed Tab 2 into the
+  // merged tab. DELIBERATE behavior fix vs the old version: the old
+  // button deleted EVERY non-self user when pressed (real staff
+  // included). This version removes ONLY demo-pattern accounts
+  // (seed ids / @madrasha.local emails) and always keeps super_admin
+  // + the signed-in admin. Cloud-confirmed + member cleanup AFTER
+  // confirm + truthful result — never a local-only success.
+  const isDemoUser = (u: any) =>
+    (u.id || '').startsWith('user_teacher_') ||
+    (u.id || '').startsWith('user_acc_') ||
+    (u.id || '').startsWith('user_staff_') ||
+    (u.id || '').startsWith('user_guardian_') ||
+    Boolean(u.email && u.email.includes('madrasha.local'));
+  const demoUsers = (users || []).filter(isDemoUser);
+
+  const executeClearDemoUsers = async () => {
+    setShowDemoClearConfirm(false);
+    if (isClearingDemo) return;
+    setIsClearingDemo(true);
+    try {
+      const prevUsers = users;
+      const filtered = users.filter(u =>
+        u.role === 'super_admin' ||
+        (currentUser?.email && u.email?.toLowerCase() === currentUser.email.toLowerCase()) ||
+        (currentUser?.id && u.id === currentUser.id) ||
+        !isDemoUser(u)
+      );
+      const removed = users.filter(u => !filtered.some(f => f.id === u.id));
+      setUsers(filtered);
+      const confirmResult = await confirmStaffCloudSync(undefined, filtered);
+      if (!confirmResult.success) {
+        setUsers(prevUsers);
+        showToast(confirmResult.message || STAFF_CLOUD_FAILURE_MESSAGE);
+        return;
+      }
+      // Member cleanup AFTER the cloud confirm (Phase 2 order rule).
+      // Missing member docs delete cleanly, so ok=false here means a
+      // real write error — reported, not hidden.
+      const memberRes = await deleteInstitutionMembers('inst_madrasah_primary', removed.map(u => u.id));
+      try {
+        localStorage.setItem('madrasha_app_users', JSON.stringify(filtered));
+      } catch (e) {}
+      showToast(isBn
+        ? `ডেমো অ্যাকাউন্ট ${removed.length}টি মুছে ফেলা হয়েছে।${memberRes.failedUids.length > 0 ? ` member doc ${memberRes.failedUids.length}টি মোছা যায়নি।` : ''}`
+        : `Removed ${removed.length} demo accounts.${memberRes.failedUids.length > 0 ? ` ${memberRes.failedUids.length} member docs could not be removed.` : ''}`);
+    } catch (err: any) {
+      showToast(isBn ? 'ডেমো অ্যাকাউন্ট মুছতে সমস্যা হয়েছে' : 'Could not clear demo accounts');
+    } finally {
+      setIsClearingDemo(false);
+    }
+  };
+
+  // Handle add leave — Phase 5: cloud-confirmed like approve/reject.
+  // The record stays local on failure (never dropped) and the modal
+  // stays open with an inline error + re-confirm-only retry; the
+  // 'leaves' auto-retry also delivers it on the next trigger.
+  const handleSaveLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLeaveData.teacherId) {
       showToast(isBn ? 'দয়া করে শিক্ষক/কর্মী নির্বাচন করুন' : 'Please select staff');
@@ -534,9 +793,45 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       approvedBy: isOwnerAdmin ? 'অধ্যক্ষ / প্রধান' : 'প্রশাসন'
     };
 
-    setLeaves(prev => [record, ...prev]);
-    setIsLeaveModalOpen(false);
-    showToast(isBn ? 'ছুটির আবেদন সফলভাবে রেকর্ড করা হয়েছে' : 'Leave record added successfully');
+    const next = [record, ...leaves];
+    setLeaves(next);
+    const result = await confirmLeavesCloudSync(next);
+    if (result.success) {
+      setLeaveError(null);
+      setIsLeaveModalOpen(false);
+      showToast(isBn ? 'ছুটির আবেদন সফলভাবে রেকর্ড করা হয়েছে' : 'Leave record added successfully');
+    } else {
+      // Record stays in the local list (visible in the tab) — the
+      // retry below re-confirms the same list, never a second record.
+      setLeaveError(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  // Phase 5: leave-add retry — re-confirm only, never re-add.
+  const handleRetryLeaveSave = async () => {
+    const result = await confirmLeavesCloudSync(leaves);
+    if (result.success) {
+      setLeaveError(null);
+      setIsLeaveModalOpen(false);
+      showToast(isBn ? 'ছুটির আবেদন সফলভাবে রেকর্ড করা হয়েছে' : 'Leave record added successfully');
+    } else {
+      setLeaveError(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  // Phase 5: leave row-delete — cloud-confirmed; on failure the row
+  // comes back (it still exists in cloud, so reverting is truthful).
+  const handleDeleteLeave = async (id: string) => {
+    const prev = leaves;
+    const next = leaves.filter(x => x.id !== id);
+    setLeaves(next);
+    const result = await confirmLeavesCloudSync(next);
+    if (result.success) {
+      showToast(isBn ? 'ছুটির রেকর্ড মুছে ফেলা হয়েছে' : 'Leave record removed');
+    } else {
+      setLeaves(prev);
+      showToast(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+    }
   };
 
   // Step 4 (25 Oct 2026): approve/reject for STAFF-SUBMITTED (PENDING)
@@ -563,64 +858,90 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     }
   };
 
-  // Sub-tabs list
+  // Sub-tabs list — Phase 4: tabs 1+2 are ONE merged tab
+  // ("শিক্ষক, কর্মী ও অ্যাকাউন্ট"). The old Tab 2 (roles/accounts)
+  // is gone: its pending approve/reject lives in the pending strip,
+  // its user list lives in the merged cards/table, its User form is
+  // replaced by the single Staff form, and demo-clear moved here.
+  // The name promises no permission editor — none exists in UI.
   const tabs = [
-    { 
-      id: 'directory' as StaffSubTab, 
-      labelBn: '১. শিক্ষক ও কর্মী ডিরেক্টরি', 
-      labelEn: '1. Faculty Directory', 
+    {
+      id: 'directory' as StaffSubTab,
+      labelBn: '১. শিক্ষক, কর্মী ও অ্যাকাউন্ট',
+      labelEn: '1. Staff & Accounts',
       icon: Users,
       badge: `${formatNumber(kpis.totalStaffCount, 'bn')}`
     },
-    { 
-      id: 'roles' as StaffSubTab, 
-      labelBn: '২. রোল, একাউন্ট ও পারমিশন', 
-      labelEn: '2. User Roles & Access', 
-      icon: ShieldCheck, 
-      badge: 'RBAC' 
+    {
+      id: 'assignments' as StaffSubTab,
+      labelBn: '২. দায়িত্ব ও বিষয় বণ্টন',
+      labelEn: '2. Workload & Subjects',
+      icon: Briefcase
     },
-    { 
-      id: 'assignments' as StaffSubTab, 
-      labelBn: '৩. দায়িত্ব ও বিষয় বণ্টন', 
-      labelEn: '3. Workload & Subjects', 
-      icon: Briefcase 
-    },
-    { 
-      id: 'attendance' as StaffSubTab, 
-      labelBn: '৪. শিক্ষক-কর্মচারী দৈনিক হাজিরা', 
-      labelEn: '4. Staff Daily Attendance', 
+    {
+      id: 'attendance' as StaffSubTab,
+      labelBn: '৩. শিক্ষক-কর্মচারী দৈনিক হাজিরা',
+      labelEn: '3. Staff Daily Attendance',
       icon: CalendarCheck,
       badge: kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'
     },
-    { 
-      id: 'payroll' as StaffSubTab, 
-      labelBn: '৫. বেতন ও মাসিক পে-রোল', 
-      labelEn: '5. Payroll & Salary', 
+    {
+      id: 'payroll' as StaffSubTab,
+      labelBn: '৪. বেতন ও মাসিক পে-রোল',
+      labelEn: '4. Payroll & Salary',
       icon: CreditCard,
       badge: 'Pay'
     },
-    { 
-      id: 'leaves' as StaffSubTab, 
-      labelBn: '৬. ছুটি ও ছুটির আবেদন', 
-      labelEn: '6. Leave Records', 
+    {
+      id: 'leaves' as StaffSubTab,
+      labelBn: '৫. ছুটি ও ছুটির আবেদন',
+      labelEn: '5. Leave Records',
       icon: Clock,
       badge: kpis.leavesTodayCount > 0 ? `${kpis.leavesTodayCount}` : undefined
     },
-    { 
-      id: 'id_cards' as StaffSubTab, 
-      labelBn: '৭. স্টাফ আইডি কার্ড ও প্রত্যয়নপত্র', 
-      labelEn: '7. ID Cards & NOC', 
-      icon: Award, 
-      badge: 'Print' 
+    {
+      id: 'id_cards' as StaffSubTab,
+      labelBn: '৬. স্টাফ আইডি কার্ড ও প্রত্যয়নপত্র',
+      labelEn: '6. ID Cards & NOC',
+      icon: Award,
+      badge: 'Print'
     },
-    { 
-      id: 'analytics' as StaffSubTab, 
-      labelBn: '৮. জনবল অ্যানালিটিক্স ও রিপোর্ট', 
-      labelEn: '8. HR Analytics & Census', 
-      icon: BarChart3, 
-      badge: 'Report' 
+    {
+      id: 'analytics' as StaffSubTab,
+      labelBn: '৭. জনবল অ্যানালিটিক্স ও রিপোর্ট',
+      labelEn: '7. HR Analytics & Census',
+      icon: BarChart3,
+      badge: 'Report'
     },
   ];
+
+  // Phase 2 tab-bar permission gates (mirrors the App.tsx render
+  // gates + Layout menu rules): a teachers.view holder must NOT reach
+  // Roles/payroll/leaves/analytics actions. Directory is the entry
+  // gate — anyone who reached StaffManager sees it.
+  const isAdminTier = isOwnerAdmin || isAdmin || isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
+  const canViewAttendance = isOwnerAdmin || isSuperAdmin || hasPermission('attendance.view') || hasPermission('attendance.create');
+  const canViewPayroll = isOwnerAdmin || isSuperAdmin || hasPermission('finance.view');
+  const visibleTabs = tabs.filter(tab => {
+    switch (tab.id) {
+      case 'directory': return true;
+      case 'assignments': return isOwnerAdmin || isSuperAdmin || hasPermission('subjects.view') || hasPermission('teachers.view');
+      case 'attendance': return canViewAttendance;
+      case 'payroll': return canViewPayroll;
+      case 'leaves': return isAdminTier;
+      case 'id_cards': return isAdminTier;
+      case 'analytics': return isOwnerAdmin || isSuperAdmin || hasPermission('reports.view');
+      default: return true;
+    }
+  });
+
+  // A gated-out tab (e.g. a stale initialSubTab) falls back to the
+  // directory instead of rendering a blank section.
+  useEffect(() => {
+    if (activeTab !== 'directory' && !visibleTabs.some(t => t.id === activeTab)) {
+      setActiveTab('directory');
+    }
+  }, [activeTab, visibleTabs]);
 
   return (
     <div className="space-y-6">
@@ -677,6 +998,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         }
       >
 <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
+            {isAdminTier && (
             <button
               type="button"
               onClick={handleOpenAddModal}
@@ -685,6 +1007,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <UserPlus size={14} className="text-teal-300" />
               <span>{isBn ? '+ নতুন শিক্ষক যুক্ত' : 'Add Staff'}</span>
             </button>
+            )}
+            {canViewAttendance && (
             <button
               type="button"
               onClick={() => setActiveTab('attendance')}
@@ -693,6 +1017,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <CalendarCheck size={14} />
               <span>{isBn ? 'দৈনিক স্টাফ হাজিরা' : 'Staff Attendance'}</span>
             </button>
+            )}
+            {canViewPayroll && (
             <button
               type="button"
               onClick={() => setActiveTab('payroll')}
@@ -701,13 +1027,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <CreditCard size={14} />
               <span>{isBn ? 'বেতন প্রদান' : 'Payroll'}</span>
             </button>
+            )}
           </div>
       </PageHeader>
 
 {/* Sub-Tabs Navigation Bar */}
       <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-x-auto print:hidden">
         <div className="flex items-center gap-1.5 min-w-max">
-          {tabs.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -742,10 +1069,25 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Main Content Area based on Active Sub-Tab */}
       <div className="transition-all duration-200">
-        {/* 1. Staff & Faculty Directory */}
+        {/* 1. Staff, Faculty & Accounts (merged directory + roles) */}
         {activeTab === 'directory' && (
           <div className="space-y-4">
-            <TestAccountCleanup />
+            {/* Pending list update failure (Phase 1): never silently
+                show a stale cache — the banner shows even when the
+                list itself looks empty, with a retry. */}
+            {pendingMembersError && (
+              <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-2xl p-3.5 flex items-center justify-between gap-3 flex-wrap">
+                <span className="text-xs font-bold text-amber-800 dark:text-amber-300">{pendingMembersError}</span>
+                <button
+                  type="button"
+                  onClick={() => refreshPendingMembers()}
+                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer shrink-0"
+                >
+                  {isBn ? 'আবার চেষ্টা করুন' : 'Retry'}
+                </button>
+              </div>
+            )}
+
             {/* Pending Approvals Notice for Staff */}
             {pendingStaffApprovals.length > 0 && (
               <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 shadow-xs space-y-3 animate-in fade-in">
@@ -773,14 +1115,23 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           {staff.designation || 'সহকারী শিক্ষক'}
                         </span>
                       </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
                         onClick={() => handleQuickApproveStaff(staff)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                       >
                         <CheckCircle2 size={13} />
                         <span>✓ অনুমোদন করুন</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectApplicant(staff)}
+                        className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                      >
+                        <span>{isBn ? 'বাতিল' : 'Reject'}</span>
+                      </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -806,9 +1157,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   onChange={(e) => setRoleFilter(e.target.value)}
                   className="border border-slate-200 dark:border-slate-800 rounded-xl p-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
-                  <option value="ALL">{isBn ? 'সকল পদবি (All Roles)' : 'All Roles'}</option>
-                  <option value="TEACHER">{isBn ? 'শুধু শিক্ষক / উস্তাদ' : 'Teachers Only'}</option>
-                  <option value="OFFICE">{isBn ? 'অফিস ও হিসাব কর্মী' : 'Office & Staff'}</option>
+                  <option value="ALL">{isBn ? 'সকল ভূমিকা (All Roles)' : 'All Roles'}</option>
+                  <option value="teacher">{isBn ? 'শিক্ষক' : 'Teacher'}</option>
+                  <option value="accountant">{isBn ? 'হিসাবরক্ষক' : 'Accountant'}</option>
+                  <option value="staff">{isBn ? 'অফিস স্টাফ' : 'Office Staff'}</option>
+                  <option value="principal">{isBn ? 'অধ্যক্ষ' : 'Principal'}</option>
+                  <option value="guardian">{isBn ? 'অভিভাবক' : 'Guardian'}</option>
                 </select>
 
                 <select
@@ -822,6 +1176,35 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <option value="INACTIVE">{isBn ? 'নিষ্ক্রিয় / সাবেক' : 'Inactive'}</option>
                 </select>
 
+                {/* Phase 4: table is a toggle, not a tab. */}
+                <div className="flex rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setDirectoryView('cards')}
+                    className={`px-3 py-2 text-xs font-bold cursor-pointer ${directoryView === 'cards' ? 'bg-teal-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'}`}
+                  >
+                    {isBn ? 'কার্ড' : 'Cards'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDirectoryView('table')}
+                    className={`px-3 py-2 text-xs font-bold cursor-pointer ${directoryView === 'table' ? 'bg-teal-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'}`}
+                  >
+                    {isBn ? 'টেবিল' : 'Table'}
+                  </button>
+                </div>
+
+                {isAdminTier && demoUsers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDemoClearConfirm(true)}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 transition-all cursor-pointer"
+                  >
+                    {isBn ? `ডেমো অ্যাকাউন্ট মুছুন (${demoUsers.length})` : `Clear demo accounts (${demoUsers.length})`}
+                  </button>
+                )}
+
+                {isAdminTier && (
                 <button
                   type="button"
                   onClick={handleOpenAddModal}
@@ -830,10 +1213,28 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <UserPlus size={14} />
                   <span>{isBn ? '+ নতুন শিক্ষক যুক্ত' : 'Add Staff'}</span>
                 </button>
+                )}
               </div>
             </div>
 
-            {/* Staff Grid Cards */}
+            {/* Phase 4: demo-clear confirm (moved from Tab 2). */}
+            <ConfirmDialog
+              isOpen={showDemoClearConfirm}
+              onClose={() => setShowDemoClearConfirm(false)}
+              onConfirm={executeClearDemoUsers}
+              title={isBn ? 'ডেমো অ্যাকাউন্ট মুছবেন?' : 'Clear demo accounts?'}
+              message={isBn
+                ? `শুধু ডেমো অ্যাকাউন্ট (${demoUsers.length}টি) মুছে যাবে — আসল শিক্ষক/কর্মী, সুপার অ্যাডমিন ও আপনার নিজের অ্যাকাউন্ট থাকবে। এই কাজ ফেরানো যাবে না।`
+                : `Only demo accounts (${demoUsers.length}) will be removed — real staff, super admin and your own account stay. This cannot be undone.`}
+              confirmLabel={isBn ? 'হ্যাঁ, মুছুন' : 'Yes, clear'}
+              cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+              variant="danger"
+              isLoading={isClearingDemo}
+            />
+
+            {/* Staff Grid Cards (Phase 4: cards are the main view;
+                the table below is a toggle, not a tab). */}
+            {directoryView === 'cards' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredStaff.map((staff, idx) => (
                 <div 
@@ -897,6 +1298,32 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       </button>
                     </div>
                   </div>
+
+                  {/* Phase 4 merged-card role row: primary role +
+                      additional chips from the linked account (never
+                      from designation text); legacy unmapped
+                      designations carry a verify mark for hand-fix. */}
+                  {(() => {
+                    const r = resolveStaffRole(staff, users);
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{isBn ? 'ভূমিকা:' : 'Role:'}</span>
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                          {roleLabelBn(r.role)}
+                        </span>
+                        {r.additionalRoles.map(ar => (
+                          <span key={ar} className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                            + {roleLabelBn(ar)}
+                          </span>
+                        ))}
+                        {r.needsRoleVerify && (
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700" title={isBn ? 'এই পদবি তালিকায় নেই — রোল যাচাই করে ঠিক করুন' : 'Unmapped designation — verify the role by hand'}>
+                            {isBn ? 'রোল যাচাই করুন' : 'Verify role'}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Info details */}
                   <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1006,17 +1433,84 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </div>
               )}
             </div>
+            )}
+
+            {/* Phase 4: table view — a toggle over the same merged
+                list, not a tab. Same actions as the cards. */}
+            {directoryView === 'table' && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-x-auto">
+                <table className="w-full text-xs min-w-[720px]">
+                  <thead>
+                    <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                      <th className="px-3 py-2.5 font-bold">{isBn ? 'নাম' : 'Name'}</th>
+                      <th className="px-3 py-2.5 font-bold">{isBn ? 'পদবি' : 'Designation'}</th>
+                      <th className="px-3 py-2.5 font-bold">{isBn ? 'ভূমিকা' : 'Role'}</th>
+                      <th className="px-3 py-2.5 font-bold">{isBn ? 'লগইন আইডি' : 'Login ID'}</th>
+                      <th className="px-3 py-2.5 font-bold">{isBn ? 'শ্রেণি' : 'Classes'}</th>
+                      <th className="px-3 py-2.5 font-bold">{isBn ? 'স্ট্যাটাস' : 'Status'}</th>
+                      <th className="px-3 py-2.5 font-bold">{isBn ? 'অ্যাকশন' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStaff.map((staff, idx) => {
+                      const isPendingCard = (staff.status || '').toUpperCase() === 'PENDING' ||
+                        pendingMembers.some(m => m.uid === staff.id || (staff.email && m.email?.toLowerCase() === staff.email.toLowerCase()));
+                      const r = resolveStaffRole(staff, users);
+                      return (
+                        <tr key={staff.id || idx} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                          <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white">{isBn ? (staff.nameBn || staff.name) : staff.name}</td>
+                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{staff.designation || 'সহকারী শিক্ষক'}</td>
+                          <td className="px-3 py-2.5">
+                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300">{roleLabelBn(r.role)}</span>
+                            {r.additionalRoles.map(ar => (
+                              <span key={ar} className="ml-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">+ {roleLabelBn(ar)}</span>
+                            ))}
+                            {r.needsRoleVerify && (
+                              <span className="ml-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300">{isBn ? 'রোল যাচাই করুন' : 'Verify role'}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{staff.email || staff.phone || '—'}</td>
+                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{(staff.assignedClasses || []).join(', ') || '—'}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isPendingCard ? 'bg-amber-100 text-amber-800' : (staff.status || '').toUpperCase() === 'INACTIVE' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-800'}`}>
+                              {isPendingCard ? (isBn ? 'অপেক্ষমাণ' : 'Pending') : (staff.status || 'ACTIVE')}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-1">
+                              {isPendingCard ? (
+                                <>
+                                  <button type="button" onClick={() => handleQuickApproveStaff(staff)} className="px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer">{isBn ? '✓ অনুমোদন' : 'Approve'}</button>
+                                  <button type="button" onClick={() => handleRejectApplicant(staff)} className="px-2 py-1 rounded-md text-[10px] font-bold bg-white border border-rose-300 text-rose-700 cursor-pointer">{isBn ? 'বাতিল' : 'Reject'}</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button type="button" onClick={() => handleOpenEditModal(staff)} className="p-1.5 rounded-lg text-slate-500 hover:text-teal-700 hover:bg-teal-50" title={isBn ? 'সম্পাদনা' : 'Edit'}><Edit2 size={13} /></button>
+                                  <button type="button" onClick={() => setStaffToDelete(staff)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50" title={isBn ? 'মুছুন' : 'Delete'}><Trash2 size={13} /></button>
+                                  <button type="button" onClick={() => { setSelectedTeacherForIdCard(staff); setActiveTab('id_cards'); }} className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700" title={isBn ? 'আইডি কার্ড' : 'ID Card'}><Award size={12} /></button>
+                                  <button type="button" onClick={() => { setCertificateTeacher(staff); setIsCertificateModalOpen(true); }} className="px-2 py-1 rounded-md text-[10px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-800" title={isBn ? 'প্রত্যয়নপত্র' : 'NOC'}><FileText size={12} /></button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {filteredStaff.length === 0 && (
+                  <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+                    <p className="font-bold text-sm text-slate-700 dark:text-slate-200">
+                      {isBn ? 'কোনো শিক্ষক বা কর্মচারীর তথ্য পাওয়া যায়নি' : 'No staff records found'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* 2. User Roles & Access Management */}
-        {activeTab === 'roles' && (
-          <div className="space-y-4">
-            <UserRoleManager />
-          </div>
-        )}
-
-        {/* 3. Workload & Subject Assignment */}
+        {/* 2. Workload & Subject Assignment */}
         {activeTab === 'assignments' && (
           <div className="space-y-4">
             <SubjectManager initialTab="teacher_assignment" />
@@ -1033,10 +1527,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         {/* 5. Payroll & Salary */}
         {activeTab === 'payroll' && (
           <div className="space-y-5">
-            <TeacherSalaryEntry 
+            <TeacherSalaryEntry
               transactions={transactions}
               language={language as 'en' | 'bn'}
               onAddTransaction={(tx) => addTransaction(tx)}
+              // Phase 5: salary saves confirm the transactions field
+              // before any success toast or receipt (same field the
+              // fee confirm writes; the failure text is salary-specific).
+              onConfirmTransactions={(next) => confirmFeeCloudSync(next, SALARY_CLOUD_FAILURE_MESSAGE)}
               onShowReceipt={(tx) => setSalaryReceiptTx(tx)}
               showToast={showToast}
             />
@@ -1194,7 +1692,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           )}
                           <button
                             type="button"
-                            onClick={() => { setLeaves(prev => prev.filter(x => x.id !== l.id)); showToast(isBn ? 'ছুটির রেকর্ড মুছে ফেলা হয়েছে' : 'Leave record removed'); }}
+                            onClick={() => handleDeleteLeave(l.id)}
                             className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                             title={isBn ? 'রেকর্ড মুছুন' : 'Delete record'}
                           >
@@ -1339,7 +1837,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                     <span className="text-slate-600 dark:text-slate-300">{isBn ? 'অনুমোদিত মোট ছুটি (মাসিক):' : 'Total Leaves This Month:'}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(leaves.length, 'bn')} টি</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatNumber(kpis.monthlyApprovedLeavesCount, 'bn')} টি</span>
                   </div>
                   <div className="flex justify-between py-1.5">
                     <span className="text-slate-600 dark:text-slate-300">{isBn ? 'আজ উপস্থিত কর্মী:' : 'Present Today:'}</span>
@@ -1352,10 +1850,95 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         )}
       </div>
 
+      {/* Approval Dialog (Phase 1): class/subject picks are mandatory
+          context for a teacher approval — the old 1-click approve sent
+          empty arrays. Scroll-safe: outer scrolls, panel scrolls
+          internally, footer sticks to the panel bottom. */}
+      {approvingStaff && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 p-6 pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                {isBn ? 'অনুমোদন করুন' : 'Approve'}: {approvingStaff.nameBn || approvingStaff.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setApprovingStaff(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+              <div>{isBn ? 'পদবি: ' : 'Designation: '}<span className="font-bold text-slate-900 dark:text-white">{approvingStaff.designation || 'সহকারী শিক্ষক'}</span></div>
+              <div>{isBn ? 'ভূমিকা (role): ' : 'Role: '}<span className="font-bold text-slate-900 dark:text-white">{(() => { const r = resolveApprovalRoleId(approvingStaff, users); return r === 'role_teacher' ? 'শিক্ষক' : r === 'role_accountant' ? 'হিসাবরক্ষক' : r === 'role_principal' ? 'অধ্যক্ষ' : r === 'role_guardian' ? 'অভিভাবক' : r === 'role_office_staff' ? 'অফিস স্টাফ' : 'স্টাফ'; })()}</span></div>
+              <p className="text-slate-500 dark:text-slate-400">{isBn ? 'শ্রেণি ও বিষয় বেছে দিন — খালি রাখলে অনুমোদিত শিক্ষকের কোনো ক্লাস থাকবে না।' : 'Pick classes and subjects — leaving them empty approves the teacher with no classes.'}</p>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5 text-xs">
+                {isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি:' : 'Assigned Classes:'}
+              </label>
+              <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
+                {classes.map(c => {
+                  const isSelected = approveClasses.includes(c.name);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setApproveClasses(isSelected ? approveClasses.filter(cn => cn !== c.name) : [...approveClasses, c.name])}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-teal-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'}`}
+                    >
+                      {isSelected ? '✓ ' : ''}{c.nameBn || c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5 text-xs">
+                {isBn ? 'বিষয়:' : 'Subjects:'}
+              </label>
+              <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
+                {subjects.map(s => {
+                  const isSelected = approveSubjects.includes(s.name);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setApproveSubjects(isSelected ? approveSubjects.filter(sn => sn !== s.name) : [...approveSubjects, s.name])}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-teal-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'}`}
+                    >
+                      {isSelected ? '✓ ' : ''}{s.nameBn || s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="sticky bottom-0 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setApprovingStaff(null)}
+                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold text-xs cursor-pointer"
+              >
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmApproval}
+                disabled={isApproving}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs shadow-xs cursor-pointer"
+              >
+                {isApproving ? (isBn ? 'অনুমোদন হচ্ছে...' : 'Approving...') : (isBn ? '✓ অনুমোদন করুন' : 'Approve')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add / Edit Staff Modal */}
       {isAddEditModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
                 <UserPlus size={18} className="text-teal-600 dark:text-teal-400" />
@@ -1385,24 +1968,54 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'পদবি (Designation):' : 'Designation:'}</label>
-                  <input
-                    type="text"
-                    placeholder="মুয়াল্লিম / সহকারী শিক্ষক"
-                    value={teacherFormData.designation || ''}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, designation: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
+                  {/* Phase 3: fixed list — free text alone never decides
+                      a role. A mapped pick also sets the Login Role;
+                      "other" keeps the custom title but the role still
+                      comes from the explicit Login Role select below. */}
+                  <select
+                    value={formDesignationSelect}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormDesignationSelect(v);
+                      setFormErrors(prev => ({ ...prev, designation: undefined }));
+                      if (v === DESIGNATION_OTHER) {
+                        setTeacherFormData(prev => ({ ...prev, designation: '' }));
+                      } else {
+                        const opt = DESIGNATION_OPTIONS.find(o => o.value === v);
+                        setTeacherFormData(prev => ({ ...prev, designation: v }));
+                        if (opt) setFormLoginRole(opt.role);
+                      }
+                    }}
+                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white dark:bg-slate-900"
+                  >
+                    {DESIGNATION_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.labelBn}</option>
+                    ))}
+                    <option value={DESIGNATION_OTHER}>{isBn ? 'অন্যান্য (নিজে লিখুন)' : 'Other (type below)'}</option>
+                  </select>
+                  {formDesignationSelect === DESIGNATION_OTHER && (
+                    <input
+                      type="text"
+                      placeholder="যেমন: আরবি প্রভাষক"
+                      value={teacherFormData.designation || ''}
+                      onChange={(e) => { setTeacherFormData({ ...teacherFormData, designation: e.target.value }); if (formErrors.designation) setFormErrors(prev => ({ ...prev, designation: undefined })); }}
+                      className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none mt-2"
+                    />
+                  )}
+                  {formErrors.designation && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.designation}</p>}
                 </div>
 
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'আইডি / কোড:' : 'Employee Code:'}</label>
                   <input
+                    ref={employeeCodeInputRef}
                     type="text"
                     placeholder="MDR-T001"
                     value={teacherFormData.employeeCode || ''}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, employeeCode: e.target.value })}
+                    onChange={(e) => { setTeacherFormData({ ...teacherFormData, employeeCode: e.target.value }); if (formErrors.employeeCode) setFormErrors(prev => ({ ...prev, employeeCode: undefined })); }}
                     className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
+                  {formErrors.employeeCode && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.employeeCode}</p>}
                 </div>
               </div>
 
@@ -1419,7 +2032,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <option value="principal">{isBn ? 'অধ্যক্ষ (Principal)' : 'Principal'}</option>
                   <option value="guardian">{isBn ? 'অভিভাবক (Guardian)' : 'Guardian'}</option>
                 </select>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। উপরের পদবি শুধু প্রদর্শনের জন্য।' : 'They will log in with this role and see that portal. Designation above is display-only.'}</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। তালিকা থেকে পদবি বাছলে রোল নিজে থেকে মিলে যায়; অন্যান্য পদবির ক্ষেত্রে এই রোলই চূড়ান্ত।' : 'They will log in with this role and see that portal. Picking a listed designation sets this role; for a custom title, this pick is final.'}</p>
               </div>
 
               {/* Additional roles (multi-role): one person can hold two
@@ -1487,12 +2100,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ইমেইল:' : 'Email:'}</label>
                   <input
+                    ref={emailInputRef}
                     type="email"
                     placeholder="teacher@madrasha.edu.bd"
                     value={teacherFormData.email || ''}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, email: e.target.value })}
+                    onChange={(e) => { setTeacherFormData({ ...teacherFormData, email: e.target.value }); if (formErrors.email) setFormErrors(prev => ({ ...prev, email: undefined })); }}
                     className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
+                  {formErrors.email && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.email}</p>}
                 </div>
               </div>
 
@@ -1552,7 +2167,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAddEditModalOpen(false)}
@@ -1575,8 +2190,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Delete Staff Confirm Modal */}
       {staffToDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <Trash2 size={20} />
@@ -1590,8 +2205,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <p className="font-bold text-slate-900 dark:text-white text-sm">{staffToDelete.nameBn || staffToDelete.name}</p>
               <p>{staffToDelete.designation || (isBn ? 'সহকারী শিক্ষক' : 'Assistant Teacher')}{staffToDelete.phone ? ` · ${staffToDelete.phone}` : ''}</p>
               <p className="text-slate-500 dark:text-slate-400 pt-1">{isBn ? 'তার স্টাফ রেকর্ড, লগইন অ্যাকাউন্ট ও অ্যাক্সেস — সব একসাথে মুছে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record, login account and access will all be removed together. Past salary and attendance records stay untouched.'}</p>
+              <p className="text-amber-700 dark:text-amber-300 font-bold pt-1">{isBn ? 'লগইন অ্যাকাউন্ট Firebase Console → Authentication থেকে মুছতে হবে।' : 'The login account must also be deleted from Firebase Console → Authentication.'}</p>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setStaffToDelete(null)}
@@ -1615,8 +2231,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Leave Modal */}
       {isLeaveModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
                 <Clock size={18} className="text-teal-600 dark:text-teal-400" />
@@ -1653,6 +2269,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <option value="CASUAL">{isBn ? 'নৈমিত্তিক ছুটি (Casual Leave)' : 'Casual Leave'}</option>
                   <option value="SICK">{isBn ? 'অসুস্থতাজনিত ছুটি (Sick Leave)' : 'Sick Leave'}</option>
                   <option value="HAJJ_UMRAH">{isBn ? 'হজ্ব / ওমরাহ ছুটি' : 'Hajj/Umrah Leave'}</option>
+                  <option value="MATERNITY">{isBn ? 'মাতৃত্বকালীন ছুটি' : 'Maternity Leave'}</option>
                   <option value="SPECIAL">{isBn ? 'বিশেষ ছুটি' : 'Special Leave'}</option>
                 </select>
               </div>
@@ -1691,10 +2308,24 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                {/* Phase 5: leave-add failure keeps the modal open with
+                    this inline error + re-confirm-only retry. */}
+                {leaveError && (
+                  <div className="w-full bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-xl p-3 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">{leaveError}</span>
+                    <button
+                      type="button"
+                      onClick={handleRetryLeaveSave}
+                      className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shrink-0 cursor-pointer"
+                    >
+                      {isBn ? 'আবার চেষ্টা করুন' : 'Retry'}
+                    </button>
+                  </div>
+                )}
                 <button
                   type="button"
-                  onClick={() => setIsLeaveModalOpen(false)}
+                  onClick={() => { setIsLeaveModalOpen(false); setLeaveError(null); }}
                   className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold"
                 >
                   {isBn ? 'বাতিল' : 'Cancel'}
@@ -1714,8 +2345,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Experience / NOC Certificate Modal */}
       {isCertificateModalOpen && certificateTeacher && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-xl w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 print:hidden">
               <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
                 <FileText size={18} className="text-teal-600" />
@@ -1763,7 +2394,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 print:hidden">
+            <div className="sticky bottom-0 bg-white flex justify-end gap-2 pt-2 print:hidden">
               <button
                 type="button"
                 onClick={() => setIsCertificateModalOpen(false)}

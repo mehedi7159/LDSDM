@@ -1080,20 +1080,24 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
         </div>
       </div>
 
-      {/* Confirmation Dialog */}
+      {/* Confirmation Dialog — Phase 5: fixed to ConfirmDialog's real
+          props. The old confirmText/cancelText/confirmVariant/onCancel
+          props were silently ignored (tsc does not catch excess JSX
+          props), so Cancel did nothing and the labels were defaults. */}
       <ConfirmDialog
         isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
         title={language === 'bn' ? 'শ্রেণি উত্তরণ নিশ্চিতকরণ' : 'Confirm Bulk Class Promotion'}
         message={
           language === 'bn'
             ? `আপনি কি নিশ্চিত যে ${sourceClass} শ্রেণির ${formatNumber(stats.promoteCount, language)} জন শিক্ষার্থীকে ${targetClass} শ্রেণিতে উত্তীর্ণ এবং নতুন রোল নম্বর বরাদ্দ করতে চান? এটি শিক্ষার্থীদের শ্রেণি ও রোল আপডেট করবে।`
             : `Are you sure you want to promote ${stats.promoteCount} students from ${sourceClass} to ${targetClass} for academic year ${targetAcademicYear}? This will update their class placement and roll numbers.`
         }
-        confirmText={isProcessing ? (language === 'bn' ? 'উত্তরণ করা হচ্ছে...' : 'Promoting...') : (language === 'bn' ? 'হ্যাঁ, উত্তরণ সম্পন্ন করুন' : 'Yes, Execute Promotion')}
-        cancelText={t('cancel')}
-        confirmVariant="primary"
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, উত্তরণ সম্পন্ন করুন' : 'Yes, Execute Promotion'}
+        cancelLabel={t('cancel')}
+        variant="primary"
+        isLoading={isProcessing}
         onConfirm={handleExecutePromotion}
-        onCancel={() => setIsConfirmOpen(false)}
       />
 
       {/* Success Modal / Action Dialog */}

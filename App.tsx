@@ -545,9 +545,11 @@ const AppContent = () => {
           ? <StaffManager initialSubTab="directory" onNavigateTab={(tab) => setActiveTab(tab)} /> 
           : <AccessRestrictedView moduleName={language === 'bn' ? 'শিক্ষক ও কর্মী ডিরেক্টরি' : 'Staff Directory'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'staff_roles':
-        return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('roles.view') || hasPermission('users.view')) 
-          ? <StaffManager initialSubTab="roles" onNavigateTab={(tab) => setActiveTab(tab)} /> 
-          : <AccessRestrictedView moduleName={language === 'bn' ? 'ব্যবহারকারী ও রোল নিয়ন্ত্রণ' : 'User Roles & Access'} onGoToResults={() => setActiveTab('dashboard')} />;
+        // Phase 4: the old roles tab is merged into the directory —
+        // this route now lands on the single "শিক্ষক, কর্মী ও অ্যাকাউন্ট" tab.
+        return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('roles.view') || hasPermission('users.view'))
+          ? <StaffManager initialSubTab="directory" onNavigateTab={(tab) => setActiveTab(tab)} />
+          : <AccessRestrictedView moduleName={language === 'bn' ? 'শিক্ষক, কর্মী ও অ্যাকাউন্ট' : 'Staff & Accounts'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'staff_assignments':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('subjects.view') || hasPermission('teachers.view')) 
           ? <StaffManager initialSubTab="assignments" onNavigateTab={(tab) => setActiveTab(tab)} /> 

@@ -1744,6 +1744,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       employeeCode: editEmployeeCode,
     });
     const res = await updateTeacher(updated);
+    // Phase 2: a validation error must not become a success message.
+    if (res.error) {
+      setProfileFailure(res.error);
+      return;
+    }
     const result = await confirmStaffCloudSync(res.nextTeachers, res.nextUsers);
     if (result.success) {
       setProfileFailure(null);

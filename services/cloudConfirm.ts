@@ -93,6 +93,12 @@ export const SCHEDULE_CLOUD_FAILURE_MESSAGE =
 export const LEAVE_CLOUD_FAILURE_MESSAGE =
   'ছুটির আবেদন এই ফোনে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
+// HR Phase 5: payroll salary saves reuse the transactions-field confirm
+// (confirmFeeCloudSync) with their own failure text — the voucher is
+// local-only until the confirm lands, so no receipt may print before it.
+export const SALARY_CLOUD_FAILURE_MESSAGE =
+  'বেতনের রেকর্ড এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — রসিদ ছাপার আগে ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
 export const feeCloudFailureMessage = (voucherNo: string): string =>
   `রসিদ নং ${voucherNo} এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — প্রিন্সিপালের খাতায় এখনো ওঠেনি। আবার চেষ্টা করুন।`;
 

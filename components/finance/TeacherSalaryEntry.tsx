@@ -19,6 +19,10 @@ interface TeacherSalaryEntryProps {
   transactions: FinanceTransaction[];
   language: 'en' | 'bn';
   onAddTransaction: (tx: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
+  // Phase 5: awaited cloud confirm for the transactions field. The
+  // success toast + receipt must wait for it — a local-only voucher
+  // must never print as if it reached the cloud.
+  onConfirmTransactions: (next: FinanceTransaction[]) => Promise<{ success: boolean; message?: string }>;
   onShowReceipt: (tx: FinanceTransaction) => void;
   showToast: (msg: string) => void;
 }
@@ -27,6 +31,7 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
   transactions,
   language,
   onAddTransaction,
+  onConfirmTransactions,
   onShowReceipt,
   showToast,
 }) => {
@@ -50,6 +55,11 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
   const [referenceNo, setReferenceNo] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [approvedBy, setApprovedBy] = useState<string>('অধ্যক্ষ / সুপারিনটেনডেন্ট');
+  // Phase 5: cloud-confirm failure state. The voucher stays local
+  // (visible in the list) and the retry below re-confirms the SAME
+  // transaction list — resubmitting would mint a second voucher.
+  const [salaryConfirmError, setSalaryConfirmError] = useState<string | null>(null);
+  const [salaryPendingTx, setSalaryPendingTx] = useState<FinanceTransaction | null>(null);
 
   // Common designations in Alia Madrasah & School
   const commonDesignations = [
@@ -71,7 +81,7 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
 
   const netPayable = Math.max(0, (Number(basicSalary) || 0) + (Number(allowance) || 0) - (Number(deduction) || 0));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffName.trim()) {
       showToast(isBn ? 'দয়া করে উস্তাদ বা স্টাফের নাম লিখুন!' : 'Please enter staff name!');
@@ -103,10 +113,39 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
     };
 
     const created = onAddTransaction(newTx);
+    // Phase 5: no success toast, no receipt, no field reset until
+    // the transactions field is cloud-confirmed.
+    const result = await onConfirmTransactions([created, ...transactions]);
+    if (!result.success) {
+      setSalaryPendingTx(created);
+      setSalaryConfirmError(result.message || (isBn ? 'বেতন cloud-এ যায়নি — আবার চেষ্টা করুন।' : 'Salary did not reach cloud — please retry.'));
+      return;
+    }
+    setSalaryPendingTx(null);
+    setSalaryConfirmError(null);
     showToast(isBn ? `বেতন ভাউচার নং ${nextVoucher} সফলভাবে পরিশোধ হয়েছে!` : `Salary voucher ${nextVoucher} created!`);
     onShowReceipt(created);
 
     // Reset fields
+    setStaffName('');
+    setNotes('');
+    setReferenceNo('');
+    setAllowance(0);
+    setDeduction(0);
+  };
+
+  // Phase 5: payroll retry — re-confirm only, never a second voucher.
+  const handleRetrySalaryConfirm = async () => {
+    if (!salaryPendingTx) return;
+    const result = await onConfirmTransactions([salaryPendingTx, ...transactions]);
+    if (!result.success) {
+      setSalaryConfirmError(result.message || (isBn ? 'বেতন cloud-এ যায়নি — আবার চেষ্টা করুন।' : 'Salary did not reach cloud — please retry.'));
+      return;
+    }
+    setSalaryPendingTx(null);
+    setSalaryConfirmError(null);
+    showToast(isBn ? `বেতন ভাউচার নং ${salaryPendingTx.voucherNo} সফলভাবে পরিশোধ হয়েছে!` : `Salary voucher ${salaryPendingTx.voucherNo} created!`);
+    onShowReceipt(salaryPendingTx);
     setStaffName('');
     setNotes('');
     setReferenceNo('');
@@ -326,6 +365,21 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
               {isBn ? 'বেতন পরিশোধ করুন ও ভাউচার প্রিন্ট' : 'Disburse & Print Voucher'}
             </Button>
           </div>
+
+          {/* Phase 5: cloud-confirm failure — voucher stays local,
+              retry re-confirms the same voucher (never a second one). */}
+          {salaryConfirmError && (
+            <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-xl p-3 flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">{salaryConfirmError}</span>
+              <button
+                type="button"
+                onClick={handleRetrySalaryConfirm}
+                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shrink-0 cursor-pointer"
+              >
+                {isBn ? 'আবার চেষ্টা করুন' : 'Retry'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
 

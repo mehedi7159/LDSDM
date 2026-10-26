@@ -440,6 +440,9 @@ export const Dashboard = () => {
     isOwnerAdmin,
     isSuperAdmin,
     currentMember,
+    pendingMembers = [],
+    pendingMembersError = null,
+    refreshPendingMembers,
     t, 
     language = 'bn', 
     setIsRecoveryModalOpen,
@@ -462,6 +465,13 @@ export const Dashboard = () => {
   const [dashboardMode, setDashboardMode] = useState<string>(() => {
     return localStorage.getItem('ai_dashboard_mode') || 'standard';
   });
+
+  // Phase 1 live notice: refresh the pending-applicant list every time
+  // the dashboard mounts, so approvals never wait silently.
+  useEffect(() => {
+    refreshPendingMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Default exam selector sync
   useEffect(() => {
@@ -1011,6 +1021,47 @@ export const Dashboard = () => {
         language={language}
         onOpenNoticeBoard={() => setActiveTab('notice_board')}
       />
+
+      {/* Pending approvals — admin notice card (Phase 1): applications
+          used to wait silently with no notice to the admin. The count
+          now surfaces on the dashboard itself, with a direct door to
+          HR approval. Hidden for non-admin viewers. */}
+      {(isOwnerAdmin || isSuperAdmin || currentMember?.roleId === 'role_principal') && (pendingMembers.length > 0 || pendingMembersError) && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h4 className="font-black text-slate-900 dark:text-white text-sm">
+              {language === 'bn'
+                ? `অনুমোদনের অপেক্ষায় ${pendingMembers.length} জন`
+                : `${pendingMembers.length} awaiting approval`}
+            </h4>
+            <button
+              type="button"
+              onClick={() => setActiveTab('user_roles')}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+            >
+              {language === 'bn' ? 'HR-এ অনুমোদন করুন' : 'Review in HR'}
+            </button>
+          </div>
+          {pendingMembers.length > 0 && (
+            <div className="text-xs text-slate-600 dark:text-slate-300">
+              {pendingMembers.slice(0, 5).map(m => m.displayName || m.email || 'User').join(', ')}
+              {pendingMembers.length > 5 ? ` +${pendingMembers.length - 5}` : ''}
+            </div>
+          )}
+          {pendingMembersError && (
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <span className="text-xs font-bold text-amber-800 dark:text-amber-300">{pendingMembersError}</span>
+              <button
+                type="button"
+                onClick={() => refreshPendingMembers()}
+                className="px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 text-xs font-bold cursor-pointer"
+              >
+                {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Retry'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <MadrasaReports />
 

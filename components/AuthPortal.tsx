@@ -17,6 +17,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { UserRole } from '../types';
+import { DESIGNATION_OPTIONS, DESIGNATION_OTHER } from '../services/staffRole';
 
 interface AuthPortalProps {
   onBackToLanding: () => void;
@@ -48,6 +49,10 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onBackToLanding, onSucce
   const [signupPassword, setSignupPassword] = useState('');
   const [signupRole, setSignupRole] = useState<UserRole>('teacher');
   const [signupDesignation, setSignupDesignation] = useState('');
+  // Phase 3: designation SELECT — a mapped pick also sets the role;
+  // "other" keeps a custom title, but the role still comes from the
+  // explicit role select above, never from free text.
+  const [signupDesignationSelect, setSignupDesignationSelect] = useState<string>(DESIGNATION_OPTIONS[0].value);
   const [signupStudentId, setSignupStudentId] = useState('');
   const [signupStudentClass, setSignupStudentClass] = useState(classes[0]?.name || 'Class 6');
 
@@ -108,7 +113,9 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onBackToLanding, onSucce
         email: signupEmail.trim() || undefined,
         password: signupPassword.trim(),
         role: signupRole,
-        designation: signupDesignation.trim() || (signupRole === 'teacher' ? 'মুয়াল্লিম' : signupRole === 'guardian' ? 'অভিভাবক' : signupRole === 'accountant' ? 'হিসাবরক্ষক' : 'স্টাফ'),
+        designation: signupDesignationSelect === DESIGNATION_OTHER
+          ? (signupDesignation.trim() || (signupRole === 'teacher' ? 'মুয়াল্লিম' : signupRole === 'guardian' ? 'অভিভাবক' : signupRole === 'accountant' ? 'হিসাবরক্ষক' : 'স্টাফ'))
+          : signupDesignationSelect,
         studentId: signupRole === 'guardian' ? signupStudentId.trim() : undefined,
         studentClass: signupRole === 'guardian' ? signupStudentClass : undefined
       });
@@ -383,13 +390,35 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({ onBackToLanding, onSucce
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   পদবী / নোট (ঐচ্ছিক)
                 </label>
-                <input
-                  type="text"
-                  value={signupDesignation}
-                  onChange={(e) => setSignupDesignation(e.target.value)}
-                  placeholder="যেমন: আরবি প্রভাষক / অভিভাবক"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-slate-50/50"
-                />
+                <select
+                  value={signupDesignationSelect}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSignupDesignationSelect(v);
+                    if (v === DESIGNATION_OTHER) {
+                      setSignupDesignation('');
+                    } else {
+                      const opt = DESIGNATION_OPTIONS.find(o => o.value === v);
+                      setSignupDesignation(v);
+                      if (opt) setSignupRole(opt.role);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {DESIGNATION_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.labelBn}</option>
+                  ))}
+                  <option value={DESIGNATION_OTHER}>অন্যান্য (নিজে লিখুন)</option>
+                </select>
+                {signupDesignationSelect === DESIGNATION_OTHER && (
+                  <input
+                    type="text"
+                    value={signupDesignation}
+                    onChange={(e) => setSignupDesignation(e.target.value)}
+                    placeholder="যেমন: আরবি প্রভাষক / অভিভাবক"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-slate-50/50 mt-2"
+                  />
+                )}
               </div>
 
               <button

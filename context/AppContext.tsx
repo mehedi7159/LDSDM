@@ -38,11 +38,14 @@ import {
   initializeInstitutionDefaultRoles, 
   getInstitutionMember,
   getAllInstitutionMembers,
+  getLastMembersSyncStatus,
   setInstitutionMember,
   deleteInstitutionMember,
+  deleteInstitutionMembers,
   approveInstitutionMember
 } from '../services/rbac';
 import { generateId, deriveRoleFromDesignation } from '../services/utils';
+import { signInGateForStatus } from '../services/staffRole';
 import {
   normalizeRoleKey,
   bestDesignationRole,
@@ -75,7 +78,7 @@ import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStruct
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
 import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isProvisionableEmail, isStaffProvisioningRole, shouldHealPortalLogin, resolveCredentialSyncNeed } from '../services/staffProvisioning';
 import { syncStaffCredentialToFirebase, type StaffCredentialSyncStatus } from '../services/staffCredentialSync';
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc, collection } from 'firebase/firestore';
 import { 
   signInWithPopup, 
   signOut, 
@@ -235,6 +238,7 @@ interface AppState {
 interface AppContextType extends AppState {
   isAuthReady: boolean;
   activeTab: string;
+  isOwnerAdmin: boolean;
   users: AppUser[];
   setUsers: React.Dispatch<React.SetStateAction<AppUser[]>>;
   currentUser: AppUser | null;
@@ -387,6 +391,7 @@ interface AppContextType extends AppState {
   refreshInstitutionRoles: () => Promise<void>;
   pendingMembers: InstitutionMember[];
   refreshPendingMembers: () => Promise<void>;
+  pendingMembersError: string | null;
   approveMember: (uid: string, roleId?: string, assignedClasses?: string[], assignedSubjects?: string[]) => Promise<{ success: boolean; message?: string }>;
   rejectMember: (uid: string) => Promise<{ success: boolean; message?: string }>;
   t: (key: keyof typeof translations['en']) => string;
@@ -634,13 +639,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         parsed.forEach(t => { if (t && t.id) teachersMap.set(t.id, t); });
       } catch {}
     }
-    // Also load teachers from institution members if not present
+    // Also load teachers from institution members if not present —
+    // ACTIVE members only (Phase 1): a pending applicant must never be
+    // synthesized into a teacher entry, or signup would again leak
+    // unapproved people into the teacher list.
     const membersSaved = localStorage.getItem('madrasha_institution_members');
     if (membersSaved) {
       try {
         const membersList: any[] = JSON.parse(membersSaved);
         membersList.forEach(m => {
-          if (m && (m.roleId === 'role_teacher' || m.requestedRole?.includes('শিক্ষক') || m.requestedRole?.includes('Teacher'))) {
+          if (m && m.status === 'active' && (m.roleId === 'role_teacher' || m.requestedRole?.includes('শিক্ষক') || m.requestedRole?.includes('Teacher'))) {
             if (!teachersMap.has(m.uid)) {
               teachersMap.set(m.uid, {
                 id: m.uid,
@@ -855,6 +863,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const isSuperAdmin = isVerifiedSuperAdmin(authUser, authClaims);
 
+  // Phase 2: the context never provided this — StaffManager and
+  // Dashboard destructured it and silently got undefined, so every
+  // "admin tier" check that relied on it fell through to the other
+  // conditions. Defined here with the same rule other components
+  // compute locally (super_admin, or the owner's email).
+  const isOwnerAdmin = isSuperAdmin || (authUser?.email || adminEmail || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+
   // NOTE: `currentRole`, `authContext` and `hasPermission` are derived
   // further below, immediately after `currentUser` is computed — role
   // resolution must read the signed-in account (built from `users`
@@ -878,19 +893,54 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // Pending Institution Members State & Actions
   const [pendingMembers, setPendingMembers] = useState<InstitutionMember[]>([]);
 
+  // Pending-applicant list error state (Phase 1): getAllInstitutionMembers
+  // never throws — on Firestore timeout it silently returns the local
+  // cache. The UI must therefore distinguish "no applicants" from
+  // "update failed, showing stale cache", never silently cache-only.
+  const [pendingMembersError, setPendingMembersError] = useState<string | null>(null);
   const refreshPendingMembers = async () => {
     try {
       const all = await getAllInstitutionMembers('inst_madrasah_primary');
       const pending = all.filter(m => m.status === 'pending');
       setPendingMembers(pending);
+      // Firestore leg timed out or errored: the list above is local
+      // cache only — say so instead of presenting it as fresh.
+      if (!getLastMembersSyncStatus().cloudOk) {
+        setPendingMembersError('অনুমোদনের তালিকা আপডেট হয়নি — পুরনো তালিকা দেখানো হচ্ছে।');
+      } else {
+        setPendingMembersError(null);
+      }
     } catch (err) {
       console.warn('Pending members fetch error:', err);
+      setPendingMembersError('অনুমোদনের তালিকা আপডেট হয়নি — পুরনো তালিকা দেখানো হচ্ছে।');
     }
   };
 
   useEffect(() => {
     refreshPendingMembers();
   }, [authUser]);
+
+  // Live pending-applicant feed (Phase 1): the codebase already uses
+  // onSnapshot for main_store/public_portal, so members get the same
+  // treatment — any approval, rejection or new application refreshes
+  // the pending list without waiting for a remount. The refresh itself
+  // merges local cache + Firestore, so local-only applications are
+  // never dropped by a Firestore-only snapshot.
+  useEffect(() => {
+    const membersCol = collection(db, 'institutions', 'inst_madrasah_primary', 'members');
+    const unsubscribe = onSnapshot(
+      membersCol,
+      () => { refreshPendingMembers(); },
+      (err) => {
+        console.warn('Members snapshot listener notice:', err?.message || err);
+        setPendingMembersError('অনুমোদনের তালিকা আপডেট হয়নি — পুরনো তালিকা দেখানো হচ্ছে।');
+      }
+    );
+    return () => { try { unsubscribe(); } catch {} };
+    // Intentionally once: refreshPendingMembers only reads stable
+    // imports + setters, so the closure never goes stale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const approveMember = async (
     uid: string, 
@@ -1376,18 +1426,50 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const deleteAppUser = async (userId: string): Promise<{ success: boolean; message?: string }> => {
     const targetUser = users.find(u => u.id === userId);
     const email = (targetUser?.email || '').toLowerCase();
-    const phone = targetUser?.phone || '';
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    // Remove the linked staff record too — otherwise the login fallback
-    // rebuilds this account from the teachers list on the next sign-in.
-    setTeachers(prev => prev.filter(t =>
+    // Phase 2 parity with deleteTeacher: the same narrowed guard
+    // (owner record or own record only) — the old version had NO
+    // guard at all, so routing a guarded record here deleted it.
+    const adminUid = authUser?.uid;
+    const adminIsOwner = (authUser?.email || adminEmail || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    const isOwnerTarget = email !== '' && email === SUPER_ADMIN_EMAIL.toLowerCase();
+    if (isOwnerTarget || (adminUid && userId === adminUid && adminIsOwner)) {
+      return { success: false, message: 'এটা মালিকের অ্যাকাউন্ট, মোছা যাবে না।' };
+    }
+    if (adminUid && userId === adminUid) {
+      return { success: false, message: 'নিজের অ্যাকাউন্ট এখান থেকে মোছা যাবে না।' };
+    }
+    // Id/email link only (never phone) — the linked staff record is
+    // removed too, otherwise the login fallback rebuilds this account
+    // from the teachers list on the next sign-in.
+    const remainingUsers = users.filter(u => u.id !== userId);
+    const remainingTeachers = teachers.filter(t =>
       t.id !== userId &&
-      !(email !== '' && (t.email || '').toLowerCase() === email) &&
-      !(phone !== '' && t.phone === phone)
-    ));
-    try {
-      deleteInstitutionMember('inst_madrasah_primary', userId).catch(() => {});
-    } catch (e) {}
+      !(email !== '' && (t.email || '').toLowerCase() === email)
+    );
+    setUsers(remainingUsers);
+    setTeachers(remainingTeachers);
+    // Awaited cloud confirm (was: unconditional success while the
+    // write lived in the debounced auto-sync).
+    const cloudSync = await confirmDeleteCloudSync(() =>
+      setDoc(doc(db, 'institution', 'main_store'), {
+        teachers: remainingTeachers,
+        users: remainingUsers,
+        updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user',
+        updatedAt: new Date().toISOString(),
+      }, { merge: true })
+    );
+    if (!cloudSync.success) {
+      setCloudStatus('error');
+      return { success: false, message: cloudSync.message };
+    }
+    setCloudStatus('connected');
+    setCloudLastSynced(new Date().toLocaleTimeString());
+    // Member cleanup AFTER the cloud confirm, honestly reported.
+    const memberRes = await deleteInstitutionMembers('inst_madrasah_primary', [userId]);
+    try { await refreshPendingMembers(); } catch {}
+    if (!memberRes.ok) {
+      return { success: true, message: 'ব্যবহারকারী ডিলিট হয়েছে। তবে member তথ্য মোছা যায়নি — আবার চেষ্টা করুন।' };
+    }
     return { success: true, message: 'ব্যবহারকারী সফলভাবে ডিলিট হয়েছে।' };
   };
 
@@ -2876,6 +2958,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           return { success: false, error: 'ভুল পাসওয়ার্ড প্রদান করা হয়েছে।' };
         }
 
+        // Phase 1 pending gate: password matched, but the account is
+        // NOT active — no Firebase account, no session, no self-heal.
+        // This runs BEFORE createPrimaryFirebaseUser below, so a
+        // pending applicant can never gain a Firebase identity (and
+        // therefore cloud-write access) merely by logging in.
+        const gateStep2 = signInGateForStatus(member.status);
+        if (gateStep2.blocked) {
+          return { success: false, error: gateStep2.message };
+        }
+
         // The account record outranks the member document: if the
         // member doc still carries a stale roleId (e.g. 'role_teacher'
         // from signup) while the person's account says 'accountant',
@@ -2947,6 +3039,27 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (foundUser.status === 'blocked') {
         return { success: false, error: 'আপনার অ্যাকাউন্টটি স্থগিত (Blocked) করা হয়েছে।' };
       }
+
+      // Phase 1 pending gate (user-record path): same rule as step 2.
+      // A pending account record, or a linked member application that
+      // is not active, gets no Firebase self-heal and no session.
+      const gateStep3 = signInGateForStatus(foundUser.status);
+      if (gateStep3.blocked) {
+        return { success: false, error: gateStep3.message };
+      }
+      try {
+        const allMembersStep3 = await getAllInstitutionMembers('inst_madrasah_primary');
+        const linkedMember = allMembersStep3.find(m =>
+          m.uid === foundUser.id ||
+          (foundUser.email && m.email.toLowerCase() === foundUser.email.toLowerCase())
+        );
+        if (linkedMember) {
+          const gateLinked = signInGateForStatus(linkedMember.status);
+          if (gateLinked.blocked) {
+            return { success: false, error: gateLinked.message };
+          }
+        }
+      } catch {}
 
       // Auto-provisioning, login-time self-heal (25 Oct 2026): same as
       // step 2 — local password matched but no Firebase user yet, so
@@ -3080,27 +3193,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       console.warn('setInstitutionMember fallback notice:', e);
     }
 
-    // If teacher role, also register in academic teachers list
-    if (defaultRole === 'role_teacher') {
-      const academicTeacher: AcademicTeacher = {
-        id: uid,
-        institutionId: 'inst_madrasah_primary',
-        name: displayName,
-        nameBn: displayName,
-        phone: phone || '',
-        designation: requestedRole || 'সহকারী শিক্ষক',
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString()
-      };
-      setTeachers(prev => {
-        if (!prev.some(t => t.id === uid || (phone && t.phone === phone))) {
-          const updated = [...prev, academicTeacher];
-          localStorage.setItem('teachers', JSON.stringify(updated));
-          return updated;
-        }
-        return prev;
-      });
-    }
+    // NO teachers-list entry here (Phase 1): a signup is only a pending
+    // application. Teacher records are created ONLY by approveMember —
+    // inserting an ACTIVE entry at signup is exactly how unapproved
+    // people used to appear in the teacher list.
 
     // Local membership application created (no elevated or remote admin privileges)
     setAuthUser(null);
@@ -3785,15 +3881,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const target = teachers.find(t => t.id === teacherId);
     const linkedUser = users.find(u => u.id === teacherId);
     const email = (target?.email || linkedUser?.email || '').toLowerCase();
-    const phone = target?.phone || linkedUser?.phone || '';
-    const matches = (x: { id: string; email?: string; phone?: string }) =>
+    // Phase 2: id OR verified-email ONLY — phone NEVER matches. The
+    // old phone rule is exactly what made Arafat undeletable (his
+    // dummy number collides with the owner's) and what risked deleting
+    // the wrong person on a shared or mistyped number.
+    const matches = (x: { id: string; email?: string }) =>
       x.id === teacherId ||
-      (email !== '' && (x.email || '').toLowerCase() === email) ||
-      (phone !== '' && x.phone === phone);
+      (email !== '' && (x.email || '').toLowerCase() === email);
 
     const matchedUsers = users.filter(matches);
-    if (matchedUsers.some(u => u.role === 'super_admin')) {
-      return { success: false, message: 'প্রধান অ্যাডমিনের অ্যাকাউন্ট এখান থেকে মোছা যাবে না।' };
+    // Phase 2 narrowed guard (not removed): block ONLY the owner
+    // record or the admin's own record — never any other record.
+    // The owner message is used ONLY when it really is the owner.
+    const adminUid = authUser?.uid;
+    const adminIsOwner = (authUser?.email || adminEmail || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    const isOwnerTarget =
+      (email !== '' && email === SUPER_ADMIN_EMAIL.toLowerCase()) ||
+      matchedUsers.some(u => (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase());
+    if (isOwnerTarget || (adminUid && teacherId === adminUid && adminIsOwner)) {
+      return { success: false, message: 'এটা মালিকের অ্যাকাউন্ট, মোছা যাবে না।' };
+    }
+    if (adminUid && teacherId === adminUid) {
+      return { success: false, message: 'নিজের অ্যাকাউন্ট এখান থেকে মোছা যাবে না।' };
     }
 
     // Lists as they must look after this delete — computed from the same
@@ -3806,13 +3915,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     setTeachers(prev => prev.filter(t => !matches(t)));
     setUsers(prev => prev.filter(u => !matches(u)));
-    try {
-      const uids = new Set<string>([teacherId, ...matchedUsers.map(u => u.id)]);
-      for (const uid of uids) {
-        await deleteInstitutionMember('inst_madrasah_primary', uid).catch(() => {});
-      }
-    } catch {}
-    try { await refreshPendingMembers(); } catch {}
 
     // Cloud confirmation (25 Oct 2026 follow-up): previously this returned
     // success unconditionally while the real cloud write lived in the
@@ -3822,8 +3924,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // and a failure is reported plainly instead of a false success. The
     // write touches ONLY teachers/users (+ metadata) so no other
     // collection can be disturbed; the regular auto-sync still runs after
-    // the state change and rewrites the same filtered lists. Guard above
-    // is untouched (including the super_admin / Arafat case).
+    // the state change and rewrites the same filtered lists.
     const cloudSync = await confirmDeleteCloudSync(() =>
       setDoc(doc(db, 'institution', 'main_store'), {
         teachers: remainingTeachers,
@@ -3838,6 +3939,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
     setCloudStatus('connected');
     setCloudLastSynced(new Date().toLocaleTimeString());
+    // Phase 2 honest member cleanup: member docs are deleted ONLY
+    // after the cloud confirm (never before), and partial failures are
+    // reported instead of swallowed.
+    const memberUids = Array.from(new Set([teacherId, ...matchedUsers.map(u => u.id)]));
+    const memberRes = await deleteInstitutionMembers('inst_madrasah_primary', memberUids);
+    try { await refreshPendingMembers(); } catch {}
+    if (!memberRes.ok) {
+      return { success: true, message: `শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট মুছে ফেলা হয়েছে। তবে ${memberRes.failedUids.length}টি member তথ্য মোছা যায়নি — আবার চেষ্টা করুন।` };
+    }
     return { success: true, message: 'শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট সম্পূর্ণভাবে মুছে ফেলা হয়েছে।' };
   };
 
@@ -4094,15 +4204,22 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser]);
 
-  const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus & { nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[] }> => {
+  const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus & { nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[]; error?: string }> => {
     const existing = teachers.find(t => t.id === updatedTeacher.id);
     // Keep the login role in step with the staff form's role choice;
     // without an explicit choice, derive it from the designation.
     const effectiveRole: UserRole = loginRole ?? deriveRoleFromDesignation(updatedTeacher.designation);
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { teacher } = existing
+    const { teacher, error: validationError } = existing
       ? buildUpdateTeacherPayload(existing, updatedTeacher, actor, teachers)
-      : { teacher: updatedTeacher };
+      : { teacher: updatedTeacher, error: undefined };
+    // Phase 2 edit validation: a payload error (duplicate code,
+    // invalid email, ...) must STOP the save here. The old code
+    // ignored the error, saved the OLD record, and the caller showed
+    // a success toast — the edit looked saved while nothing changed.
+    if (validationError) {
+      return { status: 'failed', reason: 'invalid-input', error: validationError };
+    }
 
     const rawPassword = updatedTeacher.password?.trim() || existing?.password || '123456';
     const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
@@ -4965,6 +5082,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       activeTab,
       setActiveTab,
       isSuperAdmin,
+      isOwnerAdmin,
       authContext,
       hasPermission,
       currentRole,
@@ -4978,6 +5096,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       userRole,
       pendingMembers,
       refreshPendingMembers,
+      pendingMembersError,
       approveMember,
       rejectMember,
       signUpUser,
