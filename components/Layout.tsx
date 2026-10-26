@@ -110,6 +110,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     userRole,
     effectiveRoles,
     currentMember,
+    pendingMembers = [],
     logoutAdmin 
   } = useApp();
 
@@ -235,6 +236,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     // 6. Open / general items
     return true;
   };
+
+  // Phase 1 live notice: pending-applicant count for the HR menu badge.
+  const pendingHrCount = (pendingMembers || []).length;
 
   // Structured Navigation Groups aligned with the 8-Menu Madrasah Management Framework
   const navGroups: NavGroup[] = [
@@ -567,22 +571,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       categoryEn: '7. Staff & HR Management',
       icon: UserCheck,
       items: [
-        { 
-          id: 'user_roles', 
-          label: language === 'bn' ? 'শিক্ষক ও কর্মী ডিরেক্টরি' : 'Staff Directory', 
-          icon: Users, 
+        {
+          id: 'user_roles',
+          label: language === 'bn' ? 'শিক্ষক, কর্মী ও অ্যাকাউন্ট' : 'Staff & Accounts',
+          icon: Users,
           subType: 'action',
+          // Pending applicants waiting for approval (Phase 1) — the
+          // admin used to get no notice at all; the count now rides
+          // on the HR menu entry itself.
+          badge: pendingHrCount > 0 ? `${pendingHrCount}` : undefined,
           permissions: ['roles.view', 'users.view', 'teachers.view']
         },
-        { 
-          id: 'staff_roles', 
-          label: language === 'bn' ? 'রোল, একাউন্ট ও পারমিশন' : 'User Roles & Access', 
-          icon: ShieldCheck, 
-          subType: 'action',
-          badge: 'Admin',
-          isAdminOnly: true,
-          permissions: ['roles.view', 'users.view']
-        },
+        // Phase 4: the separate 'staff_roles' (রোল, একাউন্ট ও
+        // পারমিশন) menu entry is gone — it now lives inside the
+        // merged tab above as cards/table + pending strip.
         { 
           id: 'staff_assignments', 
           label: language === 'bn' ? 'দায়িত্ব ও বিষয় বণ্টন' : 'Workload & Subjects', 
@@ -1205,32 +1207,26 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
           {/* Quick Nav Icon Buttons with tooltips */}
           <div className="flex flex-col items-center gap-1.5 w-full px-2">
-            {(() => {
-              const railItems = [
-                // First entry is the user's home: 'dashboard' for admin-tier,
-                // the role home for non-admin roles. The other entries use
-                // REAL tab ids and are filtered to tabs this role can actually open.
-                { id: homeTab, label: homeTab === 'dashboard' ? (language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : (language === 'bn' ? 'হোম' : 'Home'), icon: homeTab === 'dashboard' ? LayoutDashboard : Home },
-                { id: 'students', label: language === 'bn' ? 'শিক্ষার্থী' : 'Students', icon: Users },
-                { id: 'attendance', label: language === 'bn' ? 'হাজিরা' : 'Attendance', icon: UserCheck },
-                { id: 'results', label: language === 'bn' ? 'ফলাফল' : 'Results', icon: Award },
-                { id: 'finance', label: language === 'bn' ? 'হিসাব' : 'Finance', icon: Wallet },
-                { id: 'class_routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
-                { id: 'notice_board', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
-                { id: 'settings', label: language === 'bn' ? 'সেটিংস' : 'Settings', icon: Settings }
-              ];
-              const seen = new Set<string>();
-              return railItems.filter(item => {
-                if (seen.has(item.id)) return false;
-                seen.add(item.id);
-                return item.id === homeTab || canOpenRailTab(item.id);
-              });
-            })().map(item => {
+            {[
+              // First entry is the user's home: 'dashboard' for admin-tier,
+              // the role home for non-admin roles. The other entries use
+              // REAL tab ids ('routine'/'notices' were bogus ids that set a
+              // non-existent tab and fell through to the Dashboard) and are
+              // filtered to tabs this role can actually open.
+              { id: homeTab, label: homeTab === 'dashboard' ? (language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : (language === 'bn' ? 'হোম' : 'Home'), icon: homeTab === 'dashboard' ? LayoutDashboard : Home },
+              { id: 'students', label: language === 'bn' ? 'শিক্ষার্থী' : 'Students', icon: Users },
+              { id: 'attendance', label: language === 'bn' ? 'হাজিরা' : 'Attendance', icon: UserCheck },
+              { id: 'results', label: language === 'bn' ? 'ফলাফল' : 'Results', icon: Award },
+              { id: 'finance', label: language === 'bn' ? 'হিসাব' : 'Finance', icon: Wallet },
+              { id: 'class_routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
+              { id: 'notice_board', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
+              { id: 'settings', label: language === 'bn' ? 'সেটিংস' : 'Settings', icon: Settings }
+            ].filter(item => item.id === homeTab || canOpenRailTab(item.id)).map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
                 <button
-                  key={`rail-nav-${item.id}`}
+                  key={item.id}
                   type="button"
                   onClick={() => handleTabClick(item.id)}
                   title={item.label}
