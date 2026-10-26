@@ -436,7 +436,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 text-xs font-bold overflow-x-auto w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 text-xs font-bold w-full md:w-auto">
             <button
               onClick={() => setActiveMode('students')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
@@ -444,7 +444,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               }`}
             >
               <Users size={15} />
-              <span>{isBn ? 'শিক্ষার্থী হাজিরা' : 'Students'}</span>
+              <span>{isBn ? 'শিক্ষার্থী' : 'Students'}</span>
             </button>
             <button
               onClick={() => setActiveMode('staff')}
@@ -453,7 +453,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               }`}
             >
               <Briefcase size={15} />
-              <span>{isBn ? 'শিক্ষক ও কর্মচারী' : 'Staff'}</span>
+              <span>{isBn ? 'স্টাফ' : 'Staff'}</span>
             </button>
             <button
               onClick={() => setActiveMode('absentees')}
@@ -462,7 +462,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               }`}
             >
               <UserX size={15} />
-              <span>{isBn ? 'অনুপস্থিত তালিকা ও SMS' : 'Absentees & SMS'}</span>
+              <span>{isBn ? 'অনুপস্থিত' : 'Absentees'}</span>
               {absentStudents.length > 0 && (
                 <span className="px-1.5 py-0.2 bg-rose-100 text-rose-800 rounded-full text-[10px]">
                   {formatNumber(absentStudents.length, language)}
@@ -476,7 +476,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               }`}
             >
               <Sparkles size={15} />
-              <span>{isBn ? 'পরীক্ষার রেজাল্টে সিঙ্ক' : 'Exam Sync'}</span>
+              <span>{isBn ? 'সিঙ্ক' : 'Exam Sync'}</span>
             </button>
           </div>
         </div>

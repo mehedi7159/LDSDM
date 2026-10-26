@@ -1911,7 +1911,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
     if (data.teachers && Array.isArray(data.teachers)) {
       setTeachers(data.teachers);
-      try { localStorage.setItem('madrasha_teachers', JSON.stringify(data.teachers)); } catch {}
+      try { localStorage.setItem('teachers', JSON.stringify(data.teachers)); } catch {}
     }
     if (data.staffLeaves && Array.isArray(data.staffLeaves)) {
       setStaffLeaves(data.staffLeaves);

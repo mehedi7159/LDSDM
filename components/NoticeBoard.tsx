@@ -1125,7 +1125,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         
         {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <div className="flex flex-wrap items-center gap-1.5 pb-1">
           <button
             onClick={() => setActiveCategoryFilter('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${

@@ -155,8 +155,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   }[] = [
     { 
       id: 'overview', 
-      labelBn: '১. সারসংক্ষেপ ও বাজেট', 
-      labelEn: '1. Overview & Budget', 
+      labelBn: 'সারসংক্ষেপ', 
+      labelEn: 'Overview', 
       icon: Wallet,
       activeClass: 'bg-slate-900 text-white shadow-md',
       inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
@@ -164,28 +164,26 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     },
     { 
       id: 'student-fee', 
-      labelBn: '২. শিক্ষার্থী ফি আদায় ও রসিদ', 
-      labelEn: '2. Student Fees', 
+      labelBn: 'ফি আদায়', 
+      labelEn: 'Fees', 
       icon: GraduationCap,
-      badge: isBn ? 'ফি গ্রহণ' : 'Collection',
       activeClass: 'bg-blue-600 text-white shadow-md shadow-blue-500/20',
       inactiveClass: 'text-blue-900 dark:text-blue-200 hover:bg-blue-50 hover:text-blue-700',
       iconColor: 'text-blue-600 dark:text-blue-400'
     },
     { 
       id: 'donation', 
-      labelBn: '৩. দান ও সদকা ফান্ড', 
-      labelEn: '3. Donations & Lillah', 
+      labelBn: 'দান', 
+      labelEn: 'Donations', 
       icon: HeartHandshake,
-      badge: isBn ? 'রসিদ' : 'Receipt',
       activeClass: 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20',
       inactiveClass: 'text-emerald-900 dark:text-emerald-200 hover:bg-emerald-50 hover:text-emerald-700',
       iconColor: 'text-emerald-600 dark:text-emerald-400'
     },
     { 
       id: 'salary', 
-      labelBn: '৪. উস্তাদ ও স্টাফ বেতন', 
-      labelEn: '4. Teacher Salary', 
+      labelBn: 'বেতন', 
+      labelEn: 'Salary', 
       icon: CreditCard,
       activeClass: 'bg-rose-600 text-white shadow-md shadow-rose-500/20',
       inactiveClass: 'text-rose-900 dark:text-rose-200 hover:bg-rose-50 hover:text-rose-700',
@@ -193,8 +191,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     },
     { 
       id: 'development', 
-      labelBn: '৫. মাদ্রাসা উন্নয়ন ও নির্মাণ', 
-      labelEn: '5. Development', 
+      labelBn: 'উন্নয়ন', 
+      labelEn: 'Development', 
       icon: Building2,
       activeClass: 'bg-amber-600 text-white shadow-md shadow-amber-500/20',
       inactiveClass: 'text-amber-950 dark:text-amber-200 hover:bg-amber-50 hover:text-amber-800',
@@ -202,8 +200,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     },
     { 
       id: 'general-entry', 
-      labelBn: '৬. সাধারণ ভাউচার এন্ট্রি', 
-      labelEn: '6. General Voucher', 
+      labelBn: 'ভাউচার', 
+      labelEn: 'Vouchers', 
       icon: PlusCircle,
       activeClass: 'bg-cyan-700 text-white shadow-md shadow-cyan-600/20',
       inactiveClass: 'text-cyan-950 dark:text-cyan-200 hover:bg-cyan-50 hover:text-cyan-800',
@@ -211,8 +209,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     },
     { 
       id: 'ledger', 
-      labelBn: '৭. ক্যাশ বুক ও হিসাব খাতা', 
-      labelEn: '7. Cash Book & Ledger', 
+      labelBn: 'ক্যাশ বুক', 
+      labelEn: 'Cash Book', 
       icon: BookOpen,
       activeClass: 'bg-violet-700 text-white shadow-md shadow-violet-600/20',
       inactiveClass: 'text-violet-950 dark:text-violet-200 hover:bg-violet-50 hover:text-violet-800',
@@ -220,8 +218,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     },
     { 
       id: 'fee-settings', 
-      labelBn: '৮. ফি নির্ধারণ ও কাঠামো', 
-      labelEn: '8. Fee Rates & Setup', 
+      labelBn: 'ফি কাঠামো', 
+      labelEn: 'Fee Setup', 
       icon: Settings2,
       activeClass: 'bg-slate-700 text-white shadow-md',
       inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
@@ -229,10 +227,9 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     },
     { 
       id: 'reports', 
-      labelBn: '৯. আর্থিক বিবরণী ও রিপোর্ট', 
-      labelEn: '9. Financial Statements', 
+      labelBn: 'রিপোর্ট', 
+      labelEn: 'Reports', 
       icon: FileSpreadsheet,
-      badge: 'Report',
       activeClass: 'bg-emerald-700 text-white shadow-md shadow-emerald-600/20',
       inactiveClass: 'text-emerald-950 dark:text-emerald-200 hover:bg-emerald-50 hover:text-emerald-800',
       iconColor: 'text-emerald-600 dark:text-emerald-400'
@@ -333,7 +330,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       </PageHeader>
 
 {/* Sub-Navigation Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs gap-1">
         {navTabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

@@ -724,7 +724,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       </div>
 
       {/* 3. Sub-Navigation Tabs matching Step 2 blueprint */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs gap-1">
         <button
           type="button"
           onClick={() => setSubTab('list')}
@@ -735,7 +735,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           }`}
         >
           <Users size={15} />
-          <span>{language === 'bn' ? 'শিক্ষার্থী তালিকা' : 'Student Directory'}</span>
+          <span>{language === 'bn' ? 'তালিকা' : 'Directory'}</span>
         </button>
 
         <button
@@ -761,7 +761,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           }`}
         >
           <FileText size={15} />
-          <span>{language === 'bn' ? 'ভর্তি আবেদন' : 'Applications'}</span>
+          <span>{language === 'bn' ? 'আবেদন' : 'Applications'}</span>
         </button>
 
         <button
@@ -774,7 +774,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           }`}
         >
           <Layers size={15} />
-          <span>{language === 'bn' ? 'শ্রেণি ও শাখাভিত্তিক' : 'Class-wise'}</span>
+          <span>{language === 'bn' ? 'শ্রেণিভিত্তিক' : 'Classes'}</span>
         </button>
 
         <button
@@ -787,7 +787,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           }`}
         >
           <Phone size={15} />
-          <span>{language === 'bn' ? 'অভিভাবকের তথ্য' : 'Guardian Info'}</span>
+          <span>{language === 'bn' ? 'অভিভাবক' : 'Guardians'}</span>
         </button>
 
         <button
@@ -796,7 +796,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           className="flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer whitespace-nowrap"
         >
           <GraduationCap size={15} />
-          <span>{language === 'bn' ? 'শ্রেণি পরিবর্তন / প্রমোশন' : 'Class Promotion'}</span>
+          <span>{language === 'bn' ? 'প্রমোশন' : 'Promotion'}</span>
         </button>
 
         <button
@@ -809,7 +809,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           }`}
         >
           <Award size={15} />
-          <span>{language === 'bn' ? 'ছাড়পত্র / TC' : 'Transfer Certificate'}</span>
+          <span>{language === 'bn' ? 'ছাড়পত্র' : 'TC'}</span>
         </button>
 
         <button
@@ -822,7 +822,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           }`}
         >
           <UserMinus size={15} />
-          <span>{language === 'bn' ? 'সাবেক শিক্ষার্থী' : 'Former Students'}</span>
+          <span>{language === 'bn' ? 'সাবেক' : 'Former'}</span>
         </button>
       </div>
 

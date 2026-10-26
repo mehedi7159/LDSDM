@@ -690,35 +690,35 @@ export const SpecializedServicesManager: React.FC<SpecializedServicesManagerProp
         </div>
 
         {/* SUB NAVIGATION TABS */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-5 mt-4 border-t border-slate-100 no-scrollbar">
+        <div className="flex flex-wrap items-center gap-2 pt-5 mt-4 border-t border-slate-100">
           {[
             {
               id: 'book_bank',
-              label: language === 'bn' ? 'কিতাব ব্যাংক ও লাইব্রেরি' : 'Kitab Bank & Library',
+              label: language === 'bn' ? 'কিতাব ব্যাংক' : 'Kitab Bank',
               icon: BookOpen,
               count: books.length
             },
             {
               id: 'book_issues',
-              label: language === 'bn' ? 'ইস্যু ও ফেরত রেজিস্টার' : 'Issues & Returns',
+              label: language === 'bn' ? 'ইস্যু ও ফেরত' : 'Issues & Returns',
               icon: Library,
               count: bookIssues.filter(i => i.status === 'issued').length
             },
             {
               id: 'transport_fleet',
-              label: language === 'bn' ? 'পরিবহন বহর ও বাস রুট' : 'Transport Fleet & Routes',
+              label: language === 'bn' ? 'পরিবহন' : 'Transport',
               icon: Bus,
               count: vehicles.length
             },
             {
               id: 'mahfil_events',
-              label: language === 'bn' ? 'বার্ষিক মাহফিল ও সমাবেশ' : 'Annual Mahfil & Events',
+              label: language === 'bn' ? 'মাহফিল' : 'Mahfil',
               icon: CalendarDays,
               count: events.length
             },
             {
               id: 'activities_clubs',
-              label: language === 'bn' ? 'সহশিক্ষা ও ক্লাব ফোরাম' : 'Co-Curricular & Clubs',
+              label: language === 'bn' ? 'ক্লাব' : 'Clubs',
               icon: Trophy,
               count: clubs.length
             }

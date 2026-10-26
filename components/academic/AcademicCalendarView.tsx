@@ -288,13 +288,13 @@ export const AcademicCalendarView: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-1.5 shadow-2xs overflow-x-auto gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-1.5 shadow-2xs gap-1">
         {[
-          { id: 'ALL', label: isBn ? 'সকল ইভেন্ট ও ছুটি' : 'All Events' },
-          { id: 'HOLIDAY_ALL', label: isBn ? 'শুধুমাত্র ছুটির তালিকা' : 'Holidays Only' },
-          { id: 'EXAM', label: isBn ? 'পরীক্ষার সময়সূচি' : 'Exams Only' },
-          { id: 'EVENT', label: isBn ? 'অনুষ্ঠান ও সমাবেশ' : 'Institutional Events' },
-          { id: 'ACADEMIC_TERM', label: isBn ? 'একাডেমিক টার্ম' : 'Academic Terms' }
+          { id: 'ALL', label: isBn ? 'সকল' : 'All' },
+          { id: 'HOLIDAY_ALL', label: isBn ? 'ছুটি' : 'Holidays' },
+          { id: 'EXAM', label: isBn ? 'পরীক্ষা' : 'Exams' },
+          { id: 'EVENT', label: isBn ? 'অনুষ্ঠান' : 'Events' },
+          { id: 'ACADEMIC_TERM', label: isBn ? 'টার্ম' : 'Terms' }
         ].map(tab => (
           <button
             key={tab.id}
