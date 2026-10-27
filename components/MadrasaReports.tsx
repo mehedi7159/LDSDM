@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import {
   CalendarCheck2, Banknote, Receipt, CalendarOff, Wallet, Scale,
-  Users, GraduationCap, Phone, MessageCircle, ClipboardList, TrendingUp, BarChart3
+  Users, GraduationCap, Phone, MessageCircle, ClipboardList, TrendingUp, BarChart3,
+  BellRing, CalendarX2, UserX, ShieldCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
@@ -55,7 +56,7 @@ export const MadrasaReports: React.FC = () => {
     students = [], subjects = [], marks = [], exams = [],
     transactions = [], feeStructures = [], staffLeaves = [],
     dailyStudentAttendance = [], dailyStaffAttendance = [],
-    language = 'bn'
+    language = 'bn', setActiveTab
   } = useApp();
   const isBn = language === 'bn';
   const num = (v: number) => formatNumber(Math.round(v), isBn ? 'bn' : 'en');
@@ -116,6 +117,119 @@ export const MadrasaReports: React.FC = () => {
     () => calculateClassDuesSummary(activeStudents, feeStructures, transactions),
     [activeStudents, feeStructures, transactions]
   );
+
+  // ---------- ALERTS (Pragya-inspired, LDSDM-adapted, read-only) ----------
+  // Owner thresholds (27 Oct 2026): class attendance < 60% (this month so
+  // far, recorded-only, min 10 recorded student-days); dues 3+ finished
+  // months (last 12 finished months, admission-guarded, feeMonth-aware);
+  // ABSENT on each of the last 7 days the student's class attendance was
+  // taken. A day with no record for the student is NOT counted as absent:
+  // not marked is not the same as absent. Nothing here writes data.
+  const alerts = useMemo(() => {
+    const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
+    const toAscii = (s: string) => s.replace(/[০-৯]/g, ch => String(BN_DIGITS.indexOf(ch)));
+    const BN_MONTH_PREFIX: Array<[string, string]> = [
+      ['জানু', '01'], ['ফেব', '02'], ['মার্চ', '03'], ['এপ্রি', '04'],
+      ['মে', '05'], ['জুন', '06'], ['জুলা', '07'], ['আগ', '08'],
+      ['সেপ্টে', '09'], ['অক্টো', '10'], ['নভে', '11'], ['ডিসে', '12'],
+    ];
+    const normFeeMonth = (tx: { feeMonth?: string; date?: string }): string => {
+      const fm = String(tx.feeMonth || '').trim();
+      if (/^\d{4}-\d{2}$/.test(fm)) return fm;
+      const ascii = toAscii(fm);
+      const ym = ascii.match(/(\d{4})/);
+      const pref = BN_MONTH_PREFIX.find(([p]) => fm.startsWith(p));
+      if (ym && pref) return `${ym[1]}-${pref[1]}`;
+      return (tx.date || '').slice(0, 7);
+    };
+
+    // Low-attendance classes, this month so far (PRESENT + LATE count as present).
+    const byClass = new Map<string, { total: number; present: number }>();
+    for (const r of dailyStudentAttendance || []) {
+      if (!String(r.date || '').startsWith(monthPrefix)) continue;
+      const e = byClass.get(r.classLevel) || { total: 0, present: 0 };
+      e.total += 1;
+      if (r.status === 'PRESENT' || r.status === 'LATE') e.present += 1;
+      byClass.set(r.classLevel, e);
+    }
+    const lowAttendance = [...byClass.entries()]
+      .map(([classLevel, e]) => ({ classLevel, pct: Math.round((e.present / e.total) * 100), recorded: e.total }))
+      .filter(c => c.recorded >= 10 && c.pct < 60)
+      .sort((a, b) => a.pct - b.pct);
+
+    // Dues: finished months only (a month's fee becomes due after it ends),
+    // last 12, never before the student's admission month.
+    const finishedMonths: string[] = [];
+    {
+      const [cy, cm] = monthPrefix.split('-').map(Number);
+      for (let i = 1; i <= 12; i++) {
+        const d = new Date(cy, cm - 1 - i, 1);
+        finishedMonths.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}`);
+      }
+    }
+    const paidByKey = new Map<string, number>();
+    for (const tx of transactions || []) {
+      if (tx.type !== 'INCOME' || !tx.studentId) continue;
+      const key = `${tx.studentId}__${normFeeMonth(tx)}`;
+      paidByKey.set(key, (paidByKey.get(key) || 0) + (Number(tx.amount) || 0));
+    }
+    const expectedById = new Map<string, number>();
+    for (const p of duesSummary.profiles || []) {
+      if (p.monthlyExpected > 0) {
+        expectedById.set(p.student.id, p.monthlyExpected);
+        if (p.student.studentId && p.student.studentId !== p.student.id) expectedById.set(p.student.studentId, p.monthlyExpected);
+      }
+    }
+    const longDues: Array<{ student: (typeof activeStudents)[number]; classLevel: string; dueMonths: number; dueAmount: number }> = [];
+    for (const st of activeStudents) {
+      const expected = expectedById.get(st.id) ?? (st.studentId ? expectedById.get(st.studentId) : undefined) ?? 0;
+      if (!expected) continue;
+      const admMonth = (st.admissionDate || '').slice(0, 7);
+      let dueMonths = 0;
+      let dueAmount = 0;
+      for (const m of finishedMonths) {
+        if (admMonth && m < admMonth) continue;
+        let paid = paidByKey.get(`${st.id}__${m}`) || 0;
+        if (st.studentId && st.studentId !== st.id) paid += paidByKey.get(`${st.studentId}__${m}`) || 0;
+        if (paid < expected) { dueMonths += 1; dueAmount += expected - paid; }
+      }
+      if (dueMonths >= 3) longDues.push({ student: st, classLevel: st.classLevel, dueMonths, dueAmount });
+    }
+    longDues.sort((a, b) => b.dueMonths - a.dueMonths || b.dueAmount - a.dueAmount);
+
+    // Long absence: ABSENT on each of the last 7 days the class attendance was taken.
+    const datesByClass = new Map<string, Set<string>>();
+    const recByKey = new Map<string, string>();
+    for (const r of dailyStudentAttendance || []) {
+      if (!r.date || !r.studentId) continue;
+      if (!datesByClass.has(r.classLevel)) datesByClass.set(r.classLevel, new Set());
+      datesByClass.get(r.classLevel)!.add(r.date);
+      recByKey.set(`${r.date}__${r.studentId}`, r.status);
+    }
+    const last7ByClass = new Map<string, string[]>();
+    for (const [cls, set] of datesByClass) {
+      const days = [...set].sort().reverse();
+      if (days.length >= 7) last7ByClass.set(cls, days.slice(0, 7));
+    }
+    const longAbsent: Array<{ student: (typeof activeStudents)[number]; classLevel: string }> = [];
+    for (const st of activeStudents) {
+      const days = last7ByClass.get(st.classLevel);
+      if (!days) continue;
+      const ok = days.every(d => {
+        if (recByKey.get(`${d}__${st.id}`) === 'ABSENT') return true;
+        if (st.studentId && st.studentId !== st.id) return recByKey.get(`${d}__${st.studentId}`) === 'ABSENT';
+        return false;
+      });
+      if (ok) longAbsent.push({ student: st, classLevel: st.classLevel });
+    }
+
+    return {
+      lowAttendance,
+      longDues,
+      longAbsent,
+      total: lowAttendance.length + longDues.length + longAbsent.length,
+    };
+  }, [dailyStudentAttendance, monthPrefix, transactions, duesSummary, activeStudents]);
   const monthTx = useMemo(() => {
     const m = (transactions || []).filter(t => String(t.date || '').startsWith(monthPrefix));
     return {
@@ -233,6 +347,106 @@ export const MadrasaReports: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* ================= ALERTS ================= */}
+      <section>
+        <SectionHead
+          icon={BellRing}
+          title={isBn ? 'সতর্কতা' : 'Alerts'}
+          right={alerts.total > 0 ? (isBn ? `${num(alerts.total)}টি` : `${alerts.total}`) : undefined}
+        />
+        {alerts.total === 0 ? (
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+            <span className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+              <ShieldCheck size={18} />
+            </span>
+            <div className="min-w-0">
+              <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'কোনো সতর্কতা নেই' : 'No alerts'}</div>
+              <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'রেকর্ড করা তথ্য অনুযায়ী সবকিছু নির্ধারিত সীমার মধ্যে আছে' : 'Everything recorded is within the set thresholds'}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {alerts.lowAttendance.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-amber-200 dark:border-amber-900/60 shadow-2xs flex flex-col">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="w-9 h-9 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <CalendarX2 size={17} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'কম হাজিরার শ্রেণি' : 'Low-attendance classes'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'এই মাসে, ৬০%-এর নিচে' : 'This month, below 60%'}</div>
+                  </div>
+                  <span className="text-xs font-black bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full shrink-0">{num(alerts.lowAttendance.length)}টি</span>
+                </div>
+                <ul className="space-y-1 mb-3">
+                  {alerts.lowAttendance.slice(0, 3).map(c => (
+                    <li key={c.classLevel} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">{c.classLevel}</span>
+                      <span className="font-black text-amber-600 dark:text-amber-300 shrink-0">{num(c.pct)}%</span>
+                    </li>
+                  ))}
+                  {alerts.lowAttendance.length > 3 && (
+                    <li className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? `+আরো ${num(alerts.lowAttendance.length - 3)}টি শ্রেণি` : `+${alerts.lowAttendance.length - 3} more classes`}</li>
+                  )}
+                </ul>
+                <button onClick={() => setActiveTab('attendance')} className="mt-auto w-full py-2 rounded-2xl bg-amber-600 text-white text-xs font-bold">{isBn ? 'হাজিরা দেখুন' : 'View attendance'}</button>
+              </div>
+            )}
+            {alerts.longDues.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-rose-200 dark:border-rose-900/60 shadow-2xs flex flex-col">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="w-9 h-9 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0">
+                    <Banknote size={17} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? '৩ মাস+ বকেয়া' : 'Dues over 3 months'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'গত ১২ সমাপ্ত মাসের হিসাবে' : 'Over the last 12 finished months'}</div>
+                  </div>
+                  <span className="text-xs font-black bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-2 py-1 rounded-full shrink-0">{num(alerts.longDues.length)} {isBn ? 'জন' : ''}</span>
+                </div>
+                <ul className="space-y-1 mb-3">
+                  {alerts.longDues.slice(0, 3).map(d => (
+                    <li key={d.student.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">{d.student.nameBn || d.student.name} · {d.classLevel}</span>
+                      <span className="font-black text-rose-600 dark:text-rose-300 shrink-0">{num(d.dueMonths)} {isBn ? 'মাস' : 'mo'} · {money(d.dueAmount)}</span>
+                    </li>
+                  ))}
+                  {alerts.longDues.length > 3 && (
+                    <li className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? `+আরো ${num(alerts.longDues.length - 3)} জন` : `+${alerts.longDues.length - 3} more students`}</li>
+                  )}
+                </ul>
+                <button onClick={() => setActiveTab('finance')} className="mt-auto w-full py-2 rounded-2xl bg-rose-600 text-white text-xs font-bold">{isBn ? 'বকেয়া দেখুন' : 'View dues'}</button>
+              </div>
+            )}
+            {alerts.longAbsent.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-violet-200 dark:border-violet-900/60 shadow-2xs flex flex-col">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="w-9 h-9 rounded-2xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+                    <UserX size={17} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'টানা ৭ দিন অনুপস্থিত' : 'Absent 7 days straight'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'শ্রেণির হাজিরা নেওয়া শেষ ৭ দিনে' : 'Over the last 7 days attendance was taken'}</div>
+                  </div>
+                  <span className="text-xs font-black bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 px-2 py-1 rounded-full shrink-0">{num(alerts.longAbsent.length)} {isBn ? 'জন' : ''}</span>
+                </div>
+                <ul className="space-y-1 mb-3">
+                  {alerts.longAbsent.slice(0, 3).map(a => (
+                    <li key={a.student.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">{a.student.nameBn || a.student.name}</span>
+                      <span className="font-semibold text-slate-500 dark:text-slate-400 shrink-0">{a.classLevel}</span>
+                    </li>
+                  ))}
+                  {alerts.longAbsent.length > 3 && (
+                    <li className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? `+আরো ${num(alerts.longAbsent.length - 3)} জন` : `+${alerts.longAbsent.length - 3} more students`}</li>
+                  )}
+                </ul>
+                <button onClick={() => setActiveTab('students')} className="mt-auto w-full py-2 rounded-2xl bg-violet-600 text-white text-xs font-bold">{isBn ? 'শিক্ষার্থী দেখুন' : 'View students'}</button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
       {/* ================= TODAY ================= */}
       <section>
         <SectionHead icon={CalendarCheck2} title={isBn ? 'আজকের প্রতিবেদন' : "Today's Report"} right={dateLabel} />
