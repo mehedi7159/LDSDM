@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { AppErrorBoundary } from './components/ui/AppErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // PWA freshness — make a resumed/installed app actually pick up new builds.
@@ -95,6 +96,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </React.StrictMode>
 );
