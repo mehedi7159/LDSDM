@@ -21,6 +21,7 @@ import html2canvas from 'html2canvas';
 import { FinanceTransaction } from '../../types';
 import { formatBanglaNumber, amountToBengaliWords, amountToEnglishWords } from '../../services/utils';
 import { RECEIPT_LOCAL_ONLY_NOTE } from '../../services/cloudConfirm';
+import { paymentMethodLabel } from '../../services/paymentMethod';
 import { FUND_METAS } from './types';
 import { Button } from '../ui/Button';
 
@@ -322,7 +323,7 @@ export const VoucherPrintModal: React.FC<VoucherPrintModalProps> = ({
                   <div className="text-xs text-slate-600 font-medium">
                     <span>{isBn ? 'পরিশোধ মাধ্যম: ' : 'Payment Mode: '}</span>
                     <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      {transaction.paymentMethod}
+                      {paymentMethodLabel(transaction.paymentMethod, isBn)}
                     </span>
                     {transaction.referenceNo && (
                       <span className="ml-2 font-mono text-[11px] text-slate-500">
@@ -426,7 +427,7 @@ export const VoucherPrintModal: React.FC<VoucherPrintModalProps> = ({
                 <div className="flex justify-between items-baseline pt-1">
                   <div className="text-[11px] text-slate-600">
                     <span>{isBn ? 'মাধ্যম: ' : 'Method: '}</span>
-                    <span className="font-bold text-slate-800">{transaction.paymentMethod}</span>
+                    <span className="font-bold text-slate-800">{paymentMethodLabel(transaction.paymentMethod, isBn)}</span>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-slate-600 font-bold">{isBn ? 'মোট টাকা:' : 'Total:'}</span>

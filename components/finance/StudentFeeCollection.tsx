@@ -48,6 +48,7 @@ import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DuesPrintModal } from './DuesPrintModal';
 import { computeDueHistory, monthShort, monthFull, type DueHistory } from '../../services/studentDuesHistory';
+import { paymentMethodLabel, PAYMENT_METHOD_ORDER } from '../../services/paymentMethod';
 
 // Payment Behavioral Profile Types
 export type PaymentBehaviorType = 'REGULAR' | 'DELAYED' | 'PARTIAL' | 'CHRONIC_DUE' | 'SCHOLARSHIP';
@@ -415,6 +416,23 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       .filter(tx => tx.type === 'INCOME' && (tx.category === 'STUDENT_TUITION' || tx.studentId))
       .slice(0, 30);
   }, [transactions]);
+
+  // Method-wise totals over exactly the rows the history table below shows,
+  // in the collect form's own method order; unknown codes trail at the end.
+  const methodSummary = useMemo(() => {
+    const totals = new Map<string, { amount: number; count: number }>();
+    recentFeeTransactions.forEach(tx => {
+      const code = (tx.paymentMethod || 'CASH').toUpperCase();
+      const cur = totals.get(code) || { amount: 0, count: 0 };
+      cur.amount += tx.amount || 0;
+      cur.count += 1;
+      totals.set(code, cur);
+    });
+    const ordered = PAYMENT_METHOD_ORDER.filter(c => totals.has(c));
+    const others = [...totals.keys()].filter(c => !(PAYMENT_METHOD_ORDER as readonly string[]).includes(c));
+    const totalAmount = recentFeeTransactions.reduce((s, tx) => s + (tx.amount || 0), 0);
+    return { rows: [...ordered, ...others].map(code => ({ code, ...totals.get(code)! })), totalAmount, totalCount: recentFeeTransactions.length };
+  }, [recentFeeTransactions]);
 
   // Filtered Dues Directory
   const filteredDueList = useMemo(() => {
@@ -1683,6 +1701,24 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </div>
           </div>
 
+          {recentFeeTransactions.length > 0 && (
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-4 py-3">
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">{isBn ? 'মাধ্যমভিত্তিক আদায়' : 'Collection by Method'}</p>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100">
+                  {isBn ? 'মোট' : 'Total'} · ৳{isBn ? formatBanglaNumber(methodSummary.totalAmount) : methodSummary.totalAmount.toLocaleString()}
+                  <span className="ml-1 font-semibold text-slate-500 dark:text-slate-400">({isBn ? `${formatBanglaNumber(methodSummary.totalCount)}টি` : `${methodSummary.totalCount} txns`})</span>
+                </span>
+                {methodSummary.rows.map(r => (
+                  <span key={r.code} className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    {paymentMethodLabel(r.code, isBn)} · ৳{isBn ? formatBanglaNumber(r.amount) : r.amount.toLocaleString()}
+                    <span className="ml-1 font-semibold text-slate-500 dark:text-slate-400">({isBn ? `${formatBanglaNumber(r.count)}টি` : `${r.count} txns`})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-800">
@@ -1713,7 +1749,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                         {tx.classLevel && <span className="ml-1 text-[11px] text-slate-500 dark:text-slate-400">[{tx.classLevel}]</span>}
                       </td>
                       <td className="py-3 px-3 font-mono text-slate-700 dark:text-slate-200">{tx.feeMonth || '---'}</td>
-                      <td className="py-3 px-3 text-slate-600 dark:text-slate-300">{tx.paymentMethod}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-300">{paymentMethodLabel(tx.paymentMethod, isBn)}</td>
                       <td className="py-3 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400">
                         + ৳{isBn ? formatBanglaNumber(tx.amount) : tx.amount.toLocaleString()}
                       </td>

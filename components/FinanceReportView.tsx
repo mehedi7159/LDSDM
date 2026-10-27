@@ -31,6 +31,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
+import { paymentMethodLabel } from '../services/paymentMethod';
 
 export const FinanceReportView: React.FC = () => {
   const { transactions = [], schoolProfile, language, t } = useApp();
@@ -289,7 +290,7 @@ export const FinanceReportView: React.FC = () => {
                     <td className="py-3 px-4 font-mono font-bold text-slate-700 dark:text-slate-200">{tx.voucherNo || '-'}</td>
                     <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">{tx.category}</td>
                     <td className="py-3 px-4 text-slate-700 dark:text-slate-200">{tx.payerOrPayee || '-'}</td>
-                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400 capitalize">{tx.paymentMethod || 'cash'}</td>
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{paymentMethodLabel(tx.paymentMethod, language === 'bn')}</td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       {tx.type === 'INCOME' ? `৳ ${toBanglaDigits(tx.amount)}` : '-'}
                     </td>

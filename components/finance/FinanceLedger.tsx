@@ -22,6 +22,7 @@ import {
   TransactionType 
 } from '../../types';
 import { formatBanglaNumber } from '../../services/utils';
+import { paymentMethodLabel } from '../../services/paymentMethod';
 import { FUND_METAS, FinanceFilterCategory } from './types';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -453,7 +454,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
                           {isIncome ? '+' : '-'} ৳{isBn ? formatBanglaNumber(tx.amount) : tx.amount.toLocaleString()}
                         </span>
                         <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal font-sans">
-                          {tx.paymentMethod}
+                          {paymentMethodLabel(tx.paymentMethod, isBn)}
                         </div>
                       </td>
                       <td className="py-3 px-3 text-center whitespace-nowrap">
