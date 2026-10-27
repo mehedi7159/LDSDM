@@ -11,6 +11,8 @@ import {
   Edit2, 
   Trash2, 
   Filter, 
+  LayoutGrid, 
+  List, 
   Users, 
   UserMinus, 
   UserCheck, 
@@ -142,6 +144,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'roll' | 'studentId' | 'name' | 'classLevel'>('roll');
+  const [listView, setListView] = useState<'table' | 'cards'>(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 'cards' : 'table');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -612,13 +615,173 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   if (!canView) {
-    return (
+  return (
       <AccessRestrictedView
         moduleName={language === 'bn' ? 'শিক্ষার্থী ব্যবস্থাপনা' : 'Student Management'}
         onGoToResults={() => setNavTab && setNavTab('results')}
       />
     );
   }
+
+  // Shared student card: mobile list rows + desktop grid tiles. Stateless by design.
+  const StudentCard: React.FC<{ student: Student; variant: 'row' | 'tile' }> = ({ student, variant }) => {
+    const displayName = language === 'bn' ? (student.nameBn || student.name) : student.name;
+    const altName = language === 'bn' ? (student.nameBn ? student.name : undefined) : student.nameBn;
+    return (
+      <div
+        className={variant === 'tile'
+          ? `rounded-2xl border border-gray-100 dark:border-slate-800 shadow-2xs p-4 transition-colors ${student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white dark:bg-slate-900'}`
+          : `p-3.5 transition-colors ${student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white dark:bg-slate-900'}`}
+      >
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {student.photoUrl ? (
+              <img 
+                src={student.photoUrl} 
+                alt={student.name} 
+                className="w-11 h-11 rounded-full object-cover border border-gray-200 dark:border-slate-700 shadow-2xs shrink-0" 
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-sm uppercase shadow-2xs shrink-0">
+                {displayName.charAt(0)}
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-sm text-gray-900 dark:text-white truncate">{displayName}</span>
+                <span className="text-[10px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0">
+                  {student.studentId}
+                </span>
+              </div>
+              {altName && altName !== displayName && (
+                <div className="text-xs text-gray-500 dark:text-slate-400 font-bangla truncate">{altName}</div>
+              )}
+              <div className="flex items-center gap-2 mt-1 text-xs text-gray-600 dark:text-slate-300 flex-wrap">
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
+                  {language === 'bn' ? 'রোল:' : 'Roll:'} <strong className="font-mono">{formatNumber(student.roll, language)}</strong>
+                </span>
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
+                  {language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}
+                </span>
+                {student.group && (
+                  <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded font-bold uppercase">
+                    {t(student.group.toLowerCase() as any) || student.group}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+            student.isFormer || student.status === 'Former' 
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600' 
+              : student.status === 'Inactive' 
+              ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700' 
+              : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+          }`}>
+            {student.isFormer || student.status === 'Former' 
+              ? (language === 'bn' ? 'প্রাক্তন' : 'Former') 
+              : student.status === 'Inactive' 
+              ? (language === 'bn' ? 'অনিয়মিত' : 'Inactive') 
+              : (language === 'bn' ? 'সক্রিয়' : 'Active')}
+          </span>
+        </div>
+
+        {/* Guardian / Contact info on mobile */}
+        {(student.fatherName || student.fatherNameBn || student.guardianPhone) && (
+          <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-600 dark:text-slate-300">
+            <div className="truncate">
+              <span className="text-gray-400 dark:text-slate-500 text-[11px] mr-1">{language === 'bn' ? 'পিতা:' : 'Father:'}</span>
+              <span className="font-medium text-gray-800 dark:text-slate-100">{language === 'bn' ? (student.fatherNameBn || student.fatherName || '—') : (student.fatherName || '—')}</span>
+            </div>
+            {student.guardianPhone && (
+              <a 
+                href={`tel:${student.guardianPhone}`}
+                className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px] font-semibold flex items-center gap-1 hover:underline shrink-0 ml-2"
+              >
+                📞 {student.guardianPhone}
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Mobile Actions Bar */}
+        <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => setProfileStudent(student)}
+            className="px-2.5 py-1 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Eye size={13} />
+            <span>{language === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setTcStudent(student); setIsTcModalOpen(true); }}
+            className="px-2 py-1 text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Award size={13} />
+            <span>{language === 'bn' ? 'ছাড়পত্র' : 'TC'}</span>
+          </button>
+
+          {canArchive && (
+            !student.isFormer && student.status !== 'Former' ? (
+              <>
+                <button 
+                  type="button"
+                  onClick={() => toggleActiveInactive(student)} 
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                    student.status === 'Inactive'
+                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100'
+                      : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100'
+                  }`}
+                >
+                  {student.status === 'Inactive' ? <UserCheck size={14} /> : <UserX size={14} />}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => promptMoveToFormer(student)} 
+                  className="p-1.5 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  <UserMinus size={14} />
+                </button>
+              </>
+            ) : (
+              <button 
+                type="button"
+                onClick={() => promptRestore(student)} 
+                className="px-2 py-1 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw size={13} />
+                <span>{language === 'bn' ? 'পুনর্বহাল' : 'Restore'}</span>
+              </button>
+            )
+          )}
+
+          {canEdit && (
+            <button 
+              type="button"
+              onClick={() => handleEdit(student)} 
+              className="p-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
+
+          {canDelete && (
+            <button 
+              type="button"
+              onClick={() => setStudentToDelete(student)} 
+              className="p-1.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -1097,13 +1260,33 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <Printer size={14} />
             <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
           </Button>
+          <div className="flex items-center rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => setListView('cards')}
+              title={language === 'bn' ? 'কার্ড ভিউ' : 'Card view'}
+              className={`px-3 py-2.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${listView === 'cards' ? 'bg-teal-700 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+            >
+              <LayoutGrid size={14} />
+              <span>{language === 'bn' ? 'কার্ড' : 'Cards'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setListView('table')}
+              title={language === 'bn' ? 'টেবিল ভিউ' : 'Table view'}
+              className={`px-3 py-2.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${listView === 'table' ? 'bg-teal-700 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+            >
+              <List size={14} />
+              <span>{language === 'bn' ? 'টেবিল' : 'Table'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Student List Container */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 overflow-hidden">
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className={listView === 'table' ? 'block overflow-x-auto' : 'hidden'}>
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-gray-50/80 border-b border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 uppercase font-bold text-[10px] tracking-wider">
               <tr>
@@ -1315,8 +1498,27 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           </table>
         </div>
 
+        {/* Desktop Card Grid View */}
+        <div className={listView === 'cards' ? 'hidden md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 p-4' : 'hidden'}>
+          {filteredStudents.length === 0 ? (
+            <div className="col-span-full p-4">
+              <EmptyState
+                icon={Users}
+                title={activeTab === 'former' ? t('noFormerStudents') : activeTab === 'inactive' ? (language === 'bn' ? 'কোনো অনিয়মিত শিক্ষার্থী নেই' : 'No inactive students found') : (language === 'bn' ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found')}
+                actionLabel={canAdd ? (language === 'bn' ? 'নতুন শিক্ষার্থী ভর্তি' : 'New Admission') : undefined}
+                onAction={canAdd ? () => setSubTab('admission') : undefined}
+                actionIcon={UserPlus}
+              />
+            </div>
+          ) : (
+            filteredStudents.map((student) => (
+              <StudentCard key={student.id} student={student} variant="tile" />
+            ))
+          )}
+        </div>
+
         {/* Mobile Cards View (< md) */}
-        <div className="md:hidden divide-y divide-gray-100 dark:divide-slate-800">
+        <div className={listView === 'cards' ? 'md:hidden divide-y divide-gray-100 dark:divide-slate-800' : 'hidden'}>
           {filteredStudents.length === 0 ? (
             <div className="p-4">
               <EmptyState
@@ -1329,159 +1531,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             </div>
           ) : (
             filteredStudents.map((student) => (
-              <div 
-                key={student.id} 
-                className={`p-3.5 transition-colors ${
-                  student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white dark:bg-slate-900'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {student.photoUrl ? (
-                      <img 
-                        src={student.photoUrl} 
-                        alt={student.name} 
-                        className="w-11 h-11 rounded-full object-cover border border-gray-200 dark:border-slate-700 shadow-2xs shrink-0" 
-                      />
-                    ) : (
-                      <div className="w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-sm uppercase shadow-2xs shrink-0">
-                        {student.name.charAt(0)}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-sm text-gray-900 dark:text-white truncate">{student.name}</span>
-                        <span className="text-[10px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0">
-                          {student.studentId}
-                        </span>
-                      </div>
-                      {student.nameBn && (
-                        <div className="text-xs text-gray-500 dark:text-slate-400 font-bangla truncate">{student.nameBn}</div>
-                      )}
-                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-600 dark:text-slate-300 flex-wrap">
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
-                          {language === 'bn' ? 'রোল:' : 'Roll:'} <strong className="font-mono">{formatNumber(student.roll, language)}</strong>
-                        </span>
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
-                          {language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}
-                        </span>
-                        {student.group && (
-                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded font-bold uppercase">
-                            {t(student.group.toLowerCase() as any) || student.group}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                    student.isFormer || student.status === 'Former' 
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600' 
-                      : student.status === 'Inactive' 
-                      ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700' 
-                      : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                  }`}>
-                    {student.isFormer || student.status === 'Former' 
-                      ? (language === 'bn' ? 'প্রাক্তন' : 'Former') 
-                      : student.status === 'Inactive' 
-                      ? (language === 'bn' ? 'অনিয়মিত' : 'Inactive') 
-                      : (language === 'bn' ? 'সক্রিয়' : 'Active')}
-                  </span>
-                </div>
-
-                {/* Guardian / Contact info on mobile */}
-                {(student.fatherName || student.fatherNameBn || student.guardianPhone) && (
-                  <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-600 dark:text-slate-300">
-                    <div className="truncate">
-                      <span className="text-gray-400 dark:text-slate-500 text-[11px] mr-1">{language === 'bn' ? 'পিতা:' : 'Father:'}</span>
-                      <span className="font-medium text-gray-800 dark:text-slate-100">{language === 'bn' ? (student.fatherNameBn || student.fatherName || '—') : (student.fatherName || '—')}</span>
-                    </div>
-                    {student.guardianPhone && (
-                      <a 
-                        href={`tel:${student.guardianPhone}`}
-                        className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px] font-semibold flex items-center gap-1 hover:underline shrink-0 ml-2"
-                      >
-                        📞 {student.guardianPhone}
-                      </a>
-                    )}
-                  </div>
-                )}
-
-                {/* Mobile Actions Bar */}
-                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setProfileStudent(student)}
-                    className="px-2.5 py-1 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <Eye size={13} />
-                    <span>{language === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setTcStudent(student); setIsTcModalOpen(true); }}
-                    className="px-2 py-1 text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <Award size={13} />
-                    <span>{language === 'bn' ? 'ছাড়পত্র' : 'TC'}</span>
-                  </button>
-
-                  {canArchive && (
-                    !student.isFormer && student.status !== 'Former' ? (
-                      <>
-                        <button 
-                          type="button"
-                          onClick={() => toggleActiveInactive(student)} 
-                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                            student.status === 'Inactive'
-                              ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100'
-                              : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100'
-                          }`}
-                        >
-                          {student.status === 'Inactive' ? <UserCheck size={14} /> : <UserX size={14} />}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => promptMoveToFormer(student)} 
-                          className="p-1.5 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <UserMinus size={14} />
-                        </button>
-                      </>
-                    ) : (
-                      <button 
-                        type="button"
-                        onClick={() => promptRestore(student)} 
-                        className="px-2 py-1 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <RotateCcw size={13} />
-                        <span>{language === 'bn' ? 'পুনর্বহাল' : 'Restore'}</span>
-                      </button>
-                    )
-                  )}
-
-                  {canEdit && (
-                    <button 
-                      type="button"
-                      onClick={() => handleEdit(student)} 
-                      className="p-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                  )}
-
-                  {canDelete && (
-                    <button 
-                      type="button"
-                      onClick={() => setStudentToDelete(student)} 
-                      className="p-1.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
+              <StudentCard key={student.id} student={student} variant="row" />
             ))
           )}
         </div>
