@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Trash2, RotateCcw, X, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 // Shared Recycle Bin UI — the same panel powers both entries:
 //  - the dedicated Recycle Bin page (menu tab 'recycle_bin'), and
@@ -91,30 +92,20 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
       )}
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-1.5 py-3 border-b border-slate-100 dark:border-slate-800 text-xs">
-        {[
-          { id: 'all', label: 'সকল', count: trashBin.length },
-          { id: 'student', label: 'শিক্ষার্থী', count: trashBin.filter(t => t.type === 'student').length },
-          { id: 'subject', label: 'বিষয়', count: trashBin.filter(t => t.type === 'subject').length },
-          { id: 'exam', label: 'পরীক্ষা', count: trashBin.filter(t => t.type === 'exam').length },
-          { id: 'class', label: 'শ্রেণি', count: trashBin.filter(t => t.type === 'class').length },
-          { id: 'transaction', label: 'লেনদেন', count: trashBin.filter(t => t.type === 'transaction').length },
-        ].map(f => (
-          <button
-            key={f.id}
-            onClick={() => setTrashFilter(f.id as any)}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-              trashFilter === f.id
-                ? 'bg-emerald-700 text-white font-bold shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>{f.label}</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${trashFilter === f.id ? 'bg-emerald-800 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>
-              {f.count}
-            </span>
-          </button>
-        ))}
+      <div className="py-3 border-b border-slate-100 dark:border-slate-800">
+        <SegmentedControl
+          value={trashFilter}
+          onChange={(id) => setTrashFilter(id as any)}
+          ariaLabel="রিসাইকেল বিন ফিল্টার"
+          options={[
+            { id: 'all', label: 'সকল', badge: trashBin.length },
+            { id: 'student', label: 'শিক্ষার্থী', badge: trashBin.filter(t => t.type === 'student').length },
+            { id: 'subject', label: 'বিষয়', badge: trashBin.filter(t => t.type === 'subject').length },
+            { id: 'exam', label: 'পরীক্ষা', badge: trashBin.filter(t => t.type === 'exam').length },
+            { id: 'class', label: 'শ্রেণি', badge: trashBin.filter(t => t.type === 'class').length },
+            { id: 'transaction', label: 'লেনদেন', badge: trashBin.filter(t => t.type === 'transaction').length },
+          ]}
+        />
       </div>
 
       {/* Items List */}

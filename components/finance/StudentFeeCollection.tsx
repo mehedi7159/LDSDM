@@ -49,6 +49,7 @@ import { ProgressBar } from '../ui/ProgressBar';
 import { DuesPrintModal } from './DuesPrintModal';
 import { computeDueHistory, monthShort, monthFull, type DueHistory } from '../../services/studentDuesHistory';
 import { paymentMethodLabel, PAYMENT_METHOD_ORDER } from '../../services/paymentMethod';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 // Payment Behavioral Profile Types
 export type PaymentBehaviorType = 'REGULAR' | 'DELAYED' | 'PARTIAL' | 'CHRONIC_DUE' | 'SCHOLARSHIP';
@@ -1315,7 +1316,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
           {/* Filter Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-12 gap-3">
             {/* Search */}
-            <div className="lg:col-span-5 relative">
+            <div className="lg:col-span-8 relative">
               <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -1327,7 +1328,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </div>
 
             {/* Class Filter */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-4">
               <select
                 value={dueClassFilter}
                 onChange={(e) => setDueClassFilter(e.target.value)}
@@ -1340,20 +1341,20 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
               </select>
             </div>
 
-            {/* Behavior Filter */}
-            <div className="lg:col-span-4">
-              <select
-                value={dueBehaviorFilter}
-                onChange={(e) => setDueBehaviorFilter(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              >
-                <option value="ALL">{isBn ? 'সকল শিক্ষার্থী (All)' : 'All Students'}</option>
-                <option value="DUE_ONLY">{isBn ? '🚨 শুধু বকেয়া আছে যাদের (Due Only)' : 'Due Only'}</option>
-                <option value="CHRONIC">{isBn ? '🔴 ক্রনিক বকেয়া / উচ্চ ঝুঁকি (Defaulters)' : 'Chronic Defaulters'}</option>
-                <option value="REGULAR">{isBn ? '🟢 নিয়মিত ও পরিশোধিত (Paid)' : 'Regular / Paid'}</option>
-              </select>
-            </div>
           </div>
+
+          {/* Behavior Filter — segmented (same values as the old select) */}
+          <SegmentedControl
+            value={dueBehaviorFilter}
+            onChange={setDueBehaviorFilter}
+            ariaLabel={isBn ? 'বকেয়া আচরণ ফিল্টার' : 'Dues behavior filter'}
+            options={[
+              { id: 'ALL', label: isBn ? 'সকল' : 'All' },
+              { id: 'DUE_ONLY', label: isBn ? 'বকেয়া আছে' : 'Due Only' },
+              { id: 'CHRONIC', label: isBn ? 'ক্রনিক বকেয়া' : 'Chronic' },
+              { id: 'REGULAR', label: isBn ? 'নিয়মিত' : 'Regular' },
+            ]}
+          />
 
           {/* Dues Table */}
           <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">

@@ -5,6 +5,7 @@ import type { TrashItem } from '../context/AppContext';
 import { Student } from '../types';
 import { formatNumber } from '../services/utils';
 import { Button } from './ui/Button';
+import { SegmentedControl } from './ui/SegmentedControl';
 import { 
   Plus, 
   Search, 
@@ -1260,25 +1261,16 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <Printer size={14} />
             <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
           </Button>
-          <div className="flex items-center rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shrink-0">
-            <button
-              type="button"
-              onClick={() => setListView('cards')}
-              title={language === 'bn' ? 'কার্ড ভিউ' : 'Card view'}
-              className={`px-3 py-2.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${listView === 'cards' ? 'bg-teal-700 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-            >
-              <LayoutGrid size={14} />
-              <span>{language === 'bn' ? 'কার্ড' : 'Cards'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setListView('table')}
-              title={language === 'bn' ? 'টেবিল ভিউ' : 'Table view'}
-              className={`px-3 py-2.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${listView === 'table' ? 'bg-teal-700 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-            >
-              <List size={14} />
-              <span>{language === 'bn' ? 'টেবিল' : 'Table'}</span>
-            </button>
+          <div className="shrink-0">
+            <SegmentedControl
+              value={listView}
+              onChange={(id) => setListView(id as 'table' | 'cards')}
+              ariaLabel={language === 'bn' ? 'তালিকা ভিউ' : 'List view'}
+              options={[
+                { id: 'cards', label: language === 'bn' ? 'কার্ড' : 'Cards', icon: <LayoutGrid size={14} />, title: language === 'bn' ? 'কার্ড ভিউ' : 'Card view' },
+                { id: 'table', label: language === 'bn' ? 'টেবিল' : 'Table', icon: <List size={14} />, title: language === 'bn' ? 'টেবিল ভিউ' : 'Table view' },
+              ]}
+            />
           </div>
         </div>
       </div>
