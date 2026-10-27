@@ -366,7 +366,7 @@ export const MadrasaReports: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {alerts.lowAttendance.length > 0 && (
+            {alerts.lowAttendance.length > 0 ? (
               <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-amber-200 dark:border-amber-900/60 shadow-2xs flex flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">
@@ -391,8 +391,22 @@ export const MadrasaReports: React.FC = () => {
                 </ul>
                 <button onClick={() => setActiveTab('attendance')} className="mt-auto w-full py-2 rounded-2xl bg-amber-600 text-white text-xs font-bold">{isBn ? 'হাজিরা দেখুন' : 'View attendance'}</button>
               </div>
+            ) : (
+              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs flex-col">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <ShieldCheck size={17} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'কম হাজিরার শ্রেণি' : 'Low-attendance classes'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'এই মাসে, ৬০%-এর নিচে' : 'This month, below 60%'}</div>
+                  </div>
+                  <span className="text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-full shrink-0">{isBn ? 'ঠিক আছে' : 'OK'}</span>
+                </div>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{isBn ? 'এই মাসে কোনো শ্রেণির হাজিরা ৬০%-এর নিচে নামেনি।' : 'No class is below 60% attendance this month.'}</p>
+              </div>
             )}
-            {alerts.longDues.length > 0 && (
+            {alerts.longDues.length > 0 ? (
               <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-rose-200 dark:border-rose-900/60 shadow-2xs flex flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0">
@@ -417,8 +431,22 @@ export const MadrasaReports: React.FC = () => {
                 </ul>
                 <button onClick={() => setActiveTab('finance')} className="mt-auto w-full py-2 rounded-2xl bg-rose-600 text-white text-xs font-bold">{isBn ? 'বকেয়া দেখুন' : 'View dues'}</button>
               </div>
+            ) : (
+              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs flex-col">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <ShieldCheck size={17} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? '৩ মাস+ বকেয়া' : 'Dues over 3 months'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'গত ১২ সমাপ্ত মাসের হিসাবে' : 'Over the last 12 finished months'}</div>
+                  </div>
+                  <span className="text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-full shrink-0">{isBn ? 'ঠিক আছে' : 'OK'}</span>
+                </div>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{isBn ? '৩ মাস বা তার বেশি বকেয়া কারো নেই।' : 'Nobody has dues of 3 months or more.'}</p>
+              </div>
             )}
-            {alerts.longAbsent.length > 0 && (
+            {alerts.longAbsent.length > 0 ? (
               <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-violet-200 dark:border-violet-900/60 shadow-2xs flex flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
@@ -442,6 +470,20 @@ export const MadrasaReports: React.FC = () => {
                   )}
                 </ul>
                 <button onClick={() => setActiveTab('students')} className="mt-auto w-full py-2 rounded-2xl bg-violet-600 text-white text-xs font-bold">{isBn ? 'শিক্ষার্থী দেখুন' : 'View students'}</button>
+              </div>
+            ) : (
+              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs flex-col">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <ShieldCheck size={17} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'টানা ৭ দিন অনুপস্থিত' : 'Absent 7 days straight'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'শ্রেণির হাজিরা নেওয়া শেষ ৭ দিনে' : 'Over the last 7 days attendance was taken'}</div>
+                  </div>
+                  <span className="text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-full shrink-0">{isBn ? 'ঠিক আছে' : 'OK'}</span>
+                </div>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{isBn ? 'টানা ৭ দিন অনুপস্থিত কেউ নেই।' : 'Nobody has been absent 7 days straight.'}</p>
               </div>
             )}
           </div>
