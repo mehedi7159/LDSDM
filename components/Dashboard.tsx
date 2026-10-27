@@ -1072,24 +1072,27 @@ export const Dashboard = () => {
         title={language === 'bn' ? 'প্রতিবেদন' : 'Reports'}
         icon={FileSpreadsheet}
         iconTone="indigo"
-        bodyClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5"
+        bodyClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
       >
         {[
-          { tab: 'admin_reports', bn: 'প্রাতিষ্ঠানিক রিপোর্ট', en: 'Institutional Reports', icon: Building2 },
-          { tab: 'finance_reports', bn: 'আর্থিক রিপোর্ট', en: 'Finance Reports', icon: Wallet },
-          { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck },
-          { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users },
-          { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen }
+          { tab: 'admin_reports', bn: 'প্রাতিষ্ঠানিক রিপোর্ট', en: 'Institutional Reports', icon: Building2, box: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300', hover: 'hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30' },
+          { tab: 'finance_reports', bn: 'আর্থিক রিপোর্ট', en: 'Finance Reports', icon: Wallet, box: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300', hover: 'hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30' },
+          { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck, box: 'bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-300', hover: 'hover:border-teal-300 dark:hover:border-teal-600 hover:bg-teal-50/60 dark:hover:bg-teal-950/30' },
+          { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users, box: 'bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-300', hover: 'hover:border-sky-300 dark:hover:border-sky-600 hover:bg-sky-50/60 dark:hover:bg-sky-950/30' },
+          { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen, box: 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300', hover: 'hover:border-amber-300 dark:hover:border-amber-600 hover:bg-amber-50/60 dark:hover:bg-amber-950/30' }
         ].map(r => {
           const RIcon = r.icon;
           return (
             <button
               key={r.tab}
+              data-report-tile={r.tab}
               onClick={() => setActiveTab(r.tab)}
-              className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30 transition-all text-left cursor-pointer"
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/60 ${r.hover} transition-all text-center cursor-pointer`}
             >
-              <RIcon size={16} className="text-indigo-600 dark:text-indigo-300 shrink-0" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{language === 'bn' ? r.bn : r.en}</span>
+              <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${r.box}`}>
+                <RIcon size={22} />
+              </span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">{language === 'bn' ? r.bn : r.en}</span>
             </button>
           );
         })}
