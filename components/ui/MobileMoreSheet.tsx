@@ -16,7 +16,8 @@ import {
   LogOut,
   Sliders,
   FileSpreadsheet,
-  QrCode
+  QrCode,
+  Trash2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTheme, ACCENT_THEMES } from '../../context/ThemeContext';
@@ -86,6 +87,12 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
       title: isBn ? 'ডাটা সুরক্ষা ও ব্যাকআপ হাব' : 'Data Backup & Safety',
       subtitle: isBn ? 'ক্লাউড ও লোকাল ব্যাকআপ' : 'Export & Recovery',
       icon: ShieldCheck
+    },
+    {
+      id: 'recycle_bin',
+      title: isBn ? 'রিসাইকেল বিন' : 'Recycle Bin',
+      subtitle: isBn ? 'মুছে ফেলা তথ্য ফিরিয়ে আনুন' : 'Restore deleted items',
+      icon: Trash2
     },
     {
       id: 'settings',

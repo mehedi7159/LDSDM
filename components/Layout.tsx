@@ -33,6 +33,7 @@ import {
   CreditCard,
   Layers,
   Database,
+  Trash2,
   Megaphone,
   Search,
   Receipt,
@@ -684,6 +685,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           icon: Database, 
           subType: 'action',
           badge: 'Safe',
+          isAdminOnly: true
+        },
+        { 
+          id: 'recycle_bin', 
+          label: language === 'bn' ? 'রিসাইকেল বিন' : 'Recycle Bin', 
+          icon: Trash2, 
+          subType: 'action',
           isAdminOnly: true
         },
         { 

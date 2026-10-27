@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
+import { RecycleBinPage } from './components/RecycleBinPage';
 import { AccessRestrictedView } from './components/AccessRestrictedView';
 import { Button } from './components/ui/Button';
 import { Download, Loader2, LogOut, Smartphone } from 'lucide-react';
@@ -129,7 +130,7 @@ const AppContent = () => {
     // Principal has administrative access to analytical and management tabs.
     // Multi-role: principal held as an ADDITIONAL role counts too (union).
     if (currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal' || (effectiveRoles || []).includes('principal')) {
-      if (tab === 'backup_recovery' || tab === 'superadmin_audit') return false;
+      if (tab === 'backup_recovery' || tab === 'superadmin_audit' || tab === 'recycle_bin') return false;
       return true;
     }
 
@@ -234,6 +235,8 @@ const AppContent = () => {
       case 'branding_settings':
         return isAdmin || hasPermission('institution.settings.view');
       case 'backup_recovery':
+        return isAdmin;
+      case 'recycle_bin':
         return isAdmin;
       case 'superadmin_audit':
         return isSuperAdmin;
@@ -582,6 +585,10 @@ const AppContent = () => {
         return (isOwnerAdmin || isAdmin || isSuperAdmin) 
           ? <ReportsSettingsManager initialSubTab="backup" onNavigateTab={(tab) => setActiveTab(tab)} /> 
           : <AccessRestrictedView moduleName={language === 'bn' ? 'ডাটা সুরক্ষা ও ব্যাকআপ কেন্দ্র' : 'Data Safety & Backup Hub'} onGoToResults={() => setActiveTab('dashboard')} />;
+      case 'recycle_bin':
+        return (isOwnerAdmin || isAdmin || isSuperAdmin)
+          ? <RecycleBinPage />
+          : <AccessRestrictedView moduleName={language === 'bn' ? 'রিসাইকেল বিন' : 'Recycle Bin'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'superadmin_audit':
         return (isOwnerAdmin || isSuperAdmin) 
           ? <ReportsSettingsManager initialSubTab="audit" onNavigateTab={(tab) => setActiveTab(tab)} /> 
