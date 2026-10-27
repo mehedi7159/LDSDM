@@ -23,6 +23,9 @@ import {
   Clock,
   Phone,
   Copy,
+  MessageCircle,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   ChevronRight,
   HelpCircle,
@@ -44,6 +47,7 @@ import { feeCloudFailureMessage } from '../../services/cloudConfirm';
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DuesPrintModal } from './DuesPrintModal';
+import { computeDueHistory, monthShort, monthFull, type DueHistory } from '../../services/studentDuesHistory';
 
 // Payment Behavioral Profile Types
 export type PaymentBehaviorType = 'REGULAR' | 'DELAYED' | 'PARTIAL' | 'CHRONIC_DUE' | 'SCHOLARSHIP';
@@ -106,6 +110,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   const [dueClassFilter, setDueClassFilter] = useState<string>('ALL');
   const [dueSearchQuery, setDueSearchQuery] = useState<string>('');
   const [dueBehaviorFilter, setDueBehaviorFilter] = useState<string>('ALL');
+  const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
 
   const currentMonthStr = feeMonth;
   const todayStr = feeDate;
@@ -432,6 +437,18 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     });
   }, [studentFeeProfiles, dueClassFilter, dueBehaviorFilter, dueSearchQuery]);
 
+  // Month-wise dues history for the filtered directory (12 finished months,
+  // feeMonth-aware, admission-guarded). Arithmetic only, computed once per filter.
+  const dueHistoryById = useMemo(() => {
+    const now = new Date();
+    const asOf = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const map = new Map<string, DueHistory>();
+    for (const item of filteredDueList) {
+      map.set(item.student.id, computeDueHistory(item.student, transactions, item.monthlyExpected, asOf));
+    }
+    return map;
+  }, [filteredDueList, transactions]);
+
   // =========================================================================
   // QUICK PRESETS & SUBMIT HANDLERS
   // =========================================================================
@@ -516,6 +533,36 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     const msg = `সম্মানিত অভিভাবক, আপনার সন্তান ${s.nameBn || s.name} (শ্রেণি: ${s.classLevel})-এর ${feeMonth} মাসের ফি বাবদ ৳${item.dueThisMonth.toLocaleString()} বকেয়া রয়েছে। মাদ্রাসার পরিচালনা ও উস্তাদদের বেতন নিয়মিত রাখতে দ্রুত ফি পরিশোধের অনুরোধ করা হচ্ছে। ধন্যবাদ।`;
     navigator.clipboard.writeText(msg);
     showToast(isBn ? 'তাগাদা মেসেজ ক্লিপবোর্ডে কপি হয়েছে!' : 'Reminder notice copied to clipboard!');
+  };
+
+  // WhatsApp reminder for a dues-directory row: finished-month dues + current
+  // month due combined, so the message never says ৳0 for a current-month-only defaulter.
+  const duesWhatsappLink = (item: typeof studentFeeProfiles[0]) => {
+    const s = item.student;
+    const phone = String(s.guardianPhone || '').replace(/[^0-9]/g, '');
+    if (!phone) return null;
+    const intl = phone.startsWith('880') ? phone : '880' + phone.replace(/^0/, '');
+    const hist = dueHistoryById.get(s.id);
+    const totalMonths = (hist?.dueMonths || 0) + (item.dueThisMonth > 0 ? 1 : 0);
+    const totalAmount = (hist?.dueAmount || 0) + item.dueThisMonth;
+    if (totalMonths === 0) return null;
+    const msg = `সম্মানিত অভিভাবক, আপনার সন্তান ${s.nameBn || s.name} (শ্রেণি: ${s.classLevel})-এর ${totalMonths} মাসের ফি বাবদ মোট ৳${totalAmount.toLocaleString()} বকেয়া রয়েছে। অনুগ্রহ করে দ্রুত পরিশোধ করবেন। ধন্যবাদ।`;
+    return `https://wa.me/${intl}?text=${encodeURIComponent(msg)}`;
+  };
+
+  // Copy guardian phones of every filtered defaulter (current or past months).
+  const handleCopyAllDueNumbers = () => {
+    const phones = filteredDueList
+      .filter(item => item.dueThisMonth > 0 || (dueHistoryById.get(item.student.id)?.dueMonths || 0) > 0)
+      .map(item => item.student.guardianPhone)
+      .filter((p): p is string => !!p)
+      .join(',');
+    if (!phones) {
+      showToast(isBn ? 'কপি করার মতো কোনো নম্বর পাওয়া যায়নি।' : 'No phone numbers found.');
+      return;
+    }
+    navigator.clipboard.writeText(phones);
+    showToast(isBn ? 'বকেয়া শিক্ষার্থীদের সকল নম্বর কপি হয়েছে!' : 'Copied all due students’ numbers!');
   };
 
   // Computed Totals for Form
@@ -1218,6 +1265,15 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             {/* Print & PDF Dues Sheet */}
             <div className="flex items-center gap-2">
               <Button
+                onClick={handleCopyAllDueNumbers}
+                size="sm"
+                variant="secondary"
+                className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-xs font-bold"
+              >
+                <Copy className="w-3.5 h-3.5 mr-1.5" />
+                <span>{isBn ? 'সব নম্বর কপি' : 'Copy All Numbers'}</span>
+              </Button>
+              <Button
                 onClick={() => setIsDuesPrintOpen(true)}
                 size="sm"
                 variant="secondary"
@@ -1306,8 +1362,11 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   filteredDueList.map(item => {
                     const s = item.student;
                     const hasDue = item.dueThisMonth > 0;
+                    const hist = dueHistoryById.get(s.id);
+                    const waLink = duesWhatsappLink(item);
                     return (
-                      <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                      <React.Fragment key={s.id}>
+                      <tr className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-3">
                           <div className="font-bold text-slate-900 dark:text-white">{s.nameBn || s.name}</div>
                           <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -1363,9 +1422,81 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                                 </button>
                               </>
                             )}
+                            {waLink && (
+                              <a
+                                href={waLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={isBn ? 'WhatsApp-এ তাগাদা পাঠান' : 'Send reminder on WhatsApp'}
+                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDueId(expandedDueId === s.id ? null : s.id)}
+                              title={isBn ? 'মাসভিত্তিক ফি চিত্র দেখুন' : 'View month-wise fee history'}
+                              className="p-1 text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              {expandedDueId === s.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
                           </div>
                         </td>
                       </tr>
+                      {expandedDueId === s.id && hist && (
+                        <tr>
+                          <td colSpan={7} className="bg-slate-50/60 dark:bg-slate-800/30 px-3 py-3">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                  {isBn ? `গত ১২ সমাপ্ত মাস (${monthFull(hist.from)} ${formatBanglaNumber(Number(hist.from.split('-')[0]))} – ${monthFull(hist.to)} ${formatBanglaNumber(Number(hist.to.split('-')[0]))})` : `Last 12 finished months (${monthFull(hist.from)} ${hist.from.split('-')[0]} – ${monthFull(hist.to)} ${hist.to.split('-')[0]})`}
+                                  {hist.dueMonths > 0
+                                    ? (isBn ? ` · ${formatBanglaNumber(hist.dueMonths)} মাস বকেয়া · ৳${formatBanglaNumber(hist.dueAmount)}` : ` · ${hist.dueMonths} months due · ৳${hist.dueAmount.toLocaleString()}`)
+                                    : (isBn ? ' · সব মাস পরিশোধিত' : ' · All months paid')}
+                                  {item.dueThisMonth > 0 && (isBn ? ` + চলতি মাস ৳${formatBanglaNumber(item.dueThisMonth)}` : ` + current month ৳${item.dueThisMonth.toLocaleString()}`)}
+                                </span>
+                                {waLink && (
+                                  <a
+                                    href={waLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors"
+                                  >
+                                    {isBn ? 'WhatsApp-এ তাগাদা' : 'WhatsApp reminder'}
+                                  </a>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                                {hist.months.map(cell => (
+                                  <div
+                                    key={cell.month}
+                                    title={`${monthFull(cell.month)} ${cell.month.split('-')[0]}: ${cell.status === 'paid' ? (isBn ? 'পরিশোধিত' : 'Paid') : cell.status === 'partial' ? (isBn ? `আংশিক ৳${formatBanglaNumber(cell.paid)}` : `Partial ৳${cell.paid.toLocaleString()}`) : cell.status === 'unpaid' ? (isBn ? 'বাকি' : 'Due') : (isBn ? 'ভর্তির আগের মাস' : 'Before admission')}`}
+                                    className={`rounded-lg border px-1 py-1.5 text-center ${
+                                      cell.status === 'paid'
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                                        : cell.status === 'partial'
+                                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                                        : cell.status === 'unpaid'
+                                        ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
+                                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'
+                                    }`}
+                                  >
+                                    <div className="text-[10px] font-bold leading-tight">{monthShort(cell.month)}</div>
+                                    <div className="text-[10px] leading-tight mt-0.5">
+                                      {cell.status === 'paid' ? (isBn ? 'দেওয়া' : 'Paid') : cell.status === 'partial' ? (isBn ? `৳${formatBanglaNumber(cell.paid)}` : `৳${cell.paid.toLocaleString()}`) : cell.status === 'unpaid' ? (isBn ? 'বাকি' : 'Due') : '—'}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {isBn ? 'সবুজ = পরিশোধিত · হলুদ = আংশিক · লাল = বাকি · ধূসর = ভর্তির আগের মাস' : 'Green = paid · Amber = partial · Red = due · Grey = before admission'}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     );
                   })
                 )}
