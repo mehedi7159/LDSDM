@@ -395,6 +395,34 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     };
   }, [classStudents, savedStudentRecords]);
 
+  // Staff summary for the same date (saved records only — unmarked staff are
+  // never counted as present). Powers the metrics strip in staff mode.
+  const staffSummary = useMemo(() => {
+    const total = teachers.length;
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    let leave = 0;
+    savedStaffRecords.forEach(r => {
+      if (r.status === 'PRESENT') present++;
+      else if (r.status === 'ABSENT') absent++;
+      else if (r.status === 'LATE') late++;
+      else if (r.status === 'LEAVE') leave++;
+    });
+    const recorded = savedStaffRecords.length;
+    const percentage = recorded > 0 ? Math.round(((present + late) / recorded) * 100) : null;
+    return {
+      total, present, absent, late, leave,
+      recorded,
+      pending: Math.max(0, total - recorded),
+      percentage
+    };
+  }, [teachers, savedStaffRecords]);
+
+  // The strip follows the active mode: staff numbers in staff mode, class
+  // numbers everywhere else (students / absentees / sync).
+  const stripSummary = activeMode === 'staff' ? staffSummary : summary;
+
   // Filtered students by search
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return classStudents;
@@ -483,39 +511,41 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       )}
 
       {/* 2. Top Summary Metrics Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-500 uppercase">{isBn ? 'মোট শিক্ষার্থী' : 'Total'}</span>
-          <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(summary.total, language)}</p>
-          <span className="text-[10px] text-teal-700 font-semibold">{selectedClass}</span>
+          <span className="text-[11px] font-bold text-slate-500 uppercase">{activeMode === 'staff' ? (isBn ? 'মোট স্টাফ' : 'Total staff') : (isBn ? 'মোট শিক্ষার্থী' : 'Total')}</span>
+          <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(stripSummary.total, language)}</p>
+          <span className="text-[10px] text-teal-700 font-semibold">{activeMode === 'staff' ? (isBn ? 'শিক্ষক ও কর্মী' : 'Teachers & staff') : selectedClass}</span>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 shadow-2xs bg-emerald-50/20">
           <span className="text-[11px] font-bold text-emerald-700 uppercase">{isBn ? 'উপস্থিত' : 'Present'}</span>
-          <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.present, language) : '—'}</p>
-          {summary.pending > 0 && (
-            <span className="text-[10px] text-emerald-700 font-semibold">{isBn ? `হাজিরা বাকি ${formatNumber(summary.pending, language)} জন` : `${formatNumber(summary.pending, language)} pending`}</span>
-          )}
+          <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.present, language) : '—'}</p>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-rose-200 shadow-2xs bg-rose-50/20">
           <span className="text-[11px] font-bold text-rose-700 uppercase">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
-          <p className="text-2xl font-black text-rose-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.absent, language) : '—'}</p>
+          <p className="text-2xl font-black text-rose-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.absent, language) : '—'}</p>
           <span className="text-[10px] text-rose-700 font-semibold">{isBn ? 'অনুমতি ছাড়া' : 'Unexcused'}</span>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-amber-200 shadow-2xs bg-amber-50/20">
           <span className="text-[11px] font-bold text-amber-700 uppercase">{isBn ? 'বিলম্বিত' : 'Late'}</span>
-          <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.late, language) : '—'}</p>
+          <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.late, language) : '—'}</p>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-indigo-200 shadow-2xs bg-indigo-50/20">
           <span className="text-[11px] font-bold text-indigo-700 uppercase">{isBn ? 'ছুটি / মার্জিত' : 'Leave'}</span>
-          <p className="text-2xl font-black text-indigo-900 mt-1 font-bangla">{summary.recorded > 0 ? formatNumber(summary.leave, language) : '—'}</p>
+          <p className="text-2xl font-black text-indigo-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.leave, language) : '—'}</p>
           <span className="text-[10px] text-indigo-700 font-semibold">{isBn ? 'দরখাস্ত গৃহীত' : 'Approved Leave'}</span>
+        </div>
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-300 shadow-2xs bg-slate-50/40">
+          <span className="text-[11px] font-bold text-slate-600 uppercase">{isBn ? 'চিহ্নিত হয়নি' : 'Unmarked'}</span>
+          <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(stripSummary.pending, language)}</p>
+          <span className="text-[10px] text-slate-500 font-semibold">{stripSummary.recorded === 0 ? (isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet') : (isBn ? 'এখনো চিহ্নিত হয়নি' : 'Not marked yet')}</span>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-teal-200 shadow-2xs bg-teal-50/30">
           <span className="text-[11px] font-bold text-teal-700 uppercase">{isBn ? 'উপস্থিতির হার' : 'Rate'}</span>
-          {summary.percentage !== null ? (
+          {stripSummary.percentage !== null ? (
             <>
-              <p className="text-2xl font-black text-teal-900 mt-1 font-bangla">{formatNumber(summary.percentage, language)}%</p>
-              <span className="text-[10px] text-teal-700 font-semibold">{isBn ? `রেকর্ডকৃত ${formatNumber(summary.recorded, language)} জনের ভিত্তিতে` : `Based on ${formatNumber(summary.recorded, language)} recorded`}</span>
+              <p className="text-2xl font-black text-teal-900 mt-1 font-bangla">{formatNumber(stripSummary.percentage, language)}%</p>
+              <span className="text-[10px] text-teal-700 font-semibold">{isBn ? `রেকর্ডকৃত ${formatNumber(stripSummary.recorded, language)} জনের ভিত্তিতে` : `Based on ${formatNumber(stripSummary.recorded, language)} recorded`}</span>
             </>
           ) : (
             <p className="text-sm font-black text-amber-600 mt-1.5">{isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}</p>
