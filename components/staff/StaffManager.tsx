@@ -2172,9 +2172,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   onChange={(e) => setTeacherFormData({ ...teacherFormData, password: e.target.value })}
                   className="w-full border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 font-mono text-sm font-bold bg-white dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
-                {editingTeacher && (
-                  <p className="text-[11px] font-medium text-teal-700 dark:text-teal-400">{isBn ? 'ফাঁকা রাখলে আগের পাসওয়ার্ড অপরিবর্তিত থাকবে।' : 'Leave blank to keep the existing password unchanged.'}</p>
-                )}
 
               </div>
 
