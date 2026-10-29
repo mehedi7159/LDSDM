@@ -138,7 +138,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
     phone: '',
     email: '',
-    password: '123',
+    password: '',
     status: 'ACTIVE',
     assignedClasses: [],
     assignedSubjects: []
@@ -432,7 +432,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
       phone: '',
       email: '',
-      password: '123',
+      password: '',
       status: 'ACTIVE',
       assignedClasses: [],
       assignedSubjects: []
@@ -468,7 +468,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setFormErrors({});
     setTeacherFormData({
       ...teacher,
-      password: teacher.password || '123'
+      // Edit never prefills a password: blank keeps the old one (29 Oct 2026).
+      password: ''
     });
     setIsAddEditModalOpen(true);
   };
@@ -526,7 +527,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     }
     setFormErrors({});
 
-    const rawPassword = teacherFormData.password?.trim() || '123';
+    // Edit must never force a password: blank keeps the record's old
+    // password (29 Oct 2026 — the form used to prefill '123' and a save
+    // silently reset the account's password to it). Add still needs one.
+    const typedPassword = teacherFormData.password?.trim() || '';
+    if (!editingTeacher && !typedPassword) {
+      showToast(isBn ? 'নতুন অ্যাকাউন্টের জন্য লগইন পাসওয়ার্ড দিন' : 'Enter a login password for the new account');
+      return;
+    }
+    const passwordToSave = editingTeacher ? (typedPassword || editingTeacher.password || '') : typedPassword;
 
     const additionalRoles = formAdditionalRoles.filter(r => r !== formLoginRole);
 
@@ -536,7 +545,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         ...teacherFormData,
         name: teacherFormData.name.trim(),
         nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
-        password: rawPassword,
+        password: passwordToSave,
         additionalRoles
       } as AcademicTeacher, formLoginRole);
       // Phase 2 edit validation: a payload error must STOP the save
@@ -579,7 +588,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         designation: teacherFormData.designation || 'সহকারী শিক্ষক',
         phone: teacherFormData.phone || '',
         email: teacherFormData.email || '',
-        password: rawPassword,
+        password: passwordToSave,
         status: teacherFormData.status || 'ACTIVE',
         additionalRoles,
         assignedClasses: teacherFormData.assignedClasses || [],
@@ -2020,6 +2029,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     {DESIGNATION_OPTIONS.map(o => (
                       <option key={o.value} value={o.value}>{o.labelBn}</option>
                     ))}
+                    {/* Stored title not in the fixed list (e.g. প্রধান শিক্ষক):
+                        show it as-is instead of displaying the first option. */}
+                    {!DESIGNATION_OPTIONS.some(o => o.value === formDesignationSelect) && formDesignationSelect !== DESIGNATION_OTHER && (
+                      <option value={formDesignationSelect}>{formDesignationSelect}</option>
+                    )}
                     <option value={DESIGNATION_OTHER}>{isBn ? 'অন্যান্য (নিজে লিখুন)' : 'Other (type below)'}</option>
                   </select>
                   {formDesignationSelect === DESIGNATION_OTHER && (
@@ -2144,7 +2158,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <div className="bg-teal-50/70 p-3 rounded-2xl border border-teal-200/80 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="block font-bold text-teal-950 dark:text-teal-200 text-xs">
-                    {isBn ? 'লগইন পাসওয়ার্ড (Login Password):' : 'Login Password:'} *
+                    {isBn ? 'লগইন পাসওয়ার্ড (Login Password):' : 'Login Password:'}{editingTeacher ? '' : ' *'}
                   </label>
                   <span className="text-[10px] text-teal-700 dark:text-teal-400 bg-teal-100/70 px-2 py-0.5 rounded-full font-bold">
                     {isBn ? 'সরাসরি লগইনের জন্য' : 'For direct login'}
@@ -2152,12 +2166,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </div>
                 <input
                   type="text"
-                  required
-                  placeholder="যেমন: 123"
-                  value={teacherFormData.password || '123'}
+                  required={!editingTeacher}
+                  placeholder={editingTeacher ? (isBn ? 'ফাঁকা রাখলে আগের পাসওয়ার্ড থাকবে' : 'Leave blank to keep the old password') : (isBn ? 'পাসওয়ার্ড দিন' : 'Enter a password')}
+                  value={teacherFormData.password || ''}
                   onChange={(e) => setTeacherFormData({ ...teacherFormData, password: e.target.value })}
                   className="w-full border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 font-mono text-sm font-bold bg-white dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
+                {editingTeacher && (
+                  <p className="text-[11px] font-medium text-teal-700 dark:text-teal-400">{isBn ? 'ফাঁকা রাখলে আগের পাসওয়ার্ড অপরিবর্তিত থাকবে।' : 'Leave blank to keep the existing password unchanged.'}</p>
+                )}
 
               </div>
 

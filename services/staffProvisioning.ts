@@ -159,7 +159,8 @@ export function resolveCredentialSyncNeed(
 ): CredentialSyncNeed {
   if (!existing) return 'skipped-no-prior';
   if (!isStaffProvisioningRole(role)) return 'skipped-non-staff';
-  const passwordChanged = existing.password !== rawPassword;
+  // An empty new password is never a password change (29 Oct 2026).
+  const passwordChanged = !!rawPassword && existing.password !== rawPassword;
   const emailChanged = (existing.email?.toLowerCase() || undefined) !== cleanEmail;
   if (!passwordChanged && !emailChanged) return 'not-needed';
   const oldUsable = isProvisionableEmail(existing.email);

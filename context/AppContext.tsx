@@ -4221,7 +4221,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return { status: 'failed', reason: 'invalid-input', error: validationError };
     }
 
-    const rawPassword = updatedTeacher.password?.trim() || existing?.password || '123456';
+    // Never invent a password: blank keeps the stored one, and a record
+    // with no password anywhere stays passwordless (29 Oct 2026).
+    const rawPassword = updatedTeacher.password?.trim() || existing?.password || '';
     const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
     const cleanPhone = teacher.phone?.trim() || '';
     // Multi-role: the form passes additionalRoles on updatedTeacher;
@@ -4317,7 +4319,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         idToken: token,
         oldEmail: existing?.email?.trim().toLowerCase() || undefined,
         email: cleanEmail,
-        password: rawPassword !== existing?.password ? rawPassword : undefined,
+        password: (rawPassword && rawPassword !== existing?.password) ? rawPassword : undefined,
       });
       return { ...credential, nextTeachers, nextUsers };
     } catch {
