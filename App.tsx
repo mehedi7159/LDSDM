@@ -5,6 +5,7 @@ import { lazyWithRetry } from './utils/lazyWithRetry';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from './components/ui/ToastContainer';
+import { PwaUpdatePrompt } from './components/ui/PwaUpdatePrompt';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { RecycleBinPage } from './components/RecycleBinPage';
@@ -828,6 +829,7 @@ const App = () => {
     <AppProvider>
       <ThemeProvider>
         <AppContent />
+        <PwaUpdatePrompt />
         <ToastContainer />
       </ThemeProvider>
     </AppProvider>

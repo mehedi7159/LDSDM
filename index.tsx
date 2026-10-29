@@ -4,36 +4,37 @@ import App from './App';
 import { AppErrorBoundary } from './components/ui/AppErrorBoundary';
 
 // ---------------------------------------------------------------------------
-// PWA freshness — make a resumed/installed app actually pick up new builds.
+// PWA updates — NEVER force-reload (29 Oct 2026, permanent fix).
 //
-// Registration is deliberately NOT done here: vite-plugin-pwa
-// (registerType 'autoUpdate') injects /registerSW.js into index.html,
-// which registers /sw.js; the generated worker uses skipWaiting +
-// clientsClaim, so a discovered update activates and takes control
-// immediately. (Importing registerSW from 'virtual:pwa-register' on top
-// of that would register the same worker a second time, so this block
-// hooks the existing registration through the raw serviceWorker API.)
+// The old behaviour (registerType 'autoUpdate' + skipWaiting +
+// clientsClaim + controllerchange reload) made EVERY deploy reload
+// every open phone mid-task: the grey/white flash the owner kept
+// seeing again and again, and — when a chunk set changed under a
+// running page — the stuck white screen. A deploy must never
+// interrupt a task again, so:
 //
-// What was missing is the discovery + reaction side:
-//
-//  1. Discovery — a page that never re-navigates never re-checks sw.js.
-//     The owner resumes the installed PWA from Android recents many times
-//     a day, so we ask the existing registration to check for an update
-//     whenever the app returns to the foreground (visibilitychange →
-//     visible, and window focus) and on a 30-minute timer.
-//  2. Reaction — when a NEW worker takes control of a page that was
-//     already controlled (controllerchange after an update, as opposed
-//     to the first install claiming an uncontrolled page), reload once
-//     so the user actually sees the new build instead of the stale
-//     in-memory page.
-//
-// Loop safety is shared with utils/lazyWithRetry.ts: both mechanisms
-// reload through the same sessionStorage stamp
-// ('ldsdm_chunk_reload_stamp', 30 s window). Whoever reloads first
-// writes the stamp; the other mechanism sees a fresh stamp and stands
-// down, so the two can never stack back-to-back reloads. The first
-// install never reloads: the boot-time snapshot below sees no controller
-// on an uncontrolled page, and the initial claim is ignored.
+//  1. Discovery (unchanged) — the existing registration is asked to
+//     check for an update whenever the app returns to the foreground
+//     (visibilitychange -> visible, and window focus) and on a
+//     30-minute timer. Discovery only DOWNLOADS; it never reloads.
+//  2. Reaction (changed) — with registerType 'prompt' the new worker
+//     stops in the WAITING state instead of taking control. The
+//     watcher below announces it (flag + 'ldsdm:update-ready' event)
+//     and PwaUpdatePrompt shows a banner. Nothing reloads until the
+//     user taps "আপডেট করুন", which posts SKIP_WAITING; only then
+//     does the controllerchange handler below reload — once, stamped,
+//     at a moment the user chose. Dismissing the banner only hides it
+//     for this page session; the old version keeps working
+//     self-consistently meanwhile, so a deploy can never strand a
+//     page or lose unsaved form state again.
+//  3. Safety nets (unchanged) — lazyWithRetry still recovers genuine
+//     chunk-load failures, and AppErrorBoundary still catches render
+//     errors, so a true crash shows a recovery screen, never white.
+//     Loop safety is shared with utils/lazyWithRetry.ts through the
+//     sessionStorage stamp ('ldsdm_chunk_reload_stamp', 30 s window).
+//     The first install never reloads: the boot-time snapshot below
+//     sees no controller on an uncontrolled page, and the initial
+//     claim is ignored.
 // ---------------------------------------------------------------------------
 const PWA_RELOAD_STAMP_KEY = 'ldsdm_chunk_reload_stamp'; // shared with utils/lazyWithRetry.ts
 const PWA_RELOAD_WINDOW_MS = 30_000; // must match lazyWithRetry's RELOAD_WINDOW_MS
@@ -86,7 +87,35 @@ if ('serviceWorker' in navigator) {
   });
   window.addEventListener('focus', checkForPwaUpdate);
   window.setInterval(checkForPwaUpdate, PWA_UPDATE_CHECK_INTERVAL_MS);
+  // Waiting-worker watcher: announce a downloaded update to the banner.
+  // The banner also checks on mount, so an event fired before React
+  // mounts is never lost (flag + event + mount check).
+  const notifyUpdateReady = () => {
+    try {
+      (window as any).__ldsdmUpdateReady = true;
+      window.dispatchEvent(new CustomEvent('ldsdm:update-ready'));
+    } catch {
+      /* banner mount-check still covers this */
+    }
+  };
+  navigator.serviceWorker
+    .getRegistration()
+    .then((registration) => {
+      if (!registration) return;
+      if (registration.waiting) notifyUpdateReady();
+      registration.addEventListener('updatefound', () => {
+        const installing = registration.installing;
+        if (!installing) return;
+        installing.addEventListener('statechange', () => {
+          if (installing.state === 'installed' && registration.waiting) notifyUpdateReady();
+        });
+      });
+    })
+    .catch(() => {
+      /* no registration yet — next trigger retries */
+    });
 }
+
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

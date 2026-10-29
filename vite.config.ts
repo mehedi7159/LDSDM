@@ -17,7 +17,13 @@ export default defineConfig(({ mode }) => {
       plugins: [
         react(),
         VitePWA({
-          registerType: 'autoUpdate',
+          // 'prompt', NEVER 'autoUpdate' (29 Oct 2026): autoUpdate made
+          // every deploy force-reload every open phone mid-task (the
+          // grey/white flash, and the stuck white screen when a chunk
+          // set changed under a running page). With 'prompt' a new
+          // build only downloads into a WAITING worker; nothing reloads
+          // until the user taps update in PwaUpdatePrompt.
+          registerType: 'prompt',
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
           manifest: {
             id: '/',
