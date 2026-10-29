@@ -196,7 +196,7 @@ export const deriveRoleFromDesignation = (designation?: string | null): Designat
   const d = (designation || '').toLowerCase();
   if (!d.trim()) return 'teacher';
   if (d.includes('account') || d.includes('cashier') || d.includes('হিসাব') || d.includes('ক্যাশ')) return 'accountant';
-  if (d.includes('principal') || d.includes('অধ্যক্ষ') || d.includes('সুপারিনটেনডেন্ট') || d.includes('superintendent')) return 'principal';
+  if (d.includes('principal') || d.includes('অধ্যক্ষ') || d.includes('সুপারিনটেনডেন্ট') || d.includes('superintendent') || d.includes('প্রধান শিক্ষক')) return 'principal';
   if (d.includes('guardian') || d.includes('parent') || d.includes('অভিভাবক')) return 'guardian';
   if (
     d.includes('office') || d.includes('অফিস') || d.includes('staff') || d.includes('কর্মচারী') ||

@@ -52,10 +52,14 @@ export function roleLabelBn(role?: string | null): string {
   return ROLE_LABEL_BN[role || ''] || 'স্টাফ';
 }
 
-/** Fixed-list mapping only — null for legacy free text (fallback applies). */
+/** Fixed-list mapping only — null for legacy free text (fallback applies).
+ *  'প্রধান শিক্ষক' is the alternate Bangla title for the same post as
+ *  'অধ্যক্ষ' (29 Oct 2026: a principal record carrying it silently fell
+ *  back to teacher) — recognised here, NOT added to the SELECT. */
 export function roleForDesignation(designation?: string | null): UserRole | null {
   const d = (designation || '').trim();
   if (!d) return null;
+  if (d === 'প্রধান শিক্ষক') return 'principal';
   const exact = DESIGNATION_OPTIONS.find(o => o.value === d);
   return exact ? exact.role : null;
 }
