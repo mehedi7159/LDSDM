@@ -1136,7 +1136,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
         return found;
       }
-      const mappedRole: UserRole = isSuperAdmin ? 'super_admin' : (authRole === 'principal' ? 'principal' : authRole === 'accountant' ? 'accountant' : authRole === 'guardian' ? 'guardian' : authRole === 'staff' ? 'staff' : 'teacher');
+      // No users[] account for this Firebase user (e.g. deleted in the
+      // 29 Oct incident) — fall back to the linked teacher record's
+      // designation, exactly like the loginWithEmailOrPhone heal, instead
+      // of stamping every unmatched Firebase login as 'teacher' (which
+      // put the principal behind the mobile-only gate on desktop).
+      const linkedTeacherForAuth = pickBestStaffRecord<AcademicTeacher>(
+        teachers.filter(t => t.email && authUser.email && t.email.toLowerCase() === authUser.email.toLowerCase())
+      );
+      const mappedRole: UserRole = isSuperAdmin
+        ? 'super_admin'
+        : linkedTeacherForAuth
+          ? deriveRoleFromDesignation(linkedTeacherForAuth.designation)
+          : (authRole === 'principal' ? 'principal' : authRole === 'accountant' ? 'accountant' : authRole === 'guardian' ? 'guardian' : authRole === 'staff' ? 'staff' : 'teacher');
       return {
         id: authUser.uid,
         name: realDisplayName,
@@ -1155,7 +1167,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (found) return found;
     }
     return null;
-  }, [users, activeAppUserId, authUser, currentMember, isSuperAdmin, authRole]);
+  }, [users, activeAppUserId, authUser, currentMember, isSuperAdmin, authRole, teachers]);
 
   const userRole: UserRole | null = currentUser?.role || (authRole as UserRole) || null;
 
