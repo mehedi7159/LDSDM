@@ -76,7 +76,7 @@ import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../t
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
-import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isProvisionableEmail, isStaffProvisioningRole, shouldHealPortalLogin, resolveCredentialSyncNeed } from '../services/staffProvisioning';
+import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isProvisionableEmail, isStaffProvisioningRole, shouldHealPortalLogin, resolveCredentialSyncNeed, getStaffCanonicalEmail } from '../services/staffProvisioning';
 import { syncStaffCredentialToFirebase, type StaffCredentialSyncStatus } from '../services/staffCredentialSync';
 import { doc, onSnapshot, setDoc, getDoc, collection } from 'firebase/firestore';
 import { 
@@ -1603,15 +1603,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // staff roles only. Guardians and every failure keep the local
     // session exactly as before.
     let portalAuthed = false;
-    if (shouldHealPortalLogin(user.role, user.email, user.password, cleanPass)) {
+    const staffCanonical = getStaffCanonicalEmail(user.email, user.phone, user.id);
+    if (shouldHealPortalLogin(user.role, user.email, user.password, cleanPass, user.phone, user.id) && staffCanonical) {
       try {
-        const signed = await signInWithEmailAndPassword(auth, user.email!.trim().toLowerCase(), cleanPass);
+        const signed = await signInWithEmailAndPassword(auth, staffCanonical, cleanPass);
         setAuthUser(signed.user);
         portalAuthed = true;
       } catch (fbErr: any) {
         if (fbErr?.code === 'auth/user-not-found' || fbErr?.code === 'auth/invalid-credential') {
           try {
-            const healed = await createPrimaryFirebaseUser(auth, user.email!, cleanPass);
+            const healed = await createPrimaryFirebaseUser(auth, staffCanonical, cleanPass, user.phone, user.id);
             if (healed === 'created' && auth.currentUser) {
               setAuthUser(auth.currentUser);
               portalAuthed = true;
@@ -1620,7 +1621,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
       }
     }
-    if (!portalAuthed) setAuthUser(null);
+    if (!portalAuthed && !auth.currentUser) {
+      setAuthUser(null);
+    } else if (auth.currentUser) {
+      setAuthUser(auth.currentUser);
+    }
     setAdminEmail(user.email || '');
     setIsAdmin(isAdministrative);
     setAuthRole(user.role);
@@ -3035,10 +3040,37 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // 3. Check App Users (Admin, Principal, Teacher, Accountant, Guardian)
     // Duplicate-safe pick: a non-teacher record beats a teacher-stamped
     // duplicate of the same person (see services/roleResolution.ts).
-    const foundUser = pickAuthoritativeUser<AppUser>(users.filter(u =>
+    let foundUser = pickAuthoritativeUser<AppUser>(users.filter(u =>
       (u.email && u.email.toLowerCase() === trimmedEmail.toLowerCase()) ||
       (u.phone && u.phone.trim() === trimmedEmail.trim())
     ));
+
+    // Fallback to teachers array if not yet in users
+    if (!foundUser) {
+      const matchedTeacher = pickBestStaffRecord<AcademicTeacher>(teachers.filter(t =>
+        (t.email && t.email.toLowerCase() === trimmedEmail.toLowerCase()) ||
+        (t.phone && t.phone.trim() === trimmedEmail.trim())
+      ));
+      if (matchedTeacher) {
+        foundUser = {
+          id: matchedTeacher.id,
+          name: matchedTeacher.name,
+          nameBn: matchedTeacher.nameBn || matchedTeacher.name,
+          phone: matchedTeacher.phone || '',
+          email: matchedTeacher.email || undefined,
+          password: matchedTeacher.password || '123456',
+          role: deriveRoleFromDesignation(matchedTeacher.designation),
+          additionalRoles: sanitizeAdditionalRoles(matchedTeacher.additionalRoles, deriveRoleFromDesignation(matchedTeacher.designation)) as UserRole[],
+          designation: matchedTeacher.designation || 'সহকারী শিক্ষক',
+          assignedClasses: matchedTeacher.assignedClasses || [],
+          assignedSubjects: matchedTeacher.assignedSubjects || [],
+          status: (matchedTeacher.status?.toUpperCase() === 'PENDING') ? 'pending' : 'active',
+          createdAt: matchedTeacher.createdAt || new Date().toISOString()
+        };
+        // Auto-heal users state
+        setUsers(prev => [foundUser!, ...prev.filter(u => u.id !== foundUser!.id)]);
+      }
+    }
 
     if (foundUser) {
       // Google-only accounts: same explicit deny as the member path.
@@ -3073,25 +3105,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
       } catch {}
 
-      // Auto-provisioning, login-time self-heal (25 Oct 2026): same as
-      // step 2 — local password matched but no Firebase user yet, so
-      // create it on the primary auth and the session becomes authed.
-      // Staff roles only (principal / admin / super_admin are untouched:
-      // they already use Firebase), real emails only, verified password
-      // only. Best-effort: failure keeps the local session.
-      const healEmailStep3 = foundUser.email;
+      // Auto-provisioning & Firebase Auth session self-heal for all staff roles (email or phone)
+      const healEmailStep3 = getStaffCanonicalEmail(foundUser.email, foundUser.phone, foundUser.id);
       if (
         foundUser.password &&
         healEmailStep3 &&
-        isProvisionableEmail(healEmailStep3) &&
-        isStaffProvisioningRole(foundUser.role) &&
-        (firebaseSignInCode === 'auth/user-not-found' || firebaseSignInCode === 'auth/invalid-credential')
+        isStaffProvisioningRole(foundUser.role)
       ) {
         try {
-          const healed = await createPrimaryFirebaseUser(auth, healEmailStep3, password);
-          if (healed === 'created' && auth.currentUser) {
-            setAuthUser(auth.currentUser);
-            if (auth.currentUser.email) setAdminEmail(auth.currentUser.email);
+          try {
+            const signed = await signInWithEmailAndPassword(auth, healEmailStep3, password);
+            if (signed.user) {
+              setAuthUser(signed.user);
+              if (signed.user.email) setAdminEmail(signed.user.email);
+            }
+          } catch (signInErr: any) {
+            if (signInErr?.code === 'auth/user-not-found' || signInErr?.code === 'auth/invalid-credential') {
+              const healed = await createPrimaryFirebaseUser(auth, healEmailStep3, password, foundUser.phone, foundUser.id);
+              if (healed === 'created' && auth.currentUser) {
+                setAuthUser(auth.currentUser);
+                if (auth.currentUser.email) setAdminEmail(auth.currentUser.email);
+              }
+            }
           }
         } catch {}
       }
@@ -3872,9 +3907,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // never blocks creation, it only changes the toast, and the
       // staff member's next login still retries automatically.
       let provisioning: 'synced' | 'skipped' | 'failed' = 'skipped';
-      if (cleanEmail && rawPassword) {
+      const staffCanonical = getStaffCanonicalEmail(cleanEmail, cleanPhone, teacher.id);
+      if (staffCanonical && rawPassword) {
         try {
-          const result = await provisionStaffFirebaseUser(cleanEmail, rawPassword);
+          const result = await provisionStaffFirebaseUser(staffCanonical, rawPassword, cleanPhone, teacher.id);
           provisioning = result === 'failed' ? 'failed' : 'synced';
         } catch {
           provisioning = 'failed';
@@ -3976,8 +4012,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user';
 
   const confirmAttendanceCloudSync = async (): Promise<CloudConfirmResult> => {
+    const records = dailyAttendanceService.getAllStudentRecords();
+    setDailyStudentAttendance(records);
     const result = await confirmCloudWrite(
-      () => writeAttendanceFieldToCloud(dailyAttendanceService.getAllStudentRecords(), confirmActorName()),
+      () => writeAttendanceFieldToCloud(records, confirmActorName()),
       ATTENDANCE_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
@@ -4176,8 +4214,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (retryInFlightRef.current) return;
     const pending = readPendingConfirms();
     if (pending.length === 0) return;
-    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-    if (!auth.currentUser) return;
+    const hasSession = !!(auth.currentUser || localStorage.getItem('madrasha_active_auth_session') || localStorage.getItem('madrasha_active_app_user_id'));
+    if (!hasSession) return;
     retryInFlightRef.current = true;
     try {
       if (pending.includes('attendance')) await confirmAttendanceCloudSync();

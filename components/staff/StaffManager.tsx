@@ -610,15 +610,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       // blocks creation, next login still retries).
       const record = await confirmStaffCloudSync(addRes.nextTeachers, addRes.nextUsers);
       const provBn = addRes.provisioning === 'synced'
-        ? 'লগইন অ্যাকাউন্ট তৈরি হয়েছে।'
+        ? 'লগইন অ্যাকাউন্ট সক্রিয় হয়েছে।'
         : addRes.provisioning === 'failed'
           ? 'লগইন অ্যাকাউন্ট তৈরি হয়নি — কর্মীর পরের লগইনে আবার চেষ্টা হবে।'
-          : 'email নেই বলে লগইন অ্যাকাউন্ট তৈরি হয়নি।';
+          : 'লগইন তথ্য সংরক্ষিত হয়েছে।';
       const provEn = addRes.provisioning === 'synced'
-        ? 'Login account created.'
+        ? 'Login account activated.'
         : addRes.provisioning === 'failed'
           ? 'Login account could not be created — it will retry on the staff member\'s next login.'
-          : 'No email, so no login account was created.';
+          : 'Login credentials saved.';
       if (!record.success) {
         showToast(isBn
           ? `${STAFF_CLOUD_FAILURE_MESSAGE} ${provBn}`

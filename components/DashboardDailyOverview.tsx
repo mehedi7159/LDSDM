@@ -33,7 +33,7 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react';
 import { formatSafeDate, formatSafeTime } from '../services/utils';
-import { dailyAttendanceService } from '../services/dailyAttendanceService';
+import { dailyAttendanceService, summarizeStudentRecords } from '../services/dailyAttendanceService';
 import { CountUpNumber } from './ui/StatCard';
 import { PageHeader } from './ui/PageHeader';
 import { SectionCard } from './ui/SectionCard';
@@ -94,6 +94,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
     transactions = [], 
     feeStructures = [], 
     notices = [], 
+    dailyStudentAttendance = [],
     cloudStatus, 
     language = 'bn' 
   } = useApp();
@@ -157,8 +158,6 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
 
   // 2. Staff & Faculty Metrics
   const staffMetrics = useMemo(() => {
-    // Real counts only — a previous version invented `|| 12` teachers
-    // and `+ 4` extra staff when the lists were empty.
     const totalTeachers = teachers.length > 0 ? teachers.length : users.filter(u => u.role === 'teacher').length;
     const totalStaff = users.length > 0 ? users.length : totalTeachers;
     const teacherStudentRatio = totalTeachers > 0 
@@ -172,27 +171,25 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
     };
   }, [teachers, users, studentMetrics.active]);
 
-  // 3. Today's Attendance Pulse — RECORDED DATA ONLY (owner rule).
-  // A previous version invented today's attendance three different ways:
-  // it extrapolated exam-remark rates across the whole enrolment, or
-  // fell back to a "high-standard baseline" of 95% present when nothing
-  // was recorded. Now the card reflects ONLY today's live daily
-  // attendance records: no records → the "not taken yet" state, no
-  // percentage, no counts. Rate is over recorded entries only.
-  // Computed on every render (not memoized): the records live outside
-  // React state, and the dashboard re-renders whenever AppContext data
-  // syncs in, which is exactly when this should refresh.
-  const attendanceMetrics = (() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const liveDaySummary = dailyAttendanceService.getDaySummary(todayStr);
-    const recorded = liveDaySummary.totalStudents;
+  // 3. Today's Attendance Pulse — LIVE REACTIVE DATA from context + service
+  const attendanceMetrics = useMemo(() => {
+    const utcToday = new Date().toISOString().split('T')[0];
+    const liveDaySummary = summarizeStudentRecords(dailyStudentAttendance, todayDateStr);
+    const fallbackSummary = liveDaySummary.totalStudents === 0 && utcToday !== todayDateStr
+      ? summarizeStudentRecords(dailyStudentAttendance, utcToday)
+      : liveDaySummary;
+
+    const summary = fallbackSummary.totalStudents > 0 
+      ? fallbackSummary 
+      : dailyAttendanceService.getDaySummary(todayDateStr);
+    const recorded = summary.totalStudents;
 
     if (recorded === 0) {
       return { present: null, absent: null, rate: null, recorded: 0, isRecorded: false };
     }
 
-    const presentCount = liveDaySummary.presentCount + liveDaySummary.lateCount;
-    const absentCount = liveDaySummary.absentCount + liveDaySummary.leaveCount;
+    const presentCount = summary.presentCount + summary.lateCount;
+    const absentCount = summary.absentCount + summary.leaveCount;
     const attendanceRate = (presentCount / recorded * 100).toFixed(1);
 
     return {
@@ -202,7 +199,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
       recorded,
       isRecorded: true
     };
-  })();
+  }, [dailyStudentAttendance, todayDateStr]);
 
   // 4. Today's Income & Expense (Cash Flow)
   const todayCashFlow = useMemo(() => {

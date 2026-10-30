@@ -55,6 +55,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     teachers = [], 
     dailyStudentAttendance = [],
     dailyStaffAttendance = [],
+    confirmAttendanceCloudSync,
     exams = [], 
     remarks = [], 
     updateRemark, 
@@ -215,9 +216,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     });
 
     dailyAttendanceService.batchSaveStudentAttendance(recordsToSave);
-    // Step 3: no manual refresh — the summary strip derives from the
-    // shared context arrays, and the bridge mirrors this save into
-    // context, so it recomputes on the next render.
+    if (confirmAttendanceCloudSync) {
+      confirmAttendanceCloudSync();
+    }
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2500);
   };

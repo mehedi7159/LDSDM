@@ -57,12 +57,51 @@ export function isStaffProvisioningRole(role: string | undefined | null): role i
  * member can use, so provisioning with one would create an account
  * nobody can sign in to).
  */
+/**
+ * True for any valid email format usable with Firebase Auth.
+ */
 export function isProvisionableEmail(email: string | undefined | null): boolean {
   if (!email) return false;
   const e = email.trim().toLowerCase();
   if (!e.includes('@')) return false;
-  if (e.endsWith('@madrasha.local')) return false;
   return true;
+}
+
+/**
+ * Resolves a reliable, valid Firebase Auth email for any staff member.
+ * If a real email is available (e.g. teacher@gmail.com), returns it.
+ * If the staff member has a phone number (e.g. 01712345678), maps it to a canonical
+ * valid email: staff.{cleanPhone}@madrashasystem.com.
+ * If email ends with @madrasha.local, converts to @madrashasystem.com.
+ * If only an ID exists, maps to staff.{cleanId}@madrashasystem.com.
+ */
+export function getStaffCanonicalEmail(
+  email?: string | null,
+  phone?: string | null,
+  id?: string | null
+): string | null {
+  if (email && email.trim()) {
+    const e = email.trim().toLowerCase();
+    if (e.includes('@')) {
+      if (e.endsWith('@madrasha.local')) {
+        return e.replace('@madrasha.local', '@madrashasystem.com');
+      }
+      return e;
+    }
+  }
+  if (phone && phone.trim()) {
+    const digits = phone.replace(/[^0-9]/g, '');
+    if (digits.length >= 6) {
+      return `staff.${digits}@madrashasystem.com`;
+    }
+  }
+  if (id && id.trim()) {
+    const cleanId = id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    if (cleanId.length >= 3) {
+      return `staff.${cleanId}@madrashasystem.com`;
+    }
+  }
+  return null;
 }
 
 /** Maps a Firebase Auth error code to a provisioning outcome. */
@@ -85,18 +124,19 @@ function getSecondaryAuth(): Auth {
 
 /**
  * Creation-time path: create the Firebase user for a newly created staff
- * account via the secondary app. Never throws: every failure is logged
- * (code only, never credentials) and reported as 'failed' so the caller
- * can continue — the staff member's next login self-heals instead.
+ * account via the secondary app.
  */
 export async function provisionStaffFirebaseUser(
-  email: string,
-  password: string
+  emailOrIdentifier: string,
+  password: string,
+  phone?: string,
+  id?: string
 ): Promise<ProvisionResult> {
-  if (!isProvisionableEmail(email) || !password) return 'skipped';
+  const targetEmail = getStaffCanonicalEmail(emailOrIdentifier, phone, id);
+  if (!targetEmail || !password) return 'skipped';
   const secondaryAuth = getSecondaryAuth();
   try {
-    await createUserWithEmailAndPassword(secondaryAuth, email.trim().toLowerCase(), password);
+    await createUserWithEmailAndPassword(secondaryAuth, targetEmail.trim().toLowerCase(), password);
     return 'created';
   } catch (err: any) {
     const outcome = classifyProvisionError(err?.code);
@@ -104,8 +144,6 @@ export async function provisionStaffFirebaseUser(
     console.warn('[StaffProvisioning] Creation-time provisioning notice:', err?.code);
     return 'failed';
   } finally {
-    // Leave no stray session behind on the secondary app. Best-effort:
-    // a sign-out failure changes nothing about the created account.
     try {
       await signOut(secondaryAuth);
     } catch {}
@@ -113,26 +151,21 @@ export async function provisionStaffFirebaseUser(
 }
 
 /**
- * Portal-login heal gate (25 Oct 2026 follow-up): the portal path
- * (loginWithEmailOrPhone) matches by phone OR email and verifies only
- * the local password, so it needs the same gates as the main login's
- * self-heal. The email must come from the matched RECORD (never the
- * typed identifier, which may be a phone number), and the stored
- * password must exist and match what was typed — a wrong password or
- * a passwordless record never heals.
+ * Portal-login heal gate: checks if staff member is eligible for Firebase Auth self-heal.
+ * Supports both real emails and phone numbers.
  */
 export function shouldHealPortalLogin(
   role: string | undefined | null,
   email: string | undefined | null,
   storedPassword: string | undefined | null,
-  typedPassword: string
+  typedPassword: string,
+  phone?: string | null,
+  id?: string | null
 ): boolean {
-  return (
-    !!storedPassword &&
-    storedPassword === typedPassword &&
-    isStaffProvisioningRole(role) &&
-    isProvisionableEmail(email)
-  );
+  if (!storedPassword || storedPassword !== typedPassword) return false;
+  if (!isStaffProvisioningRole(role)) return false;
+  const canonical = getStaffCanonicalEmail(email, phone, id);
+  return Boolean(canonical);
 }
 
 export type CredentialSyncNeed =
@@ -143,46 +176,40 @@ export type CredentialSyncNeed =
   | 'skipped-no-email';
 
 /**
- * Admin-edit sync decision (25 Oct 2026 follow-up): decides whether an
- * updateTeacher edit needs a Firebase credential sync. Only credential
- * changes matter — a name/class/status edit returns 'not-needed' without
- * any server call. A sync needs at least one usable email (old for
- * lookup, new for update/create); if the email was removed but the old
- * one is still usable, the password still syncs to the old Firebase
- * user. Never invents an email.
+ * Admin-edit sync decision.
  */
 export function resolveCredentialSyncNeed(
-  existing: { password?: string; email?: string } | undefined,
+  existing: { password?: string; email?: string; phone?: string; id?: string } | undefined,
   rawPassword: string,
   cleanEmail: string | undefined,
-  role: string
+  role: string,
+  phone?: string
 ): CredentialSyncNeed {
   if (!existing) return 'skipped-no-prior';
   if (!isStaffProvisioningRole(role)) return 'skipped-non-staff';
-  // An empty new password is never a password change (29 Oct 2026).
   const passwordChanged = !!rawPassword && existing.password !== rawPassword;
   const emailChanged = (existing.email?.toLowerCase() || undefined) !== cleanEmail;
-  if (!passwordChanged && !emailChanged) return 'not-needed';
-  const oldUsable = isProvisionableEmail(existing.email);
-  const newUsable = isProvisionableEmail(cleanEmail);
-  if (!oldUsable && !newUsable) return 'skipped-no-email';
+  const phoneChanged = !!phone && existing.phone !== phone;
+  if (!passwordChanged && !emailChanged && !phoneChanged) return 'not-needed';
+  const target = getStaffCanonicalEmail(cleanEmail, phone, existing.id);
+  if (!target) return 'skipped-no-email';
   return 'sync';
 }
 
 /**
- * Login-time self-heal path: create the Firebase user on the PRIMARY
- * auth. createUserWithEmailAndPassword also signs the SDK session in as
- * the new user, which is exactly what the caller wants (the session
- * becomes authed). Never throws.
+ * Login-time self-heal path: create the Firebase user on the PRIMARY auth.
  */
 export async function createPrimaryFirebaseUser(
   primaryAuth: Auth,
-  email: string,
-  password: string
+  emailOrIdentifier: string,
+  password: string,
+  phone?: string,
+  id?: string
 ): Promise<'created' | 'already-exists' | 'failed'> {
-  if (!isProvisionableEmail(email) || !password) return 'failed';
+  const targetEmail = getStaffCanonicalEmail(emailOrIdentifier, phone, id);
+  if (!targetEmail || !password) return 'failed';
   try {
-    await createUserWithEmailAndPassword(primaryAuth, email.trim().toLowerCase(), password);
+    await createUserWithEmailAndPassword(primaryAuth, targetEmail.trim().toLowerCase(), password);
     return 'created';
   } catch (err: any) {
     const outcome = classifyProvisionError(err?.code);
@@ -191,3 +218,4 @@ export async function createPrimaryFirebaseUser(
     return 'failed';
   }
 }
+

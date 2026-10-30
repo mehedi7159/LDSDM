@@ -2,9 +2,9 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { handleAdminBootstrapApi } from './server/adminApi.js';
-import { handleStaffPasswordSyncApi } from './server/staffPasswordApi.js';
-import { handleAiAdvisorApi } from './server/aiAssistantApi.js';
+import { handleAdminBootstrapApi } from './server/adminApi.ts';
+import { handleStaffPasswordSyncApi } from './server/staffPasswordApi.ts';
+import { handleAiAdvisorApi } from './server/aiAssistantApi.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

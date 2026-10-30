@@ -26,7 +26,7 @@
  * FIREBASE_SERVICE_ACCOUNT is not configured, the handler returns a
  * clear SERVICE_ACCOUNT_REQUIRED error instead of crashing.
  */
-import { SUPER_ADMIN_EMAIL } from '../services/appConfig.js';
+import { SUPER_ADMIN_EMAIL } from '../services/appConfig.ts';
 import type { IncomingMessage, ServerResponse } from 'http';
 import {
   TokenVerificationError,
@@ -40,12 +40,12 @@ import {
   updateRestUser,
   createRestUser,
   isInvalidPasswordError,
-} from './firebaseRestAuth.js';
+} from './firebaseRestAuth.ts';
 import {
   isSyncCallerAuthorized,
   isProtectedTargetEmail,
   isUsableStaffEmail,
-} from './staffSyncPolicy.js';
+} from './staffSyncPolicy.ts';
 
 const OWNER_EMAIL = SUPER_ADMIN_EMAIL;
 
