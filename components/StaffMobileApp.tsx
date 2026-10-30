@@ -55,7 +55,8 @@ import {
   Moon,
   Lock,
   BarChart3,
-  Globe
+  Globe,
+  Settings
 } from 'lucide-react';
 
 /**
@@ -996,6 +997,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     // Step 4: staff leave request (mobile). NOT self-attendance — staff
     // attendance stays admin-only. Principal/guardian do not file leaves.
     const leaveItem: MoreItem = { id: 'leave', label: 'ছুটির আবেদন', icon: Clock, moduleKey: null };
+    const settingsItem: MoreItem = { id: 'user_settings', label: language === 'bn' ? 'সেটিংস' : language === 'ar' ? 'الإعدادات' : 'Settings', icon: Settings, moduleKey: 'user_settings' };
     const noticeBadge = notices.length > 0 ? notices.length : undefined;
     if (userRole === 'teacher') {
       return [
@@ -1004,6 +1006,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'report_attendance', label: 'হাজিরা রিপোর্ট', icon: BarChart3, moduleKey: 'teacher_report_attendance' },
         { id: 'report_result', label: 'ফলাফল রিপোর্ট', icon: Award, moduleKey: 'teacher_report_result' },
         leaveItem,
+        settingsItem,
         profileItem
       ] as MoreItem[];
     }
@@ -1011,12 +1014,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return [
         { id: 'finance_expense', label: 'খরচ এন্ট্রি', icon: Receipt, moduleKey: 'finance' },
         leaveItem,
+        settingsItem,
         profileItem
       ] as MoreItem[];
     }
     if (userRole === 'parent') {
       return [
         { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'notice_board', badge: noticeBadge },
+        settingsItem,
         profileItem
       ] as MoreItem[];
     }
@@ -1028,15 +1033,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'finance_reports', label: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports' },
         { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'notice_board', badge: noticeBadge },
         { id: 'id_cards', label: 'আইডি কার্ড', icon: CreditCard, moduleKey: 'student_id_cards' },
+        settingsItem,
         profileItem
       ] as MoreItem[];
     }
     return [
       { id: 'attendance', label: 'হাজিরা', icon: CheckSquare, moduleKey: 'attendance' },
       leaveItem,
+      settingsItem,
       profileItem
     ] as MoreItem[];
-  }, [userRole, notices.length]);
+  }, [userRole, notices.length, language]);
 
   // The More button counts as active when the open screen is one of the
   // More-sheet destinations (or the profile screen reached from it).

@@ -223,7 +223,7 @@ export const formatNumber = (num: number | string | undefined | null, lang: Lang
 };
 
 export const getAutoRemark = (gpa: number, isFail: boolean, failCount: number, lang: Language): string => {
-    const t = translations[lang];
+    const t = (translations as Record<string, typeof translations['en']>)[lang] || translations['en'];
     if (isFail) {
         if (failCount > 1) return t.remarkFailMany;
         return t.remarkFailOne;

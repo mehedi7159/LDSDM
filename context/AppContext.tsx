@@ -4984,7 +4984,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const t = (key: keyof typeof translations['en']) => {
-    return translations[language][key] || translations['en'][key] || key;
+    const dict = (translations as Record<string, Record<string, string>>)[language];
+    return dict?.[key] || translations['en'][key] || key;
   };
 
   return (

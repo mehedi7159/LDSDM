@@ -661,6 +661,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       categoryEn: '9. Settings & System',
       icon: Settings,
       items: [
+        {
+          id: 'user_settings',
+          label: language === 'bn' ? 'আমার সেটিংস' : 'My Settings',
+          icon: Settings,
+          subType: 'action'
+        },
         { 
           id: 'settings', 
           label: language === 'bn' ? 'মাদ্রাসা প্রোফাইল ও পরিচিতি' : 'Madrasah Profile Settings', 

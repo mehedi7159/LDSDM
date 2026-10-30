@@ -2,6 +2,7 @@ import { SUPER_ADMIN_EMAIL } from './services/appConfig';
 import { normalizeRoleKey, roleHomeTab } from './services/roleResolution';
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { loadUserPrefs, applyPrefPreview } from './services/userPreferences';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from './components/ui/ToastContainer';
@@ -43,6 +44,7 @@ const MasterPrincipalAiAdvisor = lazyWithRetry(() => import('./components/ai/Mas
 const StudentReportView = lazyWithRetry(() => import('./components/StudentReportView').then(m => ({ default: m.StudentReportView })));
 const StudentIDCardGenerator = lazyWithRetry(() => import('./components/StudentIDCardGenerator').then(m => ({ default: m.StudentIDCardGenerator })));
 const StaffMobileApp = lazyWithRetry(() => import('./components/StaffMobileApp').then(m => ({ default: m.StaffMobileApp })));
+const SettingsPage = lazyWithRetry(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 // Suspense fallback shown only while a lazy tab module is downloading.
 const TabLoadingFallback = () => (
@@ -115,6 +117,12 @@ const AppContent = () => {
     return (effectiveRoles || []).includes('principal');
   }, [isSuperAdmin, currentUser, currentMember, userRole, effectiveRoles]);
 
+  // Persisted display prefs (text size / corner) apply on boot so a
+  // saved Settings choice survives reloads on every page that reads them.
+  useEffect(() => {
+    applyPrefPreview(loadUserPrefs());
+  }, []);
+
   useEffect(() => {
     // Fail-safe: Automatically dismiss loading screen after 1.2s max if auth is taking time
     const timer = setTimeout(() => {
@@ -150,7 +158,7 @@ const AppContent = () => {
     const isGuardianOnlySession = (effectiveRoles || []).includes('guardian')
       && (effectiveRoles || []).every(r => r === 'guardian');
     if (isGuardianOnlySession) {
-      return tab === 'guardian_portal' || tab === 'notice_board' || tab === 'dashboard';
+      return tab === 'guardian_portal' || tab === 'notice_board' || tab === 'dashboard' || tab === 'user_settings';
     }
 
     // Public / universal tabs.
@@ -158,7 +166,7 @@ const AppContent = () => {
     // guard requires reports.view || subjects.view, so a guardian (who
     // has neither) used to pass this gate and hit a restricted wall. It
     // has its own case below mirroring the render guard.
-    if (tab === 'dashboard' || tab === 'web_results' || tab === 'student_profile' || tab === 'notice_board') {
+    if (tab === 'dashboard' || tab === 'web_results' || tab === 'student_profile' || tab === 'notice_board' || tab === 'user_settings') {
       return true;
     }
 
@@ -654,6 +662,8 @@ const AppContent = () => {
         return (isOwnerAdmin || isSuperAdmin || isAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal')
           ? <MasterPrincipalAiAdvisor onNavigateTab={(tab) => setActiveTab(tab)} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'মাস্টার প্রিন্সিপাল এআই' : 'Master AI Principal'} onGoToResults={() => setActiveTab('dashboard')} />;
+      case 'user_settings':
+        return <SettingsPage />;
       default: return <Dashboard />;
     }
   };

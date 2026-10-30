@@ -1,5 +1,5 @@
 
-export type Language = 'en' | 'bn';
+export type Language = 'en' | 'bn' | 'ar';
 
 export const translations = {
   en: {

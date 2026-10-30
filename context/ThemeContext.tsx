@@ -102,7 +102,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const saved = localStorage.getItem('ldsdm_accent_theme') as AccentThemeId;
       if (ACCENT_THEMES.some(t => t.id === saved)) return saved;
     }
-    return 'indigo';
+    return 'teal';
   });
 
   // Permanently locked to light mode
