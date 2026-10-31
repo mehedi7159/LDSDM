@@ -490,6 +490,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Handle save teacher
   const handleSaveTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Creation guard (public signup removed): only super_admin +
+    // principal may ADD a record. Anyone else reaching submit gets
+    // an honest denial — never a crash, never a silent success.
+    // Edit of an existing record passes through untouched.
+    if (!editingTeacher && !canCreateStaff) {
+      showToast(isBn ? 'শুধু সুপার অ্যাডমিন ও অধ্যক্ষ নতুন অ্যাকাউন্ট তৈরি করতে পারবেন' : 'Only super admin and principal can create new accounts');
+      return;
+    }
     if (!teacherFormData.name?.trim()) {
       showToast(isBn ? 'দয়া করে শিক্ষকের নাম প্রদান করুন' : 'Please provide staff name');
       return;
@@ -922,6 +930,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Roles/payroll/leaves/analytics actions. Directory is the entry
   // gate — anyone who reached StaffManager sees it.
   const isAdminTier = isOwnerAdmin || isAdmin || isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
+
+  // Account creation is restricted to super_admin + principal ONLY
+  // (public signup removed 31 Oct 2026). Other roles never see the
+  // Add button, and the add-path submit below refuses with a toast.
+  // Edit of an existing record is NOT affected by this guard, and
+  // neither is the pending approve/reject flow. The guard covers
+  // every designation the form offers, including guardian.
+  const canCreateStaff = isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
   const canViewAttendance = isOwnerAdmin || isSuperAdmin || hasPermission('attendance.view') || hasPermission('attendance.create');
   const canViewPayroll = isOwnerAdmin || isSuperAdmin || hasPermission('finance.view');
   const visibleTabs = tabs.filter(tab => {
@@ -999,7 +1015,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         }
       >
 <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
-            {isAdminTier && (
+            {canCreateStaff && (
             <button
               type="button"
               onClick={handleOpenAddModal}
@@ -1205,7 +1221,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   </button>
                 )}
 
-                {isAdminTier && (
+                {canCreateStaff && (
                 <button
                   type="button"
                   onClick={handleOpenAddModal}

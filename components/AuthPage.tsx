@@ -4,7 +4,6 @@ import {
   Mail, 
   Eye, 
   EyeOff, 
-  User, 
   Phone, 
   ArrowRight, 
   ArrowLeft,
@@ -43,8 +42,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     setLanguage,
     loginWithGoogle, 
     signInWithEmail, 
-    signUpWithEmail, 
-    signUpWithGoogle,
     resetPassword,
     students = [],
     classes = [],
@@ -54,8 +51,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   } = useApp();
   const { showSuccess, showError } = useTheme();
 
-  // Active view: 'gateway' (2 options), 'login' (clean login), 'register' (clean signup), 'results' (public results)
-  const [currentView, setCurrentView] = useState<'gateway' | 'login' | 'register' | 'results'>(initialView);
+  // Active view: 'gateway' (2 options), 'login' (clean login), 'results' (public results)
+  const [currentView, setCurrentView] = useState<'gateway' | 'login' | 'results'>(initialView);
 
   // Login State
   const [loginEmail, setLoginEmail] = useState('');
@@ -65,12 +62,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Register State
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regRole, setRegRole] = useState('সহকারী শিক্ষক (Teacher)');
 
   // Public Result Search State
   const [selectedExamId, setSelectedExamId] = useState<string>(() => exams[0]?.id || '');
@@ -118,37 +109,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     }
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regName || !regEmail || !regPassword) {
-      setErrorMessage(language === 'bn' ? 'অনুগ্রহ করে নাম, ইমেইল ও পাসওয়ার্ড পূরণ করুন।' : 'Please fill all required fields.');
-      return;
-    }
-    if (regPassword.length < 6) {
-      setErrorMessage(language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      const res = await signUpWithEmail(regEmail, regPassword, regName, regRole, regPhone);
-      if (res.success) {
-        setSuccessMessage(language === 'bn' 
-          ? 'অ্যাকাউন্ট নিবন্ধন সফল হয়েছে! অ্যাডমিন অনুমোদনের জন্য অপেক্ষা করুন।' 
-          : 'Registration successful! Waiting for administrator approval.');
-      } else {
-        setErrorMessage(res.error || (language === 'bn' ? 'নিবন্ধন ব্যর্থ হয়েছে।' : 'Registration failed.'));
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Registration error occurred.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleGoogleLogin = async () => {
     setIsSubmitting(true);
     setErrorMessage('');
@@ -159,29 +119,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Google Auth Error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Google sign-up: role comes from the already-picked role select,
-  // phone from the form; name/email come from the Google account.
-  // The new account is always pending until admin approval.
-  const handleGoogleSignup = async () => {
-    setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-    try {
-      const res = await signUpWithGoogle(regRole, regPhone);
-      if (res.success) {
-        setSuccessMessage(language === 'bn'
-          ? 'অ্যাকাউন্ট নিবন্ধন সফল হয়েছে! অ্যাডমিন অনুমোদনের জন্য অপেক্ষা করুন।'
-          : 'Registration successful! Waiting for administrator approval.');
-      } else {
-        setErrorMessage(res.error || (language === 'bn' ? 'নিবন্ধন ব্যর্থ হয়েছে।' : 'Registration failed.'));
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Registration error occurred.');
     } finally {
       setIsSubmitting(false);
     }
@@ -419,7 +356,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
         {/* ========================================================================= */}
         {/* VIEW 2: CLEAN & DISTRACTION-FREE LOGIN CARD                               */}
         {/* ========================================================================= */}
-        {(currentView === 'login' || currentView === 'register') && (
+        {(currentView === 'login') && (
           <div className="w-full max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300">
             
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/80">
@@ -442,36 +379,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   <Lock size={22} />
                 </div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                  {currentView === 'login' ? 'অ্যাকাউন্টে প্রবেশ করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
+                  অ্যাকাউন্টে প্রবেশ করুন
                 </h2>
-              </div>
-
-              {/* Tab Switcher */}
-              <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 mb-5">
-                <button
-                  type="button"
-                  onClick={() => { setCurrentView('login'); setErrorMessage(''); setSuccessMessage(''); }}
-                  style={currentView === 'login' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' } : undefined}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    currentView === 'login'
-                      ? 'text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
-                >
-                  লগইন
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setCurrentView('register'); setErrorMessage(''); setSuccessMessage(''); }}
-                  style={currentView === 'register' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' } : undefined}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    currentView === 'register'
-                      ? 'text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
-                >
-                  নতুন অ্যাকাউন্ট
-                </button>
               </div>
 
               {/* Alert Messages */}
@@ -572,124 +481,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                       </svg>
                       <span>Google দিয়ে প্রবেশ করুন</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* REGISTER FORM */}
-              {currentView === 'register' && (
-                <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      পূর্ণ নাম *
-                    </label>
-                    <div className="relative">
-                      <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="যেমন: মাওলানা মাহমুদুর রহমান"
-                        value={regName}
-                        onChange={(e) => setRegName(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      ইমেইল ঠিকানা *
-                    </label>
-                    <div className="relative">
-                      <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                      <input
-                        type="email"
-                        required
-                        placeholder="teacher@madrasha.edu.bd"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        মোবাইল নম্বর
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="017XXXXXXXX"
-                        value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        পাসওয়ার্ড *
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        placeholder="কমপক্ষে ৬ অক্ষর"
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      আপনার ভূমিকা / পদবী *
-                    </label>
-                    <select
-                      value={regRole}
-                      onChange={(e) => setRegRole(e.target.value)}
-                      className="w-full p-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
-                    >
-                      <option value="সহকারী শিক্ষক (Teacher)">👨‍🏫 সহকারী শিক্ষক (Teacher)</option>
-                      <option value="হিসাবরক্ষক / ক্যাশিয়ার (Accountant)">💼 হিসাবরক্ষক / ক্যাশিয়ার (Accountant)</option>
-                      <option value="অধ্যক্ষ / সুপারিনটেনডেন্ট (Principal / Superintendent)">🎓 অধ্যক্ষ / সুপারিনটেনডেন্ট (Principal / Superintendent)</option>
-                      <option value="অফিস সহকারী (Office Staff)">🏢 অফিস সহকারী (Office Staff)</option>
-                      <option value="অভিভাবক (Guardian)">👨‍👩‍👧 অভিভাবক (Guardian)</option>
-                    </select>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition cursor-pointer hover:brightness-110"
-                    style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
-                  >
-                    {isSubmitting ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <>
-                        <User size={15} />
-                        <span>অ্যাকাউন্ট নিবন্ধন করুন</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Google Sign-up (same style as the login view's Google button) */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={handleGoogleSignup}
-                      disabled={isSubmitting}
-                      className="w-full py-2.5 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold shadow-sm flex items-center justify-center gap-2.5 transition"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                      </svg>
-                      <span>Google দিয়ে নিবন্ধন করুন</span>
                     </button>
                   </div>
                 </form>
