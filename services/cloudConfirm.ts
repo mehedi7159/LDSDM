@@ -54,7 +54,7 @@
  */
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import type { DailyStudentAttendanceRecord } from './dailyAttendanceService';
+import type { DailyStudentAttendanceRecord, DailyStaffAttendanceRecord } from './dailyAttendanceService';
 import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem, StaffLeaveRecord } from '../types';
 import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../types/academic';
 
@@ -112,6 +112,7 @@ const PENDING_KEY = 'ldsdm_pending_cloud_confirms';
 
 export type PendingConfirmKind =
   | 'attendance'
+  | 'staffAttendance'
   | 'fee'
   | 'marks'
   | 'students'
@@ -179,6 +180,17 @@ export async function writeAttendanceFieldToCloud(
     writeFieldToCloud('dailyStudentAttendance', records, updatedBy),
     CONFIRM_TIMEOUT_MS,
     'attendance cloud confirm'
+  );
+}
+
+export async function writeStaffAttendanceFieldToCloud(
+  records: DailyStaffAttendanceRecord[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldToCloud('dailyStaffAttendance', records, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'staff attendance cloud confirm'
   );
 }
 

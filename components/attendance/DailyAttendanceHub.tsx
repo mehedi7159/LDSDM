@@ -56,6 +56,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     dailyStudentAttendance = [],
     dailyStaffAttendance = [],
     confirmAttendanceCloudSync,
+    confirmStaffAttendanceCloudSync,
     exams = [], 
     remarks = [], 
     updateRemark, 
@@ -75,7 +76,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '১ম শ্রেণি');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // Enrolled active students in selected class
   const classStudents = useMemo(() => {
@@ -197,8 +198,11 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     }));
   };
 
-  // Save student attendance
-  const handleSaveStudentAttendance = () => {
+  // Save student attendance — local save first (never dropped), then
+  // the cloud confirm is AWAITED: 'saved' shows only after the cloud
+  // write succeeds, otherwise the error state shows and the confirm
+  // queue keeps the records for retry.
+  const handleSaveStudentAttendance = async () => {
     setSaveStatus('saving');
     const recordsToSave: DailyStudentAttendanceRecord[] = classStudents.map(student => {
       const current = attendanceMap[student.id] || { status: 'PRESENT' };
@@ -216,15 +220,18 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     });
 
     dailyAttendanceService.batchSaveStudentAttendance(recordsToSave);
+    let confirmed = false;
     if (confirmAttendanceCloudSync) {
-      confirmAttendanceCloudSync();
+      const result = await confirmAttendanceCloudSync();
+      confirmed = result.success;
     }
-    setSaveStatus('saved');
-    setTimeout(() => setSaveStatus('idle'), 2500);
+    setSaveStatus(confirmed ? 'saved' : 'error');
+    setTimeout(() => setSaveStatus('idle'), confirmed ? 2500 : 5000);
   };
 
-  // Save staff attendance
-  const handleSaveStaffAttendance = () => {
+  // Save staff attendance — same honest pattern as the student save:
+  // local save first, then the staff cloud confirm is AWAITED.
+  const handleSaveStaffAttendance = async () => {
     setSaveStatus('saving');
     const recordsToSave: DailyStaffAttendanceRecord[] = teachers.map(teacher => {
       const current = staffAttendanceMap[teacher.id] || { status: 'PRESENT' };
@@ -243,8 +250,13 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
     dailyAttendanceService.batchSaveStaffAttendance(recordsToSave);
     // Step 3: no manual refresh — same context derivation as above.
-    setSaveStatus('saved');
-    setTimeout(() => setSaveStatus('idle'), 2500);
+    let confirmed = false;
+    if (confirmStaffAttendanceCloudSync) {
+      const result = await confirmStaffAttendanceCloudSync();
+      confirmed = result.success;
+    }
+    setSaveStatus(confirmed ? 'saved' : 'error');
+    setTimeout(() => setSaveStatus('idle'), confirmed ? 2500 : 5000);
   };
 
   // Auto-Rollup: Calculate attendance from Daily Records into Exam Remarks
@@ -623,7 +635,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2 shadow-xs"
               >
                 <Save size={16} />
-                <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত হয়েছে!' : 'Saved!') : (isBn ? 'হাজিরা সংরক্ষণ' : 'Save')}</span>
+                <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত হয়েছে!' : 'Saved!') : saveStatus === 'error' ? (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন' : 'Save failed — try again') : (isBn ? 'হাজিরা সংরক্ষণ' : 'Save')}</span>
               </Button>
             </>
           )}
@@ -635,7 +647,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2 shadow-xs"
             >
               <Save size={16} />
-              <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত!' : 'Saved!') : (isBn ? 'স্টাফ হাজিরা সংরক্ষণ' : 'Save Staff')}</span>
+              <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত!' : 'Saved!') : saveStatus === 'error' ? (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন' : 'Save failed — try again') : (isBn ? 'স্টাফ হাজিরা সংরক্ষণ' : 'Save Staff')}</span>
             </Button>
           )}
 

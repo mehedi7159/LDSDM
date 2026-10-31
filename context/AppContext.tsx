@@ -76,7 +76,7 @@ import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../t
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
 import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
-import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isProvisionableEmail, isStaffProvisioningRole, shouldHealPortalLogin, resolveCredentialSyncNeed, getStaffCanonicalEmail } from '../services/staffProvisioning';
+import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isStaffProvisioningRole, shouldHealPortalLogin, resolveCredentialSyncNeed, getStaffCanonicalEmail } from '../services/staffProvisioning';
 import { syncStaffCredentialToFirebase, type StaffCredentialSyncStatus } from '../services/staffCredentialSync';
 import { doc, onSnapshot, setDoc, getDoc, collection } from 'firebase/firestore';
 import { 
@@ -102,6 +102,7 @@ import {
 import { confirmDeleteCloudSync } from '../services/staffDeletion';
 import {
   writeAttendanceFieldToCloud,
+  writeStaffAttendanceFieldToCloud,
   writeTransactionsFieldToCloud,
   writeMarksFieldToCloud,
   writeStudentsFieldToCloud,
@@ -326,6 +327,7 @@ interface AppContextType extends AppState {
   deleteClass: (id: string) => void;
   addTransaction: (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
   confirmAttendanceCloudSync: () => Promise<CloudConfirmResult>;
+  confirmStaffAttendanceCloudSync: () => Promise<CloudConfirmResult>;
   confirmFeeCloudSync: (nextTransactions?: FinanceTransaction[], failureMessage?: string) => Promise<CloudConfirmResult>;
   confirmMarksCloudSync: (nextMarks?: MarkRecord[]) => Promise<CloudConfirmResult>;
   confirmStudentsCloudSync: (nextStudents?: Student[]) => Promise<CloudConfirmResult>;
@@ -2963,7 +2965,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // 2. Check Database / Local Storage registered members (Non-admin local portal access)
     try {
       const allMembers = await getAllInstitutionMembers('inst_madrasah_primary');
-      const member = allMembers.find(m => m.email.toLowerCase() === trimmedEmail.toLowerCase());
+      const member = allMembers.find(m =>
+        (m.email && m.email.toLowerCase() === trimmedEmail.toLowerCase()) ||
+        (m.phone && m.phone.trim() === trimmedEmail.trim())
+      );
 
       if (member) {
         // Google-only members have no password: the check below skips
@@ -3006,20 +3011,22 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         // member passed the local password check but step 1 failed, so
         // they have no Firebase user yet. Create it now on the primary
         // auth with the verified password, and the session becomes
-        // authed (cloud writes pass the rule). Staff roles only, real
-        // emails only, and only when a stored password actually matched
-        // — a wrong password returns early above and never reaches here.
-        // Best-effort: any failure just keeps the local session.
-        const healEmailStep2 = member.email;
+        // authed (cloud writes pass the rule). Staff roles only, and
+        // only when a stored password actually matched — a wrong
+        // password returns early above and never reaches here.
+        // Canonical email first: a phone identifier (or a synthetic
+        // @madrasha.local address) must NOT reach the old @-only guard,
+        // or phone-only members never heal. Best-effort: any failure
+        // just keeps the local session.
+        const healEmailStep2 = getStaffCanonicalEmail(member.email, member.phone, member.uid);
         if (
           member.password &&
           healEmailStep2 &&
-          isProvisionableEmail(healEmailStep2) &&
           isStaffProvisioningRole(normalizeRoleKey(sessionMember.roleId)) &&
           (firebaseSignInCode === 'auth/user-not-found' || firebaseSignInCode === 'auth/invalid-credential')
         ) {
           try {
-            const healed = await createPrimaryFirebaseUser(auth, healEmailStep2, password);
+            const healed = await createPrimaryFirebaseUser(auth, healEmailStep2, password, member.phone, member.uid);
             if (healed === 'created' && auth.currentUser) {
               setAuthUser(auth.currentUser);
               if (auth.currentUser.email) setAdminEmail(auth.currentUser.email);
@@ -4029,6 +4036,24 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return result;
   };
 
+  const confirmStaffAttendanceCloudSync = async (): Promise<CloudConfirmResult> => {
+    const records = dailyAttendanceService.getAllStaffRecords();
+    setDailyStaffAttendance(records);
+    const result = await confirmCloudWrite(
+      () => writeStaffAttendanceFieldToCloud(records, confirmActorName()),
+      ATTENDANCE_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('staffAttendance');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('staffAttendance');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
   const confirmFeeCloudSync = async (
     nextTransactions?: FinanceTransaction[],
     failureMessage?: string
@@ -4219,6 +4244,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     retryInFlightRef.current = true;
     try {
       if (pending.includes('attendance')) await confirmAttendanceCloudSync();
+      if (pending.includes('staffAttendance')) await confirmStaffAttendanceCloudSync();
       if (pending.includes('fee')) await confirmFeeCloudSync();
       if (pending.includes('marks')) await confirmMarksCloudSync();
       if (pending.includes('students')) await confirmStudentsCloudSync();
@@ -5081,6 +5107,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       deleteClass,
       addTransaction,
       confirmAttendanceCloudSync,
+      confirmStaffAttendanceCloudSync,
       confirmFeeCloudSync,
       confirmMarksCloudSync,
       confirmStudentsCloudSync,

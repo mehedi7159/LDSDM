@@ -22,9 +22,12 @@
  * Security notes:
  *  - Passwords are NEVER logged, stored, or printed here. They only pass
  *    through to the Firebase SDK call.
- *  - Only real emails are provisioned. Phone-only staff (no email, or a
- *    synthetic @madrasha.local member-doc address) are skipped — an email
- *    is never invented.
+ *  - Staff without a usable email are provisioned under a canonical
+ *    address (getStaffCanonicalEmail): phone -> staff.<digits>@
+ *    madrashasystem.com, id -> staff.<id>@madrashasystem.com, and a
+ *    synthetic @madrasha.local address converts to @madrashasystem.com.
+ *    The canonical address is only a Firebase Auth login name, never
+ *    presented as the person's real mailbox.
  *  - A Firebase password always equals the app password stored for that
  *    account, so staff keep the exact same credentials.
  *  - firestore.rules is untouched: read-open / write-auth-only still
