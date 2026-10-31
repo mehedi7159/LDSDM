@@ -40,7 +40,7 @@ import { SubjectManager } from '../SubjectManager';
 import { DailyAttendanceHub } from '../attendance/DailyAttendanceHub';
 import { TeacherSalaryEntry } from '../finance/TeacherSalaryEntry';
 import { AcademicTeacher } from '../../types/academic';
-import { FinanceTransaction, UserRole, StaffLeaveRecord } from '../../types';
+import { FinanceTransaction, UserRole, StaffLeaveRecord, AppUser } from '../../types';
 import { resolveApprovalRoleId, resolveStaffRole, roleLabelBn, DESIGNATION_OPTIONS, DESIGNATION_OTHER, isMappedDesignation } from '../../services/staffRole';
 import { deleteInstitutionMembers } from '../../services/rbac';
 import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, SALARY_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
@@ -657,13 +657,36 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setApproveSubjects(staff.assignedSubjects || []);
   };
 
+  // Approval cloud-confirm (rank #1 fix, 31 Oct 2026): the confirmed
+  // main_store lists must CONTAIN the approved records. The old code
+  // confirmed map-only lists built from stale closure state, so a
+  // member-only applicant was absent from both lists and the confirm
+  // "succeeded" while cloud never received the teacher or the user.
+  // Append-if-absent only: updateTeacher already updated any MATCHED
+  // record (active status, normalized credentials) — the only gap is
+  // absence, and only absence is closed here.
+  function appendIfAbsent<T>(list: T[], record: T | undefined, matches: (item: T) => boolean): T[] {
+    if (!record) return list;
+    return list.some(matches) ? list : [...list, record];
+  }
+
   const handleConfirmApproval = async () => {
     if (!approvingStaff || isApproving) return;
     const staff = approvingStaff;
     setIsApproving(true);
     try {
+      let approvedTeacher: AcademicTeacher | undefined;
+      let approvedUser: AppUser | undefined;
       if (approveMember) {
-        await approveMember(staff.id, resolveApprovalRoleId(staff, users), approveClasses, approveSubjects);
+        const approvalResult = await approveMember(staff.id, resolveApprovalRoleId(staff, users), approveClasses, approveSubjects);
+        // A failed member approval stops here — never a success toast
+        // while the application was not actually approved.
+        if (!approvalResult.success) {
+          showToast(approvalResult.message || (isBn ? 'অনুমোদন সংরক্ষণ করা যায়নি — আবার চেষ্টা করুন।' : 'Approval could not be saved — please try again.'));
+          return;
+        }
+        approvedTeacher = approvalResult.approvedTeacher;
+        approvedUser = approvalResult.approvedUser;
       }
       const updateResult = await updateTeacher({ ...staff, status: 'ACTIVE', assignedClasses: approveClasses, assignedSubjects: approveSubjects });
       // Phase 2: a validation error must stop approval here — never
@@ -673,31 +696,40 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         return;
       }
       // updateTeacher already maps the linked user to 'active' for
-      // id/email/phone matches; keep the handler's id-or-email rule
-      // on top of its returned list when available.
+      // id/email/phone matches; the approved records are appended
+      // only when absent (member-only applicants).
       const mergedUsers = updateResult.nextUsers
         ? updateResult.nextUsers.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u)
-        : undefined;
-      if (mergedUsers) {
-        setUsers(mergedUsers);
-      } else {
-        setUsers(prev => prev.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u));
-      }
+        : users.map(u => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u);
+      const confirmedTeachers = appendIfAbsent(
+        updateResult.nextTeachers ?? teachers,
+        approvedTeacher,
+        t => t.id === approvedTeacher!.id || (approvedTeacher!.email && t.email?.toLowerCase() === approvedTeacher!.email.toLowerCase()) || (approvedTeacher!.phone && t.phone === approvedTeacher!.phone)
+      );
+      const confirmedUsers = appendIfAbsent(
+        mergedUsers,
+        approvedUser,
+        u => u.id === approvedUser!.id || (approvedUser!.email && u.email?.toLowerCase() === approvedUser!.email.toLowerCase())
+      );
+      setTeachers(confirmedTeachers);
+      setUsers(confirmedUsers);
       try {
         const stored = localStorage.getItem('madrasha_app_users');
         if (stored) {
           const list = JSON.parse(stored);
           const updated = list.map((u: any) => (u.id === staff.id || (staff.email && u.email?.toLowerCase() === staff.email.toLowerCase())) ? { ...u, status: 'active' } : u);
-          localStorage.setItem('madrasha_app_users', JSON.stringify(updated));
+          const finalList = approvedUser && !updated.some((u: any) => u.id === approvedUser!.id || (approvedUser!.email && u.email?.toLowerCase() === approvedUser!.email.toLowerCase())) ? [...updated, approvedUser] : updated;
+          localStorage.setItem('madrasha_app_users', JSON.stringify(finalList));
         }
       } catch (e) {}
 
       if (refreshPendingMembers) {
         await refreshPendingMembers();
       }
-      // confirmStaffCloudSync falls back to the refs when a list is
-      // undefined, so the merged users list is always confirmed.
-      const confirmResult = await confirmStaffCloudSync(updateResult.nextTeachers, mergedUsers);
+      // The confirmed lists are what reaches cloud: success toast
+      // ONLY after this write confirms. On failure the 'staff'
+      // pending-confirm queue retries on start/foreground/online.
+      const confirmResult = await confirmStaffCloudSync(confirmedTeachers, confirmedUsers);
       if (!confirmResult.success) {
         showToast(confirmResult.message || STAFF_CLOUD_FAILURE_MESSAGE);
         return;

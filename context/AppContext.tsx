@@ -394,7 +394,7 @@ interface AppContextType extends AppState {
   pendingMembers: InstitutionMember[];
   refreshPendingMembers: () => Promise<void>;
   pendingMembersError: string | null;
-  approveMember: (uid: string, roleId?: string, assignedClasses?: string[], assignedSubjects?: string[]) => Promise<{ success: boolean; message?: string }>;
+  approveMember: (uid: string, roleId?: string, assignedClasses?: string[], assignedSubjects?: string[]) => Promise<{ success: boolean; message?: string; approvedTeacher?: AcademicTeacher; approvedUser?: AppUser }>;
   rejectMember: (uid: string) => Promise<{ success: boolean; message?: string }>;
   t: (key: keyof typeof translations['en']) => string;
 }
@@ -949,7 +949,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     roleId?: string, 
     assignedClasses: string[] = [], 
     assignedSubjects: string[] = []
-  ): Promise<{ success: boolean; message?: string }> => {
+  ): Promise<{ success: boolean; message?: string; approvedTeacher?: AcademicTeacher; approvedUser?: AppUser }> => {
     try {
       const all = await getAllInstitutionMembers('inst_madrasah_primary');
       const target = all.find(m => m.uid === uid);
@@ -972,6 +972,65 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
       // Update in users state
       const cleanRole: UserRole = (effectiveRole.replace('role_', '')) as UserRole;
+      // Approval cloud-confirm (rank #1 fix, 31 Oct 2026): the caller
+      // confirms these exact records into main_store. The old code
+      // confirmed map-only lists built from stale closure state, so a
+      // member-only applicant was absent from both lists and the
+      // confirm "succeeded" while cloud never received the records.
+      // These records mirror the local-state updaters below (same
+      // predicates, same construction, same Google-only password rule
+      // — never a stamped '123456').
+      const foundApprovedUser = users.find(u => u.id === uid || (target?.email && u.email?.toLowerCase() === target.email.toLowerCase()));
+      let approvedUser: AppUser | undefined;
+      if (foundApprovedUser) {
+        approvedUser = {
+          ...foundApprovedUser,
+          status: 'active',
+          role: cleanRole,
+          assignedClasses: assignedClasses.length > 0 ? assignedClasses : foundApprovedUser.assignedClasses
+        };
+      } else if (target) {
+        const approvedGoogleOnly = isGoogleOnlyAccount(target);
+        const approvedPassword = approvalPasswordFor(target);
+        approvedUser = {
+          id: target.uid,
+          name: target.displayName || 'User',
+          nameBn: target.displayName || 'ব্যবহারকারী',
+          phone: target.phone || '',
+          email: target.email || undefined,
+          ...(approvedGoogleOnly ? { authProvider: 'google' as const } : {}),
+          ...(approvedPassword !== undefined ? { password: approvedPassword } : {}),
+          role: cleanRole,
+          assignedClasses,
+          status: 'active',
+          createdAt: target.createdAt || new Date().toISOString()
+        };
+      }
+      let approvedTeacher: AcademicTeacher | undefined;
+      if (cleanRole === 'teacher' && target) {
+        const existsApprovedTeacher = teachers.find(t => t.id === uid || (target.email && t.email?.toLowerCase() === target.email.toLowerCase()) || (target.phone && t.phone === target.phone));
+        if (existsApprovedTeacher) {
+          approvedTeacher = { ...existsApprovedTeacher, status: 'ACTIVE' as const, assignedClasses };
+        } else {
+          const approvedTeacherGoogleOnly = isGoogleOnlyAccount(target);
+          const approvedTeacherPassword = approvalPasswordFor(target);
+          approvedTeacher = {
+            id: uid,
+            institutionId: 'inst_madrasah_primary',
+            name: target.displayName || 'Teacher',
+            nameBn: target.displayName || 'শিক্ষক',
+            phone: target.phone || '',
+            email: target.email,
+            ...(approvedTeacherGoogleOnly ? { authProvider: 'google' as const } : {}),
+            ...(approvedTeacherPassword !== undefined ? { password: approvedTeacherPassword } : {}),
+            designation: target.requestedRole || 'সহকারী শিক্ষক',
+            status: 'ACTIVE',
+            assignedClasses,
+            assignedSubjects,
+            createdAt: target.createdAt || new Date().toISOString()
+          };
+        }
+      }
       setUsers(prev => {
         const found = prev.find(u => u.id === uid || (target?.email && u.email?.toLowerCase() === target.email.toLowerCase()));
         if (found) {
@@ -1042,7 +1101,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
 
       await refreshPendingMembers();
-      return { success: true, message: 'সফলভাবে অ্যাকাউন্ট অনুমোদন ও সক্রিয় করা হয়েছে!' };
+      return { success: true, message: 'সফলভাবে অ্যাকাউন্ট অনুমোদন ও সক্রিয় করা হয়েছে!', approvedTeacher, approvedUser };
     } catch (e: any) {
       console.error('Approve error:', e);
       return { success: false, message: e.message || 'অনুমোদন সম্পন্ন করা যায়নি।' };
