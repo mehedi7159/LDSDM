@@ -3,7 +3,6 @@ import {
   X, 
   Search, 
   Award, 
-  Bot, 
   Briefcase, 
   CalendarDays, 
   Megaphone, 
@@ -50,13 +49,6 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
       subtitle: isBn ? 'মেধা তালিকা, গ্রেডিং ও নম্বরপত্র' : 'Tabulation & Report Cards',
       icon: Award,
       badge: 'Protected'
-    },
-    {
-      id: 'ai_principal_advisor',
-      title: isBn ? 'মাস্টার এআই প্রিন্সিপাল' : 'Master AI Principal',
-      subtitle: isBn ? 'অটোনোমাস প্রাতিষ্ঠানিক সহকারী' : 'AI Cockpit & Voice Studio',
-      icon: Bot,
-      badge: 'AI'
     },
     {
       id: 'staff',

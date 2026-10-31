@@ -71,10 +71,6 @@ import { calculateClassDuesSummary, getDueReminderMessage, type StudentDueProfil
 import { getAdmissionApplications } from '../services/admissionApplicationsService';
 import { Phone, MessageCircle, LayoutDashboard, UserPlus } from 'lucide-react';
 
-// The AI Master advisor is embedded in the Action & Advice view — lazy,
-// exactly as in App.tsx, so the Overview view never pays its bundle cost.
-const MasterPrincipalAiAdvisor = lazyWithRetry(() => import('./ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
-
 // =========================================================================
 // TYPES FOR MEMOIZED SUB-COMPONENTS
 // =========================================================================
@@ -938,9 +934,6 @@ export const Dashboard = () => {
     return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
   };
 
-  // Same visibility rule the removed AI promo card used.
-  const canSeeAdvisor = isOwnerAdmin || isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || currentUser?.email === SUPER_ADMIN_EMAIL;
-
   // Filtered top performers for search query
   const filteredTopStudents = useMemo(() => {
     if (!meritSearchQuery.trim()) return (topStudents || []).slice(0, 10);
@@ -1001,9 +994,9 @@ export const Dashboard = () => {
           }`}
         >
           <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'action' ? 'bg-white/15 text-white' : 'bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300'}`}>
-            <Sparkles size={20} />
+            <ListChecks size={20} />
           </span>
-          <span className="font-black text-base sm:text-lg flex-1">{language === 'bn' ? 'কাজ ও পরামর্শ' : 'Action & Advice'}</span>
+          <span className="font-black text-base sm:text-lg flex-1">{language === 'bn' ? 'আজকের করণীয়' : "Today's Tasks"}</span>
           {actionData.badgeCount > 0 && (
             <span className="rounded-full px-3 py-1 text-xs font-black bg-rose-500 text-white shadow shrink-0">
               {toBanglaDigits(actionData.badgeCount, language)}
@@ -1291,19 +1284,6 @@ export const Dashboard = () => {
       </>)}
 
       {activeView === 'action' && (<>
-
-        {/* AI MASTER — the advisor leads this view, embedded in place
-            (same visibility rule the old promo card used). */}
-        {canSeeAdvisor && (
-          <Suspense fallback={
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 animate-pulse">
-              <div className="h-5 w-48 bg-slate-200 dark:bg-slate-800 rounded-lg" />
-              <div className="h-3 w-72 max-w-full bg-slate-100 dark:bg-slate-800/70 rounded-lg mt-3" />
-            </div>
-          }>
-            <MasterPrincipalAiAdvisor onNavigateTab={(tab) => setActiveTab(tab)} />
-          </Suspense>
-        )}
 
         {/* TO-DO — pending work from live records only; a category with
             nothing pending simply does not appear. */}

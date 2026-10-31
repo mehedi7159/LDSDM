@@ -1,8 +1,65 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'mehedihasansagor26@gmail.com' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    // Institution collection (main_store and public_portal)
+    match /institution/{docId} {
+      // Public read allows result search, QR verification, and landing portal display
+      allow read: if true;
+      // All authenticated staff (teachers, accountants, admins) can sync and update data
+      allow create, update: if isAuthenticated();
+      // Only Super Admin can delete critical institution store documents
+      allow delete: if isSuperAdmin();
+    }
+
+    // Cloud backup snapshots
+    match /cloud_snapshots/{snapId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Role-based access control (RBAC) collections
+    match /institutions/{instId}/members/{memberId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /institutions/{instId}/roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // Admin collection
+    match /admins/{adminId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Tamper-proof platform audit logs
+    match /audit_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // Fallback for any other document in the database
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isSuperAdmin();
     }
   }
 }

@@ -51,15 +51,8 @@ import {
   Globe,
   HeartHandshake,
   Home,
-  Library,
-  Bus,
   CalendarDays,
-  Trophy,
-  Package,
-  Boxes,
-  HeartPulse,
-  Palette,
-  Bot
+  Palette
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -75,24 +68,18 @@ interface LayoutProps {
   setActiveTab: (tab: string) => void;
 }
 
-interface NavItem {
+interface MainMenuItem {
   id: string;
-  label: string;
+  orderNumber: string;
+  titleBn: string;
+  titleEn: string;
   icon: any;
-  subType: 'action' | 'report';
-  permissions?: string[]; // Optional permissions; if any is granted, item is visible
-  isSuperAdminOnly?: boolean;
+  targetTab: string;
+  associatedTabs: string[];
+  permissions?: string[];
   isAdminOnly?: boolean;
+  isSuperAdminOnly?: boolean;
   badge?: string;
-  isReportItem?: boolean;
-}
-
-interface NavGroup {
-  id: string;
-  categoryBn: string;
-  categoryEn: string;
-  icon: any;
-  items: NavItem[];
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
@@ -119,7 +106,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const isOwner = isSuperAdmin || isOwnerEmail || (currentUser?.role === 'super_admin');
   // Multi-role: principal held as an additional role counts as principal.
   const isPrincipal = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || (effectiveRoles || []).includes('principal');
-  const canAccessMasterAi = isOwner || isPrincipal;
 
   // Desktop home for the current user. Admin-tier users (owner / admin /
   // principal) keep the Dashboard exactly as before; every non-admin
@@ -169,7 +155,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // Sidebar is closed by default and opens on-demand when user clicks the menu button
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
   // Close sidebar on ESC key press
@@ -182,10 +167,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   }, []);
 
   // Helper function: Strictly check if a navigation item should be visible to the current user's role
-  const isItemVisible = (item: NavItem): boolean => {
-
+  const isMenuVisible = (menu: MainMenuItem): boolean => {
     // 1. Super Admin items only visible to Super Admin / SUPER_ADMIN_EMAIL
-    if (item.isSuperAdminOnly) {
+    if (menu.isSuperAdminOnly) {
       return isSuperAdmin || isOwnerEmail;
     }
 
@@ -194,670 +178,173 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       return true;
     }
 
-    // 2b. Guardian-only sessions see exactly two items: their portal
-    // (own children only) and the shared notice board. This runs
-    // before the permission steps because the guardian template's
-    // broad students.view / fees.view / marks.view grants would
-    // otherwise surface the all-student managers and reports.
+    // 2b. Guardian-only sessions see exactly their portal, notice board, and settings
     if (isGuardianOnlySession) {
-      return item.id === 'guardian_portal' || item.id === 'notice_board';
+      return menu.targetTab === 'guardian_portal' || menu.targetTab === 'notice_board' || menu.targetTab === 'user_settings';
     }
 
-    // 3. Admin-only items (e.g., user_roles, settings, admin_reports)
-    if (item.isAdminOnly) {
-      if (item.permissions && item.permissions.length > 0) {
-        return item.permissions.some(p => hasPermission(p as any));
+    // 3. Admin-only items
+    if (menu.isAdminOnly) {
+      if (menu.permissions && menu.permissions.length > 0) {
+        return menu.permissions.some(p => hasPermission(p as any));
       }
       return false;
     }
 
-    // 4. Role granular permissions check (e.g. teacher, accountant, staff)
-    if (item.permissions && item.permissions.length > 0) {
-      return item.permissions.some(p => hasPermission(p as any));
+    // 4. Role granular permissions check
+    if (menu.permissions && menu.permissions.length > 0) {
+      return menu.permissions.some(p => hasPermission(p as any));
     }
 
-    // 5. For non-admin, non-principal roles: hide administrative operations and HR hubs
+    // 5. Non-admin role restrictions
     const isPrincipalUser = currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal' || userRole === 'principal' || (effectiveRoles || []).includes('principal');
     if (!isAdmin && !isSuperAdmin && !isOwnerEmail && !isPrincipalUser) {
-      if (['fixed_assets', 'store_inventory', 'house_system', 'fuzala_alumni', 'health_medical'].includes(item.id)) {
-        return false;
-      }
-      if (['staff_leaves', 'staff_id_cards', 'staff_payroll', 'staff_analytics', 'user_roles', 'staff_roles'].includes(item.id)) {
-        return false;
-      }
-      if (['sms_gateway', 'boarding_mess', 'islamic_welfare'].includes(item.id)) {
-        // Multi-role: accountant held as an additional role counts too.
-        return userRole === 'accountant' || currentMember?.roleId === 'role_accountant' || (effectiveRoles || []).includes('accountant');
-      }
-      if (['student_tc', 'promotion', 'student_admission'].includes(item.id)) {
-        return false;
-      }
+      if (menu.targetTab === 'settings') return false;
     }
 
-    // 6. Open / general items
     return true;
   };
 
   // Phase 1 live notice: pending-applicant count for the HR menu badge.
   const pendingHrCount = (pendingMembers || []).length;
 
-  // Structured Navigation Groups aligned with the 8-Menu Madrasah Management Framework
-  const navGroups: NavGroup[] = [
-    // ২. শিক্ষার্থী ব্যবস্থাপনা (Students)
+  // Single-level clean direct menus (No sub-menus)
+  const mainMenuItems: MainMenuItem[] = [
     {
-      id: 'students_section',
-      categoryBn: '২. শিক্ষার্থী ব্যবস্থাপনা',
-      categoryEn: '2. Student Management',
+      id: 'dashboard',
+      orderNumber: '১',
+      titleBn: homeTab === 'dashboard' ? 'ড্যাশবোর্ড' : 'হোম',
+      titleEn: homeTab === 'dashboard' ? 'Dashboard' : 'Home',
+      icon: homeTab === 'dashboard' ? LayoutDashboard : Home,
+      targetTab: homeTab,
+      associatedTabs: ['dashboard']
+    },
+    {
+      id: 'students',
+      orderNumber: '২',
+      titleBn: 'শিক্ষার্থী ব্যবস্থাপনা',
+      titleEn: 'Student Management',
       icon: Users,
-      items: [
-        { 
-          id: 'students', 
-          label: language === 'bn' ? 'শিক্ষার্থী তালিকা' : 'Student Directory', 
-          icon: Users, 
-          subType: 'action',
-          permissions: ['students.view', 'students.create', 'students.edit'] 
-        },
-        { 
-          id: 'student_admission', 
-          label: language === 'bn' ? 'নতুন ভর্তি ফরম' : 'New Admission', 
-          icon: UserPlus, 
-          subType: 'action',
-          permissions: ['students.create'] 
-        },
-        { 
-          id: 'admission_applications', 
-          label: language === 'bn' ? 'ভর্তি আবেদন ও ট্র্যাকার' : 'Admission Applications', 
-          icon: FileText, 
-          subType: 'action',
-          badge: 'Online',
-          permissions: ['students.view', 'students.create'] 
-        },
-        { 
-          id: 'class_wise_students', 
-          label: language === 'bn' ? 'শ্রেণি ও শাখাভিত্তিক শিক্ষার্থী' : 'Class & Section Roster', 
-          icon: Layers, 
-          subType: 'action',
-          permissions: ['students.view'] 
-        },
-        { 
-          id: 'student_profile', 
-          label: language === 'bn' ? 'শিক্ষার্থীর বিস্তারিত প্রোফাইল' : 'Student Profile & Details', 
-          icon: GraduationCap, 
-          subType: 'action'
-        },
-        { 
-          id: 'guardian_info', 
-          label: language === 'bn' ? 'অভিভাবকের তথ্য ও যোগাযোগ' : 'Guardian Directory', 
-          icon: Phone, 
-          subType: 'action',
-          permissions: ['students.view'] 
-        },
-        { 
-          id: 'promotion', 
-          label: language === 'bn' ? 'শ্রেণি পরিবর্তন ও প্রমোশন' : 'Class Promotion & Transfer', 
-          icon: Layers, 
-          subType: 'action',
-          badge: 'Admin',
-          permissions: ['students.edit', 'students.create']
-        },
-        { 
-          id: 'student_tc', 
-          label: language === 'bn' ? 'শিক্ষার্থী ছাড়পত্র / TC' : 'Transfer Certificate (TC)', 
-          icon: Award, 
-          subType: 'action',
-          permissions: ['students.edit'] 
-        },
-        { 
-          id: 'former_students', 
-          label: language === 'bn' ? 'সাবেক / প্রাক্তন শিক্ষার্থী' : 'Former Students', 
-          icon: UserMinus, 
-          subType: 'action',
-          permissions: ['students.view'] 
-        },
-        { 
-          id: 'student_id_cards', 
-          label: language === 'bn' ? 'শিক্ষার্থী আইডি কার্ড ও সনদ' : 'ID Cards & Certificates', 
-          icon: CreditCard, 
-          subType: 'action',
-          badge: 'Print'
-        },
-        { 
-          id: 'student_reports', 
-          label: language === 'bn' ? 'শিক্ষার্থী রিপোর্ট ও পরিসংখ্যান' : 'Student Reports & Census', 
-          icon: BarChart3, 
-          subType: 'report',
-          badge: 'Report',
-          permissions: ['students.view', 'reports.view'],
-          isReportItem: true
-        }
-      ]
+      targetTab: 'students',
+      associatedTabs: [
+        'students', 'student_admission', 'admission_applications',
+        'class_wise_students', 'student_profile', 'guardian_info',
+        'promotion', 'student_tc', 'former_students',
+        'student_id_cards', 'student_reports'
+      ],
+      permissions: ['students.view', 'students.create', 'students.edit']
     },
-
-    // ৩. একাডেমিক ব্যবস্থাপনা (Academics)
     {
-      id: 'academic_section',
-      categoryBn: '৩. একাডেমিক ব্যবস্থাপনা',
-      categoryEn: '3. Academic Management',
+      id: 'academic',
+      orderNumber: '৩',
+      titleBn: 'একাডেমিক ব্যবস্থাপনা',
+      titleEn: 'Academic Management',
       icon: BookOpen,
-      items: [
-        { 
-          id: 'subjects', 
-          label: language === 'bn' ? 'বিষয় ও কারিকুলাম' : 'Subjects & Curriculum', 
-          icon: BookOpen, 
-          subType: 'action',
-          permissions: ['subjects.view', 'subjectAssignments.view'] 
-        },
-        { 
-          id: 'class_section_setup', 
-          label: language === 'bn' ? 'শ্রেণি, শাখা ও শ্রেণি শিক্ষক' : 'Classes & Sections Setup', 
-          icon: Layers, 
-          subType: 'action',
-          permissions: ['classes.view', 'teachers.view'] 
-        },
-        { 
-          id: 'teacher_assignment', 
-          label: language === 'bn' ? 'শিক্ষক ও বিষয় বণ্টন' : 'Teacher-Subject Assignment', 
-          icon: UserCheck, 
-          subType: 'action',
-          permissions: ['subjectAssignments.view', 'teachers.view'] 
-        },
-        { 
-          id: 'class_routine', 
-          label: language === 'bn' ? 'ক্লাস রুটিন ও সময়সূচি' : 'Class Routine & Timetable', 
-          icon: Clock, 
-          subType: 'action',
-          badge: 'Live',
-          permissions: ['academic.view', 'subjects.view'] 
-        },
-        { 
-          id: 'syllabus_planner', 
-          label: language === 'bn' ? 'সিলেবাস ও পাঠ পরিকল্পনা' : 'Syllabus & Lesson Plan', 
-          icon: FileText, 
-          subType: 'action',
-          permissions: ['academic.view'] 
-        },
-        { 
-          id: 'academic_calendar', 
-          label: language === 'bn' ? 'একাডেমিক ক্যালেন্ডার ও ছুটি' : 'Academic Calendar & Holidays', 
-          icon: Calendar, 
-          subType: 'action',
-          permissions: ['academic.view'] 
-        },
-        { 
-          id: 'academic_reports', 
-          label: language === 'bn' ? 'একাডেমিক অ্যানালিটিক্স ও রিপোর্ট' : 'Academic Analytics & Reports', 
-          icon: BarChart3, 
-          subType: 'report',
-          badge: 'Report',
-          isReportItem: true,
-          permissions: ['reports.view', 'subjects.view']
-        }
-      ]
+      targetTab: 'subjects',
+      associatedTabs: [
+        'subjects', 'class_section_setup', 'teacher_assignment',
+        'class_routine', 'syllabus_planner', 'academic_calendar',
+        'academic_reports'
+      ],
+      permissions: ['subjects.view', 'subjectAssignments.view', 'academic.view', 'classes.view']
     },
-
-    // ৪. উপস্থিতি ব্যবস্থাপনা (Attendance)
     {
-      id: 'attendance_section',
-      categoryBn: '৪. উপস্থিতি ব্যবস্থাপনা',
-      categoryEn: '4. Attendance & Tracking',
-      icon: Calendar,
-      items: [
-        { 
-          id: 'attendance', 
-          label: language === 'bn' ? 'শিক্ষার্থীর দৈনিক উপস্থিতি' : 'Daily Student Attendance', 
-          icon: UserCheck, 
-          subType: 'action',
-          permissions: ['attendance.view', 'attendance.create', 'attendance.edit'] 
-        },
-        { 
-          id: 'staff_attendance', 
-          label: language === 'bn' ? 'শিক্ষক-কর্মচারীর উপস্থিতি' : 'Staff Daily Attendance', 
-          icon: Briefcase, 
-          subType: 'action',
-          permissions: ['attendance.view', 'attendance.create'] 
-        },
-        { 
-          id: 'absent_students', 
-          label: language === 'bn' ? 'অনুপস্থিত তালিকা ও SMS' : 'Absentees & SMS Alert', 
-          icon: Phone, 
-          subType: 'action',
-          permissions: ['attendance.view'] 
-        },
-        { 
-          id: 'monthly_attendance_sheet', 
-          label: language === 'bn' ? 'মাসিক হাজিরা শিট ও রেজিস্টার' : 'Monthly Attendance Sheet', 
-          icon: FileSpreadsheet, 
-          subType: 'action',
-          badge: 'Print',
-          permissions: ['attendance.view'] 
-        },
-        { 
-          id: 'sync_exam_attendance', 
-          label: language === 'bn' ? 'পরীক্ষার মার্কশিটে সিঙ্ক' : 'Sync to Exam Marksheet', 
-          icon: Sparkles, 
-          subType: 'action',
-          badge: 'Auto',
-          permissions: ['attendance.edit', 'marks.create'] 
-        },
-        { 
-          id: 'attendance_reports', 
-          label: language === 'bn' ? 'হাজিরা রিপোর্ট ও অ্যানালিটিক্স' : 'Attendance Reports & Analytics', 
-          icon: BarChart3, 
-          subType: 'report',
-          badge: 'Report',
-          permissions: ['attendance.view', 'reports.view'],
-          isReportItem: true
-        }
-      ]
-    },
-
-    // ৫. হিসাব ও ফি ব্যবস্থাপনা (Finance)
-    {
-      id: 'finance_section',
-      categoryBn: '৫. হিসাব ও ফি ব্যবস্থাপনা',
-      categoryEn: '5. Finance & Accounts',
-      icon: Wallet,
-      items: [
-        { 
-          id: 'finance', 
-          label: language === 'bn' ? 'ফি আদায় ও ক্যাশ লেনদেন' : 'Fee Collection & Cashbook', 
-          icon: Wallet, 
-          subType: 'action',
-          permissions: ['finance.view', 'fees.view', 'payments.view'] 
-        },
-        {
-          id: 'fee_structure',
-          label: language === 'bn' ? 'ফি কাঠামো ও রেট চার্ট' : 'Fee Structure & Rates',
-          icon: Sliders,
-          subType: 'action',
-          // The accountant's core rate chart: gate + render both allow it
-          // via finance.view, so it must be visible to finance roles
-          // (previously isAdminOnly hid it from everyone non-admin).
-          permissions: ['finance.view']
-        },
-        { 
-          id: 'finance_reports', 
-          label: language === 'bn' ? 'আর্থিক বিবরণী ও খতিয়ান' : 'Financial Statements & Reports', 
-          icon: FileSpreadsheet, 
-          subType: 'report',
-          badge: 'Report',
-          permissions: ['finance.view', 'reports.view'],
-          isReportItem: true
-        },
-        { 
-          id: 'islamic_welfare', 
-          label: language === 'bn' ? 'ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipends', 
-          icon: HeartHandshake, 
-          subType: 'report',
-          badge: 'Welfare'
-        }
-      ]
-    },
-
-    // ৬. পরীক্ষা ও ফলাফল (Exams & Results)
-    {
-      id: 'examination_section',
-      categoryBn: '৬. পরীক্ষা ও ফলাফল',
-      categoryEn: '6. Exams & Results',
-      icon: Award,
-      items: [
-        { 
-          id: 'exam_settings', 
-          label: language === 'bn' ? 'পরীক্ষা ও টার্ম সেটআপ' : 'Exams & Terms Setup', 
-          icon: Layers, 
-          subType: 'action',
-          badge: 'Admin',
-          isAdminOnly: true
-        },
-        { 
-          id: 'marks', 
-          label: language === 'bn' ? 'নম্বর এন্ট্রি ও মূল্যায়ন' : 'Marks Entry & Evaluation', 
-          icon: PenTool, 
-          subType: 'action',
-          permissions: ['marks.view', 'marks.create', 'marks.edit'] 
-        },
-        { 
-          id: 'blank_marksheet', 
-          label: language === 'bn' ? 'ব্লাঙ্ক মার্কশিট প্রিন্ট' : 'Blank Marksheet Print', 
-          icon: Printer, 
-          subType: 'action',
-          badge: 'Print',
-          permissions: ['marks.view', 'marks.create'] 
-        },
-        { 
-          id: 'results', 
-          label: language === 'bn' ? 'একক ফলাফল ও মার্কশিট' : 'Individual Marksheets', 
-          icon: Award, 
-          subType: 'action',
-          permissions: ['marks.view', 'marks.create', 'reports.view']
-        },
-        { 
-          id: 'tabulation_sheet', 
-          label: language === 'bn' ? 'মেধাতালিকা ও ট্যাবুলেশন' : 'Merit Tabulation Sheet', 
-          icon: FileSpreadsheet, 
-          subType: 'action',
-          badge: 'Merit',
-          permissions: ['marks.view', 'reports.view']
-        },
-        { 
-          id: 'web_results', 
-          label: language === 'bn' ? 'অনলাইন রেজাল্ট ও কিউআর' : 'Web Results & QR Verification', 
-          icon: QrCode, 
-          subType: 'action'
-        },
-        { 
-          id: 'result_sms', 
-          label: language === 'bn' ? 'ফলাফল SMS অ্যালার্ট' : 'Result SMS Alerts', 
-          icon: MessageSquare, 
-          subType: 'action',
-          badge: 'SMS',
-          permissions: ['marks.view']
-        },
-        { 
-          id: 'exam_analytics', 
-          label: language === 'bn' ? 'ফলাফল অ্যানালিটিক্স ও রিপোর্ট' : 'Exam Analytics & Reports', 
-          icon: BarChart3, 
-          subType: 'report',
-          badge: 'Report',
-          isReportItem: true,
-          permissions: ['marks.view', 'reports.view']
-        }
-      ]
-    },
-
-    // ৭. শিক্ষক ও কর্মচারী (Staff & HR)
-    {
-      id: 'staff_section',
-      categoryBn: '৭. শিক্ষক ও কর্মচারী',
-      categoryEn: '7. Staff & HR Management',
+      id: 'attendance',
+      orderNumber: '৪',
+      titleBn: 'উপস্থিতি ব্যবস্থাপনা',
+      titleEn: 'Attendance Management',
       icon: UserCheck,
-      items: [
-        {
-          id: 'user_roles',
-          label: language === 'bn' ? 'শিক্ষক, কর্মী ও অ্যাকাউন্ট' : 'Staff & Accounts',
-          icon: Users,
-          subType: 'action',
-          // Pending applicants waiting for approval (Phase 1) — the
-          // admin used to get no notice at all; the count now rides
-          // on the HR menu entry itself.
-          badge: pendingHrCount > 0 ? `${pendingHrCount}` : undefined,
-          permissions: ['roles.view', 'users.view', 'teachers.view']
-        },
-        // Phase 4: the separate 'staff_roles' (রোল, একাউন্ট ও
-        // পারমিশন) menu entry is gone — it now lives inside the
-        // merged tab above as cards/table + pending strip.
-        { 
-          id: 'staff_assignments', 
-          label: language === 'bn' ? 'দায়িত্ব ও বিষয় বণ্টন' : 'Workload & Subjects', 
-          icon: Briefcase, 
-          subType: 'action',
-          permissions: ['subjects.view', 'teachers.view']
-        },
-        {
-          id: 'staff_payroll',
-          label: language === 'bn' ? 'বেতন ও মাসিক পে-রোল' : 'Payroll & Salary',
-          icon: CreditCard,
-          subType: 'action',
-          badge: 'Pay',
-          // finance.view only: with fees.view here, GUARDIANS (who hold
-          // fees.view for their child's fees) were shown the staff salary
-          // module. The accountant keeps it via finance.view.
-          permissions: ['finance.view']
-        },
-        { 
-          id: 'staff_leaves', 
-          label: language === 'bn' ? 'ছুটি ও ছুটির আবেদন' : 'Staff Leave Records', 
-          icon: Clock, 
-          subType: 'action'
-        },
-        { 
-          id: 'staff_id_cards', 
-          label: language === 'bn' ? 'স্টাফ আইডি কার্ড ও প্রত্যয়ন' : 'Staff ID Cards & NOC', 
-          icon: Award, 
-          subType: 'action',
-          badge: 'Print'
-        },
-        { 
-          id: 'staff_analytics', 
-          label: language === 'bn' ? 'জনবল অ্যানালিটিক্স ও রিপোর্ট' : 'HR Analytics & Census', 
-          icon: BarChart3, 
-          subType: 'report',
-          badge: 'Report',
-          isReportItem: true,
-          permissions: ['reports.view']
-        }
-      ]
+      targetTab: 'attendance',
+      associatedTabs: [
+        'attendance', 'staff_attendance', 'absent_students',
+        'monthly_attendance_sheet', 'sync_exam_attendance',
+        'attendance_reports'
+      ],
+      permissions: ['attendance.view', 'attendance.create', 'attendance.edit']
     },
-
-    // ৮. নোটিশ ও রিপোর্ট (Notices & Reports)
     {
-      id: 'notices_reports_section',
-      categoryBn: '৮. নোটিশ ও রিপোর্ট',
-      categoryEn: '8. Notices & Reports',
+      id: 'finance',
+      orderNumber: '৫',
+      titleBn: 'হিসাব ও ফি ব্যবস্থাপনা',
+      titleEn: 'Finance & Accounts',
+      icon: Wallet,
+      targetTab: 'finance',
+      associatedTabs: ['finance', 'fee_structure', 'finance_reports', 'islamic_welfare'],
+      permissions: ['finance.view', 'fees.view', 'payments.view']
+    },
+    {
+      id: 'examination',
+      orderNumber: '৬',
+      titleBn: 'পরীক্ষা ও ফলাফল',
+      titleEn: 'Exams & Results',
+      icon: Award,
+      targetTab: 'results',
+      associatedTabs: [
+        'results', 'exam_settings', 'marks', 'blank_marksheet',
+        'tabulation_sheet', 'web_results', 'result_sms', 'exam_analytics'
+      ],
+      permissions: ['marks.view', 'marks.create', 'reports.view']
+    },
+    {
+      id: 'staff',
+      orderNumber: '৭',
+      titleBn: 'শিক্ষক ও কর্মচারী',
+      titleEn: 'Staff & HR Management',
+      icon: Briefcase,
+      targetTab: 'user_roles',
+      associatedTabs: [
+        'user_roles', 'staff_roles', 'staff_assignments',
+        'staff_payroll', 'staff_leaves', 'staff_id_cards',
+        'staff_analytics'
+      ],
+      permissions: ['roles.view', 'users.view', 'teachers.view'],
+      badge: pendingHrCount > 0 ? `${pendingHrCount}` : undefined
+    },
+    {
+      id: 'notices',
+      orderNumber: '৮',
+      titleBn: 'নোটিশ ও রিপোর্ট',
+      titleEn: 'Notices & Reports',
       icon: Megaphone,
-      items: [
-        { 
-          id: 'notice_board', 
-          label: language === 'bn' ? 'নোটিশ বোর্ড ও জরুরি বার্তা' : 'Notice Board & Alerts', 
-          icon: Megaphone, 
-          subType: 'action'
-        },
-        { 
-          id: 'admin_reports', 
-          label: language === 'bn' ? 'সার্বিক প্রশাসনিক রিপোর্ট' : 'Consolidated Institutional Reports', 
-          icon: BarChart3, 
-          subType: 'report',
-          badge: 'Report',
-          isAdminOnly: true,
-          isReportItem: true
-        }
-      ]
+      targetTab: 'notice_board',
+      associatedTabs: ['notice_board', 'admin_reports']
     },
-
-    // ৯. সেটিংস ও সিস্টেম (Settings & System)
     {
-      id: 'settings_reports_section',
-      categoryBn: '৯. সেটিংস ও সিস্টেম',
-      categoryEn: '9. Settings & System',
+      id: 'settings',
+      orderNumber: '৯',
+      titleBn: 'সেটিংস ও সিস্টেম',
+      titleEn: 'Settings & System',
       icon: Settings,
-      items: [
-        {
-          id: 'user_settings',
-          label: language === 'bn' ? 'আমার সেটিংস' : 'My Settings',
-          icon: Settings,
-          subType: 'action'
-        },
-        { 
-          id: 'settings', 
-          label: language === 'bn' ? 'মাদ্রাসা প্রোফাইল ও পরিচিতি' : 'Madrasah Profile Settings', 
-          icon: Settings, 
-          subType: 'action',
-          badge: 'Admin',
-          isAdminOnly: true,
-          permissions: ['institution.settings.view']
-        },
-        { 
-          id: 'branding_settings', 
-          label: language === 'bn' ? 'সিল, স্বাক্ষর ও ব্র্যান্ডিং' : 'Seal, Signature & Branding', 
-          icon: Sliders, 
-          subType: 'action',
-          badge: 'Seal',
-          isAdminOnly: true,
-          permissions: ['institution.settings.view']
-        },
-        { 
-          id: 'backup_recovery', 
-          label: language === 'bn' ? 'ডাটা সুরক্ষা ও ব্যাকআপ কেন্দ্র' : 'Data Safety & Backup Hub', 
-          icon: Database, 
-          subType: 'action',
-          badge: 'Safe',
-          isAdminOnly: true
-        },
-        { 
-          id: 'recycle_bin', 
-          label: language === 'bn' ? 'রিসাইকেল বিন' : 'Recycle Bin', 
-          icon: Trash2, 
-          subType: 'action',
-          isAdminOnly: true
-        },
-        { 
-          id: 'superadmin_audit', 
-          label: language === 'bn' ? 'সিকিউরিটি ও অডিট ট্রেইল' : 'Security Audit Trail', 
-          icon: ShieldCheck, 
-          subType: 'report',
-          badge: 'Super',
-          isSuperAdminOnly: true
-        },
-        {
-          id: 'system_diagnostics',
-          label: language === 'bn' ? 'সিস্টেম ও ডাটাবেজ স্থিতি' : 'System & Cloud Diagnostics',
-          icon: Activity,
-          subType: 'report',
-          badge: 'Status',
-          // Gate + render both restrict this to admin/super-admin; it was
-          // visible to every non-admin role and only bounced them.
-          isAdminOnly: true
-        }
-      ]
+      targetTab: 'settings',
+      associatedTabs: [
+        'settings', 'branding_settings', 'backup_recovery',
+        'recycle_bin', 'superadmin_audit', 'system_diagnostics'
+      ],
+      isAdminOnly: true,
+      permissions: ['institution.settings.view']
     },
-
-    // ১০. পোর্টাল ও যোগাযোগ (Portals & Communication)
     {
-      id: 'portals_services_section',
-      categoryBn: '১০. পোর্টাল ও যোগাযোগ',
-      categoryEn: '10. Portals & Communication',
+      id: 'portals',
+      orderNumber: '১০',
+      titleBn: 'পোর্টাল ও সেবা',
+      titleEn: 'Portals & Services',
       icon: Globe,
-      items: [
-        { 
-          id: 'guardian_portal', 
-          label: language === 'bn' ? 'অভিভাবক ও শিক্ষার্থী পোর্টাল' : 'Guardian & Student Portal', 
-          icon: Users, 
-          subType: 'action',
-          badge: 'Live'
-        },
-        { 
-          id: 'online_admissions', 
-          label: language === 'bn' ? 'অনলাইন ভর্তি আবেদন ও ট্র্যাকার' : 'Online Admission Tracker', 
-          icon: FileText, 
-          subType: 'action',
-          badge: 'Online'
-        },
-        { 
-          id: 'public_web_results', 
-          label: language === 'bn' ? 'অনলাইন রেজাল্ট ও কিউআর যাচাই' : 'Web Results & QR Gateway', 
-          icon: QrCode, 
-          subType: 'action'
-        },
-        { 
-          id: 'sms_gateway', 
-          label: language === 'bn' ? 'এসএমএস অ্যালার্ট ও গেটওয়ে' : 'SMS Alerts & Gateway', 
-          icon: MessageSquare, 
-          subType: 'action',
-          badge: 'SMS'
-        }
+      targetTab: 'guardian_portal',
+      associatedTabs: [
+        'guardian_portal', 'online_admissions', 'public_web_results',
+        'sms_gateway', 'boarding_mess'
       ]
     },
-
-    // ১১. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান (Library, Transport & Annual Events Hub)
     {
-      id: 'specialized_services_section',
-      categoryBn: '১১. লাইব্রেরি, পরিবহন ও বার্ষিক অনুষ্ঠান',
-      categoryEn: '11. Library, Transport & Annual Events',
-      icon: Library,
-      items: [
-        { 
-          id: 'book_bank', 
-          label: language === 'bn' ? 'লাইব্রেরি ও পাঠ্যবই ব্যাংক' : 'Library & Textbook Bank', 
-          icon: BookOpen, 
-          subType: 'action',
-          badge: 'Books'
-        },
-        { 
-          id: 'book_issues', 
-          label: language === 'bn' ? 'বই ইস্যু ও ফেরত রেজিস্টার' : 'Book Issues & Returns Register', 
-          icon: Library, 
-          subType: 'action',
-          badge: 'Active'
-        },
-        { 
-          id: 'transport_fleet', 
-          label: language === 'bn' ? 'পরিবহন বহর ও বাস রুট' : 'Transport Fleet & Routes', 
-          icon: Bus, 
-          subType: 'action',
-          badge: 'Route'
-        },
-        { 
-          id: 'mahfil_events', 
-          label: language === 'bn' ? 'বার্ষিক ক্রীড়া, সাংস্কৃতিক ও সিরাত মাহফিল' : 'Annual Sports, Culture & Events', 
-          icon: CalendarDays, 
-          subType: 'action',
-          badge: 'Event'
-        },
-        { 
-          id: 'activities_clubs', 
-          label: language === 'bn' ? 'সহশিক্ষা ও ক্লাব ফোরাম' : 'Co-Curricular & Clubs', 
-          icon: Trophy, 
-          subType: 'report',
-          badge: 'Club'
-        }
-      ]
-    },
-
-    // ১২. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব (Institutional Operations Hub)
-    {
-      id: 'institutional_operations_section',
-      categoryBn: '১২. সম্পদ, হাউজ সিস্টেম ও অ্যালামনাই হাব',
-      categoryEn: '12. Assets, Houses, Alumni & Health',
-      icon: Package,
-      items: [
-        { 
-          id: 'fixed_assets', 
-          label: language === 'bn' ? 'স্থায়ী সম্পদ ও আসবাবপত্র' : 'Fixed Assets & Property', 
-          icon: Package, 
-          subType: 'action',
-          badge: 'Asset'
-        },
-        { 
-          id: 'store_inventory', 
-          label: language === 'bn' ? 'স্টোর ইনভেন্টরি ও কনজিউমেবল' : 'Store & Consumables', 
-          icon: Boxes, 
-          subType: 'action',
-          badge: 'Store'
-        },
-        { 
-          id: 'house_system', 
-          label: language === 'bn' ? 'হাউজ সিস্টেম ও হোস্টেল উইং' : 'House Wings & Points', 
-          icon: Shield, 
-          subType: 'action',
-          badge: 'House'
-        },
-        { 
-          id: 'fuzala_alumni', 
-          label: language === 'bn' ? 'প্রাক্তন শিক্ষার্থী (অ্যালামনাই) পরিষদ' : 'Alumni Association', 
-          icon: GraduationCap, 
-          subType: 'action',
-          badge: 'Alumni'
-        },
-        { 
-          id: 'health_medical', 
-          label: language === 'bn' ? 'স্বাস্থ্যসেবা ও ফার্স্ট এইড লগ' : 'Health & First Aid Log', 
-          icon: HeartPulse, 
-          subType: 'report',
-          badge: 'Health'
-        },
-        { 
-          id: 'boarding_mess', 
-          label: language === 'bn' ? 'ছাত্রাবাস ও হোস্টেল ডাইনিং' : 'Hostel & Mess Dining', 
-          icon: Home, 
-          subType: 'action'
-        }
-      ]
+      id: 'user_settings',
+      orderNumber: '⚙️',
+      titleBn: 'আমার সেটিংস',
+      titleEn: 'My Settings',
+      icon: Sliders,
+      targetTab: 'user_settings',
+      associatedTabs: ['user_settings']
     }
   ];
-
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroupId(prev => (prev === groupId ? null : groupId));
-  };
 
   const handleTabClick = (itemId: string) => {
     setActiveTab(itemId);
@@ -953,8 +440,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           </div>
         </div>
 
-        {/* Categorized Navigation Menu with Subsections */}
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2.5 custom-scrollbar">
+        {/* Navigation Menu - Clean, Direct Single-Level Menus (No Sub-menus) */}
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 custom-scrollbar">
           {/* Quick Module Search Input */}
           <div className="relative mb-2">
             <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
@@ -962,7 +449,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               type="text"
               value={menuSearchQuery}
               onChange={(e) => setMenuSearchQuery(e.target.value)}
-              placeholder={language === 'bn' ? 'মডিউল বা মেনু খুঁজুন...' : 'Search modules & tools...'}
+              placeholder={language === 'bn' ? 'মেনু খুঁজুন...' : 'Search menus...'}
               className="w-full pl-8 pr-7 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
             {menuSearchQuery && (
@@ -975,188 +462,69 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             )}
           </div>
 
-          {/* Top-Level Home Button — Dashboard for admin-tier users;
-              for non-admin roles it points at their role home instead. */}
-          {!menuSearchQuery && (
-            <button
-              onClick={() => handleTabClick(homeTab)}
-              className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                activeTab === homeTab
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`w-6 h-6 rounded flex items-center justify-center ${activeTab === homeTab ? 'bg-white/20 text-white' : 'text-indigo-400'}`}>
-                  {homeTab === 'dashboard' ? <LayoutDashboard size={15} /> : <Home size={15} />}
-                </div>
-                <span>{homeTab === 'dashboard'
-                  ? (language === 'bn' ? '১. ড্যাশবোর্ড (সারসংক্ষেপ)' : '1. Dashboard (Overview)')
-                  : (language === 'bn' ? '১. হোম' : '1. Home')}</span>
-              </div>
-              {activeTab === homeTab ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-white" />
-              ) : (
-                <ChevronRight size={13} className="text-slate-500" />
-              )}
-            </button>
-          )}
-
-          {/* Persistent Premium 'Master AI Principal' Entry Point (Exclusively for Owner and Principal roles) */}
-          {canAccessMasterAi && (!menuSearchQuery || ['ai', 'এআই', 'master', 'মাস্টার', 'principal', 'প্রিন্সিপাল'].some(k => menuSearchQuery.toLowerCase().includes(k))) && (
-            <div className="pt-2">
-              <button
-                onClick={() => handleTabClick('ai_principal_advisor')}
-                className={`w-full p-3 rounded-2xl text-left transition-all cursor-pointer relative overflow-hidden group active:scale-[0.98] border ${
-                  activeTab === 'ai_principal_advisor'
-                    ? 'bg-gradient-to-r from-amber-500/25 via-indigo-600 to-indigo-800 text-white border-amber-400 shadow-xl shadow-indigo-950 ring-2 ring-amber-400/40'
-                    : 'bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 hover:from-slate-800 hover:to-indigo-900 text-slate-100 border-indigo-700/60 hover:border-amber-400/80 shadow-md shadow-indigo-950/50'
-                }`}
-              >
-                {/* Subtle ambient amber glow */}
-                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none -mr-6 -mt-6 group-hover:bg-amber-400/25 transition-all" />
-
-                <div className="flex items-center justify-between gap-2 relative z-10">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {/* Modern icon container with pulsing live dot */}
-                    <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-purple-600 p-0.5 shadow-md shrink-0">
-                      <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-amber-300">
-                        <Bot size={18} className="group-hover:rotate-6 transition-transform text-amber-400" />
-                      </div>
-                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 ring-2 ring-slate-900" />
-                      </span>
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-black tracking-tight text-white truncate block">
-                          {language === 'bn' ? 'মাস্টার এআই প্রিন্সিপাল' : 'Master AI Principal'}
-                        </span>
-                        <Sparkles size={12} className="text-amber-400 shrink-0 animate-pulse" />
-                      </div>
-                      <span className="text-[10px] text-indigo-300 block truncate font-medium">
-                        {language === 'bn' ? 'প্রাতিষ্ঠানিক কমান্ড ও কোপাইলট' : 'Executive Cockpit & Copilot'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <span className="px-2 py-0.5 rounded-md text-[9px] bg-amber-400 text-slate-950 font-black tracking-wider uppercase shrink-0 shadow-xs">
-                    PRO
-                  </span>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {!menuSearchQuery && <div className="h-px bg-slate-800 my-1" />}
-
-          {(navGroups || []).map((group, gIdx) => {
-            // Strictly filter visible items based on current user's role and granular permissions
-            const visibleItems = (group?.items || []).filter(item => {
-              if (!isItemVisible(item)) return false;
-              if (!menuSearchQuery) return true;
+          {mainMenuItems
+            .filter(menu => isMenuVisible(menu))
+            .filter(menu => {
+              if (!menuSearchQuery.trim()) return true;
               const q = menuSearchQuery.toLowerCase().trim();
-              return item.label.toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
-            });
+              return (
+                menu.titleBn.toLowerCase().includes(q) ||
+                menu.titleEn.toLowerCase().includes(q) ||
+                menu.targetTab.toLowerCase().includes(q)
+              );
+            })
+            .map((menu) => {
+              const Icon = menu.icon;
+              const isActive = activeTab === menu.targetTab || menu.associatedTabs.includes(activeTab);
 
-            // If user has no permission or search match for any item in this group, hide the whole category section
-            if (visibleItems.length === 0) return null;
-
-            const isExpanded = menuSearchQuery ? true : (expandedGroupId === group.id);
-            const hasActiveChild = visibleItems.some(item => item.id === activeTab);
-
-            return (
-              <div key={gIdx} className="space-y-1">
-                {/* Category Header with Toggle & Icon */}
+              return (
                 <button
+                  key={menu.id}
                   type="button"
-                  onClick={() => toggleGroup(group.id)}
-                  className={`w-full px-3 py-2 text-xs font-semibold rounded-lg flex items-center justify-between transition-all cursor-pointer ${
-                    isExpanded 
-                      ? 'bg-slate-800 text-white' 
-                      : hasActiveChild 
-                      ? 'bg-indigo-950/40 text-indigo-300' 
-                      : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'
+                  onClick={() => handleTabClick(menu.targetTab)}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
+                      : 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-white'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <group.icon size={14} className={isExpanded || hasActiveChild ? 'text-indigo-400' : 'text-slate-400'} />
-                    <span>{language === 'bn' ? group.categoryBn : group.categoryEn}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-700/60 text-indigo-400'
+                    }`}>
+                      <Icon size={15} />
+                    </div>
+                    <span className="truncate">
+                      {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
+                      {language === 'bn' ? menu.titleBn : menu.titleEn}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {hasActiveChild && !isExpanded && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {menu.badge && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
+                        {menu.badge}
+                      </span>
                     )}
-                    <ChevronDown 
-                      size={13} 
-                      className={`text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-0' : '-rotate-90'}`} 
-                    />
+                    <ChevronRight size={13} className={`transition-transform ${isActive ? 'text-white translate-x-0.5' : 'text-slate-500'}`} />
                   </div>
                 </button>
+              );
+            })}
 
-                {/* Submenu Items - Only shown when category is clicked/expanded */}
-                {isExpanded && (
-                  <div className="space-y-0.5 pl-2 border-l border-slate-800 ml-3 my-1">
-                    {visibleItems.map((item) => {
-                      const isActive = activeTab === item.id;
-                      const badgeText = item.badge || (item.isReportItem ? 'Report' : null);
-
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => handleTabClick(item.id)}
-                          className={`flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-medium transition-all group cursor-pointer ${
-                            isActive 
-                              ? 'bg-indigo-600 text-white font-bold shadow-xs' 
-                              : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-100'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <item.icon 
-                              size={14} 
-                              className={`shrink-0 ${
-                                isActive 
-                                ? 'text-white' 
-                                : item.subType === 'report'
-                                ? 'text-teal-400'
-                                : 'text-slate-400 group-hover:text-indigo-400'
-                              }`} 
-                            />
-                            <span className="truncate">{item.label}</span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                            {badgeText && (
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                                badgeText.toLowerCase() === 'super'
-                                  ? isActive 
-                                    ? 'bg-white/20 text-white border-white/30' 
-                                    : 'bg-purple-950 text-purple-300 border-purple-800/60'
-                                  : badgeText.toLowerCase() === 'admin'
-                                  ? isActive 
-                                    ? 'bg-white/20 text-white border-white/30' 
-                                    : 'bg-sky-950 text-sky-300 border-sky-800/60'
-                                  : isActive
-                                  ? 'bg-white/20 text-white border-white/30'
-                                  : 'bg-teal-950 text-teal-300 border-teal-800/60'
-                              }`}>
-                                {language === 'bn' 
-                                  ? (badgeText === 'Super' ? 'সুপার' : badgeText === 'Admin' ? 'অ্যাডমিন' : 'রিপোর্ট')
-                                  : badgeText}
-                              </span>
-                            )}
-                            <ChevronRight size={12} className={`transition-transform ${isActive ? 'text-white translate-x-0.5' : 'text-slate-600 opacity-0 group-hover:opacity-100'}`} />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+          {mainMenuItems.filter(menu => isMenuVisible(menu)).filter(menu => {
+            if (!menuSearchQuery.trim()) return true;
+            const q = menuSearchQuery.toLowerCase().trim();
+            return (
+              menu.titleBn.toLowerCase().includes(q) ||
+              menu.titleEn.toLowerCase().includes(q) ||
+              menu.targetTab.toLowerCase().includes(q)
             );
-          })}
+          }).length === 0 && (
+            <div className="text-center py-6 text-slate-400 text-xs">
+              {language === 'bn' ? 'কোনো মেনু পাওয়া যায়নি' : 'No matching menu found'}
+            </div>
+          )}
         </div>
 
         {/* Sidebar Footer */}
@@ -1187,35 +555,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           >
             <GraduationCap size={20} />
           </button>
-
-          {/* Persistent Premium 'Master AI Principal' Entry Point (Exclusively for Owner & Principal roles) */}
-          {canAccessMasterAi && (
-            <div className="w-full px-2 flex justify-center">
-              <button
-                type="button"
-                onClick={() => handleTabClick('ai_principal_advisor')}
-                title={language === 'bn' ? 'মাস্টার এআই প্রিন্সিপাল • এক্সিকিউটিভ কমান্ড হাব' : 'Master AI Principal • Executive Intelligence'}
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative group active:scale-95 ${
-                  activeTab === 'ai_principal_advisor'
-                    ? 'bg-gradient-to-tr from-amber-500 via-indigo-600 to-purple-700 text-white shadow-lg shadow-indigo-600/40 ring-2 ring-amber-400 scale-105'
-                    : 'bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-800 dark:via-indigo-950 dark:to-slate-800 text-amber-400 border border-amber-400/50 hover:border-amber-400 shadow-md shadow-indigo-950/40 hover:scale-105'
-                }`}
-              >
-                <Bot size={20} className={activeTab === 'ai_principal_advisor' ? 'stroke-[2.5]' : 'stroke-[2] text-amber-400 group-hover:rotate-6 transition-transform'} />
-                
-                {/* Live pulsing amber radar indicator */}
-                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 ring-2 ring-white dark:ring-slate-900" />
-                </span>
-
-                {/* Left active indicator pill */}
-                {activeTab === 'ai_principal_advisor' && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-amber-400" />
-                )}
-              </button>
-            </div>
-          )}
 
           <div className="w-8 h-px bg-slate-200 dark:bg-slate-800 my-0.5" />
 

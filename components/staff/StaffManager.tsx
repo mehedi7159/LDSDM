@@ -1893,9 +1893,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           empty arrays. Scroll-safe: outer scrolls, panel scrolls
           internally, footer sticks to the panel bottom. */}
       {approvingStaff && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 p-6 pb-[env(safe-area-inset-bottom)]">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 p-5 shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
                 {isBn ? 'অনুমোদন করুন' : 'Approve'}: {approvingStaff.nameBn || approvingStaff.name}
               </h3>
@@ -1907,52 +1907,54 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <X size={18} />
               </button>
             </div>
-            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-              <div>{isBn ? 'পদবি: ' : 'Designation: '}<span className="font-bold text-slate-900 dark:text-white">{approvingStaff.designation || 'সহকারী শিক্ষক'}</span></div>
-              <div>{isBn ? 'ভূমিকা (role): ' : 'Role: '}<span className="font-bold text-slate-900 dark:text-white">{(() => { const r = resolveApprovalRoleId(approvingStaff, users); return r === 'role_teacher' ? 'শিক্ষক' : r === 'role_accountant' ? 'হিসাবরক্ষক' : r === 'role_principal' ? 'অধ্যক্ষ' : r === 'role_guardian' ? 'অভিভাবক' : r === 'role_office_staff' ? 'অফিস স্টাফ' : 'স্টাফ'; })()}</span></div>
-              <p className="text-slate-500 dark:text-slate-400">{isBn ? 'শ্রেণি ও বিষয় বেছে দিন — খালি রাখলে অনুমোদিত শিক্ষকের কোনো ক্লাস থাকবে না।' : 'Pick classes and subjects — leaving them empty approves the teacher with no classes.'}</p>
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5 text-xs">
-                {isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি:' : 'Assigned Classes:'}
-              </label>
-              <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
-                {classes.map(c => {
-                  const isSelected = approveClasses.includes(c.name);
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setApproveClasses(isSelected ? approveClasses.filter(cn => cn !== c.name) : [...approveClasses, c.name])}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-teal-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'}`}
-                    >
-                      {isSelected ? '✓ ' : ''}{c.nameBn || c.name}
-                    </button>
-                  );
-                })}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+              <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                <div>{isBn ? 'পদবি: ' : 'Designation: '}<span className="font-bold text-slate-900 dark:text-white">{approvingStaff.designation || 'সহকারী শিক্ষক'}</span></div>
+                <div>{isBn ? 'ভূমিকা (role): ' : 'Role: '}<span className="font-bold text-slate-900 dark:text-white">{(() => { const r = resolveApprovalRoleId(approvingStaff, users); return r === 'role_teacher' ? 'শিক্ষক' : r === 'role_accountant' ? 'হিসাবরক্ষক' : r === 'role_principal' ? 'অধ্যক্ষ' : r === 'role_guardian' ? 'অভিভাবক' : r === 'role_office_staff' ? 'অফিস স্টাফ' : 'স্টাফ'; })()}</span></div>
+                <p className="text-slate-500 dark:text-slate-400">{isBn ? 'শ্রেণি ও বিষয় বেছে দিন — খালি রাখলে অনুমোদিত শিক্ষকের কোনো ক্লাস থাকবে না।' : 'Pick classes and subjects — leaving them empty approves the teacher with no classes.'}</p>
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5 text-xs">
+                  {isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি:' : 'Assigned Classes:'}
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
+                  {classes.map(c => {
+                    const isSelected = approveClasses.includes(c.name);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setApproveClasses(isSelected ? approveClasses.filter(cn => cn !== c.name) : [...approveClasses, c.name])}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-teal-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'}`}
+                      >
+                        {isSelected ? '✓ ' : ''}{c.nameBn || c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5 text-xs">
+                  {isBn ? 'বিষয়:' : 'Subjects:'}
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
+                  {subjects.map(s => {
+                    const isSelected = approveSubjects.includes(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setApproveSubjects(isSelected ? approveSubjects.filter(sn => sn !== s.name) : [...approveSubjects, s.name])}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-teal-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'}`}
+                      >
+                        {isSelected ? '✓ ' : ''}{s.nameBn || s.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5 text-xs">
-                {isBn ? 'বিষয়:' : 'Subjects:'}
-              </label>
-              <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
-                {subjects.map(s => {
-                  const isSelected = approveSubjects.includes(s.name);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setApproveSubjects(isSelected ? approveSubjects.filter(sn => sn !== s.name) : [...approveSubjects, s.name])}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-teal-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'}`}
-                    >
-                      {isSelected ? '✓ ' : ''}{s.nameBn || s.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="sticky bottom-0 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+            <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setApprovingStaff(null)}
@@ -1975,9 +1977,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Add / Edit Staff Modal */}
       {isAddEditModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 p-5 shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
                 <UserPlus size={18} className="text-teal-600 dark:text-teal-400" />
                 <span>{editingTeacher ? (isBn ? 'শিক্ষক/কর্মী তথ্য সম্পাদনা' : 'Edit Staff') : (isBn ? 'নতুন শিক্ষক/কর্মচারী নিবন্ধন' : 'Add New Staff')}</span>
@@ -1990,7 +1992,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveTeacher} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveTeacher} className="flex-1 overflow-y-auto p-5 space-y-3 text-xs custom-scrollbar">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'পূর্ণ নাম (বাংলা):' : 'Full Name (Bangla):'} *</label>
                 <input
@@ -2210,7 +2212,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </p>
               </div>
 
-              <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAddEditModalOpen(false)}
@@ -2233,8 +2235,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Delete Staff Confirm Modal */}
       {staffToDelete && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150 p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <Trash2 size={20} />
@@ -2250,11 +2252,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <p className="text-slate-500 dark:text-slate-400 pt-1">{isBn ? 'তার স্টাফ রেকর্ড, লগইন অ্যাকাউন্ট ও অ্যাক্সেস — সব একসাথে মুছে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record, login account and access will all be removed together. Past salary and attendance records stay untouched.'}</p>
               <p className="text-amber-700 dark:text-amber-300 font-bold pt-1">{isBn ? 'লগইন অ্যাকাউন্ট Firebase Console → Authentication থেকে মুছতে হবে।' : 'The login account must also be deleted from Firebase Console → Authentication.'}</p>
             </div>
-            <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setStaffToDelete(null)}
-                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold text-xs"
+                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold text-xs cursor-pointer"
               >
                 {isBn ? 'বাতিল' : 'Cancel'}
               </button>
@@ -2262,7 +2264,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 type="button"
                 onClick={handleDeleteStaff}
                 disabled={isDeletingStaff}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs flex items-center gap-1.5 text-xs disabled:opacity-60"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs flex items-center gap-1.5 text-xs disabled:opacity-60 cursor-pointer"
               >
                 <Trash2 size={13} />
                 <span>{isDeletingStaff ? (isBn ? 'মোছা হচ্ছে...' : 'Removing...') : (isBn ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, remove')}</span>
@@ -2274,19 +2276,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Leave Modal */}
       {isLeaveModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 p-5 shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
                 <Clock size={18} className="text-teal-600 dark:text-teal-400" />
                 <span>{isBn ? 'ছুটির আবেদন ও এন্ট্রি' : 'Record Staff Leave'}</span>
               </h3>
-              <button onClick={() => setIsLeaveModalOpen(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 p-1">
+              <button onClick={() => setIsLeaveModalOpen(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 p-1 cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveLeave} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveLeave} className="flex-1 overflow-y-auto p-5 space-y-3 text-xs custom-scrollbar">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শিক্ষক/কর্মী নির্বাচন:' : 'Select Staff:'} *</label>
                 <select
@@ -2351,7 +2353,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 />
               </div>
 
-              <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 {/* Phase 5: leave-add failure keeps the modal open with
                     this inline error + re-confirm-only retry. */}
                 {leaveError && (
@@ -2388,67 +2390,69 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
       {/* Experience / NOC Certificate Modal */}
       {isCertificateModalOpen && certificateTeacher && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-xl w-full mx-auto max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 pb-[env(safe-area-inset-bottom)] shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 print:hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 shrink-0 print:hidden">
               <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
                 <FileText size={18} className="text-teal-600" />
                 <span>{isBn ? 'শিক্ষক প্রত্যয়নপত্র ও অভিজ্ঞতা সনদ' : 'Teacher Certificate of Service'}</span>
               </h3>
-              <button onClick={() => setIsCertificateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setIsCertificateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
-            {/* Printable Certificate Page */}
-            <div className="border-4 border-double border-teal-800 p-8 rounded-2xl bg-amber-50/20 text-slate-900 font-bangla space-y-6">
-              <div className="text-center border-b-2 border-teal-800/40 pb-4">
-                <h2 className="text-xl font-black text-teal-950">
-                  {schoolProfile.nameBn || schoolProfile.name}
-                </h2>
-                <p className="text-xs text-slate-600 mt-1">
-                  {schoolProfile.addressBn || schoolProfile.address} • ফোন: {schoolProfile.phone}
-                </p>
-                <span className="inline-block mt-3 px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-teal-900 text-white shadow-xs">
-                  {isBn ? 'অভিজ্ঞতা ও চারিত্রিক প্রত্যয়নপত্র' : 'TO WHOM IT MAY CONCERN'}
-                </span>
-              </div>
-
-              <div className="text-sm leading-relaxed space-y-3 text-justify">
-                <p>
-                  এই মর্মে প্রত্যয়ন করা যাইতেছে যে, <strong>{certificateTeacher.nameBn || certificateTeacher.name}</strong>, পদবি: <strong>{certificateTeacher.designation || 'সহকারী শিক্ষক'}</strong>, এই প্রতিষ্ঠানে অত্যন্ত সততা, নিষ্ঠা ও সুনামের সহিত পাঠদান কার্য পরিচালনা করিতেছেন।
-                </p>
-                <p>
-                  তাহার নৈতিক চরিত্র উত্তম এবং তিনি প্রতিষ্ঠানের শৃঙ্খলা ও আদর্শ বজায় রাখিয়া সার্বিক দায়িত্ব পালন করিয়া আসিতেছেন। আমরা তাহার উজ্জ্বল ভবিষ্যৎ ও উত্তরোত্তর সমৃদ্ধি কামনা করি।
-                </p>
-              </div>
-
-              <div className="flex items-end justify-between pt-10 text-xs">
-                <div>
-                  <div>তারিখ: {new Date().toLocaleDateString('bn-BD')}</div>
-                  <div className="text-slate-500 font-mono text-[10px]">স্মারক নং: MDR/CERT/{certificateTeacher.id.slice(0, 5)}</div>
+            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+              {/* Printable Certificate Page */}
+              <div className="border-4 border-double border-teal-800 p-8 rounded-2xl bg-amber-50/20 text-slate-900 font-bangla space-y-6">
+                <div className="text-center border-b-2 border-teal-800/40 pb-4">
+                  <h2 className="text-xl font-black text-teal-950">
+                    {schoolProfile.nameBn || schoolProfile.name}
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-1">
+                    {schoolProfile.addressBn || schoolProfile.address} • ফোন: {schoolProfile.phone}
+                  </p>
+                  <span className="inline-block mt-3 px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-teal-900 text-white shadow-xs">
+                    {isBn ? 'অভিজ্ঞতা ও চারিত্রিক প্রত্যয়নপত্র' : 'TO WHOM IT MAY CONCERN'}
+                  </span>
                 </div>
 
-                <div className="text-center">
-                  <div className="w-32 border-b border-slate-800 mx-auto mb-1"></div>
-                  <div className="font-bold">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'অধ্যক্ষ / সুপারিনটেনডেন্ট'}</div>
-                  <div className="text-[10px] text-slate-600">{schoolProfile.nameBn || schoolProfile.name}</div>
+                <div className="text-sm leading-relaxed space-y-3 text-justify">
+                  <p>
+                    এই মর্মে প্রত্যয়ন করা যাইতেছে যে, <strong>{certificateTeacher.nameBn || certificateTeacher.name}</strong>, পদবি: <strong>{certificateTeacher.designation || 'সহকারী শিক্ষক'}</strong>, এই প্রতিষ্ঠানে অত্যন্ত সততা, নিষ্ঠা ও সুনামের সহিত পাঠদান কার্য পরিচালনা করিতেছেন।
+                  </p>
+                  <p>
+                    তাহার নৈতিক চরিত্র উত্তম এবং তিনি প্রতিষ্ঠানের শৃঙ্খলা ও আদর্শ বজায় রাখিয়া সার্বিক দায়িত্ব পালন করিয়া আসিতেছেন। আমরা তাহার উজ্জ্বল ভবিষ্যৎ ও উত্তরোত্তর সমৃদ্ধি কামনা করি।
+                  </p>
+                </div>
+
+                <div className="flex items-end justify-between pt-10 text-xs">
+                  <div>
+                    <div>তারিখ: {new Date().toLocaleDateString('bn-BD')}</div>
+                    <div className="text-slate-500 font-mono text-[10px]">স্মারক নং: MDR/CERT/{certificateTeacher.id.slice(0, 5)}</div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="w-32 border-b border-slate-800 mx-auto mb-1"></div>
+                    <div className="font-bold">{schoolProfile.headMasterNameBn || schoolProfile.headMasterName || 'অধ্যক্ষ / সুপারিনটেনডেন্ট'}</div>
+                    <div className="text-[10px] text-slate-600">{schoolProfile.nameBn || schoolProfile.name}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white flex justify-end gap-2 pt-2 print:hidden">
+            <div className="p-4 bg-white flex justify-end gap-2 border-t border-slate-100 shrink-0 print:hidden">
               <button
                 type="button"
                 onClick={() => setIsCertificateModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold text-xs"
+                className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold text-xs cursor-pointer"
               >
                 {isBn ? 'বন্ধ করুন' : 'Close'}
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer size={14} />
                 <span>{isBn ? 'সনদ প্রিন্ট করুন' : 'Print Certificate'}</span>

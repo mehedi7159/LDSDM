@@ -6,7 +6,6 @@ import { loadUserPrefs, applyPrefPreview } from './services/userPreferences';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from './components/ui/ToastContainer';
-import { PwaUpdatePrompt } from './components/ui/PwaUpdatePrompt';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { RecycleBinPage } from './components/RecycleBinPage';
@@ -38,9 +37,6 @@ const StaffManager = lazyWithRetry(() => import('./components/staff/StaffManager
 const ReportsSettingsManager = lazyWithRetry(() => import('./components/settings/ReportsSettingsManager').then(m => ({ default: m.ReportsSettingsManager })));
 const PortalsServicesManager = lazyWithRetry(() => import('./components/portals/PortalsServicesManager').then(m => ({ default: m.PortalsServicesManager })));
 const GuardianPortal = lazyWithRetry(() => import('./components/GuardianPortal').then(m => ({ default: m.GuardianPortal })));
-const SpecializedServicesManager = lazyWithRetry(() => import('./components/services/SpecializedServicesManager').then(m => ({ default: m.SpecializedServicesManager })));
-const InstitutionalOperationsManager = lazyWithRetry(() => import('./components/operations/InstitutionalOperationsManager').then(m => ({ default: m.InstitutionalOperationsManager })));
-const MasterPrincipalAiAdvisor = lazyWithRetry(() => import('./components/ai/MasterPrincipalAiAdvisor').then(m => ({ default: m.MasterPrincipalAiAdvisor })));
 const StudentReportView = lazyWithRetry(() => import('./components/StudentReportView').then(m => ({ default: m.StudentReportView })));
 const StudentIDCardGenerator = lazyWithRetry(() => import('./components/StudentIDCardGenerator').then(m => ({ default: m.StudentIDCardGenerator })));
 const StaffMobileApp = lazyWithRetry(() => import('./components/StaffMobileApp').then(m => ({ default: m.StaffMobileApp })));
@@ -272,19 +268,6 @@ const AppContent = () => {
         return isAdmin || currentUser?.role === 'principal' || currentUser?.role === 'teacher' || currentUser?.role === 'accountant' || (effectiveRoles || []).includes('accountant');
       case 'islamic_welfare':
         return isAdmin || currentUser?.role === 'principal' || currentUser?.role === 'accountant';
-      case 'book_bank':
-      case 'book_issues':
-      case 'transport_fleet':
-      case 'mahfil_events':
-      case 'activities_clubs':
-      case 'fixed_assets':
-      case 'store_inventory':
-      case 'house_system':
-      case 'fuzala_alumni':
-      case 'health_medical':
-        return true;
-      case 'ai_principal_advisor':
-        return isOwnerAdmin || isSuperAdmin || isAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
       default:
         return true;
     }
@@ -638,30 +621,6 @@ const AppContent = () => {
         return <PortalsServicesManager initialSubTab="boarding_mess" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'islamic_welfare':
         return <PortalsServicesManager initialSubTab="islamic_welfare" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'book_bank':
-        return <SpecializedServicesManager initialSubTab="book_bank" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'book_issues':
-        return <SpecializedServicesManager initialSubTab="book_issues" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'transport_fleet':
-        return <SpecializedServicesManager initialSubTab="transport_fleet" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'mahfil_events':
-        return <SpecializedServicesManager initialSubTab="mahfil_events" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'activities_clubs':
-        return <SpecializedServicesManager initialSubTab="activities_clubs" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'fixed_assets':
-        return <InstitutionalOperationsManager initialSubTab="fixed_assets" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'store_inventory':
-        return <InstitutionalOperationsManager initialSubTab="store_inventory" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'house_system':
-        return <InstitutionalOperationsManager initialSubTab="house_system" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'fuzala_alumni':
-        return <InstitutionalOperationsManager initialSubTab="fuzala_alumni" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'health_medical':
-        return <InstitutionalOperationsManager initialSubTab="health_medical" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'ai_principal_advisor':
-        return (isOwnerAdmin || isSuperAdmin || isAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal')
-          ? <MasterPrincipalAiAdvisor onNavigateTab={(tab) => setActiveTab(tab)} />
-          : <AccessRestrictedView moduleName={language === 'bn' ? 'মাস্টার প্রিন্সিপাল এআই' : 'Master AI Principal'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'user_settings':
         return <SettingsPage />;
       default: return <Dashboard />;
@@ -839,7 +798,6 @@ const App = () => {
     <AppProvider>
       <ThemeProvider>
         <AppContent />
-        <PwaUpdatePrompt />
         <ToastContainer />
       </ThemeProvider>
     </AppProvider>
