@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
   Mail, 
@@ -43,6 +43,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     loginWithGoogle, 
     signInWithEmail, 
     resetPassword,
+    authDeniedMessage,
     students = [],
     classes = [],
     exams = [],
@@ -61,6 +62,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // A session denied by the login gate (deleted/inactive account)
+  // surfaces here, so a restored session does not silently drop the
+  // user back to the login screen with no explanation. The existing
+  // error box is reused; switching views clears it as usual, and a
+  // successful sign-in clears the context message itself.
+  useEffect(() => {
+    if (authDeniedMessage) setErrorMessage(authDeniedMessage);
+  }, [authDeniedMessage]);
 
 
   // Public Result Search State

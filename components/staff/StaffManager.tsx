@@ -145,9 +145,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   });
   // Phase 2 field-level errors: duplicate code / invalid email stay
   // under the field until fixed — never only a 3.5s toast.
-  const [formErrors, setFormErrors] = useState<{ employeeCode?: string; email?: string; designation?: string }>({});
+  const [formErrors, setFormErrors] = useState<{ employeeCode?: string; email?: string; designation?: string; phone?: string; password?: string }>({});
   const employeeCodeInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   // Leave Management State — records live in the shared, cloud-synced store
   // (AppContext staffLeaves) so they survive across devices and admins.
@@ -514,9 +516,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
     // Phase 2 field-level validation: duplicate code / invalid email
     // stay under the field until fixed — never only a 3.5s toast.
+    // Nov 2026 (bug-free add form): duplicate email/phone, phone
+    // format, password length and the email-or-phone login contact
+    // are validated here too — never a silent overwrite, never a
+    // record that cannot log in.
     const code = (teacherFormData.employeeCode || '').trim();
     const emailVal = (teacherFormData.email || '').trim();
-    const fieldErrs: { employeeCode?: string; email?: string } = {};
+    const phoneVal = (teacherFormData.phone || '').trim();
+    const phoneDigits = phoneVal.replace(/[^0-9]/g, '');
+    const fieldErrs: { employeeCode?: string; email?: string; phone?: string; password?: string } = {};
     if (code) {
       const dup = unifiedStaffList.some(s =>
         s.id !== editingTeacher?.id &&
@@ -527,10 +535,43 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
       fieldErrs.email = isBn ? 'সঠিক ইমেইল ঠিকানা দিন' : 'Enter a valid email address';
     }
-    if (fieldErrs.employeeCode || fieldErrs.email) {
+    if (emailVal && !fieldErrs.email) {
+      const dupEmail = unifiedStaffList.some(s =>
+        s.id !== editingTeacher?.id &&
+        (s.email || '').trim().toLowerCase() === emailVal.toLowerCase()
+      ) || users.some(u =>
+        u.id !== editingTeacher?.id &&
+        (u.email || '').trim().toLowerCase() === emailVal.toLowerCase()
+      );
+      if (dupEmail) fieldErrs.email = isBn ? 'এই ইমেইল ইতিমধ্যে অন্য স্টাফের সাথে যুক্ত আছে' : 'This email is already linked to another staff member';
+    }
+    if (phoneVal) {
+      if (!(phoneDigits.length === 11 && phoneDigits.startsWith('01'))) {
+        fieldErrs.phone = isBn ? 'সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (01XXXXXXXXX)' : 'Enter a valid 11-digit mobile number (01XXXXXXXXX)';
+      } else {
+        const dupPhone = unifiedStaffList.some(s =>
+          s.id !== editingTeacher?.id &&
+          (s.phone || '').replace(/[^0-9]/g, '') === phoneDigits
+        ) || users.some(u =>
+          u.id !== editingTeacher?.id &&
+          (u.phone || '').replace(/[^0-9]/g, '') === phoneDigits
+        );
+        if (dupPhone) fieldErrs.phone = isBn ? 'এই মোবাইল নম্বর ইতিমধ্যে অন্য স্টাফের সাথে যুক্ত আছে' : 'This phone number is already linked to another staff member';
+      }
+    }
+    if (!emailVal && !phoneVal) {
+      fieldErrs.email = isBn ? 'লগইনের জন্য ইমেইল বা মোবাইল — অন্তত একটি দিন' : 'Provide an email or a phone number for login';
+    }
+    const typedPasswordEarly = (teacherFormData.password || '').trim();
+    if ((!editingTeacher && typedPasswordEarly.length < 6) || (editingTeacher && typedPasswordEarly && typedPasswordEarly.length < 6)) {
+      fieldErrs.password = isBn ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters';
+    }
+    if (fieldErrs.employeeCode || fieldErrs.email || fieldErrs.phone || fieldErrs.password) {
       setFormErrors(fieldErrs);
       if (fieldErrs.employeeCode) employeeCodeInputRef.current?.focus();
-      else emailInputRef.current?.focus();
+      else if (fieldErrs.email) emailInputRef.current?.focus();
+      else if (fieldErrs.phone) phoneInputRef.current?.focus();
+      else passwordInputRef.current?.focus();
       return;
     }
     setFormErrors({});
@@ -969,7 +1010,13 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Edit of an existing record is NOT affected by this guard, and
   // neither is the pending approve/reject flow. The guard covers
   // every designation the form offers, including guardian.
-  const canCreateStaff = isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
+  // Nov 2026 fix: the old guard dropped isOwnerAdmin, and isSuperAdmin
+  // needs Firebase custom claims the app never sets (no service
+  // account) — so the Add button hid from EVERYONE, including the
+  // owner. Owner email IS the super_admin identity, so isOwnerAdmin
+  // belongs here. NOT widened to isAdminTier: plain admin roles stay
+  // out, per the user's super_admin + principal ONLY rule.
+  const canCreateStaff = isOwnerAdmin || isSuperAdmin || currentUser?.role === 'principal' || currentMember?.roleId === 'role_principal';
   const canViewAttendance = isOwnerAdmin || isSuperAdmin || hasPermission('attendance.view') || hasPermission('attendance.create');
   const canViewPayroll = isOwnerAdmin || isSuperAdmin || hasPermission('finance.view');
   const visibleTabs = tabs.filter(tab => {
@@ -1426,6 +1473,20 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         {staff.assignedClasses.map((cls, cIdx) => (
                           <span key={cIdx} className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                             {cls}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {staff.assignedSubjects && staff.assignedSubjects.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
+                        {isBn ? 'দায়িত্বপ্রাপ্ত বিষয়:' : 'Assigned Subjects:'}
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {staff.assignedSubjects.map((sub, sIdx) => (
+                          <span key={sIdx} className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                            {sub}
                           </span>
                         ))}
                       </div>
@@ -2182,12 +2243,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'মোবাইল নম্বর:' : 'Phone:'}</label>
                   <input
+                    ref={phoneInputRef}
                     type="tel"
                     placeholder="017xxxxxxxx"
                     value={teacherFormData.phone || ''}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, phone: e.target.value })}
+                    onChange={(e) => { setTeacherFormData({ ...teacherFormData, phone: e.target.value }); if (formErrors.phone) setFormErrors(prev => ({ ...prev, phone: undefined })); }}
                     className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
+                  {formErrors.phone && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.phone}</p>}
                 </div>
 
                 <div>
@@ -2215,13 +2278,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   </span>
                 </div>
                 <input
+                  ref={passwordInputRef}
                   type="text"
                   required={!editingTeacher}
                   placeholder={editingTeacher ? (isBn ? 'ফাঁকা রাখলে আগের পাসওয়ার্ড থাকবে' : 'Leave blank to keep the old password') : (isBn ? 'পাসওয়ার্ড দিন' : 'Enter a password')}
                   value={teacherFormData.password || ''}
-                  onChange={(e) => setTeacherFormData({ ...teacherFormData, password: e.target.value })}
+                  onChange={(e) => { setTeacherFormData({ ...teacherFormData, password: e.target.value }); if (formErrors.password) setFormErrors(prev => ({ ...prev, password: undefined })); }}
                   className="w-full border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 font-mono text-sm font-bold bg-white dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
+                {formErrors.password && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.password}</p>}
 
               </div>
 
@@ -2298,7 +2363,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <p className="font-bold text-slate-900 dark:text-white text-sm">{staffToDelete.nameBn || staffToDelete.name}</p>
               <p>{staffToDelete.designation || (isBn ? 'সহকারী শিক্ষক' : 'Assistant Teacher')}{staffToDelete.phone ? ` · ${staffToDelete.phone}` : ''}</p>
               <p className="text-slate-500 dark:text-slate-400 pt-1">{isBn ? 'তার স্টাফ রেকর্ড, লগইন অ্যাকাউন্ট ও অ্যাক্সেস — সব একসাথে মুছে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record, login account and access will all be removed together. Past salary and attendance records stay untouched.'}</p>
-              <p className="text-amber-700 dark:text-amber-300 font-bold pt-1">{isBn ? 'লগইন অ্যাকাউন্ট Firebase Console → Authentication থেকে মুছতে হবে।' : 'The login account must also be deleted from Firebase Console → Authentication.'}</p>
+              <p className="text-amber-700 dark:text-amber-300 font-bold pt-1">{isBn ? 'মুছে দেওয়ার পর এই অ্যাকাউন্ট দিয়ে আর লগইন করা যাবে না (অ্যাক্সেস সাথে সাথে বন্ধ হবে)। Firebase Authentication-এর রেকর্ডটি পুরোপুরি মুছতে চাইলে Console → Authentication থেকে মুছুন।' : 'After removal, this account can no longer log in (access stops immediately). To fully remove the Firebase Authentication record, delete it from Console → Authentication.'}</p>
             </div>
             <div className="flex justify-end gap-2 pt-2 shrink-0">
               <button

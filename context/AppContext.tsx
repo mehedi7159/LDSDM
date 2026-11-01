@@ -369,6 +369,7 @@ interface AppContextType extends AppState {
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   loginAsDemoRole: (roleKey: 'superadmin' | 'principal' | 'teacher' | 'accountant' | 'office_staff' | 'guardian') => Promise<void>;
   logoutAdmin: () => Promise<void>;
+  authDeniedMessage: string | null;
   refreshAdminClaims: () => Promise<boolean>;
   setMode: (mode: AppMode) => void;
   forcePushToCloud: () => Promise<void>;
@@ -398,6 +399,14 @@ interface AppContextType extends AppState {
   rejectMember: (uid: string) => Promise<{ success: boolean; message?: string }>;
   t: (key: keyof typeof translations['en']) => string;
 }
+
+// Login gate denial (Nov 2026 — delete-effective auth): shown when a
+// Firebase account with no backing staff/user record tries to enter.
+// The Firebase account itself survives deletion (no service account
+// for true deletion yet), so the app session — not Firebase — is
+// what this denies. Distinctive string, also used as a live marker.
+const ACCOUNT_LOGIN_DENIED =
+  'এই অ্যাকাউন্টটি আর সক্রিয় নেই — মুছে ফেলা হয়েছে বা নিষ্ক্রিয় করা হয়েছে। অ্যাডমিনের সাথে যোগাযোগ করুন।';
 
 const defaultSchoolProfile: SchoolProfile = {
   name: 'MADRASHA MANAGEMENT HIGH SCHOOL',
@@ -1686,6 +1695,39 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setAuthUser(null);
     } else if (auth.currentUser) {
       setAuthUser(auth.currentUser);
+    }
+    // Login gate (B) — same rule for the phone path: a Firebase
+    // session just healed from a stale local record must not survive
+    // when the cloud no longer backs the account. The local lists
+    // already produced this user, so only a fresh cloud read can
+    // catch a stale record; a failed read fails OPEN (the snapshot
+    // gate denies once cloud truth lands). On denial the local
+    // session set above is undone — nothing is left behind.
+    if (portalAuthed && auth.currentUser) {
+      let cloudBacked: boolean | null = null;
+      try {
+        const snap = await getDoc(doc(db, 'institution', 'main_store'));
+        const data = snap.data() as any;
+        const cloudUsers: any[] = Array.isArray(data?.users) ? data.users : [];
+        const cloudTeachers: any[] = Array.isArray(data?.teachers) ? data.teachers : [];
+        const cleanPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
+        const userEmailLower = (user.email || '').toLowerCase();
+        cloudBacked =
+          cloudUsers.some(u => u.id === user.id || (userEmailLower && u.email && String(u.email).toLowerCase() === userEmailLower) || (cleanPhoneDigits && (u.phone || '').replace(/[^0-9]/g, '') === cleanPhoneDigits)) ||
+          cloudTeachers.some(t => t.id === user.id || (userEmailLower && t.email && String(t.email).toLowerCase() === userEmailLower) || (cleanPhoneDigits && (t.phone || '').replace(/[^0-9]/g, '') === cleanPhoneDigits));
+      } catch (gateErr) {
+        console.warn('Login gate cloud check notice:', (gateErr as any)?.message || gateErr);
+      }
+      if (cloudBacked === false) {
+        try { await signOut(auth); } catch {}
+        setAuthUser(null);
+        setActiveAppUserId(null);
+        try {
+          localStorage.removeItem('madrasha_active_app_user_id');
+          localStorage.removeItem('madrasha_active_auth_session');
+        } catch {}
+        return { success: false, message: ACCOUNT_LOGIN_DENIED };
+      }
     }
     setAdminEmail(user.email || '');
     setIsAdmin(isAdministrative);
@@ -2983,6 +3025,50 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (result.user) {
         setAuthUser(result.user);
         if (result.user.email) setAdminEmail(result.user.email);
+        // Login gate (A) — delete-effective auth: a Firebase account
+        // survives staff deletion, so a surviving account with no
+        // backing record must not mint a session. Owner always passes.
+        // Local lists first; a fresh cloud read decides when they do
+        // not back the account (fresh device / stale lists). A failed
+        // cloud read fails OPEN (cloudBacked stays null) — the
+        // post-hydration gate denies the session as soon as the
+        // snapshot lands.
+        {
+          const gateEmail = (result.user.email || '').toLowerCase();
+          const gateUid = result.user.uid;
+          const storedUid = readStoredSessionUid();
+          const canonicalDigits = /^staff\.(\d+)@madrashasystem\.com$/.exec(gateEmail)?.[1];
+          const locallyBacked = isOwnerAccount ||
+            usersRef.current.some(u => u.id === gateUid || (u.email && u.email.toLowerCase() === gateEmail)) ||
+            teachersRef.current.some(t => t.email && t.email.toLowerCase() === gateEmail) ||
+            (canonicalDigits ? (usersRef.current.some(u => (u.phone || '').replace(/[^0-9]/g, '') === canonicalDigits) || teachersRef.current.some(t => (t.phone || '').replace(/[^0-9]/g, '') === canonicalDigits)) : false) ||
+            (storedUid ? (usersRef.current.some(u => u.id === storedUid) || teachersRef.current.some(t => t.id === storedUid)) : false);
+          if (!locallyBacked) {
+            let cloudBacked: boolean | null = null;
+            try {
+              const snap = await getDoc(doc(db, 'institution', 'main_store'));
+              const data = snap.data() as any;
+              const cloudUsers: any[] = Array.isArray(data?.users) ? data.users : [];
+              const cloudTeachers: any[] = Array.isArray(data?.teachers) ? data.teachers : [];
+              cloudBacked =
+                cloudUsers.some(u => u.id === gateUid || (u.email && String(u.email).toLowerCase() === gateEmail)) ||
+                cloudTeachers.some(t => t.email && String(t.email).toLowerCase() === gateEmail) ||
+                (canonicalDigits ? (cloudUsers.some(u => (u.phone || '').replace(/[^0-9]/g, '') === canonicalDigits) || cloudTeachers.some(t => (t.phone || '').replace(/[^0-9]/g, '') === canonicalDigits)) : false) ||
+                (storedUid ? (cloudUsers.some(u => u.id === storedUid) || cloudTeachers.some(t => t.id === storedUid)) : false);
+            } catch (gateErr) {
+              console.warn('Login gate cloud check notice:', (gateErr as any)?.message || gateErr);
+            }
+            if (cloudBacked === false) {
+              try { await signOut(auth); } catch {}
+              try {
+                localStorage.removeItem('madrasha_active_auth_session');
+                localStorage.removeItem('madrasha_active_app_user_id');
+              } catch {}
+              setAuthUser(null);
+              return { success: false, error: ACCOUNT_LOGIN_DENIED };
+            }
+          }
+        }
         // Session roleId follows the person's account record when one
         // exists — it used to be hard-coded 'role_teacher' for every
         // non-owner, which re-stamped an accountant as a teacher
@@ -3519,6 +3605,77 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     localStorage.setItem('madrasha_app_mode', 'viewer');
     localStorage.setItem('madrasha_active_tab', 'dashboard');
   };
+
+  // ------------------------------------------------------------------
+  // Login gate (Nov 2026 — delete-effective auth, audit follow-up).
+  // A Firebase account survives staff deletion (deleteTeacher removes
+  // teachers[]/users[]/members but there is no deleteUser without a
+  // service account), so Firebase-first login used to mint a
+  // teacher-stamped session for a deleted person. Two layers close it:
+  //  (A) signInWithEmail / loginWithEmailOrPhone deny at login time
+  //      (fresh cloud read when local lists do not back the account);
+  //  (C) this effect denies restored sessions as soon as the first
+  //      cloud snapshot lands. Owner always passes; users[]-matched
+  //      and teacher-matched sessions are untouched; pending members
+  //      never reach here (their gates block earlier). A failed cloud
+  //      read fails OPEN — the snapshot gate still denies once cloud
+  //      truth arrives. The message clears on the next successful
+  //      Firebase sign-in (see the effect below).
+  // ------------------------------------------------------------------
+  const [authDeniedMessage, setAuthDeniedMessage] = useState<string | null>(null);
+
+  const readStoredSessionUid = (): string | null => {
+    try {
+      const raw = localStorage.getItem('madrasha_active_auth_session');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return (parsed && typeof parsed.uid === 'string') ? parsed.uid : null;
+    } catch { return null; }
+  };
+
+  useEffect(() => {
+    if (authUser) setAuthDeniedMessage(null);
+  }, [authUser]);
+
+  // Deliberately UNGUARDED by uid: the check re-runs on every lists
+  // change, so a user deleted WHILE still logged in is denied on the
+  // next snapshot too — not only on the next login. The checks are
+  // cheap some() scans and no-ops for backed sessions; denial clears
+  // the session, so there is no loop.
+  useEffect(() => {
+    if (!hasLoadedRemoteRef.current) return;
+    // Case 1: Firebase session (restored or freshly signed in).
+    if (authUser) {
+      const email = (authUser.email || '').toLowerCase();
+      if (email === SUPER_ADMIN_EMAIL.toLowerCase()) return;
+      const storedUid = readStoredSessionUid();
+      const canonicalDigits = /^staff\.(\d+)@madrashasystem\.com$/.exec(email)?.[1];
+      const backed =
+        users.some(u => u.id === authUser.uid || (u.email && u.email.toLowerCase() === email)) ||
+        teachers.some(t => t.email && t.email.toLowerCase() === email) ||
+        (canonicalDigits ? (users.some(u => (u.phone || '').replace(/[^0-9]/g, '') === canonicalDigits) || teachers.some(t => (t.phone || '').replace(/[^0-9]/g, '') === canonicalDigits)) : false) ||
+        (storedUid ? (users.some(u => u.id === storedUid) || teachers.some(t => t.id === storedUid)) : false);
+      if (!backed) {
+        logoutAdmin();
+        setAuthDeniedMessage(ACCOUNT_LOGIN_DENIED);
+      }
+      return;
+    }
+    // Case 2: local-only session (no Firebase user) whose record is
+    // gone from both lists after hydration (stale-device phone login).
+    const localId = activeAppUserId || currentMember?.uid || null;
+    if (!localId) return;
+    const backedLocal = users.some(u => u.id === localId) || teachers.some(t => t.id === localId);
+    if (!backedLocal) {
+      setActiveAppUserId(null);
+      setCurrentMember(null);
+      try {
+        localStorage.removeItem('madrasha_active_app_user_id');
+        localStorage.removeItem('madrasha_active_auth_session');
+      } catch {}
+      setAuthDeniedMessage(ACCOUNT_LOGIN_DENIED);
+    }
+  }, [authUser, users, teachers, activeAppUserId, currentMember]);
 
   // State manipulation handlers
   const updateSchoolProfile = (profile: SchoolProfile) => {
@@ -5209,6 +5366,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       resetPassword,
       loginAsDemoRole,
       logoutAdmin,
+      authDeniedMessage,
       refreshAdminClaims,
       setMode,
       forcePushToCloud,
