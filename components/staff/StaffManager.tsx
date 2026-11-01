@@ -46,6 +46,7 @@ import { deleteInstitutionMembers } from '../../services/rbac';
 import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, SALARY_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { decideStaffLeave } from '../../services/staffSelfService';
 import { PageHeader } from '../ui/PageHeader';
+import { ServerUnavailablePanel } from '../ui/ServerDataGate';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 export type StaffSubTab =
@@ -1182,13 +1183,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'সর্বশেষ তথ্য আসছে — পুরোনো তালিকা দেখানো হচ্ছে না' : 'Loading latest data — stale list hidden'}</p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">{isBn ? 'ক্লাউড থেকে নতুন তালিকা আসলেই এখানে দেখাবে' : 'The current list will appear once it arrives from the cloud'}</p>
             </div>
+          ) : staffListStale ? (
+            <ServerUnavailablePanel dataNameBn="স্টাফ তথ্য" dataNameEn="Staff data" />
           ) : (
           <div className="space-y-4">
-            {staffListStale && (
-              <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-2xl p-3 text-xs font-bold text-amber-800 dark:text-amber-300">
-                {isBn ? 'অফলাইন — পুরোনো তথ্য দেখাচ্ছে। ইন্টারনেট এলে সর্বশেষ তালিকা আসবে।' : 'Offline — showing older saved data. The latest list will arrive when you are back online.'}
-              </div>
-            )}
             {/* Pending list update failure (Phase 1): never silently
                 show a stale cache — the banner shows even when the
                 list itself looks empty, with a retry. */}

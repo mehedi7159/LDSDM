@@ -50,6 +50,7 @@ import { DataSecurityBackupCenter } from '../DataSecurityBackupCenter';
 import { SuperAdminAuditPage } from '../SuperAdminAuditPage';
 import { CloudSyncWidget } from '../CloudSyncWidget';
 import { Button } from '../ui/Button';
+import { ServerDataGate } from '../ui/ServerDataGate';
 import { useTheme } from '../../context/ThemeContext';
 import { SchoolProfile } from '../../types';
 
@@ -89,7 +90,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
     authUser,
     language,
     t,
-    hasPermission
+    hasPermission,
+    cloudHydrated
   } = useApp();
 
   const { showToast } = useTheme();
@@ -272,7 +274,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       labelBn: 'নোটিশ',
       labelEn: 'Notices',
       icon: Megaphone,
-      badge: noticeStats.urgent > 0 ? `${noticeStats.urgent} Urgent` : undefined,
+      badge: cloudHydrated && noticeStats.urgent > 0 ? `${noticeStats.urgent} Urgent` : undefined,
       badgeColor: 'bg-rose-500 text-white'
     },
     {
@@ -286,7 +288,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       labelBn: 'প্রোফাইল',
       labelEn: 'Profile',
       icon: Building2,
-      badge: `${profileCompleteness}%`,
+      badge: cloudHydrated ? `${profileCompleteness}%` : undefined,
       badgeColor: profileCompleteness === 100 ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'
     },
     {
@@ -481,15 +483,18 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       {/* SUB-TAB 1: NOTICE BOARD & BROADCAST ALERTS                                */}
       {/* ========================================================================= */}
       {activeTab === 'notices' && (
+        <ServerDataGate dataNameBn="নোটিশ তথ্য" dataNameEn="Notice data">
         <div className="space-y-6">
           <NoticeBoard onBack={() => setActiveTab('admin_reports')} />
         </div>
+        </ServerDataGate>
       )}
 
       {/* ========================================================================= */}
       {/* SUB-TAB 2: CONSOLIDATED INSTITUTIONAL REPORTS                            */}
       {/* ========================================================================= */}
       {activeTab === 'admin_reports' && (
+        <ServerDataGate dataNameBn="রিপোর্ট তথ্য" dataNameEn="Report data">
         <div className="space-y-6">
           {/* Sub-view toggle */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
@@ -544,12 +549,14 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
             <AdminReportView />
           )}
         </div>
+        </ServerDataGate>
       )}
 
       {/* ========================================================================= */}
       {/* SUB-TAB 3: MADRASAH PROFILE SETTINGS                                      */}
       {/* ========================================================================= */}
       {activeTab === 'profile' && (
+        <ServerDataGate dataNameBn="মাদ্রাসা প্রোফাইল" dataNameEn="Madrasah profile">
         <form onSubmit={handleSaveProfile} className="space-y-6">
           
           {/* Header & Success state */}
@@ -858,12 +865,14 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
             </p>
           </div>
         </form>
+        </ServerDataGate>
       )}
 
       {/* ========================================================================= */}
       {/* SUB-TAB 4: BRANDING, SEAL & PRINT CUSTOMIZATION                           */}
       {/* ========================================================================= */}
       {activeTab === 'branding' && (
+        <ServerDataGate dataNameBn="ব্র্যান্ডিং তথ্য" dataNameEn="Branding data">
         <form onSubmit={handleSaveProfile} className="space-y-6">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -1086,30 +1095,36 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
             </div>
           </div>
         </form>
+        </ServerDataGate>
       )}
 
       {/* ========================================================================= */}
       {/* SUB-TAB 5: DATA SECURITY & BACKUP CENTER                                 */}
       {/* ========================================================================= */}
       {activeTab === 'backup' && (
+        <ServerDataGate dataNameBn="ব্যাকআপ তথ্য" dataNameEn="Backup data">
         <div className="space-y-6">
           <DataSecurityBackupCenter isModal={false} />
         </div>
+        </ServerDataGate>
       )}
 
       {/* ========================================================================= */}
       {/* SUB-TAB 6: SECURITY AUDIT TRAIL                                          */}
       {/* ========================================================================= */}
       {activeTab === 'audit' && (
+        <ServerDataGate dataNameBn="অডিট তথ্য" dataNameEn="Audit data">
         <div className="space-y-6">
           <SuperAdminAuditPage />
         </div>
+        </ServerDataGate>
       )}
 
       {/* ========================================================================= */}
       {/* SUB-TAB 7: SYSTEM DIAGNOSTICS & DATA INTEGRITY                          */}
       {/* ========================================================================= */}
       {activeTab === 'diagnostics' && (
+        <ServerDataGate dataNameBn="ডায়াগনস্টিকস তথ্য" dataNameEn="Diagnostics data">
         <div className="space-y-6">
           
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1272,6 +1287,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           </div>
 
         </div>
+        </ServerDataGate>
       )}
 
     </div>

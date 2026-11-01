@@ -5,6 +5,7 @@ import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
 import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
 import { resolveGuardianChildren } from '../services/guardianScope';
 import { PWAInstallButton } from './ui/PWAInstallButton';
+import { ServerDataGate } from './ui/ServerDataGate';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
@@ -2180,6 +2181,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         {attendanceCloudFailureToast}
 
         <main className="flex-1 p-4 space-y-4 anim-stagger">
+          <ServerDataGate dataNameBn="মডিউল তথ্য" dataNameEn="Module data">
 
           {/* ============ TEACHER: DAILY ATTENDANCE ============ */}
           {activeSubModule === 'teacher_attendance' && (
@@ -3905,6 +3907,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               {renderModuleContent ? renderModuleContent(activeSubModule) : null}
             </div>
           )}
+          </ServerDataGate>
         </main>
 
         {BottomNav}
@@ -3924,6 +3927,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         </header>
 
         <main className="p-4 space-y-4">
+          <ServerDataGate dataNameBn="প্রোফাইল তথ্য" dataNameEn="Profile data">
           <div className={`${cardCls} p-5 flex flex-col items-center text-center space-y-3`}>
             <div className="w-20 h-20 rounded-[26px] brand-grad text-white font-black flex items-center justify-center text-3xl shadow-xl shadow-violet-500/30">
               {initialLetter}
@@ -4146,6 +4150,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <LogOut size={16} />
             <span>লগআউট / একাউন্ট পরিবর্তন</span>
           </button>
+        </ServerDataGate>
         </main>
 
         {BottomNav}
@@ -4169,6 +4174,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         </header>
 
         <main className="p-4 space-y-4">
+          <ServerDataGate dataNameBn="ছুটির তথ্য" dataNameEn="Leave data">
           {leaveSuccess && (
             <div className="p-3 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-[#065f46] dark:text-emerald-300 text-xs font-bold">
               {leaveSuccess}
@@ -4264,6 +4270,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               ))
             )}
           </div>
+        </ServerDataGate>
         </main>
 
         {BottomNav}
@@ -4418,6 +4425,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       {attendanceCloudFailureToast}
 
       <main className="flex-1 p-4 space-y-4 anim-stagger">
+        <ServerDataGate dataNameBn="ড্যাশবোর্ড তথ্য" dataNameEn="Dashboard data">
         {/* HERO — gradient greeting + quick actions inside (Tutor App pattern:
             greeting, "Today at a glance", QUICK ACTIONS row) */}
         <section className="relative overflow-hidden rounded-3xl brand-grad text-white p-5 shadow-xl">
@@ -5420,6 +5428,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           <LogOut size={16} />
           <span>{isEn ? 'Logout / Switch account' : 'লগআউট / একাউন্ট পরিবর্তন'}</span>
         </button>
+      </ServerDataGate>
       </main>
 
       {BottomNav}

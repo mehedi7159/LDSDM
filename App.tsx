@@ -17,6 +17,7 @@ import { LocalDataRecoveryModal } from './components/LocalDataRecoveryModal';
 import { AuthPage } from './components/AuthPage';
 import { LandingView } from './components/LandingView';
 import { PendingApprovalView } from './components/PendingApprovalView';
+import { ServerDataGate } from './components/ui/ServerDataGate';
 import { StudentProfileView } from './components/StudentProfileView';
 import { SkeletonStatCard, SkeletonTable } from './components/ui/ShimmerSkeleton';
 
@@ -395,7 +396,7 @@ const AppContent = () => {
   }, [schoolProfile.banglaFont, schoolProfile.banglaNumberFont, schoolProfile.uiFont]);
 
 
-  const renderContent = () => {
+  const renderContentInner = () => {
     const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
     switch (activeTab) {
@@ -625,6 +626,89 @@ const AppContent = () => {
         return <SettingsPage />;
       default: return <Dashboard />;
     }
+  };
+
+  // -------------------------------------------------------------------------
+  // Server-only display gate (1 Nov 2026, user's explicit rule: ONLY server
+  // data is visible anywhere — never localStorage-derived rows).
+  // renderContentInner above builds the tab element; this wrapper holds it
+  // behind ServerDataGate until the first main_store snapshot lands, and
+  // shows a server-unavailable state (never stale rows) on timeout/offline.
+  // Carve-outs render ungated: user_settings (device prefs, local only) and
+  // the ReportsSettingsManager tabs (their server-backed sub-tab blocks are
+  // gated inside that manager; its tab-bar badges are gated there too).
+  // Everything else — including the default Dashboard — is gated.
+  // -------------------------------------------------------------------------
+  const SERVER_DATA_TAB_NAMES: Record<string, { bn: string; en: string }> = {
+    dashboard: { bn: 'ড্যাশবোর্ড তথ্য', en: 'Dashboard data' },
+    finance: { bn: 'আর্থিক তথ্য', en: 'Financial data' },
+    finance_reports: { bn: 'আর্থিক তথ্য', en: 'Financial data' },
+    students: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    student_admission: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    admission_applications: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    class_wise_students: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    guardian_info: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    promotion: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    student_tc: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    former_students: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    student_reports: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    student_id_cards: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    student_profile: { bn: 'শিক্ষার্থী তথ্য', en: 'Student data' },
+    subjects: { bn: 'বিষয় তথ্য', en: 'Subject data' },
+    class_section_setup: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
+    teacher_assignment: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
+    class_routine: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
+    syllabus_planner: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
+    academic_calendar: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
+    academic_reports: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
+    marks: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    exam_settings: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    blank_marksheet: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    tabulation_sheet: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    result_sms: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    exam_analytics: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    results: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    web_results: { bn: 'পরীক্ষা ও ফলাফল তথ্য', en: 'Exam & result data' },
+    attendance: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
+    staff_attendance: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
+    absent_students: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
+    monthly_attendance_sheet: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
+    sync_exam_attendance: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
+    attendance_reports: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
+    fee_structure: { bn: 'ফি কাঠামো', en: 'Fee structure' },
+    user_roles: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
+    staff_roles: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
+    staff_assignments: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
+    staff_payroll: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
+    staff_leaves: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
+    staff_id_cards: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
+    staff_analytics: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
+    recycle_bin: { bn: 'রিসাইকেল বিন', en: 'Recycle bin' },
+    guardian_portal: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
+    online_admissions: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
+    public_web_results: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
+    sms_gateway: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
+    boarding_mess: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
+    islamic_welfare: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
+  };
+  const SERVER_DATA_UNGATED_TABS = new Set([
+    'user_settings',
+    'settings',
+    'branding_settings',
+    'backup_recovery',
+    'superadmin_audit',
+    'admin_reports',
+    'system_diagnostics',
+    'notice_board',
+  ]);
+  const renderContent = () => {
+    if (SERVER_DATA_UNGATED_TABS.has(activeTab)) return renderContentInner();
+    const name = SERVER_DATA_TAB_NAMES[activeTab] ?? { bn: 'সার্ভার তথ্য', en: 'Server data' };
+    return (
+      <ServerDataGate dataNameBn={name.bn} dataNameEn={name.en}>
+        {renderContentInner()}
+      </ServerDataGate>
+    );
   };
 
   // 1. If auth is still checking / initializing, display smooth branded loading screen with fail-safe bypass
