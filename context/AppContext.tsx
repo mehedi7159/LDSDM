@@ -225,6 +225,11 @@ interface AppState {
   trashBin: TrashItem[];
   cloudStatus: CloudSyncStatus;
   cloudLastSynced: string;
+  // First main_store snapshot gate (Nov 2026 stale-flash fix): true once
+  // the first main_store doc has been applied; StaffManager hides
+  // localStorage-backed staff rows until then (or the timeout below).
+  cloudHydrated: boolean;
+  cloudHydrationTimedOut: boolean;
   mode: AppMode;
   isAdmin: boolean;
   authUser: User | null;
@@ -847,6 +852,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // Cloud Sync & Security State
   const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus>('syncing');
   const [cloudLastSynced, setCloudLastSynced] = useState<string>('Initializing...');
+
+  // First main_store snapshot gate (Nov 2026 stale-flash fix):
+  // cloudHydrated turns true when the first main_store getDoc/snapshot
+  // is applied; cloudHydrationTimedOut turns true 6s after boot if no
+  // snapshot landed (offline/slow network) so local data can render
+  // WITH an explicit stale/offline label instead of blocking forever.
+  const [cloudHydrated, setCloudHydrated] = useState(false);
+  const [cloudHydrationTimedOut, setCloudHydrationTimedOut] = useState(false);
   
   // Auth state - Authoritative Firebase Auth & Custom Claims (Zero Trust in LocalStorage flags)
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -2230,6 +2243,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         .then((snap) => {
           if (!cancelled && snap.exists()) {
             applyRemoteData(snap.data());
+            setCloudHydrated(true);
           }
         })
         .catch((err) => {
@@ -2242,9 +2256,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           if (cancelled) return;
           if (snapshot.exists()) {
             applyRemoteData(snapshot.data());
+            setCloudHydrated(true);
           } else {
             setCloudStatus('connected');
             setCloudLastSynced('No Cloud Data Found');
+            setCloudHydrated(true);
           }
         },
         (error) => {
@@ -2358,6 +2374,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopActiveFeed();
     };
   }, []);
+
+  // First-snapshot timeout (Nov 2026 stale-flash fix): if no main_store
+  // snapshot lands within 6s (offline / very slow network), fall back
+  // to local data — StaffManager then labels it stale/offline instead
+  // of presenting it as current, and never blocks forever.
+  useEffect(() => {
+    if (cloudHydrated) return;
+    const t = setTimeout(() => setCloudHydrationTimedOut(true), 6000);
+    return () => clearTimeout(t);
+  }, [cloudHydrated]);
 
   // Background debounced auto-sync to Firebase Firestore on local state changes
   useEffect(() => {
@@ -5258,6 +5284,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       trashBin,
       cloudStatus,
       cloudLastSynced,
+      cloudHydrated,
+      cloudHydrationTimedOut,
       mode,
       isAdmin,
       authUser,

@@ -101,10 +101,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     isAdmin, 
     isSuperAdmin,
     currentUser,
-    currentMember
+    currentMember,
+    cloudHydrated,
+    cloudHydrationTimedOut
   } = useApp();
 
   const isBn = language === 'bn';
+
+  // First-snapshot gate (Nov 2026 stale-flash fix): until the first
+  // main_store snapshot lands (or the 6s timeout elapses), the staff
+  // list below must NOT render localStorage rows as if current.
+  // After the timeout, local data renders WITH the stale banner below.
+  const staffListSyncing = !cloudHydrated && !cloudHydrationTimedOut;
+  const staffListStale = !cloudHydrated && cloudHydrationTimedOut;
   const [activeTab, setActiveTab] = useState<StaffSubTab>(initialSubTab);
   // Design গ (merged tab): 'attendance' holds two inner sections —
   // daily attendance + leave records. Admin tier sees both; other
@@ -1167,7 +1176,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       <div className="transition-all duration-200">
         {/* 1. Staff, Faculty & Accounts (merged directory + roles) */}
         {activeTab === 'directory' && (
+          staffListSyncing ? (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center gap-3 text-center">
+              <div className="h-8 w-8 rounded-full border-2 border-teal-200 border-t-teal-600 animate-spin" />
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'সর্বশেষ তথ্য আসছে — পুরোনো তালিকা দেখানো হচ্ছে না' : 'Loading latest data — stale list hidden'}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">{isBn ? 'ক্লাউড থেকে নতুন তালিকা আসলেই এখানে দেখাবে' : 'The current list will appear once it arrives from the cloud'}</p>
+            </div>
+          ) : (
           <div className="space-y-4">
+            {staffListStale && (
+              <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-2xl p-3 text-xs font-bold text-amber-800 dark:text-amber-300">
+                {isBn ? 'অফলাইন — পুরোনো তথ্য দেখাচ্ছে। ইন্টারনেট এলে সর্বশেষ তালিকা আসবে।' : 'Offline — showing older saved data. The latest list will arrive when you are back online.'}
+              </div>
+            )}
             {/* Pending list update failure (Phase 1): never silently
                 show a stale cache — the banner shows even when the
                 list itself looks empty, with a retry. */}
@@ -1618,6 +1639,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               </div>
             )}
           </div>
+          )
         )}
 
         {/* 2. Workload & Subject Assignment */}
