@@ -138,7 +138,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   const [feeItems, setFeeItems] = useState<{
     tuition: { enabled: boolean; amount: number };
     boarding: { enabled: boolean; amount: number };
-    exam: { enabled: boolean; amount: number };
     admission: { enabled: boolean; amount: number };
     book: { enabled: boolean; amount: number };
     session: { enabled: boolean; amount: number };
@@ -147,7 +146,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   }>({
     tuition: { enabled: true, amount: 700 },
     boarding: { enabled: false, amount: 2600 },
-    exam: { enabled: false, amount: 400 },
     admission: { enabled: false, amount: 1500 },
     book: { enabled: false, amount: 800 },
     session: { enabled: false, amount: 500 },
@@ -166,7 +164,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         ...prev,
         tuition: { ...prev.tuition, amount: str.monthlyTuition },
         boarding: { ...prev.boarding, amount: str.boardingFee || 0 },
-        exam: { ...prev.exam, amount: str.examFee || 0 },
         admission: { ...prev.admission, amount: str.admissionFee || 0 },
         book: { ...prev.book, amount: str.bookFee || 0 },
       }));
@@ -471,7 +468,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   // =========================================================================
   // QUICK PRESETS & SUBMIT HANDLERS
   // =========================================================================
-  const applyPreset = (type: 'ALL' | 'TUITION_ONLY' | 'TUITION_AND_FOOD' | 'ADMISSION_ONLY' | 'EXAM_ONLY') => {
+  const applyPreset = (type: 'ALL' | 'TUITION_ONLY' | 'TUITION_AND_FOOD' | 'ADMISSION_ONLY') => {
     setFeeItems(prev => {
       switch (type) {
         case 'ALL':
@@ -479,7 +476,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             ...prev,
             tuition: { ...prev.tuition, enabled: true, amount: currentStructure.monthlyTuition },
             boarding: { ...prev.boarding, enabled: Boolean(currentStructure.boardingFee), amount: currentStructure.boardingFee || 0 },
-            exam: { ...prev.exam, enabled: Boolean(currentStructure.examFee), amount: currentStructure.examFee || 0 },
             admission: { ...prev.admission, enabled: Boolean(currentStructure.admissionFee), amount: currentStructure.admissionFee || 0 },
             book: { ...prev.book, enabled: Boolean(currentStructure.bookFee), amount: currentStructure.bookFee || 0 },
             session: { ...prev.session, enabled: false, amount: 0 },
@@ -489,7 +485,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             ...prev,
             tuition: { ...prev.tuition, enabled: true, amount: currentStructure.monthlyTuition },
             boarding: { ...prev.boarding, enabled: false },
-            exam: { ...prev.exam, enabled: false },
             admission: { ...prev.admission, enabled: false },
             book: { ...prev.book, enabled: false },
             session: { ...prev.session, enabled: false },
@@ -499,7 +494,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             ...prev,
             tuition: { ...prev.tuition, enabled: true, amount: currentStructure.monthlyTuition },
             boarding: { ...prev.boarding, enabled: true, amount: currentStructure.boardingFee || 2600 },
-            exam: { ...prev.exam, enabled: false },
             admission: { ...prev.admission, enabled: false },
             book: { ...prev.book, enabled: false },
             session: { ...prev.session, enabled: false },
@@ -509,19 +503,8 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             ...prev,
             tuition: { ...prev.tuition, enabled: false },
             boarding: { ...prev.boarding, enabled: false },
-            exam: { ...prev.exam, enabled: false },
             admission: { ...prev.admission, enabled: true, amount: currentStructure.admissionFee || 1500 },
             book: { ...prev.book, enabled: true, amount: currentStructure.bookFee || 800 },
-            session: { ...prev.session, enabled: false },
-          };
-        case 'EXAM_ONLY':
-          return {
-            ...prev,
-            tuition: { ...prev.tuition, enabled: false },
-            boarding: { ...prev.boarding, enabled: false },
-            exam: { ...prev.exam, enabled: true, amount: currentStructure.examFee || 400 },
-            admission: { ...prev.admission, enabled: false },
-            book: { ...prev.book, enabled: false },
             session: { ...prev.session, enabled: false },
           };
         default:
@@ -589,7 +572,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     let gross = 0;
     if (feeItems.tuition.enabled) gross += Number(feeItems.tuition.amount) || 0;
     if (feeItems.boarding.enabled) gross += Number(feeItems.boarding.amount) || 0;
-    if (feeItems.exam.enabled) gross += Number(feeItems.exam.amount) || 0;
     if (feeItems.admission.enabled) gross += Number(feeItems.admission.amount) || 0;
     if (feeItems.book.enabled) gross += Number(feeItems.book.amount) || 0;
     if (feeItems.session.enabled) gross += Number(feeItems.session.amount) || 0;
@@ -624,9 +606,6 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     }
     if (feeItems.boarding.enabled && feeItems.boarding.amount > 0) {
       breakdown.push({ name: 'Boarding & Food Fee', nameBn: 'বোর্ডিং ও খাবার ফি', amount: Number(feeItems.boarding.amount) });
-    }
-    if (feeItems.exam.enabled && feeItems.exam.amount > 0) {
-      breakdown.push({ name: 'Exam Fee', nameBn: 'পরীক্ষার ফি', amount: Number(feeItems.exam.amount) });
     }
     if (feeItems.admission.enabled && feeItems.admission.amount > 0) {
       breakdown.push({ name: 'Admission Fee', nameBn: 'ভর্তি ও সেশন চার্জ', amount: Number(feeItems.admission.amount) });
@@ -1126,26 +1105,11 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                     />
                   </div>
 
-                  {/* Exam Fee */}
-                  <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
-                    feeItems.exam.enabled ? 'bg-emerald-50/60 border-emerald-300 dark:border-emerald-700' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 opacity-60'
-                  }`}>
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-100 select-none">
-                      <input
-                        type="checkbox"
-                        checked={feeItems.exam.enabled}
-                        onChange={(e) => setFeeItems(p => ({ ...p, exam: { ...p.exam, enabled: e.target.checked } }))}
-                        className="rounded text-emerald-600 dark:text-emerald-400 focus:ring-emerald-500"
-                      />
-                      <span>{isBn ? 'পরীক্ষার ফি' : 'Exam Fee'}</span>
-                    </label>
-                    <input
-                      type="number"
-                      disabled={!feeItems.exam.enabled}
-                      value={feeItems.exam.amount}
-                      onChange={(e) => setFeeItems(p => ({ ...p, exam: { ...p.exam, amount: Number(e.target.value) } }))}
-                      className="w-24 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs text-right font-mono font-bold"
-                    />
+                  {/* Exam fee is NOT collected here (2 Nov 2026): a
+                      scheduled exam's fee is collected only by its class
+                      teacher from the teacher mobile view. */}
+                  <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-500/5 text-[11px] leading-relaxed text-emerald-900 dark:text-emerald-200 font-semibold">
+                    {isBn ? 'পরীক্ষার ফি এখানে নেওয়া হয় না — নির্ধারিত পরীক্ষার ফি শ্রেণি শিক্ষক মোবাইল থেকে আদায় করেন।' : 'Exam fee is not collected here — a scheduled exam\u2019s fee is collected by its class teacher from the teacher mobile view.'}
                   </div>
 
                   {/* Admission Fee */}

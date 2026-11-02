@@ -70,6 +70,11 @@ export interface Exam {
   endDate?: string;
   status?: ExamStatus;
   description?: string;
+  /** Per-exam fee (৳) entered at exam setup. When set (> 0), the exam's
+   * class students have a PENDING exam fee, collected by class teachers
+   * from the teacher mobile view (never via the accountant's flow).
+   * Absent/0 on old exams = no exam-fee pending for that exam. */
+  examFee?: number;
   contributions?: ExamContribution[];
   enableContributions?: boolean;
   createdAt?: string;
@@ -219,11 +224,20 @@ export interface FinanceTransaction {
   feeMonth?: string;           // e.g. '2026-01' or 'জানুয়ারি ২০২৬'
   feeBreakdown?: StudentFeeItem[];
 
+  /** Scheduled-exam linkage for teacher-collected exam fees.
+   * Set ONLY on exam-fee payments (teacher mobile collect). A transaction
+   * carrying examId is the single source of truth that the student's fee
+   * for that exam is paid — both the teacher view and any other flow
+   * derive paid/pending from it, so the same fee cannot be collected
+   * twice. Absent on all other transactions. */
+  examId?: string;
+
   // General Details
   payerOrPayee: string;        // কার কাছ থেকে পাওয়া গেল / কাকে পরিশোধ করা হলো
   contactNo?: string;
   description?: string;
   collectedBy?: string;        // আদায়কারী / ক্যাশিয়ারের নাম
+  collectedByUid?: string;     // Firebase uid of the collector (teacher collect)
   createdAt: string;
 }
 

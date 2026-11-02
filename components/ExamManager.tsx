@@ -23,6 +23,7 @@ import { SectionCard } from './ui/SectionCard';
 import { EmptyState } from './ui/EmptyState';
 import { useTheme } from '../context/ThemeContext';
 import { validateExamFinalization } from '../services/examValidation';
+import { amountFor, isFeeTypeEnabled } from '../services/feeTypes';
 
 export const ExamManager = () => {
   const { 
@@ -41,6 +42,8 @@ export const ExamManager = () => {
     archiveExamSubject,
     marks,
     students,
+    feeTypes = [],
+    feeStructures = [],
     t,
     language,
     hasPermission
@@ -72,6 +75,30 @@ export const ExamManager = () => {
     description: '',
     classIds: []
   });
+
+  // Exam-fee prefill (2 Nov 2026): exams carry no class in this app, so a
+  // new exam defaults to the institute's standard exam amount from the
+  // fee-types model (first class structure with an exam amount, when the
+  // exam type is enabled). Fully editable per exam; blank/0 means no
+  // exam-fee pending for that exam. Applied once per create session so
+  // clearing the field by hand is never undone (the key resets on save).
+  const standardExamFee = React.useMemo(() => {
+    if (!isFeeTypeEnabled(feeTypes, 'exam')) return undefined;
+    for (const st of feeStructures) {
+      const amt = amountFor(st, 'exam');
+      if (amt > 0) return amt;
+    }
+    return undefined;
+  }, [feeTypes, feeStructures]);
+  const examFeePrefillKey = React.useRef('');
+  React.useEffect(() => {
+    if (editingExamId) { examFeePrefillKey.current = `edit:${editingExamId}`; return; }
+    if (examFeePrefillKey.current === 'new') return;
+    examFeePrefillKey.current = 'new';
+    if (standardExamFee !== undefined) {
+      setFormData(prev => (prev.examFee === undefined ? { ...prev, examFee: standardExamFee } : prev));
+    }
+  }, [editingExamId, standardExamFee]);
 
   const filteredExams = exams
     .filter(e => {
@@ -121,8 +148,11 @@ export const ExamManager = () => {
       startDate: '',
       endDate: '',
       description: '',
+      examFee: undefined,
       classIds: []
     });
+    // Next create session may prefill the standard fee again.
+    examFeePrefillKey.current = '';
   };
 
   const startEditExam = (exam: Exam) => {
@@ -136,6 +166,7 @@ export const ExamManager = () => {
       startDate: exam.startDate || '',
       endDate: exam.endDate || '',
       description: exam.description || '',
+      examFee: exam.examFee,
       classIds: exam.classIds || []
     });
   };
@@ -424,6 +455,28 @@ export const ExamManager = () => {
                   onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 mb-1">পরীক্ষার ফি (৳)</label>
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                className="w-full border rounded-lg p-2 text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                value={formData.examFee === undefined || formData.examFee === null ? '' : String(formData.examFee)}
+                onChange={e => {
+                  const v = e.target.value;
+                  setFormData({ ...formData, examFee: v === '' ? undefined : Math.max(0, Number(v) || 0) });
+                }}
+                placeholder="যেমন: ৪০০"
+              />
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">
+                {standardExamFee !== undefined
+                  ? `নির্ধারিত পরীক্ষার ফি ৳${standardExamFee} থেকে নেওয়া — বদলাতে পারবেন।`
+                  : 'ফি দিলে এই পরীক্ষার শিক্ষার্থীদের পরীক্ষার ফি বকেয়া (pending) দেখাবে, শ্রেণি শিক্ষক মোবাইল থেকে আদায় করতে পারবেন।'}
+                {' '}খালি রাখলে এই পরীক্ষার জন্য কোনো ফি-বকেয়া হবে না।
+              </p>
             </div>
 
             <Button type="submit" className="w-full py-2.5 font-bold">

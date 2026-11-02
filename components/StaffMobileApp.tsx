@@ -10,6 +10,7 @@ import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
+import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
 import { STAFF_LEAVE_TYPE_OPTIONS, computeLeaveDays, buildStaffLeaveRequest, sanitizeProfileEdit } from '../services/staffSelfService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
@@ -795,6 +796,95 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       setTimeout(() => setSaveSuccessNotice(null), 3000);
     } else {
       setMarksCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // 4b. Exam-fee collection (teacher mobile) — 2 Nov 2026
+  // Pending is DERIVED: a scheduled exam with a fee, minus recorded
+  // exam-fee payments (services/examFeeService). The transaction
+  // carrying examId is the single source of truth — once it exists,
+  // the row shows paid everywhere and cannot be collected again.
+  // Exam fee is separate from monthly dues and never enters dues math.
+  // Scope: rows are the SELECTED CLASS's active students only, so a
+  // teacher collects only their assigned class (selectedClass is
+  // already forced into teacherClasses); an empty class shows an
+  // honest empty state, never another class's roster. Collection is
+  // NOT gated on marks-entry permission — fee collection is its own
+  // job; the teacher's class scope is the control.
+  // ---------------------------------------------------------------
+  const [examFeeCollecting, setExamFeeCollecting] = useState<Record<string, boolean>>({});
+  const [examFeeFailure, setExamFeeFailure] = useState<string | null>(null);
+  const selectedExamForFee = useMemo(
+    () => exams.find(e => e.id === selectedExamId),
+    [exams, selectedExamId]
+  );
+  const examFeeAmount = Number(selectedExamForFee?.examFee) || 0;
+  const examFeeVisible = !!selectedExamForFee && examFeeAmount > 0 && selectedExamForFee.status !== 'ARCHIVED' && !!selectedClass;
+  const examFeeRows = useMemo(() => {
+    if (!examFeeVisible) return [];
+    return students.filter(s => s.status === 'Active' && !s.isFormer && s.classLevel === selectedClass);
+  }, [examFeeVisible, students, selectedClass]);
+  const examFeePaidKeys = useMemo(() => paidExamFeeKeys(transactions), [transactions]);
+  const examFeePaidCount = useMemo(
+    () => (selectedExamForFee ? examFeeRows.filter(st => examFeePaidKeys.has(examFeePaidKey(selectedExamForFee.id, st.id))).length : 0),
+    [examFeeRows, examFeePaidKeys, selectedExamForFee]
+  );
+
+  const handleCollectExamFee = async (st: (typeof students)[number]) => {
+    if (!selectedExamForFee || examFeeAmount <= 0) return;
+    if (examFeePaidKeys.has(examFeePaidKey(selectedExamForFee.id, st.id))) return;
+    if (examFeeCollecting[st.id]) return;
+    setExamFeeCollecting(prev => ({ ...prev, [st.id]: true }));
+    setExamFeeFailure(null);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const collector = authUser?.displayName || currentMember?.displayName || currentUser?.name || '';
+    const newTx: Omit<FinanceTransaction, 'id' | 'createdAt'> = {
+      voucherNo: generateVoucherNo('INCOME', transactions),
+      type: 'INCOME',
+      category: 'EXAM_FEE',
+      categoryName: 'পরীক্ষার ফি',
+      fundType: 'GENERAL',
+      amount: examFeeAmount,
+      date: todayStr,
+      paymentMethod: 'CASH',
+      studentId: st.id,
+      studentCode: st.studentId,
+      studentName: st.name,
+      studentNameBn: st.nameBn,
+      classLevel: st.classLevel,
+      feeBreakdown: [{ name: 'Exam Fee', nameBn: 'পরীক্ষার ফি', amount: examFeeAmount }],
+      payerOrPayee: st.guardianName ? `${st.guardianName} (অভিভাবক)` : (st.nameBn || st.name || ''),
+      contactNo: st.guardianPhone || '',
+      description: `পরীক্ষার ফি — ${selectedExamForFee.nameBn || selectedExamForFee.name} (${st.classLevel})`,
+      collectedBy: collector,
+      collectedByUid: authUser?.uid || currentUser?.id || '',
+      examId: selectedExamForFee.id,
+    };
+    const created = addTransaction(newTx);
+    // Truthful receipt: success is shown ONLY after the awaited cloud
+    // confirmation. On failure the row already shows paid from the
+    // local transaction, but the banner says plainly it is not yet in
+    // the cloud, with a retry action — never presented as deposited.
+    const result = await confirmFeeCloudSync([created, ...transactions], feeCloudFailureMessage(created.voucherNo));
+    setExamFeeCollecting(prev => ({ ...prev, [st.id]: false }));
+    if (result.success) {
+      setSaveSuccessNotice(`✓ পরীক্ষার ফি আদায় হয়েছে! রসিদ নং ${created.voucherNo}`);
+      setTimeout(() => setSaveSuccessNotice(null), 3500);
+    } else {
+      setExamFeeFailure(result.message || feeCloudFailureMessage(created.voucherNo));
+    }
+  };
+
+  // Retry re-confirms the still-local exam-fee payments (no re-collection).
+  const retryExamFeeCloudSync = async () => {
+    const result = await confirmFeeCloudSync();
+    if (result.success) {
+      setExamFeeFailure(null);
+      setSaveSuccessNotice('✓ পরীক্ষার ফি ক্লাউডে সংরক্ষিত হয়েছে!');
+      setTimeout(() => setSaveSuccessNotice(null), 3500);
+    } else {
+      setExamFeeFailure(result.message || '');
     }
   };
 
@@ -3139,6 +3229,75 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <Save size={17} />
                     <span>নম্বর সংরক্ষণ করুন</span>
                   </button>
+                </div>
+              )}
+
+              {/* ============ TEACHER: EXAM-FEE COLLECTION ============ */}
+              {/* Pending exam fee for the selected exam, collected here in
+                  the number-entry/exam area (not in More). One source of
+                  truth: a transaction carrying examId marks the fee paid. */}
+              {examFeeVisible && selectedExamForFee && (
+                <div className={`${cardCls} p-4 space-y-3`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-9 h-9 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center shrink-0">
+                        <Wallet size={17} />
+                      </span>
+                      <div>
+                        <h2 className="text-sm font-bold">পরীক্ষার ফি আদায়</h2>
+                        <p className="text-[11px] text-[#8a93a8]">{selectedExamForFee.nameBn || selectedExamForFee.name} • {selectedClass} • জনপ্রতি ৳{toBn(examFeeAmount.toLocaleString())}</p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#fef3c7] dark:bg-amber-500/10 text-[#92400e] dark:text-amber-200 font-bold shrink-0">
+                      বাকি {toBn(examFeeRows.length - examFeePaidCount)} জন
+                    </span>
+                  </div>
+
+                  {examFeeFailure && (
+                    <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
+                      <span>{examFeeFailure}</span>
+                      <button type="button" onClick={retryExamFeeCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+                    </div>
+                  )}
+
+                  {examFeeRows.length === 0 ? (
+                    <p className="text-xs text-[#8a93a8] px-1">এই শ্রেণিতে সক্রিয় শিক্ষার্থী নেই।</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {examFeeRows.map(st => {
+                        const paid = examFeePaidKeys.has(examFeePaidKey(selectedExamForFee.id, st.id));
+                        const collecting = !!examFeeCollecting[st.id];
+                        return (
+                          <div key={st.id} className="p-3 rounded-2xl bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <span className="w-9 h-9 rounded-full brand-grad text-white font-bold flex items-center justify-center text-xs shrink-0">
+                                {(st.nameBn || st.name || 'শ').charAt(0)}
+                              </span>
+                              <div className="overflow-hidden">
+                                <h3 className="text-[13px] font-bold truncate">{st.nameBn || st.name}</h3>
+                                <span className="text-[11px] text-[#8a93a8]">রোল {toBn(st.roll || st.rollNumber || '—')}</span>
+                              </div>
+                            </div>
+                            {paid ? (
+                              <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-full bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300">
+                                <CheckCircle2 size={13} /> আদায় হয়েছে
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={collecting}
+                                onClick={() => handleCollectExamFee(st)}
+                                className="shrink-0 px-3.5 py-2 rounded-xl bg-[#059669] text-white text-xs font-bold disabled:opacity-50 active:scale-[0.98] transition-all cursor-pointer"
+                              >
+                                {collecting ? 'আদায় হচ্ছে…' : `আদায় ৳${toBn(examFeeAmount.toLocaleString())}`}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-[#8a93a8] px-1">নগদে আদায় হবে; রসিদ নম্বর স্বয়ংক্রিয়ভাবে তৈরি হবে। আদায় হওয়া ফি এখানে ও হিসাবের খাতায় একই রেকর্ড থেকে দেখাবে।</p>
                 </div>
               )}
             </div>

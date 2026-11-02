@@ -4988,6 +4988,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         startDate: details?.startDate,
         endDate: details?.endDate,
         status: details?.status || 'SCHEDULED',
+        examFee: details?.examFee,
         contributions: details?.contributions,
         enableContributions: details?.enableContributions,
         description: details?.description
