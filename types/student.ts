@@ -17,6 +17,15 @@ export type StudentLifecycleStatus =
 export type StudentGender = 'male' | 'female' | 'other' | '';
 
 /**
+ * Tuition-fee discount arrangement for one student (set on the admission
+ * form / student edit form). 'none' = institute fee in full; 'full' =
+ * institute waives the whole fee; 'partial' = institute waives part;
+ * 'etim' = orphan fund pays part, student pays the rest; 'other' =
+ * another named fund pays part, student pays the rest.
+ */
+export type FeeDiscountType = 'none' | 'full' | 'partial' | 'etim' | 'other';
+
+/**
  * Standard Future-Ready Student Model
  * Strictly backward-compatible with legacy Student objects.
  */
@@ -71,6 +80,14 @@ export interface Student {
   isFormer?: boolean;
   leavingDate?: string;
   leavingReason?: string;
+
+  // Tuition Fee Arrangement (optional; absent = no discount, payable = base)
+  feeDiscountType?: FeeDiscountType;
+  feeBaseAmount?: number; // institute-set monthly fee used for this arrangement
+  feeWaiverAmount?: number; // institute-waived part (full / partial waiver)
+  feeFundAmount?: number; // part paid by a fund (etim / other fund)
+  feeFundSource?: string; // fund name; 'এতিম ফান্ড' for etim, free text for other
+  feePayableAmount?: number; // what the student pays per month (= base - waiver - fund, never negative)
 
   // Extensibility & Audit
   metadata?: Record<string, any>;

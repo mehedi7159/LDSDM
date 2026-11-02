@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Student } from '../types/student';
+import { FEE_DISCOUNT_TYPE_LABELS, feeArrangementOf } from '../services/studentFeeArrangement';
 import { 
   X, 
   User, 
@@ -22,18 +23,30 @@ interface StudentProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   language?: 'bn' | 'en';
+  /** Institute-set monthly base for the student's class (from the fee structure). */
+  feeBase?: number;
 }
 
 export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   student,
   isOpen,
   onClose,
-  language = 'bn'
+  language = 'bn',
+  feeBase
 }) => {
   if (!isOpen || !student) return null;
 
   const isBn = language === 'bn';
   const isFormer = student.isFormer || student.status === 'Former' || student.status === 'archived';
+
+  // Fee arrangement display: a stored discount/fund arrangement shows its
+  // saved split; otherwise the default applies (no discount, payable =
+  // the institute base when a fee structure exists for the class).
+  const fee = feeArrangementOf(student);
+  const feeBaseDisplay = fee.discountType !== 'none'
+    ? fee.baseAmount
+    : (feeBase !== undefined && feeBase > 0 ? feeBase : fee.baseAmount);
+  const feePayableDisplay = fee.discountType !== 'none' ? fee.payableAmount : feeBaseDisplay;
 
   const getStatusBadge = () => {
     if (isFormer) {
@@ -153,6 +166,46 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Tuition Fee Arrangement */}
+          <div className="pt-5 space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <span className="text-emerald-600">💰</span>
+              {isBn ? 'টিউশন ফি ব্যবস্থা' : 'Tuition Fee Arrangement'}
+            </h3>
+            {feeBaseDisplay > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-[11px] text-slate-500 block">{isBn ? 'ছাড়ের ধরন' : 'Discount Type'}</span>
+                  <span className="font-semibold text-slate-800">{FEE_DISCOUNT_TYPE_LABELS[fee.discountType]}</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-[11px] text-slate-500 block">{isBn ? 'প্রতিষ্ঠান ফি (মাসিক)' : 'Institute Fee (Monthly)'}</span>
+                  <span className="font-semibold text-slate-800 font-mono">৳{feeBaseDisplay.toLocaleString()}</span>
+                </div>
+                {fee.waiverAmount > 0 && (
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <span className="text-[11px] text-emerald-600 block">{isBn ? 'ছাড় (ওয়েভার)' : 'Waiver'}</span>
+                    <span className="font-semibold text-emerald-800 font-mono">− ৳{fee.waiverAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                {fee.fundAmount > 0 && (
+                  <div className="p-3 bg-teal-50 rounded-xl border border-teal-100">
+                    <span className="text-[11px] text-teal-600 block">{fee.fundSource || (isBn ? 'ফান্ড থেকে' : 'From Fund')}</span>
+                    <span className="font-semibold text-teal-800 font-mono">− ৳{fee.fundAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                  <span className="text-[11px] text-indigo-600 block">{isBn ? 'শিক্ষার্থী দেবে (মাসিক)' : 'Student Pays (Monthly)'}</span>
+                  <span className="font-bold text-indigo-800 font-mono">৳{feePayableDisplay.toLocaleString()}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs font-medium text-slate-500">
+                {isBn ? 'এই শ্রেণির জন্য মাসিক ফি নির্ধারণ করা নেই।' : 'No monthly fee set for this class.'}
+              </p>
+            )}
           </div>
 
           {/* Personal & Demographic */}

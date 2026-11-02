@@ -1,4 +1,5 @@
 import { Student, ClassFeeStructure, FinanceTransaction } from '../types';
+import { feeArrangementOf, hasFeeArrangement } from './studentFeeArrangement';
 
 export interface StudentDueProfile {
   student: Student;
@@ -24,8 +25,26 @@ export interface ClassDuesSummary {
 }
 
 /**
- * Calculates current month student fee and due status based on feeStructures and recorded transactions
+ * Monthly amount the STUDENT owes — the single hook for fee arrangements.
+ * Precedence: (1) a stored discount/fund arrangement's payable wins
+ * (full waiver => 0; fund types => student part only — the fund part is
+ * an arrangement, not a payment transaction, so it never appears as paid
+ * here); (2) the legacy per-student monthlyFee override; (3) the class
+ * structure (tuition + boarding). Every dues caller (FinanceManager,
+ * StaffMobileApp, GuardianPortal) flows through calculateSingleStudentDue
+ * / calculateFeeAging below, so wiring this one helper wires them all.
  */
+export function monthlyExpectedFor(
+  student: Student,
+  feeStructures: ClassFeeStructure[]
+): number {
+  const arrangement = feeArrangementOf(student);
+  if (arrangement.discountType !== 'none') return arrangement.payableAmount;
+  const perStudentOverride = Number((student as any).monthlyFee) || 0;
+  if (perStudentOverride > 0) return perStudentOverride;
+  const struct = feeStructures.find(f => f.classLevel === student.classLevel);
+  return struct ? (struct.monthlyTuition || 0) + (struct.boardingFee || 0) : 0;
+}
 export function calculateSingleStudentDue(
   student: Student,
   feeStructures: ClassFeeStructure[],
@@ -34,15 +53,9 @@ export function calculateSingleStudentDue(
 ): StudentDueProfile {
   const currentMonthStr = targetMonth || new Date().toISOString().slice(0, 7); // YYYY-MM
 
-  // Find fee structure for student's class
-  const struct = feeStructures.find(f => f.classLevel === student.classLevel);
-  // An explicit per-student monthly fee recorded on the student record
-  // (legacy field, still honoured where present) overrides the class rate.
-  const perStudentOverride = Number((student as any).monthlyFee) || 0;
-  // Default expected tuition if no structure is configured is 0 or base rate
-  const monthlyExpected = perStudentOverride > 0
-    ? perStudentOverride
-    : struct ? (struct.monthlyTuition || 0) + (struct.boardingFee || 0) : 0;
+  // Monthly expected fee via the single hook (arrangement payable, else
+  // legacy override, else class structure tuition + boarding).
+  const monthlyExpected = monthlyExpectedFor(student, feeStructures);
 
   // Filter transactions for this student
   let paidThisMonth = 0;
@@ -79,6 +92,13 @@ export function calculateSingleStudentDue(
   } else {
     statusBadgeBn = 'ফি নির্ধারণ নেই';
     statusBadgeColor = 'bg-slate-500/15 text-slate-400 border-slate-500/30';
+  }
+
+  // A discount arrangement that zeroes the payable is a full waiver, not
+  // an unset fee — label it so it is never mistaken for missing data.
+  if (monthlyExpected === 0 && hasFeeArrangement(student)) {
+    statusBadgeBn = 'সম্পূর্ণ ছাড়';
+    statusBadgeColor = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
   }
 
   return {
@@ -199,13 +219,9 @@ export function calculateFeeAging(
     currentMonthDue: 0, oneMonthOld: 0, twoPlusMonthsOld: 0, totalAged: 0, byMonth: []
   };
 
-  // Monthly expected fee — the SAME rule as calculateSingleStudentDue:
-  // per-student override wins, else class structure tuition + boarding.
-  const struct = feeStructures.find(f => f.classLevel === student.classLevel);
-  const perStudentOverride = Number((student as any).monthlyFee) || 0;
-  const monthlyExpected = perStudentOverride > 0
-    ? perStudentOverride
-    : struct ? (struct.monthlyTuition || 0) + (struct.boardingFee || 0) : 0;
+  // Monthly expected fee — the SAME hook as calculateSingleStudentDue
+  // (arrangement payable, else legacy override, else structure).
+  const monthlyExpected = monthlyExpectedFor(student, feeStructures);
   if (monthlyExpected <= 0) return empty;
 
   const myTx = transactions.filter(tx =>

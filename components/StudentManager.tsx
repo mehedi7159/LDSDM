@@ -40,6 +40,16 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { validateStudent } from '../services/studentValidation';
+import {
+  FEE_DISCOUNT_TYPES,
+  FEE_DISCOUNT_TYPE_LABELS,
+  ETIM_FUND_SOURCE,
+  classFeeBase,
+  toFeeNumber,
+  normalizeFeeArrangement,
+  validateFeeArrangement,
+} from '../services/studentFeeArrangement';
+import type { FeeDiscountType } from '../types/student';
 import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE } from '../services/cloudConfirm';
 import { recordStudentAuditEvent } from '../services/studentService';
 import { StudentProfileModal } from './StudentProfileModal';
@@ -82,6 +92,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     confirmStudentsCloudSync,
     confirmStudentDeleteCloudSync,
     classes, 
+    feeStructures,
     t, 
     language,
     authUser,
@@ -187,6 +198,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     isFormer: boolean;
     leavingDate: string;
     leavingReason: string;
+    // Tuition fee arrangement (amounts kept as input strings; normalized to numbers on save)
+    feeDiscountType: FeeDiscountType;
+    feeBaseAmount: string;
+    feeWaiverAmount: string;
+    feeFundAmount: string;
+    feeFundSource: string;
   }>({
     studentId: '',
     roll: '',
@@ -210,7 +227,26 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     isFormer: false,
     leavingDate: '',
     leavingReason: '',
+    feeDiscountType: 'none',
+    feeBaseAmount: '',
+    feeWaiverAmount: '',
+    feeFundAmount: '',
+    feeFundSource: '',
   });
+
+  // Tuition fee arrangement, derived live from the form: the institute-set
+  // base comes from the fee structure for the selected class when one
+  // exists (tuition + boarding, the same rule dues use); otherwise the
+  // manually entered base is used.
+  const feeStructForClass = feeStructures.find(f => f.classLevel === formData.classLevel);
+  const feeArrangementInput = {
+    discountType: formData.feeDiscountType,
+    baseAmount: feeStructForClass ? classFeeBase(feeStructForClass) : toFeeNumber(formData.feeBaseAmount),
+    waiverAmount: toFeeNumber(formData.feeWaiverAmount),
+    fundAmount: toFeeNumber(formData.feeFundAmount),
+    fundSource: formData.feeFundSource,
+  };
+  const feeArrangement = normalizeFeeArrangement(feeArrangementInput);
 
   // Reusable validation engine
   const validateForm = () => {
@@ -242,6 +278,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       }
     }
 
+    // Tuition fee arrangement: waiver + fund must stay within the base,
+    // and a named fund source is required for the 'other fund' type.
+    const feeError = validateFeeArrangement(feeArrangementInput);
+    if (feeError) {
+      setError(feeError);
+      return false;
+    }
+
     return true;
   };
 
@@ -271,6 +315,15 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       rollNumber: cleanRoll || undefined,
       isFormer,
       status: finalStatus,
+      // Tuition fee arrangement, normalized (payable = base - waiver - fund,
+      // never negative). Stored as numbers, overriding the string inputs
+      // above; rides along with the existing cloud-confirmed student save.
+      feeDiscountType: feeArrangement.discountType,
+      feeBaseAmount: feeArrangement.baseAmount,
+      feeWaiverAmount: feeArrangement.waiverAmount,
+      feeFundAmount: feeArrangement.fundAmount,
+      feeFundSource: feeArrangement.fundSource || undefined,
+      feePayableAmount: feeArrangement.payableAmount,
     };
 
     try {
@@ -386,6 +439,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       isFormer,
       leavingDate: student.leavingDate || '',
       leavingReason: student.leavingReason || '',
+      feeDiscountType: student.feeDiscountType || 'none',
+      feeBaseAmount: student.feeBaseAmount ? String(student.feeBaseAmount) : '',
+      feeWaiverAmount: student.feeWaiverAmount ? String(student.feeWaiverAmount) : '',
+      feeFundAmount: student.feeFundAmount ? String(student.feeFundAmount) : '',
+      feeFundSource: student.feeFundSource || '',
     });
     setEditingId(student.id);
     setError(null);
@@ -424,6 +482,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       isFormer: defaultStatus === 'Former',
       leavingDate: '',
       leavingReason: '',
+      feeDiscountType: 'none',
+      feeBaseAmount: '',
+      feeWaiverAmount: '',
+      feeFundAmount: '',
+      feeFundSource: '',
     });
   };
 
@@ -1752,6 +1815,132 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 </div>
               </div>
 
+              {/* Tuition Fee Arrangement Section */}
+              <div className="space-y-3 pt-2">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
+                  <span>💰 টিউশন ফি ব্যবস্থা (Tuition Fee)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'প্রতিষ্ঠান নির্ধারিত মাসিক ফি (৳)' : 'Institute Monthly Fee (৳)'}</label>
+                    {feeStructForClass ? (
+                      <div className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-bold bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300">
+                        ৳{feeArrangement.baseAmount.toLocaleString()}
+                        {(feeStructForClass.monthlyTuition || 0) > 0 && (feeStructForClass.boardingFee || 0) > 0 && (
+                          <span className="block text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            {language === 'bn' ? `টিউশন ৳${(feeStructForClass.monthlyTuition || 0).toLocaleString()} + বোর্ডিং ৳${(feeStructForClass.boardingFee || 0).toLocaleString()}` : `Tuition ৳${(feeStructForClass.monthlyTuition || 0).toLocaleString()} + Boarding ৳${(feeStructForClass.boardingFee || 0).toLocaleString()}`}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                        value={formData.feeBaseAmount || ''}
+                        onChange={e => setFormData({ ...formData, feeBaseAmount: e.target.value })}
+                        placeholder={language === 'bn' ? 'যেমন: ৫০০' : 'e.g. 500'}
+                      />
+                    )}
+                    {!feeStructForClass && (
+                      <p className="text-[11px] text-gray-500 dark:text-slate-400">{language === 'bn' ? 'এই শ্রেণির জন্য ফি স্ট্রাকচার সেট করা নেই — মাসিক ফি লিখুন।' : 'No fee structure set for this class — enter the monthly fee.'}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ছাড়ের ধরন' : 'Discount Type'}</label>
+                    <select
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      value={formData.feeDiscountType || 'none'}
+                      onChange={e => setFormData({ ...formData, feeDiscountType: e.target.value as FeeDiscountType })}
+                    >
+                      {FEE_DISCOUNT_TYPES.map(dt => (
+                        <option key={dt} value={dt}>{FEE_DISCOUNT_TYPE_LABELS[dt]}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {formData.feeDiscountType === 'partial' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ওয়েভারের পরিমাণ (৳)' : 'Waiver Amount (৳)'} <span className="text-red-500">*</span></label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                        value={formData.feeWaiverAmount || ''}
+                        onChange={e => setFormData({ ...formData, feeWaiverAmount: e.target.value })}
+                        placeholder={language === 'bn' ? 'যেমন: ২০০' : 'e.g. 200'}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {(formData.feeDiscountType === 'etim' || formData.feeDiscountType === 'other') && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ফান্ড থেকে দেওয়া হবে (৳)' : 'Fund Contribution (৳)'} <span className="text-red-500">*</span></label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                        value={formData.feeFundAmount || ''}
+                        onChange={e => setFormData({ ...formData, feeFundAmount: e.target.value })}
+                        placeholder={language === 'bn' ? 'যেমন: ৩০০' : 'e.g. 300'}
+                      />
+                    </div>
+                    {formData.feeDiscountType === 'etim' ? (
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ফান্ডের উৎস' : 'Fund Source'}</label>
+                        <div className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-bold bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300">{ETIM_FUND_SOURCE}</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ফান্ডের নাম/উৎস' : 'Fund Name / Source'} <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla"
+                          value={formData.feeFundSource || ''}
+                          onChange={e => setFormData({ ...formData, feeFundSource: e.target.value })}
+                          placeholder={language === 'bn' ? 'যেমন: যাকাত ফান্ড' : 'e.g. Zakat Fund'}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {formData.feeDiscountType === 'full' && (
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
+                    {language === 'bn' ? 'সম্পূর্ণ ফি মওকুফ — শিক্ষার্থীকে মাসিক ফি দিতে হবে না।' : 'Full waiver — the student pays no monthly fee.'}
+                  </p>
+                )}
+
+                {/* Live split: base = waiver/fund + student payable */}
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold text-gray-700 dark:text-slate-200">
+                    <span>{language === 'bn' ? 'প্রতিষ্ঠান ফি' : 'Institute Fee'}</span>
+                    <span className="font-mono">৳{feeArrangement.baseAmount.toLocaleString()}</span>
+                  </div>
+                  {feeArrangement.waiverAmount > 0 && (
+                    <div className="flex justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                      <span>{language === 'bn' ? 'ছাড় (ওয়েভার)' : 'Waiver'}</span>
+                      <span className="font-mono">− ৳{feeArrangement.waiverAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {feeArrangement.fundAmount > 0 && (
+                    <div className="flex justify-between text-xs font-semibold text-teal-700 dark:text-teal-400">
+                      <span>{feeArrangement.fundSource || (language === 'bn' ? 'ফান্ড থেকে' : 'From Fund')}</span>
+                      <span className="font-mono">− ৳{feeArrangement.fundAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-700 pt-1.5">
+                    <span className="text-xs font-extrabold text-gray-900 dark:text-white">{language === 'bn' ? 'শিক্ষার্থী দেবে (মাসিক)' : 'Student Pays (Monthly)'}</span>
+                    <span className="text-base font-extrabold text-indigo-700 dark:text-indigo-400 font-mono">৳{feeArrangement.payableAmount.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
               {/* 2. Personal Information Section */}
               <div className="space-y-3 pt-2">
                 <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
@@ -2024,6 +2213,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         student={profileStudent}
         onClose={() => setProfileStudent(null)}
         language={language}
+        feeBase={profileStudent ? (() => {
+          const struct = feeStructures.find(f => f.classLevel === profileStudent.classLevel);
+          return struct ? classFeeBase(struct) : undefined;
+        })() : undefined}
       />
 
       {/* Class Promotion Modal */}
