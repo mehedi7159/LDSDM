@@ -25,6 +25,7 @@ import type {
   NoticeItem
 } from '../types';
 import { DEFAULT_GRADING_SYSTEM } from '../types';
+import type { FeeTypeDef } from './feeTypes';
 import type {
   DailyStudentAttendanceRecord,
   DailyStaffAttendanceRecord
@@ -64,6 +65,7 @@ export interface SystemDataPayload {
   remarks: RemarkRecord[];
   transactions: FinanceTransaction[];
   feeStructures: ClassFeeStructure[];
+  feeTypes?: FeeTypeDef[];
   trashBin: TrashItem[];
   academicYears?: AcademicYear[];
   sections?: Section[];
@@ -305,6 +307,7 @@ export function readCurrentLocalStoragePayload(): SystemDataPayload {
     remarks: safeParse<RemarkRecord[]>('remarks', []),
     transactions: safeParse<FinanceTransaction[]>('madrasha_transactions', []),
     feeStructures: safeParse<ClassFeeStructure[]>('madrasha_fee_structures', []),
+    feeTypes: safeParse<FeeTypeDef[]>('madrasha_fee_types', []),
     trashBin: safeParse<TrashItem[]>('madrasha_trash_bin', []),
     academicYears: safeParse<AcademicYear[]>('academicYears', []),
     sections: safeParse<Section[]>('sections', []),
@@ -344,6 +347,7 @@ export function writePayloadToLocalStorage(payload: SystemDataPayload): void {
   if (Array.isArray(payload.remarks)) localStorage.setItem('remarks', JSON.stringify(payload.remarks));
   if (Array.isArray(payload.transactions)) localStorage.setItem('madrasha_transactions', JSON.stringify(payload.transactions));
   if (Array.isArray(payload.feeStructures)) localStorage.setItem('madrasha_fee_structures', JSON.stringify(payload.feeStructures));
+  if (Array.isArray(payload.feeTypes)) localStorage.setItem('madrasha_fee_types', JSON.stringify(payload.feeTypes));
   if (Array.isArray(payload.trashBin)) localStorage.setItem('madrasha_trash_bin', JSON.stringify(payload.trashBin));
   if (Array.isArray(payload.academicYears)) localStorage.setItem('academicYears', JSON.stringify(payload.academicYears));
   if (Array.isArray(payload.sections)) localStorage.setItem('sections', JSON.stringify(payload.sections));

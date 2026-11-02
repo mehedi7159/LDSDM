@@ -56,6 +56,8 @@ import {
   roleKeyToRoleId
 } from '../services/roleResolution';
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
+import type { FeeTypeDef } from '../services/feeTypes';
+import { DEFAULT_FEE_TYPES } from '../services/feeTypes';
 import {
   GOOGLE_PASSWORD_LOGIN_DENIED,
   GOOGLE_SIGNUP_EXISTING_MEMBER,
@@ -111,9 +113,13 @@ import {
   writeNoticesFieldToCloud,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
+  writeFeeStructuresFieldToCloud,
+  writeFeeTypesFieldToCloud,
   confirmCloudWrite,
   ATTENDANCE_CLOUD_FAILURE_MESSAGE,
   FEE_CLOUD_FAILURE_MESSAGE,
+  FEE_STRUCTURES_CLOUD_FAILURE_MESSAGE,
+  FEE_TYPES_CLOUD_FAILURE_MESSAGE,
   MARKS_CLOUD_FAILURE_MESSAGE,
   STUDENTS_CLOUD_FAILURE_MESSAGE,
   STUDENT_DELETE_CLOUD_FAILURE_MESSAGE,
@@ -346,6 +352,11 @@ interface AppContextType extends AppState {
   setTransactions: (transactions: FinanceTransaction[]) => void;
   updateFeeStructure: (structure: ClassFeeStructure) => void;
   setFeeStructures: (structures: ClassFeeStructure[]) => void;
+  feeTypes: FeeTypeDef[];
+  setFeeTypes: (types: FeeTypeDef[]) => void;
+  updateFeeTypes: (types: FeeTypeDef[]) => void;
+  confirmFeeStructuresCloudSync: (nextStructures?: ClassFeeStructure[]) => Promise<CloudConfirmResult>;
+  confirmFeeTypesCloudSync: (nextTypes?: FeeTypeDef[]) => Promise<CloudConfirmResult>;
   addNotice: (notice: Omit<NoticeItem, 'id' | 'createdAt'>) => NoticeItem;
   updateNotice: (notice: NoticeItem) => NoticeItem;
   deleteNotice: (id: string) => void;
@@ -792,6 +803,31 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
     return [];
   });
+
+  // Fee types are DATA (2 Nov 2026): the setup page edits this list, and
+  // adding a type needs no code change. Empty stored list = never
+  // initialized -> seed defaults (there is no delete-type action).
+  const [feeTypes, setFeeTypes] = useState<FeeTypeDef[]>(() => {
+    const saved = localStorage.getItem('madrasha_fee_types');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return DEFAULT_FEE_TYPES;
+  });
+
+  // Fresh-readers for the Fee Setup cloud-confirm retries (same pattern
+  // as transactionsRef above; declared after the state they mirror).
+  const feeStructuresRef = useRef<ClassFeeStructure[]>([]);
+  useEffect(() => {
+    feeStructuresRef.current = feeStructures;
+  }, [feeStructures]);
+  const feeTypesRef = useRef<FeeTypeDef[]>([]);
+  useEffect(() => {
+    feeTypesRef.current = feeTypes;
+  }, [feeTypes]);
 
   const [promotionHistory, setPromotionHistory] = useState<PromotionHistoryRecord[]>(() => {
     const saved = localStorage.getItem('madrasha_promotion_history');
@@ -2034,6 +2070,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setFeeStructures(data.feeStructures);
       try { localStorage.setItem('madrasha_fee_structures', JSON.stringify(data.feeStructures)); } catch {}
     }
+    if (data.feeTypes && Array.isArray(data.feeTypes) && data.feeTypes.length > 0) {
+      setFeeTypes(data.feeTypes);
+      try { localStorage.setItem('madrasha_fee_types', JSON.stringify(data.feeTypes)); } catch {}
+    }
     if (data.trashBin && Array.isArray(data.trashBin)) {
       setTrashBin(data.trashBin);
       try { localStorage.setItem('madrasha_trash_bin', JSON.stringify(data.trashBin)); } catch {}
@@ -2428,6 +2468,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             sections,
             transactions,
             feeStructures,
+            feeTypes,
             trashBin,
             promotionHistory,
             users,
@@ -2469,7 +2510,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, trashBin, promotionHistory, users, notices, staffLeaves, dailyStudentAttendance, dailyStaffAttendance, classRoutines, syllabusItems, calendarEvents, currentUser, isAdmin, authUser, adminEmail]);
+  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, feeTypes, trashBin, promotionHistory, users, notices, staffLeaves, dailyStudentAttendance, dailyStaffAttendance, classRoutines, syllabusItems, calendarEvents, currentUser, isAdmin, authUser, adminEmail]);
 
   // Offline LocalStorage updates
   useEffect(() => {
@@ -2495,6 +2536,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('madrasha_fee_structures', JSON.stringify(feeStructures));
   }, [feeStructures]);
+
+  useEffect(() => {
+    localStorage.setItem('madrasha_fee_types', JSON.stringify(feeTypes));
+  }, [feeTypes]);
 
   useEffect(() => {
     localStorage.setItem('madrasha_trash_bin', JSON.stringify(trashBin));
@@ -2892,6 +2937,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           sections,
           transactions,
           feeStructures,
+          feeTypes,
           trashBin,
           promotionHistory,
           users,
@@ -4468,6 +4514,48 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return result;
   };
 
+  // Truthful-save for Fee Setup (2 Nov 2026): fee-structure and fee-type
+  // saves confirm against cloud before the UI reports success. Save-time
+  // callers pass explicit next-lists (state has not landed yet); the
+  // no-arg retry path reads through the refs above.
+  const confirmFeeStructuresCloudSync = async (
+    nextStructures?: ClassFeeStructure[]
+  ): Promise<CloudConfirmResult> => {
+    const list = nextStructures ?? feeStructuresRef.current;
+    const result = await confirmCloudWrite(
+      () => writeFeeStructuresFieldToCloud(list, confirmActorName()),
+      FEE_STRUCTURES_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('feeStructures');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('feeStructures');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  const confirmFeeTypesCloudSync = async (
+    nextTypes?: FeeTypeDef[]
+  ): Promise<CloudConfirmResult> => {
+    const list = nextTypes ?? feeTypesRef.current;
+    const result = await confirmCloudWrite(
+      () => writeFeeTypesFieldToCloud(list, confirmActorName()),
+      FEE_TYPES_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      clearPendingConfirm('feeTypes');
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingConfirm('feeTypes');
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
   // Retry for the truthful-save paths (no general sync queue).
   // Runs on app start, when the user returns to the foreground, when the
   // device comes back online, and when a signed-in session appears
@@ -4495,6 +4583,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (pending.includes('notices')) await confirmNoticesCloudSync();
       if (pending.includes('schedule')) await confirmScheduleCloudSync();
       if (pending.includes('leaves')) await confirmLeavesCloudSync();
+      if (pending.includes('feeStructures')) await confirmFeeStructuresCloudSync();
+      if (pending.includes('feeTypes')) await confirmFeeTypesCloudSync();
     } finally {
       retryInFlightRef.current = false;
     }
@@ -5066,6 +5156,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     });
   };
 
+  const updateFeeTypes = (types: FeeTypeDef[]) => {
+    setFeeTypes(types);
+  };
+
   const restoreFromTrash = (trashId: string) => {
     const item = trashBin.find(t => t.id === trashId);
     if (!item) return;
@@ -5360,11 +5454,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       confirmNoticesCloudSync,
       confirmScheduleCloudSync,
       confirmLeavesCloudSync,
+      confirmFeeStructuresCloudSync,
+      confirmFeeTypesCloudSync,
       updateTransaction,
       deleteTransaction,
       setTransactions,
       updateFeeStructure,
       setFeeStructures,
+      feeTypes,
+      setFeeTypes,
+      updateFeeTypes,
       restoreFromTrash,
       permanentlyDeleteTrashItem,
       restoreAllFromTrash,

@@ -56,6 +56,7 @@ export const GuardianPortal: React.FC = () => {
     marks,
     transactions,
     feeStructures,
+    feeTypes = [],
     logoutUser,
     language
   } = useApp();
@@ -105,7 +106,7 @@ export const GuardianPortal: React.FC = () => {
   const feeSummary = useMemo(() => {
     if (!linkedStudent) return { paid: 0, due: 0, monthlyExpected: 0, transactions: [] as typeof transactions };
     const studentTx = transactions.filter(t => t.studentId === linkedStudent.id || (t.studentCode && t.studentCode === linkedStudent.studentId));
-    const profile = calculateSingleStudentDue(linkedStudent, feeStructures, transactions);
+    const profile = calculateSingleStudentDue(linkedStudent, feeStructures, transactions, undefined, feeTypes);
     return {
       paid: profile.totalPaidLifetime,
       due: profile.dueThisMonth,

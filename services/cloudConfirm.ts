@@ -87,9 +87,15 @@ export const NOTICE_DELETE_CLOUD_FAILURE_MESSAGE =
 export const SCHEDULE_CLOUD_FAILURE_MESSAGE =
   'রুটিন/সিলেবাস/ক্যালেন্ডার এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
-// Step 4 (25 Oct 2026): staff-submitted leave requests use the same
-// truthful-save pattern. The request itself is always PENDING (see
-// services/staffSelfService.ts) — this message only covers its cloud write.
+// Fee Setup (2 Nov 2026): fee-structure saves use the same truthful-save
+// pattern. A failed confirmation never drops local data: the structures
+// stay in local state, the failure is queued, and the caller shows an
+// honest failure notice with a retry action.
+export const FEE_STRUCTURES_CLOUD_FAILURE_MESSAGE =
+  'ফি কাঠামো এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const FEE_TYPES_CLOUD_FAILURE_MESSAGE =
+  'ফি-র ধরন এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 export const LEAVE_CLOUD_FAILURE_MESSAGE =
   'ছুটির আবেদন এই ফোনে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
@@ -120,7 +126,9 @@ export type PendingConfirmKind =
   | 'staff'
   | 'notices'
   | 'schedule'
-  | 'leaves';
+  | 'leaves'
+  | 'feeStructures'
+  | 'feeTypes';
 
 export type CloudConfirmResult = { success: boolean; message?: string };
 
@@ -296,6 +304,50 @@ export async function writeStaffLeavesFieldToCloud(
   );
 }
 
+/**
+ * Fee Setup (2 Nov 2026): fee-structure saves.
+ * Union by classLevel (NOT by id): the setup UI seeds ids as `fs-<classId>`
+ * while older records may carry generated ids, so id-union would keep
+ * duplicate rows for one class. Incoming (local) rows win per class.
+ * A structure save is always an upsert, never a delete, so union is safe.
+ */
+export async function writeFeeStructuresFieldToCloud(
+  structures: { id: string; classLevel: string }[],
+  updatedBy: string
+): Promise<void> {
+  const write = async (): Promise<void> => {
+    const ref = doc(db, 'institution', 'main_store');
+    const snap = await getDoc(ref);
+    const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
+    const existing = (data.feeStructures as { id: string; classLevel: string }[] | undefined) || [];
+    const map = new Map<string, { id: string; classLevel: string }>();
+    existing.forEach(r => { if (r && r.classLevel) map.set(r.classLevel, r); });
+    structures.forEach(r => { if (r && r.classLevel) map.set(r.classLevel, r); });
+    await setDoc(ref, {
+      feeStructures: Array.from(map.values()),
+      updatedBy,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'fee structures cloud confirm');
+}
+
+/**
+ * Fee Setup (2 Nov 2026): fee-type list saves. Type defs carry stable ids,
+ * so the standard id-union applies; there is no delete-type action in the
+ * UI (only add + enable/disable), so union cannot resurrect anything.
+ */
+export async function writeFeeTypesFieldToCloud(
+  types: { id: string }[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(
+    writeFieldToCloud('feeTypes', types, updatedBy),
+    CONFIRM_TIMEOUT_MS,
+    'fee types cloud confirm'
+  );
+}
+
 /** Runs a caller-supplied write and maps its outcome (deleteTeacher template). */
 export async function confirmCloudWrite(
   write: () => Promise<void>,
@@ -327,7 +379,9 @@ export function readPendingConfirms(): PendingConfirmKind[] {
         k === 'staff' ||
         k === 'notices' ||
         k === 'schedule' ||
-        k === 'leaves'
+        k === 'leaves' ||
+        k === 'feeStructures' ||
+        k === 'feeTypes'
     );
   } catch {
     return [];

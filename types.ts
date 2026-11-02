@@ -235,6 +235,10 @@ export interface ClassFeeStructure {
   examFee: number;
   boardingFee: number;
   bookFee: number;
+  /** Fee-type amounts (feeTypeId -> amount). Source of truth for the new
+   * Fee Setup UI; legacy fields above are dual-written for old readers.
+   * Absent on old records — readers fall back to the legacy fields. */
+  amounts?: Record<string, number>;
 }
 
 // ==================== SAAS MULTI-TENANT DOMAIN MODEL ====================

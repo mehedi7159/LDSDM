@@ -1,5 +1,6 @@
 import { Student, ClassFeeStructure, FinanceTransaction } from '../types';
-import { feeArrangementOf, hasFeeArrangement } from './studentFeeArrangement';
+import { feeArrangementOf, hasFeeArrangement, classFeeBase } from './studentFeeArrangement';
+import type { FeeTypeDef } from './feeTypes';
 
 export interface StudentDueProfile {
   student: Student;
@@ -30,32 +31,37 @@ export interface ClassDuesSummary {
  * (full waiver => 0; fund types => student part only — the fund part is
  * an arrangement, not a payment transaction, so it never appears as paid
  * here); (2) the legacy per-student monthlyFee override; (3) the class
- * structure (tuition + boarding). Every dues caller (FinanceManager,
+ * structure via classFeeBase (tuition + food only when the food type is
+ * enabled; food disabled by default, so tuition-only). One-time/event
+ * fees (admission, session, registration, form fillup, exam, book) NEVER
+ * enter monthly dues. Every dues caller (FinanceManager,
  * StaffMobileApp, GuardianPortal) flows through calculateSingleStudentDue
  * / calculateFeeAging below, so wiring this one helper wires them all.
  */
 export function monthlyExpectedFor(
   student: Student,
-  feeStructures: ClassFeeStructure[]
+  feeStructures: ClassFeeStructure[],
+  feeTypes?: FeeTypeDef[]
 ): number {
   const arrangement = feeArrangementOf(student);
   if (arrangement.discountType !== 'none') return arrangement.payableAmount;
   const perStudentOverride = Number((student as any).monthlyFee) || 0;
   if (perStudentOverride > 0) return perStudentOverride;
   const struct = feeStructures.find(f => f.classLevel === student.classLevel);
-  return struct ? (struct.monthlyTuition || 0) + (struct.boardingFee || 0) : 0;
+  return classFeeBase(struct, feeTypes);
 }
 export function calculateSingleStudentDue(
   student: Student,
   feeStructures: ClassFeeStructure[],
   transactions: FinanceTransaction[],
-  targetMonth?: string
+  targetMonth?: string,
+  feeTypes?: FeeTypeDef[]
 ): StudentDueProfile {
   const currentMonthStr = targetMonth || new Date().toISOString().slice(0, 7); // YYYY-MM
 
   // Monthly expected fee via the single hook (arrangement payable, else
   // legacy override, else class structure tuition + boarding).
-  const monthlyExpected = monthlyExpectedFor(student, feeStructures);
+  const monthlyExpected = monthlyExpectedFor(student, feeStructures, feeTypes);
 
   // Filter transactions for this student
   let paidThisMonth = 0;
@@ -121,7 +127,8 @@ export function calculateClassDuesSummary(
   students: Student[],
   feeStructures: ClassFeeStructure[],
   transactions: FinanceTransaction[],
-  targetMonth?: string
+  targetMonth?: string,
+  feeTypes?: FeeTypeDef[]
 ): ClassDuesSummary {
   const className = students[0]?.classLevel || 'সকল শ্রেণি';
   let totalExpected = 0;
@@ -131,7 +138,7 @@ export function calculateClassDuesSummary(
   let paidStudentsCount = 0;
 
   const profiles = students.map(st => {
-    const p = calculateSingleStudentDue(st, feeStructures, transactions, targetMonth);
+    const p = calculateSingleStudentDue(st, feeStructures, transactions, targetMonth, feeTypes);
     totalExpected += p.monthlyExpected;
     totalPaid += p.paidThisMonth;
     totalDue += p.dueThisMonth;
@@ -211,7 +218,8 @@ export function calculateFeeAging(
   student: Student,
   feeStructures: ClassFeeStructure[],
   transactions: FinanceTransaction[],
-  asOfMonth?: string
+  asOfMonth?: string,
+  feeTypes?: FeeTypeDef[]
 ): FeeAging {
   const asOf = asOfMonth || new Date().toISOString().slice(0, 7);
   const empty: FeeAging = {
@@ -221,7 +229,7 @@ export function calculateFeeAging(
 
   // Monthly expected fee — the SAME hook as calculateSingleStudentDue
   // (arrangement payable, else legacy override, else structure).
-  const monthlyExpected = monthlyExpectedFor(student, feeStructures);
+  const monthlyExpected = monthlyExpectedFor(student, feeStructures, feeTypes);
   if (monthlyExpected <= 0) return empty;
 
   const myTx = transactions.filter(tx =>

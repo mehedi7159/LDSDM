@@ -221,6 +221,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     exams = [],
     transactions = [],
     feeStructures = [],
+    feeTypes = [],
     notices = [],
     classRoutines = [],
     calendarEvents = [],
@@ -439,15 +440,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   // Dues Summary for the teacher's class
   const classDuesSummary = useMemo(() => {
-    return calculateClassDuesSummary(classStudents, feeStructures, transactions);
-  }, [classStudents, feeStructures, transactions]);
+    return calculateClassDuesSummary(classStudents, feeStructures, transactions, undefined, feeTypes);
+  }, [classStudents, feeStructures, transactions, feeTypes]);
 
   // All-students dues (accountant)
   const allDuesSummary = useMemo(() => {
     if (userRole === 'teacher') return classDuesSummary;
     const active = students.filter(s => s.status === 'Active' && !s.isFormer);
-    return calculateClassDuesSummary(active, feeStructures, transactions);
-  }, [userRole, classDuesSummary, students, feeStructures, transactions]);
+    return calculateClassDuesSummary(active, feeStructures, transactions, undefined, feeTypes);
+  }, [userRole, classDuesSummary, students, feeStructures, transactions, feeTypes]);
 
   // Guardian scope: the signed-in guardian's OWN child(ren), resolved
   // by the single linkage in services/guardianScope.ts. Null for
@@ -481,10 +482,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const guardianDuesTotal = useMemo(() => {
     if (!guardianChildren) return 0;
     return guardianChildren.reduce(
-      (sum, child) => sum + calculateSingleStudentDue(child, feeStructures, transactions).dueThisMonth,
+      (sum, child) => sum + calculateSingleStudentDue(child, feeStructures, transactions, undefined, feeTypes).dueThisMonth,
       0
     );
-  }, [guardianChildren, feeStructures, transactions]);
+  }, [guardianChildren, feeStructures, transactions, feeTypes]);
 
   // Portal tab hint for the guardian self-service portal (consumed by
   // GuardianPortal's initial tab — see its sessionStorage bridge).
@@ -1129,8 +1130,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   }, []);
   const viewDuesSummary = useMemo(() => {
     if (duesViewMonth === currentMonthStr) return classDuesSummary;
-    return calculateClassDuesSummary(classStudents, feeStructures, transactions, duesViewMonth);
-  }, [duesViewMonth, currentMonthStr, classDuesSummary, classStudents, feeStructures, transactions]);
+    return calculateClassDuesSummary(classStudents, feeStructures, transactions, duesViewMonth, feeTypes);
+  }, [duesViewMonth, currentMonthStr, classDuesSummary, classStudents, feeStructures, transactions, feeTypes]);
 
   const filteredDuesProfiles = useMemo(() => {
     return viewDuesSummary.profiles.filter(p => {
@@ -1433,10 +1434,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     students.forEach(st => {
       const mine = [...(byId.get(st.id) || [])];
       if (st.studentId && st.studentId !== st.id) mine.push(...(byId.get(st.studentId) || []));
-      out.set(st.id, calculateFeeAging(st, feeStructures, mine));
+      out.set(st.id, calculateFeeAging(st, feeStructures, mine, undefined, feeTypes));
     });
     return out;
-  }, [students, feeStructures, transactions]);
+  }, [students, feeStructures, transactions, feeTypes]);
 
   const summarizeAging = (list: Student[]) => {
     const rows = list.map(st => ({
@@ -1609,7 +1610,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     const exam = exams.length > 0 ? exams[exams.length - 1] : null;
     return guardianChildren.map(child => {
       const att = calculateStudentAttendanceForExamFromRecords(dailyStudentAttendance, child.id);
-      const due = calculateSingleStudentDue(child, feeStructures, transactions);
+      const due = calculateSingleStudentDue(child, feeStructures, transactions, undefined, feeTypes);
       const aging = agingByStudent.get(child.id) || null;
       let examRes: { gpa: number; isFail: boolean; has: boolean } | null = null;
       if (exam) {
@@ -1630,7 +1631,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         examRes
       };
     });
-  }, [guardianChildren, exams, marks, subjects, feeStructures, transactions, agingByStudent, dailyStudentAttendance]);
+  }, [guardianChildren, exams, marks, subjects, feeStructures, transactions, agingByStudent, dailyStudentAttendance, feeTypes]);
 
   // -------------------------------------------------------------
   // Phase 4 additions: teacher class routine + native cashier fee entry
@@ -1874,7 +1875,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     if (cashierViewMonth === current) return allDuesSummary.profiles;
     const active = students.filter(s => s.status === 'Active' && !s.isFormer);
     return calculateClassDuesSummary(active, feeStructures, transactions, cashierViewMonth).profiles;
-  }, [cashierViewMonth, allDuesSummary, students, feeStructures, transactions]);
+  }, [cashierViewMonth, allDuesSummary, students, feeStructures, transactions, feeTypes]);
 
   const feeSearchProfiles = useMemo(() => {
     const q = feeSearchQuery.toLowerCase().trim();
@@ -1943,7 +1944,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     };
 
     const created = addTransaction(newTx);
-    const remaining = calculateSingleStudentDue(st, feeStructures, [...transactions, created]).dueThisMonth;
+    const remaining = calculateSingleStudentDue(st, feeStructures, [...transactions, created], undefined, feeTypes).dueThisMonth;
     // Truthful receipt (25 Oct 2026): the receipt is shown as fully saved
     // ONLY after the awaited cloud confirmation. On failure the receipt
     // still opens (the guardian needs the paper) but is marked local-only
@@ -3816,7 +3817,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 ) : (
                   filteredMobileStudents.slice(0, 100).map(st => {
                     const active = isStudentActive(st);
-                    const fee = calculateSingleStudentDue(st, feeStructures, transactions).monthlyExpected;
+                    const fee = calculateSingleStudentDue(st, feeStructures, transactions, undefined, feeTypes).monthlyExpected;
                     const phone = st.guardianPhone;
                     return (
                       <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
@@ -4539,7 +4540,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             ) : (
               <div className="space-y-2">
                 {guardianChildren.map(child => {
-                  const due = calculateSingleStudentDue(child, feeStructures, transactions);
+                  const due = calculateSingleStudentDue(child, feeStructures, transactions, undefined, feeTypes);
                   return (
                     <button
                       key={child.id}

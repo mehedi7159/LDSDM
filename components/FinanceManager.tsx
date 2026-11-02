@@ -60,6 +60,10 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     updateTransaction, 
     deleteTransaction, 
     updateFeeStructure, 
+    feeTypes = [],
+    updateFeeTypes,
+    confirmFeeStructuresCloudSync,
+    confirmFeeTypesCloudSync,
     language, 
     isAdmin,
     confirmFeeCloudSync
@@ -129,7 +133,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     let totalDues = 0;
     students.forEach(st => {
       if (st.status === 'Active' && !st.isFormer) {
-        totalDues += calculateSingleStudentDue(st, feeStructures, transactions).dueThisMonth;
+        totalDues += calculateSingleStudentDue(st, feeStructures, transactions, undefined, feeTypes).dueThisMonth;
       }
     });
 
@@ -141,7 +145,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       totalDues: Math.round(totalDues),
       totalTransactions: transactions.length
     };
-  }, [transactions, students, feeStructures]);
+  }, [transactions, students, feeStructures, feeTypes]);
 
   const navTabs: { 
     id: FinanceTab; 
@@ -442,8 +446,12 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
           <ClassFeeSettings
             classes={classes}
             feeStructures={feeStructures}
+            feeTypes={feeTypes}
             language={language}
             onUpdateFeeStructure={updateFeeStructure}
+            onUpdateFeeTypes={updateFeeTypes}
+            onConfirmFeeStructures={confirmFeeStructuresCloudSync}
+            onConfirmFeeTypes={confirmFeeTypesCloudSync}
             showToast={showToast}
           />
         )}

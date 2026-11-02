@@ -10,6 +10,7 @@
 
 import type { ClassFeeStructure, Student } from '../types';
 import type { FeeDiscountType } from '../types/student';
+import { monthlyBaseFor, type FeeTypeDef } from './feeTypes';
 
 export type { FeeDiscountType };
 
@@ -26,10 +27,16 @@ export const FEE_DISCOUNT_TYPES: FeeDiscountType[] = ['none', 'full', 'partial',
 /** Fixed fund-source label for the etim arrangement. */
 export const ETIM_FUND_SOURCE = 'এতিম ফান্ড';
 
-/** Institute-set monthly base for a class: tuition + boarding (same rule dues use). */
-export function classFeeBase(struct: ClassFeeStructure | undefined): number {
+/**
+ * Institute-set monthly base for a class (same rule dues use).
+ * New model (2 Nov 2026): tuition + food ONLY when the food fee type is
+ * enabled. Food is disabled by default (not charged now), so the base is
+ * tuition-only unless the institute re-enables it. Stored per-student
+ * arrangements are untouched — only the class base changes.
+ */
+export function classFeeBase(struct: ClassFeeStructure | undefined, feeTypes?: FeeTypeDef[]): number {
   if (!struct) return 0;
-  return (Number(struct.monthlyTuition) || 0) + (Number(struct.boardingFee) || 0);
+  return monthlyBaseFor(struct, feeTypes);
 }
 
 export function toFeeNumber(value: unknown): number {

@@ -32,6 +32,7 @@ export interface MainStoreSlices {
   sections: any;
   transactions: any;
   feeStructures: any;
+  feeTypes: any;
   trashBin: any;
   promotionHistory: any;
   users: any;
@@ -62,6 +63,7 @@ export function buildMainStorePayload(slices: MainStoreSlices, updatedBy: string
     sections: slices.sections,
     transactions: slices.transactions,
     feeStructures: slices.feeStructures,
+    feeTypes: slices.feeTypes,
     trashBin: slices.trashBin,
     promotionHistory: slices.promotionHistory,
     users: slices.users,

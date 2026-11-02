@@ -50,6 +50,7 @@ import {
   validateFeeArrangement,
 } from '../services/studentFeeArrangement';
 import type { FeeDiscountType } from '../types/student';
+import { amountFor, isFeeTypeEnabled } from '../services/feeTypes';
 import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE } from '../services/cloudConfirm';
 import { recordStudentAuditEvent } from '../services/studentService';
 import { StudentProfileModal } from './StudentProfileModal';
@@ -93,6 +94,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     confirmStudentDeleteCloudSync,
     classes, 
     feeStructures,
+    feeTypes,
     t, 
     language,
     authUser,
@@ -236,12 +238,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
   // Tuition fee arrangement, derived live from the form: the institute-set
   // base comes from the fee structure for the selected class when one
-  // exists (tuition + boarding, the same rule dues use); otherwise the
-  // manually entered base is used.
+  // exists (tuition + food only when the food type is enabled — the same
+  // rule dues use); otherwise the manually entered base is used.
   const feeStructForClass = feeStructures.find(f => f.classLevel === formData.classLevel);
   const feeArrangementInput = {
     discountType: formData.feeDiscountType,
-    baseAmount: feeStructForClass ? classFeeBase(feeStructForClass) : toFeeNumber(formData.feeBaseAmount),
+    baseAmount: feeStructForClass ? classFeeBase(feeStructForClass, feeTypes) : toFeeNumber(formData.feeBaseAmount),
     waiverAmount: toFeeNumber(formData.feeWaiverAmount),
     fundAmount: toFeeNumber(formData.feeFundAmount),
     fundSource: formData.feeFundSource,
@@ -1826,11 +1828,19 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     {feeStructForClass ? (
                       <div className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-bold bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300">
                         ৳{feeArrangement.baseAmount.toLocaleString()}
-                        {(feeStructForClass.monthlyTuition || 0) > 0 && (feeStructForClass.boardingFee || 0) > 0 && (
-                          <span className="block text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                            {language === 'bn' ? `টিউশন ৳${(feeStructForClass.monthlyTuition || 0).toLocaleString()} + বোর্ডিং ৳${(feeStructForClass.boardingFee || 0).toLocaleString()}` : `Tuition ৳${(feeStructForClass.monthlyTuition || 0).toLocaleString()} + Boarding ৳${(feeStructForClass.boardingFee || 0).toLocaleString()}`}
-                          </span>
-                        )}
+                        {(() => {
+                          const tuition = amountFor(feeStructForClass, 'tuition');
+                          const foodOn = isFeeTypeEnabled(feeTypes, 'food');
+                          const food = foodOn ? amountFor(feeStructForClass, 'food') : 0;
+                          if (tuition <= 0 && food <= 0) return null;
+                          const parts = [`${language === 'bn' ? 'টিউশন' : 'Tuition'} ৳${tuition.toLocaleString()}`];
+                          if (food > 0) parts.push(`${language === 'bn' ? 'বোর্ডিং' : 'Boarding'} ৳${food.toLocaleString()}`);
+                          return (
+                            <span className="block text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                              {parts.join(' + ')}
+                            </span>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <input
@@ -2215,7 +2225,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         language={language}
         feeBase={profileStudent ? (() => {
           const struct = feeStructures.find(f => f.classLevel === profileStudent.classLevel);
-          return struct ? classFeeBase(struct) : undefined;
+          return struct ? classFeeBase(struct, feeTypes) : undefined;
         })() : undefined}
       />
 
