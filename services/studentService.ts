@@ -217,6 +217,25 @@ export function findStudentById(students: Student[], id: string): Student | unde
 }
 
 /**
+ * Firestore rejects explicit `undefined` field values in setDoc
+ * ('Unsupported field value: undefined') — the ENTIRE field write throws.
+ * Form payloads carry explicit undefined keys (e.g. roll/rollNumber when
+ * the roll input is empty, feeFundSource when no fund source is set), and
+ * the builders spread them into the record, so every record that reaches
+ * a writer is stripped here. ONLY `undefined` is removed — '', 0, false
+ * and null are all valid Firestore values and are kept exactly as-is.
+ * Shallow (top-level keys only): student records carry no nested
+ * undefined-valued objects on any diagnosed save path.
+ */
+function stripUndefinedValues<T extends object>(record: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out as T;
+}
+
+/**
  * Construct an immutable payload for creating a new student
  */
 export function buildCreateStudentPayload(
@@ -236,7 +255,7 @@ export function buildCreateStudentPayload(
   const isFormer = input.status === 'Former' || input.status === 'archived' || !!input.isFormer;
   const status: StudentLifecycleStatus = isFormer ? 'Former' : (input.status || 'Active');
 
-  const student: Student = {
+  const student: Student = stripUndefinedValues({
     ...input,
     id: stableId,
     institutionId: input.institutionId || institutionId,
@@ -247,7 +266,7 @@ export function buildCreateStudentPayload(
     createdBy: actor?.uid || 'system',
     updatedAt: now,
     updatedBy: actor?.uid || 'system'
-  };
+  });
 
   return { student };
 }
@@ -276,13 +295,13 @@ export function buildUpdateStudentPayload(
   const now = new Date().toISOString();
   const isFormer = merged.status === 'Former' || merged.status === 'archived' || !!merged.isFormer;
 
-  const student: Student = {
+  const student: Student = stripUndefinedValues({
     ...merged,
     id: existing.id,
     isFormer,
     updatedAt: now,
     updatedBy: actor?.uid || 'system'
-  };
+  });
 
   return { student };
 }

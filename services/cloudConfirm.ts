@@ -157,6 +157,32 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+/**
+ * Defense in depth for the same Firestore rule: setDoc rejects explicit
+ * `undefined` field values anywhere in the document, so every record is
+ * shallow-stripped of undefined-valued top-level keys before the write.
+ * This is the shared choke point for ALL confirmed writers (students,
+ * staff, marks, notices, schedule, leaves, fee structures/types,
+ * attendance, transactions, deletes), so it also covers paths that
+ * bypass the per-domain builders (e.g. updateStudent when the existing
+ * record is not found, bulkUpdateStudents). ONLY `undefined` is removed
+ * — '', 0, false and null are valid Firestore values and are kept.
+ * Records without undefined keys pass through untouched (same object).
+ */
+function stripUndefinedRecord<T extends { id: string }>(record: T): T {
+  if (!record || typeof record !== 'object') return record;
+  let dirty = false;
+  for (const value of Object.values(record)) {
+    if (value === undefined) { dirty = true; break; }
+  }
+  if (!dirty) return record;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out as T;
+}
+
 async function writeFieldsToCloud(
   fields: Record<string, { id: string }[]>,
   updatedBy: string
@@ -167,7 +193,7 @@ async function writeFieldsToCloud(
   const payload: Record<string, unknown> = { updatedBy, updatedAt: new Date().toISOString() };
   for (const [field, localRecords] of Object.entries(fields)) {
     const existing = data[field] as { id: string }[] | undefined;
-    payload[field] = mergeRecordsById(existing || [], localRecords);
+    payload[field] = mergeRecordsById(existing || [], localRecords).map(stripUndefinedRecord);
   }
   await setDoc(ref, payload, { merge: true });
 }
