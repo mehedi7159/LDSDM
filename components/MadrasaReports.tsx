@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
-import { calculateClassDuesSummary, calculateFeeAging } from '../services/studentDuesService';
+import { calculateClassDuesSummary, calculateFeeAging, academicYearFallbackStartMonth } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 
 /**
@@ -54,7 +54,7 @@ const StatCard: React.FC<{
 export const MadrasaReports: React.FC = () => {
   const {
     students = [], subjects = [], marks = [], exams = [],
-    transactions = [], feeStructures = [], feeTypes = [], staffLeaves = [],
+    transactions = [], feeStructures = [], feeTypes = [], staffLeaves = [], academicYears = [],
     dailyStudentAttendance = [], dailyStaffAttendance = [],
     language = 'bn', setActiveTab
   } = useApp();
@@ -275,16 +275,23 @@ export const MadrasaReports: React.FC = () => {
   // monthlyExpectedFor hook (feeTypes threaded, same pattern as the
   // other dues call sites). The current (unfinished) month is not due
   // yet, so it is excluded — matching the fee-due month rule.
+  // Dateless students accrue from the current academic year's January
+  // (approved 2 Nov 2026); a real admission/created/paid start always wins.
+  const agingFallbackStart = useMemo(
+    () => academicYearFallbackStartMonth(academicYears, monthPrefix),
+    [academicYears, monthPrefix]
+  );
+
   const topDues = useMemo(
     () => activeStudents
       .map(student => ({
         student,
-        totalDue: calculateFeeAging(student, feeStructures, transactions, monthPrefix, feeTypes).totalAged,
+        totalDue: calculateFeeAging(student, feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart).totalAged,
       }))
       .filter(p => p.totalDue > 0)
       .sort((a, b) => b.totalDue - a.totalDue)
       .slice(0, 5),
-    [activeStudents, feeStructures, transactions, monthPrefix, feeTypes]
+    [activeStudents, feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart]
   );
 
   const latestExamSummary = useMemo(() => {

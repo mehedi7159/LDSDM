@@ -14,7 +14,7 @@ import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
 import { STAFF_LEAVE_TYPE_OPTIONS, computeLeaveDays, buildStaffLeaveRequest, sanitizeProfileEdit } from '../services/staffSelfService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
-import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, StudentDueProfile, FeeAging } from '../services/studentDuesService';
+import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, academicYearFallbackStartMonth, StudentDueProfile, FeeAging } from '../services/studentDuesService';
 import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod, StaffLeaveRecord, TrashItem } from '../types';
 import {
   Home,
@@ -223,6 +223,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     transactions = [],
     feeStructures = [],
     feeTypes = [],
+    academicYears = [],
     notices = [],
     classRoutines = [],
     calendarEvents = [],
@@ -1509,6 +1510,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // metrics, no desktop-screen behaviour change. Fee aging is the
   // additive calculateFeeAging only (see services/studentDuesService).
   // -------------------------------------------------------------
+  // Dateless students accrue from the current academic year's January
+  // (approved 2 Nov 2026); a real admission/created/paid start always wins.
+  const agingFallbackStart = useMemo(
+    () => academicYearFallbackStartMonth(academicYears, undefined),
+    [academicYears]
+  );
+
   // Fee aging per student (transactions pre-grouped once, so this is
   // not O(students x transactions) through the service filter).
   const agingByStudent = useMemo(() => {
@@ -1524,10 +1532,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     students.forEach(st => {
       const mine = [...(byId.get(st.id) || [])];
       if (st.studentId && st.studentId !== st.id) mine.push(...(byId.get(st.studentId) || []));
-      out.set(st.id, calculateFeeAging(st, feeStructures, mine, undefined, feeTypes));
+      out.set(st.id, calculateFeeAging(st, feeStructures, mine, undefined, feeTypes, agingFallbackStart));
     });
     return out;
-  }, [students, feeStructures, transactions, feeTypes]);
+  }, [students, feeStructures, transactions, feeTypes, agingFallbackStart]);
 
   const summarizeAging = (list: Student[]) => {
     const rows = list.map(st => ({

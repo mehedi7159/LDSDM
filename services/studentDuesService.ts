@@ -1,6 +1,7 @@
 import { Student, ClassFeeStructure, FinanceTransaction } from '../types';
 import { feeArrangementOf, hasFeeArrangement, classFeeBase } from './studentFeeArrangement';
 import type { FeeTypeDef } from './feeTypes';
+import type { AcademicYear } from '../types/academic';
 
 export interface StudentDueProfile {
   student: Student;
@@ -214,12 +215,37 @@ function agingMonthsBetween(from: string, to: string): number {
 
 const YYYY_MM = /^\d{4}-\d{2}$/;
 
+/**
+ * Fallback aging start month for students with NO date at all (no
+ * admissionDate, no createdAt, no paid month) — approved 2 Nov 2026:
+ * January of the CURRENT academic year (the current year's startDate
+ * year when present, else a 4-digit year parsed from its name, e.g.
+ * '2026' -> '2026-01'). Falls back to January of the asOf year when no
+ * year can be parsed. Callers pass this explicitly; calculateFeeAging
+ * never invents a start on its own, and a real admission/created/paid
+ * start always wins over this fallback.
+ */
+export function academicYearFallbackStartMonth(
+  academicYears: AcademicYear[] | undefined,
+  asOfMonth?: string
+): string {
+  const asOf = asOfMonth || new Date().toISOString().slice(0, 7);
+  const current = (academicYears || []).find(y => y.isCurrent) || (academicYears || [])[0];
+  const startYear = current?.startDate ? current.startDate.slice(0, 4) : undefined;
+  const nameYear = current?.name ? (current.name.match(/\d{4}/) || [])[0] : undefined;
+  const year = (startYear && /^\d{4}$/.test(startYear)) ? startYear
+    : (nameYear && /^\d{4}$/.test(nameYear)) ? nameYear
+    : asOf.slice(0, 4);
+  return `${year}-01`;
+}
+
 export function calculateFeeAging(
   student: Student,
   feeStructures: ClassFeeStructure[],
   transactions: FinanceTransaction[],
   asOfMonth?: string,
-  feeTypes?: FeeTypeDef[]
+  feeTypes?: FeeTypeDef[],
+  fallbackStartMonth?: string
 ): FeeAging {
   const asOf = asOfMonth || new Date().toISOString().slice(0, 7);
   const empty: FeeAging = {
@@ -236,7 +262,9 @@ export function calculateFeeAging(
     tx.type === 'INCOME' && tx.studentId && (tx.studentId === student.id || tx.studentId === student.studentId));
 
   // Start month: admission date first, then record creation, then the
-  // earliest month the student ever paid for (feeMonth, else tx date).
+  // earliest month the student ever paid for (feeMonth, else tx date),
+  // and only then the caller-supplied academic-year fallback (Jan of
+  // the current academic year, for students with no date at all).
   // Months before the start month never enter aging.
   let start: string | null = null;
   const adm = (student.admissionDate || '').slice(0, 7);
@@ -248,6 +276,12 @@ export function calculateFeeAging(
       .map(tx => (tx.feeMonth || (tx.date || '').slice(0, 7)))
       .filter(m => YYYY_MM.test(m));
     if (paidMonths.length > 0) start = paidMonths.sort()[0];
+  }
+  // A fallback at/after asOf is ignored: it must never produce months,
+  // so a dateless student in a future-dated academic year stays empty
+  // (the pre-fallback behavior) instead of showing a current-month due.
+  if (!start && fallbackStartMonth && YYYY_MM.test(fallbackStartMonth) && fallbackStartMonth < asOf) {
+    start = fallbackStartMonth;
   }
   if (!start) return empty;
 

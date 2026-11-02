@@ -688,6 +688,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 {currentStudent.fatherName && (
                   <span>{language === 'bn' ? 'পিতা: ' : 'Father: '}{currentStudent.fatherName}</span>
                 )}
+                {currentStudent.admissionDate && (
+                  <span>{language === 'bn' ? 'ভর্তি: ' : 'Admitted: '}{language === 'bn' ? toBn(currentStudent.admissionDate) : currentStudent.admissionDate}</span>
+                )}
                 {currentStudent.guardianPhone && (
                   <span className="flex items-center gap-1">
                     <Phone size={11} className="text-slate-500" />
