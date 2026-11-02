@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
-import { calculateClassDuesSummary } from '../services/studentDuesService';
+import { calculateClassDuesSummary, calculateFeeAging } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 
 /**
@@ -54,7 +54,7 @@ const StatCard: React.FC<{
 export const MadrasaReports: React.FC = () => {
   const {
     students = [], subjects = [], marks = [], exams = [],
-    transactions = [], feeStructures = [], staffLeaves = [],
+    transactions = [], feeStructures = [], feeTypes = [], staffLeaves = [],
     dailyStudentAttendance = [], dailyStaffAttendance = [],
     language = 'bn', setActiveTab
   } = useApp();
@@ -269,12 +269,22 @@ export const MadrasaReports: React.FC = () => {
   }, [activeStudents]);
   const classMax = Math.max(1, ...classCounts.map(c => c.count));
 
+  // Highest Dues = TOTAL dues, not one month: the canonical aging total
+  // over all finished months (a month's fee becomes due only after that
+  // month ends), honoring the fee-arrangement payable via the shared
+  // monthlyExpectedFor hook (feeTypes threaded, same pattern as the
+  // other dues call sites). The current (unfinished) month is not due
+  // yet, so it is excluded — matching the fee-due month rule.
   const topDues = useMemo(
-    () => [...(duesSummary.profiles || [])]
-      .filter(p => (p.dueThisMonth || 0) > 0)
-      .sort((a, b) => b.dueThisMonth - a.dueThisMonth)
+    () => activeStudents
+      .map(student => ({
+        student,
+        totalDue: calculateFeeAging(student, feeStructures, transactions, monthPrefix, feeTypes).totalAged,
+      }))
+      .filter(p => p.totalDue > 0)
+      .sort((a, b) => b.totalDue - a.totalDue)
       .slice(0, 5),
-    [duesSummary]
+    [activeStudents, feeStructures, transactions, monthPrefix, feeTypes]
   );
 
   const latestExamSummary = useMemo(() => {
@@ -701,7 +711,7 @@ export const MadrasaReports: React.FC = () => {
                       <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{isBn ? p.student.nameBn || p.student.name : p.student.name}</div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">{p.student.classLevel} · {isBn ? 'রোল' : 'Roll'} {num(Number(p.student.roll) || 0)}</div>
                     </div>
-                    <span className="text-xs font-black text-rose-600 dark:text-rose-300 shrink-0">{money(p.dueThisMonth)}</span>
+                    <span className="text-xs font-black text-rose-600 dark:text-rose-300 shrink-0">{money(p.totalDue)}</span>
                     {phone && (
                       <span className="flex gap-1 shrink-0">
                         <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noreferrer" className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center" aria-label="WhatsApp">
