@@ -39,6 +39,7 @@ export interface FeeTypeDef {
 export const DEFAULT_FEE_TYPES: FeeTypeDef[] = [
   { id: 'tuition', labelBn: 'মাসিক বেতন', labelEn: 'Tuition', frequency: 'monthly', appliesTo: 'all', collector: 'accountant', enabled: true },
   { id: 'admission', labelBn: 'ভর্তি ফি', labelEn: 'Admission Fee', frequency: 'admission', appliesTo: 'new', collector: 'accountant', enabled: true },
+  { id: 'admission_form', labelBn: 'ভর্তি ফরম ফি', labelEn: 'Admission Form Fee', frequency: 'admission', appliesTo: 'new', collector: 'accountant', enabled: true },
   { id: 'session', labelBn: 'সেশন ফি', labelEn: 'Session Fee', frequency: 'yearly', appliesTo: 'continuing', collector: 'accountant', enabled: true },
   { id: 'exam', labelBn: 'পরীক্ষার ফি', labelEn: 'Exam Fee', frequency: 'per_exam', appliesTo: 'all', collector: 'class_teacher', enabled: true },
   { id: 'registration', labelBn: 'রেজিস্ট্রেশন ফি', labelEn: 'Registration Fee', frequency: 'per_event', appliesTo: 'all', collector: 'accountant', enabled: true },
@@ -46,6 +47,30 @@ export const DEFAULT_FEE_TYPES: FeeTypeDef[] = [
   { id: 'book', labelBn: 'কিতাব ফি', labelEn: 'Book Fee', frequency: 'per_event', appliesTo: 'all', collector: 'accountant', enabled: true },
   { id: 'food', labelBn: 'খাবার ফি', labelEn: 'Food Fee', frequency: 'monthly', appliesTo: 'all', collector: 'accountant', enabled: false },
 ];
+
+/**
+ * The institute's confirmed fee chart (principal's banner, 2 Nov 2026):
+ * admission fee / admission form / monthly tuition / exam fee, in taka.
+ * Saved as the Fee Setup defaults by the one-time seeding in AppContext;
+ * the principal changes any value later from the Fee Setup page.
+ * Class 10 has no admission/admission-form fee (banner '-').
+ * Session / food / registration / book have no banner amounts — unset.
+ */
+export const BANNER_CLASS_FEES: Record<string, {
+  tuition: number; admission: number; admission_form: number; exam: number;
+}> = {
+  'Play': { tuition: 700, admission: 1000, admission_form: 100, exam: 200 },
+  'Class 1': { tuition: 700, admission: 1000, admission_form: 100, exam: 200 },
+  'Class 2': { tuition: 900, admission: 1200, admission_form: 100, exam: 200 },
+  'Class 3': { tuition: 1000, admission: 1500, admission_form: 100, exam: 250 },
+  'Class 4': { tuition: 1000, admission: 1500, admission_form: 100, exam: 300 },
+  'Class 5': { tuition: 1000, admission: 1500, admission_form: 100, exam: 300 },
+  'Class 6': { tuition: 1200, admission: 1700, admission_form: 100, exam: 350 },
+  'Class 7': { tuition: 1200, admission: 1700, admission_form: 100, exam: 350 },
+  'Class 8': { tuition: 1400, admission: 1800, admission_form: 200, exam: 400 },
+  'Class 9': { tuition: 1500, admission: 2000, admission_form: 200, exam: 400 },
+  'Class 10': { tuition: 1500, admission: 0, admission_form: 0, exam: 400 },
+};
 
 export const FEE_FREQUENCY_LABELS: Record<FeeFrequency, string> = {
   admission: 'ভর্তির সময় (একবার)',
@@ -111,6 +136,30 @@ export function structureAmounts(struct: {
 
 export function amountFor(struct: Parameters<typeof structureAmounts>[0], typeId: string): number {
   return Number(structureAmounts(struct)[typeId]) || 0;
+}
+
+/**
+ * The one-time banner seeding migrates Play ONLY while it is still
+ * exactly the old legacy state (500 tuition, nothing else). Any other
+ * Play record — an edited tuition, a set admission/exam amount, any
+ * food/book amount — returns false, so the seeding never overwrites
+ * a value the principal (or an earlier save) has already set.
+ */
+export function isUnmigratedLegacyPlayStructure(
+  struct: Parameters<typeof structureAmounts>[0] & { classLevel?: string } | undefined | null,
+): boolean {
+  if (!struct || struct.classLevel !== 'Play') return false;
+  if ((Number(struct.monthlyTuition) || 0) !== 500) return false;
+  if ((Number(struct.admissionFee) || 0) !== 0) return false;
+  if ((Number(struct.examFee) || 0) !== 0) return false;
+  if ((Number(struct.boardingFee) || 0) !== 0) return false;
+  if ((Number(struct.bookFee) || 0) !== 0) return false;
+  const amounts = structureAmounts(struct);
+  if ((Number(amounts.tuition) || 0) !== 500) return false;
+  for (const id of ['admission', 'admission_form', 'exam', 'book', 'food']) {
+    if ((Number(amounts[id]) || 0) !== 0) return false;
+  }
+  return true;
 }
 
 /**

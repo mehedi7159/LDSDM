@@ -57,7 +57,7 @@ import {
 } from '../services/roleResolution';
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import type { FeeTypeDef } from '../services/feeTypes';
-import { DEFAULT_FEE_TYPES } from '../services/feeTypes';
+import { DEFAULT_FEE_TYPES, BANNER_CLASS_FEES, isUnmigratedLegacyPlayStructure } from '../services/feeTypes';
 import {
   GOOGLE_PASSWORD_LOGIN_DENIED,
   GOOGLE_SIGNUP_EXISTING_MEMBER,
@@ -4611,6 +4611,105 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (authUser) retryPendingCloudConfirms();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser]);
+
+  // One-time banner fee seeding (2 Nov 2026): the principal's confirmed
+  // banner fee chart becomes the saved Fee Setup defaults. Runs once per
+  // boot, only after the first server snapshot has settled
+  // (cloudHydrated — never from an unsettled view) and only with a
+  // signed-in session (main_store writes are authenticated-only).
+  // Data-driven guard — it can never overwrite his later edits:
+  //  - structures: seed ONLY banner classes with no saved structure,
+  //    plus Play ONLY while it is still exactly the old legacy state
+  //    (500 tuition, nothing else — isUnmigratedLegacyPlayStructure).
+  //  - types: ensure the banner's types (admission, admission_form,
+  //    exam) exist and are enabled; every other stored row is untouched
+  //    (session / registration / form fillup / book / food keep their
+  //    stored enabled flags and amounts exactly as they are).
+  // Once seeded, every banner class has a structure and Play is no
+  // longer legacy, so the guard is false forever — a Fee Setup edit +
+  // Save is never reset by re-seeding. Writes go ONLY through the
+  // confirmed union writers (never the wholesale auto-sync); a failure
+  // queues the 'feeStructures'/'feeTypes' kinds for the existing retry
+  // path and no success is claimed (this effect shows no toast).
+  const bannerFeeSeedAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (!cloudHydrated || !authUser) return;
+    if (bannerFeeSeedAttemptedRef.current) return;
+    bannerFeeSeedAttemptedRef.current = true;
+    const seed = async () => {
+      const currentStructures = feeStructuresRef.current;
+      const byLevel = new Map<string, ClassFeeStructure>();
+      currentStructures.forEach(s => { if (s.classLevel) byLevel.set(s.classLevel, s); });
+      const toSeed: ClassFeeStructure[] = [];
+      Object.entries(BANNER_CLASS_FEES).forEach(([classLevel, fees]) => {
+        const existing = byLevel.get(classLevel);
+        if (!existing) {
+          const cls = classes.find(c => c.name === classLevel);
+          if (!cls) return;
+          toSeed.push({
+            id: `fs-${cls.id}`,
+            classLevel,
+            monthlyTuition: fees.tuition,
+            admissionFee: fees.admission,
+            examFee: fees.exam,
+            boardingFee: 0,
+            bookFee: 0,
+            amounts: { tuition: fees.tuition, admission: fees.admission, admission_form: fees.admission_form, exam: fees.exam },
+          });
+        } else if (isUnmigratedLegacyPlayStructure(existing)) {
+          toSeed.push({
+            id: existing.id,
+            classLevel,
+            monthlyTuition: fees.tuition,
+            admissionFee: fees.admission,
+            examFee: fees.exam,
+            boardingFee: 0,
+            bookFee: 0,
+            amounts: { tuition: fees.tuition, admission: fees.admission, admission_form: fees.admission_form, exam: fees.exam },
+          });
+        }
+      });
+      if (toSeed.length > 0) {
+        const nextStructures = currentStructures.slice();
+        toSeed.forEach(s => {
+          const idx = nextStructures.findIndex(f => f.classLevel === s.classLevel);
+          if (idx >= 0) nextStructures[idx] = s;
+          else nextStructures.push(s);
+        });
+        setFeeStructures(nextStructures);
+        // Minimal payload: the union writer appends/replaces only these
+        // classLevels, so a concurrent edit to any other class is kept.
+        await confirmFeeStructuresCloudSync(toSeed);
+      }
+
+      const currentTypes = feeTypesRef.current;
+      const nextTypes = currentTypes.slice();
+      const touchedTypes: FeeTypeDef[] = [];
+      (['admission', 'exam', 'admission_form'] as const).forEach(id => {
+        const idx = nextTypes.findIndex(t => t.id === id);
+        if (idx < 0) {
+          const fallback = DEFAULT_FEE_TYPES.find(t => t.id === id);
+          if (!fallback) return;
+          nextTypes.push(fallback);
+          touchedTypes.push(fallback);
+        } else if (!nextTypes[idx].enabled) {
+          const updated = { ...nextTypes[idx], enabled: true };
+          nextTypes[idx] = updated;
+          touchedTypes.push(updated);
+        }
+      });
+      if (touchedTypes.length > 0) {
+        setFeeTypes(nextTypes);
+        // Minimal payload: the id-union writer keeps every other stored
+        // row exactly as it is.
+        await confirmFeeTypesCloudSync(touchedTypes);
+      }
+    };
+    void seed();
+    // Intentionally once per boot (ref-guarded) and gated on the settled
+    // snapshot + session; the refs mirror the snapshot-applied state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudHydrated, authUser, classes]);
 
   const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus & { nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[]; error?: string }> => {
     const existing = teachers.find(t => t.id === updatedTeacher.id);
