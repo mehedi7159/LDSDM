@@ -640,7 +640,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
                 title="Open Navigation Menu"
               >
-                <Menu size={16} className="text-indigo-400" />
+                <Menu size={16} className="text-[var(--color-brand)]" />
                 <span className="hidden xs:inline">{language === 'bn' ? 'মেনু' : 'Menu'}</span>
               </button>
 
@@ -665,7 +665,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px]"
                 title={language === 'bn' ? 'ডিজাইন ও কালার থিম' : 'Accent Theme'}
               >
-                <Palette size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <Palette size={14} className="text-[var(--color-brand)] shrink-0" />
                 <span className="hidden lg:inline">{language === 'bn' ? 'থিম' : 'Theme'}</span>
               </button>
 
@@ -696,7 +696,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 title="Cloud Status"
               >
-                <Cloud size={13} className="text-indigo-600 dark:text-indigo-400" />
+                <Cloud size={13} className="text-[var(--color-brand)]" />
                 {cloudStatus === 'connected' && (
                   <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -729,7 +729,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px]"
                 title="Switch Language"
               >
-                <Languages size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <Languages size={13} className="text-[var(--color-brand)] shrink-0" />
                 <span className="hidden xs:inline">{language === 'en' ? 'বাংলা' : 'English'}</span>
                 <span className="xs:hidden font-bold">{language === 'en' ? 'বাং' : 'EN'}</span>
               </button>
@@ -738,7 +738,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               <div className="flex items-center gap-1.5 sm:gap-2">
                 {authUser && (
                   <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-[11px] shrink-0">
+                    <div className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
                       {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
                     </div>
                     <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">

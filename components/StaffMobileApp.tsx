@@ -4515,7 +4515,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <p className="text-[13px] font-semibold mb-2.5 text-[#1e2433] dark:text-slate-100">
                 {isEn ? 'Accent color' : 'অ্যাকসেন্ট কালার'}
               </p>
-              <div className="flex items-center gap-2.5 mb-4">
+              <div className="flex flex-wrap items-center gap-2.5 mb-4">
                 {ACCENT_THEMES.map(t => (
                   <button
                     key={t.id}

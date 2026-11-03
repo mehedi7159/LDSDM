@@ -179,7 +179,7 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
           <span className="font-medium text-slate-500 dark:text-slate-400">
             {language === 'bn' ? 'সেশন অগ্রগতি:' : 'Session Progress:'}
           </span>
-          <span className="rounded-full px-2.5 py-0.5 font-bold text-xs bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+          <span className="rounded-full px-2.5 py-0.5 font-bold text-xs border" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}>
             {toBanglaDigits(progressPercent, language)}%
           </span>
         </div>
@@ -254,7 +254,7 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
             <div className="pt-2 flex items-center gap-2">
               <button
                 onClick={() => onSelectExamAndNavigate(matrixExam.examId, 'marks')}
-                className="flex-1 py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold text-center transition cursor-pointer"
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white text-xs font-semibold text-center transition cursor-pointer"
               >
                 {language === 'bn' ? 'নম্বর এন্ট্রি' : 'Enter Marks'}
               </button>
@@ -302,7 +302,7 @@ const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
                 {clsCard.name}
               </h4>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
                 {toBanglaDigits(clsCard.studentCount, language)} {language === 'bn' ? 'জন' : 'students'}
               </span>
             </div>
@@ -397,7 +397,7 @@ interface ActionRowProps {
 const ActionRow = memo<ActionRowProps>(({ icon: Icon, iconCls, title, detail, count, language, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all text-left cursor-pointer"
+    className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[var(--color-brand-ring)] hover:shadow-sm transition-all text-left cursor-pointer"
   >
     <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconCls}`}>
       <Icon size={18} />
@@ -973,13 +973,17 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           onClick={() => setActiveView('overview')}
+          style={activeView === 'overview' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))', borderColor: 'var(--color-brand)' } : undefined}
           className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
             activeView === 'overview'
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-indigo-300 dark:hover:border-indigo-700'
+              ? 'text-white shadow-lg'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-[var(--color-brand-ring)]'
           }`}
         >
-          <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'overview' ? 'bg-white/15 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300'}`}>
+          <span
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'overview' ? 'bg-white/15 text-white' : ''}`}
+            style={activeView === 'overview' ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}
+          >
             <LayoutDashboard size={20} />
           </span>
           <span className="font-black text-base sm:text-lg">{language === 'bn' ? 'ওভারভিউ' : 'Overview'}</span>
@@ -987,13 +991,17 @@ export const Dashboard = () => {
 
         <button
           onClick={() => setActiveView('action')}
+          style={activeView === 'action' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))', borderColor: 'var(--color-brand)' } : undefined}
           className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
             activeView === 'action'
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-indigo-300 dark:hover:border-indigo-700'
+              ? 'text-white shadow-lg'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-[var(--color-brand-ring)]'
           }`}
         >
-          <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'action' ? 'bg-white/15 text-white' : 'bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300'}`}>
+          <span
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'action' ? 'bg-white/15 text-white' : ''}`}
+            style={activeView === 'action' ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}
+          >
             <ListChecks size={20} />
           </span>
           <span className="font-black text-base sm:text-lg flex-1">{language === 'bn' ? 'আজকের করণীয়' : "Today's Tasks"}</span>
@@ -1064,7 +1072,7 @@ export const Dashboard = () => {
       <SectionCard
         title={language === 'bn' ? 'প্রতিবেদন' : 'Reports'}
         icon={FileSpreadsheet}
-        iconTone="indigo"
+        iconTone="brand"
         bodyClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
       >
         {[
@@ -1102,7 +1110,7 @@ export const Dashboard = () => {
             <SectionCard
               title={language === 'bn' ? 'গ্রেডভিত্তিক ফলাফল বিন্যাস' : 'Grade Distribution'}
               icon={BarChart3}
-              iconTone="indigo"
+              iconTone="brand"
             >
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1316,7 +1324,7 @@ export const Dashboard = () => {
           {actionData.marksPendingExams.length > 0 && (
             <ActionRow
               icon={PenTool}
-              iconCls="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300"
+              iconCls="bg-[var(--color-brand-light)] text-[var(--color-brand)]"
               title={language === 'bn' ? 'নম্বর এন্ট্রি বাকি' : 'Marks entry pending'}
               detail={language === 'bn'
                 ? `মোট ${toBanglaDigits(actionData.totalPendingMarks, language)}টি নম্বর বাকি`

@@ -26,11 +26,14 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-5 animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-5 animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <div
+              className="w-9 h-9 rounded-xl border flex items-center justify-center"
+              style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
+            >
               <Palette size={18} />
             </div>
             <div>
@@ -52,10 +55,10 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
           </button>
         </div>
 
-        {/* 5 Switchable Accent Themes */}
+        {/* Switchable Accent Themes */}
         <div className="space-y-2.5">
           <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-            {isBn ? 'অ্যাকসেন্ট কালার প্যালেট (৫টি থিম):' : 'Select Primary Accent Theme:'}
+            {isBn ? `অ্যাকসেন্ট কালার প্যালেট (${ACCENT_THEMES.length}টি থিম):` : 'Select Primary Accent Theme:'}
           </label>
 
           <div className="grid grid-cols-1 gap-2.5">

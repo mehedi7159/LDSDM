@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-export type AccentThemeId = 'indigo' | 'blue' | 'emerald' | 'amber' | 'teal';
+export type AccentThemeId = 'indigo' | 'blue' | 'emerald' | 'amber' | 'teal' | 'rose' | 'purple' | 'orange' | 'cyan' | 'pink';
 
 export interface AccentThemeOption {
   id: AccentThemeId;
@@ -57,6 +57,51 @@ export const ACCENT_THEMES: AccentThemeOption[] = [
     hover: '#0f766e',
     light: '#f0fdfa',
     ring: '#14b8a6'
+  },
+  {
+    id: 'rose',
+    nameEn: 'Rose Red',
+    nameBn: 'রোজ রেড',
+    primary: '#f43f5e',
+    hover: '#e11d48',
+    light: '#fff1f2',
+    ring: '#fb7185'
+  },
+  {
+    id: 'purple',
+    nameEn: 'Royal Purple',
+    nameBn: 'রয়েল পার্পল',
+    primary: '#9333ea',
+    hover: '#7e22ce',
+    light: '#faf5ff',
+    ring: '#a855f7'
+  },
+  {
+    id: 'orange',
+    nameEn: 'Vivid Orange',
+    nameBn: 'ভিভিড অরেঞ্জ',
+    primary: '#f97316',
+    hover: '#ea580c',
+    light: '#fff7ed',
+    ring: '#fb923c'
+  },
+  {
+    id: 'cyan',
+    nameEn: 'Bright Cyan',
+    nameBn: 'ব্রাইট সায়ান',
+    primary: '#06b6d4',
+    hover: '#0891b2',
+    light: '#ecfeff',
+    ring: '#22d3ee'
+  },
+  {
+    id: 'pink',
+    nameEn: 'Blush Pink',
+    nameBn: 'ব্লাশ পিংক',
+    primary: '#ec4899',
+    hover: '#db2777',
+    light: '#fdf2f8',
+    ring: '#f472b6'
   }
 ];
 

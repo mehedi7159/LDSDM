@@ -33,14 +33,19 @@ type Draft = {
 
 const LANG_NAMES: Record<Language, string> = { bn: 'বাংলা', en: 'English', ar: 'العربية' };
 
-const ACCENT_ORDER: AccentThemeId[] = ['teal', 'emerald', 'blue', 'indigo', 'amber'];
+const ACCENT_ORDER: AccentThemeId[] = ['teal', 'emerald', 'blue', 'indigo', 'amber', 'rose', 'purple', 'orange', 'cyan', 'pink'];
 
 const ACCENT_NAMES_AR: Record<AccentThemeId, string> = {
   teal: 'تركوازي',
   emerald: 'زمردي',
   blue: 'أزرق',
   indigo: 'نيلي',
-  amber: 'كهرماني'
+  amber: 'كهرماني',
+  rose: 'وردي',
+  purple: 'بنفسجي',
+  orange: 'برتقالي',
+  cyan: 'سماوي',
+  pink: 'زهري'
 };
 
 type Strings = {
