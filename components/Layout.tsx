@@ -21,7 +21,6 @@ import {
   LogOut,
   UserCheck,
   Wallet,
-  Shield,
   GraduationCap,
   ChevronRight,
   ChevronDown,
@@ -127,40 +126,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     && (effectiveRoles || []).includes('guardian')
     && (effectiveRoles || []).every(r => r === 'guardian');
 
-  // Whether the slim desktop rail may offer a tab to this user — mirrors
-  // the App.tsx tab gate + render guards for just these rail tabs, so a
-  // role is never shown a rail button that bounces or dead-ends.
-  const canOpenRailTab = (tab: string): boolean => {
-    if (isAdminTier) return true;
-    // Guardian-only: the rail offers the notice board next to the
-    // portal home (added separately) — no all-student shortcuts.
-    if (isGuardianOnlySession) return tab === 'notice_board';
-    switch (tab) {
-      case 'students': return hasPermission('students.view') || hasPermission('students.create');
-      case 'attendance': return hasPermission('attendance.view') || hasPermission('attendance.create') || hasPermission('attendance.edit');
-      case 'results': return hasPermission('marks.view') || hasPermission('marks.create') || hasPermission('reports.view');
-      case 'finance': return hasPermission('finance.view') || hasPermission('fees.view') || hasPermission('payments.view');
-      case 'class_routine': return hasPermission('academic.view') || hasPermission('subjects.view');
-      case 'notice_board': return true;
-      case 'settings': return hasPermission('institution.settings.view');
-      default: return false;
-    }
-  };
-
   // Theme & Mobile Navigation Sheet states
   useTheme();
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
-  // Sidebar is closed by default and opens on-demand when user clicks the menu button
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Collapsible desktop rail: collapsed (icons only) by default; the
+  // hamburger toggles it to expanded (icons + names). The old dark
+  // slide-over drawer was removed entirely (3 Nov 2026) — its menus now
+  // live in this rail, expanded in place.
+  const [isRailExpanded, setIsRailExpanded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
-  // Close sidebar on ESC key press
+  // Collapse the expanded rail on ESC key press (replaces the old
+  // drawer Esc-close; the drawer itself is gone).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsSidebarOpen(false);
+      if (e.key === 'Escape') setIsRailExpanded(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -346,152 +329,132 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     }
   ];
 
+  // Rail menu list: the same visibility gate and the same search filter
+  // the removed drawer used, computed once and reused below.
+  const visibleMenus = mainMenuItems
+    .filter(menu => isMenuVisible(menu))
+    .filter(menu => {
+      if (!menuSearchQuery.trim()) return true;
+      const q = menuSearchQuery.toLowerCase().trim();
+      return (
+        menu.titleBn.toLowerCase().includes(q) ||
+        menu.titleEn.toLowerCase().includes(q) ||
+        menu.targetTab.toLowerCase().includes(q)
+      );
+    });
+
+  // Rail state is deliberately left untouched on navigation: a persistent
+  // sidebar stays expanded until the user collapses it (the old drawer
+  // auto-closed because it was an overlay; the rail is not).
   const handleTabClick = (itemId: string) => {
     setActiveTab(itemId);
-    setIsSidebarOpen(false); // Cleanly close drawer upon item selection
-  };
-
-  const getRoleBadgeTitle = () => {
-    if (isSuperAdmin) return '👑 Super Admin';
-    if (currentMember?.roleId === 'role_principal') return '🎓 অধ্যক্ষ / সুপারিনটেনডেন্ট (Principal)';
-    if (currentMember?.roleId === 'role_accountant') return '💼 হিসাবরক্ষক (Cashier)';
-    if (currentMember?.roleId === 'role_teacher') return '👨‍🏫 সহকারী শিক্ষক (Teacher)';
-    if (currentMember?.roleId === 'role_guardian') return '👨‍👩‍👧 অভিভাবক (Guardian)';
-    if (isAdmin) return '🛡️ প্রতিষ্ঠান অ্যাডমিন';
-    return '👤 সাধারণ ব্যবহারকারী';
   };
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans relative">
-      {/* Dimmed Overlay Backdrop when Sidebar is opened */}
-      {isSidebarOpen && (
-        <div 
-          onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
-        />
-      )}
-
-      {/* Modern Slide-In Drawer Sidebar */}
-      <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-72 sm:w-80 bg-slate-900 text-white shadow-2xl border-r border-slate-800 transform transition-transform duration-300 ease-out flex flex-col justify-between ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        {/* Top Brand Header */}
-        <div className="flex flex-col">
-          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-800 bg-slate-900">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-white shadow-sm shrink-0">
-                <GraduationCap size={20} />
-              </div>
-              <div className="overflow-hidden">
-                <span className="font-bold text-sm block truncate text-white">
+      {/* Collapsible Desktop Sidebar Rail (md+ only): collapsed = icons only
+          (default), expanded = icons + names, grown in place — the content
+          area narrows accordingly, no overlay, no dark drawer. Every menu
+          group the removed drawer showed lives here, in drawer order, with
+          the drawer's targets, visibility gate and search filter. */}
+      <aside className={`hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 shrink-0 z-20 justify-between py-3 select-none overflow-hidden transition-[width] duration-300 ease-out ${isRailExpanded ? 'w-72' : 'w-16'}`}>
+        {/* Top: brand + menus */}
+        <div className={`flex flex-col gap-2.5 w-full flex-1 min-h-0 ${isRailExpanded ? '' : 'items-center'}`}>
+          {/* Institution Brand (home) */}
+          <div className={`w-full ${isRailExpanded ? 'px-3' : 'flex justify-center'}`}>
+            <button
+              type="button"
+              onClick={() => handleTabClick(homeTab)}
+              className={`flex items-center gap-2.5 rounded-2xl text-white shadow-md hover:scale-[1.02] active:scale-95 transition-all cursor-pointer ${
+                isRailExpanded ? 'w-full px-3 py-2.5 justify-start' : 'w-10 h-10 justify-center'
+              }`}
+              title={schoolProfile.nameBn || schoolProfile.name}
+              style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
+            >
+              <GraduationCap size={20} className="shrink-0" />
+              {isRailExpanded && (
+                <span className="font-bold text-sm truncate text-left">
                   {schoolProfile.nameBn || schoolProfile.name}
                 </span>
-              </div>
-            </div>
-            <button 
-              onClick={() => setIsSidebarOpen(false)} 
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-              title="Close Menu"
-            >
-              <X size={18} />
+              )}
             </button>
           </div>
 
-          {/* User Profile Card */}
-          <div className="p-3.5 m-3 rounded-xl bg-slate-800/80 border border-slate-700/60">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs shrink-0">
-                  {(authUser?.displayName || (isOwnerEmail ? 'Mehedi' : authUser?.email) || 'U')[0].toUpperCase()}
-                </div>
-                <div className="overflow-hidden">
-                  <span className="text-xs font-semibold block truncate text-slate-200">
-                    {authUser?.displayName || (isOwnerEmail ? 'Mehedi Hasan Sagor' : authUser?.email?.split('@')[0])}
-                  </span>
-                  <span className="text-[11px] text-slate-400 block truncate">
-                    {authUser?.email}
-                  </span>
-                </div>
-              </div>
+          <div className={`h-px bg-slate-200 dark:bg-slate-800 ${isRailExpanded ? 'mx-3' : 'w-8'}`} />
 
-              <button
-                onClick={() => { logoutAdmin(); setIsSidebarOpen(false); }}
-                title={language === 'bn' ? 'লগআউট' : 'Sign Out'}
-                className="p-1.5 rounded-lg bg-slate-700 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 transition-colors cursor-pointer shrink-0 ml-1"
-              >
-                <LogOut size={13} />
-              </button>
-            </div>
-
-            {/* Role Badge */}
-            <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-700/60 text-xs">
-              <span className="font-medium text-indigo-300 flex items-center gap-1.5">
-                <Shield size={12} className={isSuperAdmin ? 'text-purple-400' : 'text-emerald-400'} />
-                {getRoleBadgeTitle()}
-              </span>
-              {currentMember?.roleId === 'role_teacher' && currentMember.assignedClasses && currentMember.assignedClasses.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded bg-indigo-950 text-[10px] text-indigo-300 font-semibold">
-                  {currentMember.assignedClasses.length} শ্রেণি
-                </span>
+          {/* Menu Search (expanded state only — same filter as the old drawer) */}
+          {isRailExpanded && (
+            <div className="relative px-2 w-full">
+              <Search size={14} className="absolute left-5 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                value={menuSearchQuery}
+                onChange={(e) => setMenuSearchQuery(e.target.value)}
+                placeholder={language === 'bn' ? 'মেনু খুঁজুন...' : 'Search menus...'}
+                className="w-full pl-8 pr-7 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)] transition-all"
+              />
+              {menuSearchQuery && (
+                <button
+                  onClick={() => setMenuSearchQuery('')}
+                  className="absolute right-5 top-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                >
+                  <X size={13} />
+                </button>
               )}
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Navigation Menu - Clean, Direct Single-Level Menus (No Sub-menus) */}
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 custom-scrollbar">
-          {/* Quick Module Search Input */}
-          <div className="relative mb-2">
-            <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-            <input 
-              type="text"
-              value={menuSearchQuery}
-              onChange={(e) => setMenuSearchQuery(e.target.value)}
-              placeholder={language === 'bn' ? 'মেনু খুঁজুন...' : 'Search menus...'}
-              className="w-full pl-8 pr-7 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-            />
-            {menuSearchQuery && (
-              <button 
-                onClick={() => setMenuSearchQuery('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-
-          {mainMenuItems
-            .filter(menu => isMenuVisible(menu))
-            .filter(menu => {
-              if (!menuSearchQuery.trim()) return true;
-              const q = menuSearchQuery.toLowerCase().trim();
-              return (
-                menu.titleBn.toLowerCase().includes(q) ||
-                menu.titleEn.toLowerCase().includes(q) ||
-                menu.targetTab.toLowerCase().includes(q)
-              );
-            })
-            .map((menu) => {
+          {/* Menu list: drawer order, drawer targets, drawer visibility gate */}
+          <div className={`flex-1 overflow-y-auto w-full custom-scrollbar ${isRailExpanded ? 'px-2 space-y-1' : 'px-2 flex flex-col items-center gap-1.5'}`}>
+            {visibleMenus.map((menu) => {
               const Icon = menu.icon;
               const isActive = activeTab === menu.targetTab || menu.associatedTabs.includes(activeTab);
-
+              if (!isRailExpanded) {
+                return (
+                  <button
+                    key={menu.id}
+                    type="button"
+                    onClick={() => handleTabClick(menu.targetTab)}
+                    title={language === 'bn' ? menu.titleBn : menu.titleEn}
+                    className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+                      isActive
+                        ? 'font-bold shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                    style={isActive ? { color: 'var(--color-brand, #4f46e5)', backgroundColor: 'var(--color-brand-light)' } : undefined}
+                  >
+                    <Icon size={18} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+                    {isActive && (
+                      <span
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full"
+                        style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
+                      />
+                    )}
+                    {menu.badge && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold flex items-center justify-center">
+                        {menu.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              }
               return (
                 <button
                   key={menu.id}
                   type="button"
                   onClick={() => handleTabClick(menu.targetTab)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-white'
+                      ? 'text-white font-bold shadow-sm'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
+                  style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-slate-700/60 text-indigo-400'
-                    }`}>
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
+                      style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                    >
                       <Icon size={15} />
                     </div>
                     <span className="truncate">
@@ -499,120 +462,38 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                       {language === 'bn' ? menu.titleBn : menu.titleEn}
                     </span>
                   </div>
-
                   <div className="flex items-center gap-1.5 shrink-0 ml-2">
                     {menu.badge && (
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
                         {menu.badge}
                       </span>
                     )}
-                    <ChevronRight size={13} className={`transition-transform ${isActive ? 'text-white translate-x-0.5' : 'text-slate-500'}`} />
+                    <ChevronRight size={13} className={isActive ? 'text-white translate-x-0.5' : 'text-slate-400'} />
                   </div>
                 </button>
               );
             })}
 
-          {mainMenuItems.filter(menu => isMenuVisible(menu)).filter(menu => {
-            if (!menuSearchQuery.trim()) return true;
-            const q = menuSearchQuery.toLowerCase().trim();
-            return (
-              menu.titleBn.toLowerCase().includes(q) ||
-              menu.titleEn.toLowerCase().includes(q) ||
-              menu.targetTab.toLowerCase().includes(q)
-            );
-          }).length === 0 && (
-            <div className="text-center py-6 text-slate-400 text-xs">
-              {language === 'bn' ? 'কোনো মেনু পাওয়া যায়নি' : 'No matching menu found'}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="p-3.5 border-t border-slate-800 bg-slate-900 flex items-center justify-between text-xs text-slate-400">
-          <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>লাইভ ডাটাবেস</span>
-          </div>
-          <button 
-            onClick={() => setIsSidebarOpen(false)}
-            className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
-          >
-            বন্ধ করুন (Esc)
-          </button>
-        </div>
-      </aside>
-
-      {/* Modern Desktop Slim Sidebar (Linear / Stripe inspired clean aesthetic) */}
-      <aside className="hidden md:flex flex-col w-16 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 shrink-0 z-20 justify-between items-center py-3 select-none">
-        {/* Top: Institution Brand Icon */}
-        <div className="flex flex-col items-center gap-2.5 w-full">
-          <button
-            type="button"
-            onClick={() => handleTabClick(homeTab)}
-            className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            title={schoolProfile.nameBn || schoolProfile.name}
-            style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
-          >
-            <GraduationCap size={20} />
-          </button>
-
-          <div className="w-8 h-px bg-slate-200 dark:bg-slate-800 my-0.5" />
-
-          {/* Quick Nav Icon Buttons with tooltips */}
-          <div className="flex flex-col items-center gap-1.5 w-full px-2">
-            {[
-              // First entry is the user's home: 'dashboard' for admin-tier,
-              // the role home for non-admin roles. The other entries use
-              // REAL tab ids ('routine'/'notices' were bogus ids that set a
-              // non-existent tab and fell through to the Dashboard) and are
-              // filtered to tabs this role can actually open.
-              { id: homeTab, label: homeTab === 'dashboard' ? (language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : (language === 'bn' ? 'হোম' : 'Home'), icon: homeTab === 'dashboard' ? LayoutDashboard : Home },
-              { id: 'students', label: language === 'bn' ? 'শিক্ষার্থী' : 'Students', icon: Users },
-              { id: 'attendance', label: language === 'bn' ? 'হাজিরা' : 'Attendance', icon: UserCheck },
-              { id: 'results', label: language === 'bn' ? 'ফলাফল' : 'Results', icon: Award },
-              { id: 'finance', label: language === 'bn' ? 'হিসাব' : 'Finance', icon: Wallet },
-              { id: 'class_routine', label: language === 'bn' ? 'রুটিন' : 'Routine', icon: CalendarDays },
-              { id: 'notice_board', label: language === 'bn' ? 'নোটিশ' : 'Notices', icon: Megaphone },
-              { id: 'settings', label: language === 'bn' ? 'সেটিংস' : 'Settings', icon: Settings }
-            ].filter(item => item.id === homeTab || canOpenRailTab(item.id)).map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleTabClick(item.id)}
-                  title={item.label}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer relative group active:scale-95 ${
-                    isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                  style={isActive ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
-                >
-                  <Icon size={18} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
-                  {isActive && (
-                    <span
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full"
-                      style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
-                    />
-                  )}
-                </button>
-              );
-            })}
+            {visibleMenus.length === 0 && (
+              <div className="text-center py-6 text-slate-400 text-xs">
+                {language === 'bn' ? 'কোনো মেনু পাওয়া যায়নি' : 'No matching menu found'}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Bottom Tools in Slim Sidebar: Full Drawer button, Theme switcher, Dark mode toggle */}
-        <div className="flex flex-col items-center gap-2 w-full px-2 pt-2 border-t border-slate-200/80 dark:border-slate-800">
-          {/* Full Drawer Toggle */}
+        {/* Bottom tools: rail toggle (hamburger) + theme switcher */}
+        <div className={`w-full pt-2 border-t border-slate-200/80 dark:border-slate-800 ${isRailExpanded ? 'flex flex-row items-center gap-2 px-3' : 'flex flex-col items-center gap-2 px-2'}`}>
+          {/* Hamburger: toggles icons-only <-> icons + names */}
           <button
             type="button"
-            onClick={() => setIsSidebarOpen(true)}
-            title={language === 'bn' ? 'সকল মেনু ও মডিউল' : 'All Modules'}
-            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
+            onClick={() => setIsRailExpanded(v => !v)}
+            title={isRailExpanded
+              ? (language === 'bn' ? 'শুধু আইকন দেখান' : 'Show icons only')
+              : (language === 'bn' ? 'মেনু নামসহ দেখান' : 'Show menu names')}
+            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer shrink-0"
           >
-            <Menu size={18} />
+            {isRailExpanded ? <X size={18} /> : <Menu size={18} />}
           </button>
 
           {/* Theme Switcher Button */}
@@ -620,7 +501,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             type="button"
             onClick={() => setIsThemeModalOpen(true)}
             title={language === 'bn' ? 'কালার থিম কাস্টমাইজ' : 'Accent Theme'}
-            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
+            className="w-10 h-10 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer shrink-0"
           >
             <Palette size={18} />
           </button>
@@ -636,7 +517,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             {/* Left: Interactive Menu Button & Institution Header */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button 
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                onClick={() => {
+                  // Desktop: toggle the collapsible rail. Phone widths
+                  // (Layout's admin/owner path): the rail is hidden, so
+                  // open the mobile More sheet instead — the dark drawer
+                  // this replaced is gone.
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) setIsMobileMoreOpen(true);
+                  else setIsRailExpanded(v => !v);
+                }}
                 className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
                 title="Open Navigation Menu"
               >
