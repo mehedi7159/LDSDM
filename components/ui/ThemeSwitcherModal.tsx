@@ -16,6 +16,8 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
 
   const isBn = language === 'bn';
 
+  const selectedTheme = ACCENT_THEMES.find(t => t.id === accentTheme) || ACCENT_THEMES[0];
+
   const handleSelectAccent = (id: AccentThemeId, name: string) => {
     setAccentTheme(id);
     showSuccess(
@@ -55,13 +57,13 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
           </button>
         </div>
 
-        {/* Switchable Accent Themes */}
-        <div className="space-y-2.5">
+        {/* Accent color dots — tap a dot to apply instantly */}
+        <div className="space-y-3">
           <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-            {isBn ? `অ্যাকসেন্ট কালার প্যালেট (${ACCENT_THEMES.length}টি থিম):` : 'Select Primary Accent Theme:'}
+            {isBn ? `অ্যাকসেন্ট কালার (${ACCENT_THEMES.length}টি থিম):` : 'Accent color:'}
           </label>
 
-          <div className="grid grid-cols-1 gap-2.5">
+          <div className="grid grid-cols-5 gap-x-2 gap-y-4">
             {ACCENT_THEMES.map(theme => {
               const isSelected = accentTheme === theme.id;
               const title = isBn ? theme.nameBn : theme.nameEn;
@@ -70,43 +72,37 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
                 <button
                   key={theme.id}
                   onClick={() => handleSelectAccent(theme.id, title)}
-                  className={`min-h-[48px] p-3 rounded-2xl border text-left flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
-                    isSelected
-                      ? 'bg-slate-50 dark:bg-slate-800/80 border-slate-400 dark:border-slate-600 shadow-xs'
-                      : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                  aria-label={title}
+                  aria-pressed={isSelected}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition"
                 >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="w-6 h-6 rounded-full shadow-inner border border-white/40 flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: theme.primary }}
-                    >
-                      {isSelected && <Check size={12} className="text-white stroke-[3]" />}
-                    </span>
-
-                    <div>
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white block">
-                        {title}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {theme.primary}
-                      </span>
-                    </div>
-                  </div>
-
                   <span
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold"
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full shadow-inner flex items-center justify-center shrink-0"
                     style={{
-                      backgroundColor: theme.light,
-                      color: theme.primary
+                      backgroundColor: theme.primary,
+                      boxShadow: isSelected ? `0 0 0 2px #fff, 0 0 0 5px ${theme.ring}` : undefined
                     }}
                   >
-                    {isBn ? 'সক্রিয় করুন' : 'Preview'}
+                    {isSelected && <Check size={18} className="text-white stroke-[3]" />}
+                  </span>
+                  <span
+                    className={`text-[10px] leading-tight text-center font-medium ${
+                      isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {title}
                   </span>
                 </button>
               );
             })}
           </div>
+
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+            {isBn ? 'বর্তমান: ' : 'Current: '}
+            <span className="font-bold" style={{ color: 'var(--color-brand)' }}>
+              {isBn ? selectedTheme.nameBn : selectedTheme.nameEn}
+            </span>
+          </p>
         </div>
 
         {/* Close Button */}
