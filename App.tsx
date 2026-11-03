@@ -501,7 +501,7 @@ const AppContent = () => {
       case 'web_results':
         return <ExamResultsManager initialSubTab="web_results" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'student_profile':
-        return <StudentProfileView onBack={() => setActiveTab('dashboard')} />;
+        return <StudentProfileView onBack={() => setActiveTab('dashboard')} onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'notice_board':
         return <ReportsSettingsManager initialSubTab="notices" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'student_id_cards':

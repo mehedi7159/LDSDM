@@ -31,21 +31,33 @@ import {
   Check,
   CalendarCheck,
   AlertTriangle,
-  Info
+  Info,
+  Banknote,
+  MessageCircle,
+  History
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { NoticeBoardAlertBanner } from './NoticeBoard';
+import { calculateFeeAging, academicYearFallbackStartMonth, monthlyExpectedFor } from '../services/studentDuesService';
+import { feeArrangementOf, hasFeeArrangement, FEE_DISCOUNT_TYPE_LABELS } from '../services/studentFeeArrangement';
+import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
+import { paymentMethodLabel } from '../services/paymentMethod';
 
 interface StudentProfileViewProps {
   initialStudentId?: string;
   onBack?: () => void;
   onSwitchStudent?: () => void;
+  // Staff-path only: navigate to another app tab (e.g. student_reports).
+  // The anonymous portal never passes this, so nav-based quick actions
+  // simply do not render there.
+  onNavigateTab?: (tab: string) => void;
 }
 
 export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   initialStudentId,
   onBack,
-  onSwitchStudent
+  onSwitchStudent,
+  onNavigateTab
 }) => {
   const { 
     students = [], 
@@ -55,6 +67,13 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     remarks = [], 
     classes = [],
     examSubjectAssignments = [],
+    transactions = [],
+    feeStructures = [],
+    feeTypes = [],
+    academicYears = [],
+    dailyStudentAttendance = [],
+    authUser = null,
+    userRole = null,
     schoolProfile, 
     language, 
     setLanguage 
@@ -67,7 +86,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     return localStorage.getItem('mms_logged_in_student_id') || '';
   });
   const [loginError, setLoginError] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'attendance' | 'marks' | 'schedule' | 'id_card'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'marks' | 'schedule' | 'id_card' | 'fees'>('attendance');
 
   // Attendance Filter: selected month
   const [attendanceMonth, setAttendanceMonth] = useState<string>(() => {
@@ -169,6 +188,160 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       (!s.group || s.group === 'All' || s.group === 'General' || s.group === currentStudent.group)
     ).sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [subjects, currentStudent, studentClass]);
+
+  // ==========================================
+  // PROFILE ADVANCED (staff-only): fee, dues, alerts.
+  // Rendered only when isStaffView is true (signed-in, non-guardian).
+  // The anonymous portal never sees these sections: its rendering is
+  // identical to before. All figures come from existing canonical
+  // helpers and real records — nothing is invented here.
+  //
+  // NOTE on attendance alerts: the profile's monthly ledger below is a
+  // deterministic simulation (pre-existing), so alerts deliberately use
+  // the REAL dailyStudentAttendance records instead — same definitions
+  // as the dashboard alert strip (last 7 class attendance days all
+  // ABSENT; recorded rate < 60% with >= 10 recorded days).
+  // ==========================================
+  const isStaffView = !!authUser && userRole !== 'guardian';
+
+  // Fee arrangement (tuition-fee-arrangement job fields on Student).
+  const feeArrangement = useMemo(
+    () => (currentStudent ? feeArrangementOf(currentStudent) : null),
+    [currentStudent]
+  );
+  const arrangementExists = currentStudent ? hasFeeArrangement(currentStudent) : false;
+  const monthlyExpected = useMemo(
+    () => (currentStudent ? monthlyExpectedFor(currentStudent, feeStructures, feeTypes) : 0),
+    [currentStudent, feeStructures, feeTypes]
+  );
+
+  // Aged dues (canonical, finished months only, current month excluded).
+  const feeAging = useMemo(
+    () =>
+      currentStudent
+        ? calculateFeeAging(
+            currentStudent,
+            feeStructures,
+            transactions,
+            undefined,
+            feeTypes,
+            academicYearFallbackStartMonth(academicYears)
+          )
+        : null,
+    [currentStudent, feeStructures, transactions, feeTypes, academicYears]
+  );
+
+  // This student's fee payments (INCOME), newest first.
+  const myTransactions = useMemo(() => {
+    if (!currentStudent) return [];
+    return transactions
+      .filter(
+        tx =>
+          tx.type === 'INCOME' &&
+          (tx.studentId === currentStudent.id ||
+            (currentStudent.studentId && tx.studentId === currentStudent.studentId))
+      )
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [transactions, currentStudent]);
+
+  // Exam-fee pending, DERIVED (never enters monthly dues): non-archived
+  // exams with a fee that apply to this student's class, minus recorded
+  // examId payments. Class scope mirrors ExamManager: empty classIds =
+  // all classes; otherwise the student's classLevel (or a classes[]
+  // entry for that level) must be listed.
+  const pendingExamFees = useMemo(() => {
+    if (!currentStudent) return [];
+    const paidKeys = paidExamFeeKeys(transactions);
+    const classKeys = new Set<string>([studentClass]);
+    for (const c of classes) {
+      if (c.name === studentClass || c.nameBn === studentClass) classKeys.add(c.id);
+    }
+    const isPaid = (examId: string) =>
+      paidKeys.has(examFeePaidKey(examId, currentStudent.id)) ||
+      (currentStudent.studentId ? paidKeys.has(examFeePaidKey(examId, currentStudent.studentId)) : false);
+    return exams.filter(e => {
+      if ((Number(e.examFee) || 0) <= 0 || e.status === 'ARCHIVED') return false;
+      const ids = e.classIds || [];
+      if (ids.length > 0 && !ids.some(id => classKeys.has(id))) return false;
+      return !isPaid(e.id);
+    });
+  }, [currentStudent, exams, transactions, classes, studentClass]);
+
+  // Real attendance records for this student (newest first).
+  const myAttendanceRecords = useMemo(() => {
+    if (!currentStudent) return [];
+    return dailyStudentAttendance
+      .filter(
+        r =>
+          r.studentId === currentStudent.id ||
+          (currentStudent.studentId && r.studentId === currentStudent.studentId)
+      )
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [dailyStudentAttendance, currentStudent]);
+
+  // Alert strip triggers (staff-only rendering; real figures only).
+  const profileAlerts = useMemo(() => {
+    if (!currentStudent) return [];
+    const alerts: Array<{ kind: 'dues' | 'absent' | 'rate'; title: string; detail: string }> = [];
+    const isBn = language === 'bn';
+    if (feeAging && feeAging.byMonth.length >= 3) {
+      alerts.push({
+        kind: 'dues',
+        title: isBn ? '৩+ মাস বকেয়া' : 'Dues over 3 months',
+        detail: isBn
+          ? `${toBn(feeAging.byMonth.length)} মাস বকেয়া · মোট ${toBn(feeAging.totalAged.toLocaleString('en-US'))} টাকা`
+          : `${feeAging.byMonth.length} months due · total ৳${feeAging.totalAged.toLocaleString('en-US')}`,
+      });
+    }
+    // Long absence: ABSENT on each of the last 7 days the class
+    // attendance was taken (same definition as the dashboard strip).
+    const classDates = [...new Set(dailyStudentAttendance.filter(r => r.classLevel === studentClass && r.date).map(r => r.date))].sort().reverse();
+    if (classDates.length >= 7) {
+      const last7 = classDates.slice(0, 7);
+      const recByKey = new Map(dailyStudentAttendance.map(r => [`${r.date}__${r.studentId}`, r.status]));
+      const allAbsent = last7.every(d => {
+        if (recByKey.get(`${d}__${currentStudent.id}`) === 'ABSENT') return true;
+        if (currentStudent.studentId) return recByKey.get(`${d}__${currentStudent.studentId}`) === 'ABSENT';
+        return false;
+      });
+      if (allAbsent) {
+        alerts.push({
+          kind: 'absent',
+          title: isBn ? 'টানা ৭ দিন অনুপস্থিত' : 'Absent 7 days straight',
+          detail: isBn ? 'শ্রেণির হাজিরা নেওয়া শেষ ৭ দিনে' : 'Over the last 7 days attendance was taken',
+        });
+      }
+    }
+    // Recorded attendance rate < 60% (PRESENT + LATE count as present),
+    // guarded to >= 10 recorded days like the dashboard strip.
+    const totalRec = myAttendanceRecords.length;
+    if (totalRec >= 10) {
+      const presentRec = myAttendanceRecords.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
+      const rate = Math.round((presentRec / totalRec) * 100);
+      if (rate < 60) {
+        alerts.push({
+          kind: 'rate',
+          title: isBn ? 'হাজিরার হার ৬০%-এর নিচে' : 'Attendance below 60%',
+          detail: isBn
+            ? `রেকর্ডকৃত ${toBn(totalRec)} দিনে হার ${toBn(rate)}%`
+            : `${rate}% over ${totalRec} recorded days`,
+        });
+      }
+    }
+    return alerts;
+  }, [currentStudent, feeAging, dailyStudentAttendance, myAttendanceRecords, studentClass, language]);
+
+  // WhatsApp dues share (aged-dues text, same wording as the mobile
+  // Due report rows). Only when there are aged dues and a guardian
+  // phone on record — never a message about zero dues.
+  const whatsappDuesLink = useMemo(() => {
+    if (!currentStudent || !feeAging || feeAging.totalAged <= 0) return null;
+    const phone = String(currentStudent.guardianPhone || '').replace(/[^0-9]/g, '');
+    if (!phone) return null;
+    const intl = phone.startsWith('880') ? phone : '880' + phone.replace(/^0/, '');
+    const text = `আসসালামু আলাইকুম। ${schoolProfile.nameBn || schoolProfile.name}-এর শিক্ষার্থী ${currentStudent.nameBn || currentStudent.name} (${currentStudent.classLevel})-এর পুরনো মাসসহ মোট ৳${feeAging.totalAged.toLocaleString()} বকেয়া রয়েছে। অনুগ্রহপূর্বক দ্রুত বকেয়া পরিশোধ করার অনুরোধ করা হলো। জাযাকাল্লাহু খাইরান।`;
+    return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+  }, [currentStudent, feeAging, schoolProfile]);
 
   // ==========================================
   // 1. ATTENDANCE COMPUTATIONS
@@ -482,6 +655,39 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     return schedules.sort((a, b) => a.examDate.localeCompare(b.examDate));
   }, [currentStudent, exams, examSubjectAssignments, subjects, studentSubjects, studentClass, language]);
 
+  // Recent activity (staff-only rendering), existing data only:
+  // admission, latest payments, latest recorded attendance, next
+  // upcoming exam. No new model, no new collection.
+  const timelineItems = useMemo(() => {
+    if (!currentStudent) return [];
+    const items: Array<{ date: string; label: string }> = [];
+    if (currentStudent.admissionDate) {
+      items.push({ date: currentStudent.admissionDate, label: language === 'bn' ? 'ভর্তি' : 'Admitted' });
+    }
+    for (const tx of myTransactions.slice(0, 3)) {
+      items.push({
+        date: tx.date || '',
+        label: `${tx.categoryName || tx.category} · ৳${Number(tx.amount || 0).toLocaleString('en-US')}`,
+      });
+    }
+    if (myAttendanceRecords.length > 0) {
+      const last = myAttendanceRecords[0];
+      const statusBn = last.status === 'PRESENT' ? 'উপস্থিত' : last.status === 'LATE' ? 'বিলম্ব' : last.status === 'LEAVE' ? 'ছুটি' : 'অনুপস্থিত';
+      items.push({
+        date: last.date || '',
+        label: language === 'bn' ? `সর্বশেষ হাজিরা: ${statusBn}` : `Latest attendance: ${last.status}`,
+      });
+    }
+    if (upcomingSchedules.length > 0) {
+      const next = upcomingSchedules[0];
+      items.push({
+        date: next.examDate || '',
+        label: `${language === 'bn' ? 'আসন্ন পরীক্ষা' : 'Upcoming exam'}: ${next.subjectName || ''}`.trim(),
+      });
+    }
+    return items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [currentStudent, myTransactions, myAttendanceRecords, upcomingSchedules, language]);
+
   // Print function
   const handlePrint = () => {
     window.print();
@@ -728,6 +934,37 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
             </button>
 
+            {/* Staff-only quick actions (never rendered on the anonymous portal) */}
+            {isStaffView && (
+              <button
+                onClick={() => setActiveTab('id_card')}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <QrCode size={14} className="text-indigo-400" />
+                <span>{language === 'bn' ? 'আইডি কার্ড' : 'ID Card'}</span>
+              </button>
+            )}
+            {isStaffView && onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('student_reports')}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <FileText size={14} className="text-indigo-400" />
+                <span>{language === 'bn' ? 'রিপোর্ট কার্ড' : 'Report Card'}</span>
+              </button>
+            )}
+            {isStaffView && whatsappDuesLink && (
+              <a
+                href={whatsappDuesLink}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <MessageCircle size={14} />
+                <span>{language === 'bn' ? 'বকেয়া WhatsApp' : 'WhatsApp Dues'}</span>
+              </a>
+            )}
+
             <button
               onClick={handleLogout}
               className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer flex items-center gap-1.5"
@@ -741,6 +978,38 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         </div>
 
       </div>
+
+      {/* 1.5. STAFF-ONLY ALERT STRIP (real figures only; never on the portal) */}
+      {isStaffView && profileAlerts.length > 0 && (
+        <div className="space-y-2 print:hidden">
+          {profileAlerts.map((alert, idx) => (
+            <div
+              key={`${alert.kind}-${idx}`}
+              className={`flex items-start gap-2.5 rounded-2xl border p-3.5 ${
+                alert.kind === 'dues'
+                  ? 'bg-rose-50 border-rose-200 text-rose-800'
+                  : alert.kind === 'absent'
+                    ? 'bg-violet-50 border-violet-200 text-violet-800'
+                    : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}
+            >
+              <span className="shrink-0 mt-0.5">
+                {alert.kind === 'dues' ? (
+                  <AlertTriangle size={16} className="text-rose-600" />
+                ) : alert.kind === 'absent' ? (
+                  <AlertCircle size={16} className="text-violet-600" />
+                ) : (
+                  <TrendingUp size={16} className="text-amber-600" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-black">{alert.title}</p>
+                <p className="text-xs font-medium opacity-80">{alert.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 2. TAB NAVIGATION BAR */}
       <div className="flex items-center justify-between border-b border-slate-200 bg-white p-1.5 rounded-2xl shadow-xs print:hidden gap-2">
@@ -808,6 +1077,22 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             <span className="hidden sm:inline">{language === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Student ID Card'}</span>
             <span className="sm:hidden">{language === 'bn' ? 'আইডি কার্ড' : 'ID Card'}</span>
           </button>
+
+          {/* TAB 5: FEES & DUES (staff-only; never rendered on the portal) */}
+          {isStaffView && (
+            <button
+              onClick={() => setActiveTab('fees')}
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
+                activeTab === 'fees'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Banknote size={16} />
+              <span className="hidden sm:inline">{language === 'bn' ? 'ফি ও বকেয়া' : 'Fees & Dues'}</span>
+              <span className="sm:hidden">{language === 'bn' ? 'ফি' : 'Fees'}</span>
+            </button>
+          )}
 
         </div>
 
@@ -1601,6 +1886,218 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* TAB CONTENT 5: FEES & DUES (staff-only)              */}
+      {/* ==================================================== */}
+      {isStaffView && activeTab === 'fees' && (
+        <div className="space-y-6">
+
+          {/* 5.1 Fee arrangement */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-3">
+              <Banknote size={18} className="text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">
+                {language === 'bn' ? 'টিউশন ফি ব্যবস্থা' : 'Tuition Fee Arrangement'}
+              </h3>
+              {feeArrangement && feeArrangement.discountType === 'full' && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-black">
+                  {language === 'bn' ? 'সম্পূর্ণ ছাড়' : 'Full waiver'}
+                </span>
+              )}
+            </div>
+            {feeArrangement && arrangementExists ? (
+              <div className="text-xs space-y-1.5 text-slate-700">
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">{language === 'bn' ? 'ধরন:' : 'Type:'}</span>
+                  <span className="font-bold">
+                    {language === 'bn'
+                      ? FEE_DISCOUNT_TYPE_LABELS[feeArrangement.discountType]
+                      : feeArrangement.discountType === 'none' ? 'No discount'
+                        : feeArrangement.discountType === 'full' ? 'Full waiver'
+                          : feeArrangement.discountType === 'partial' ? 'Partial waiver'
+                            : feeArrangement.discountType === 'etim' ? 'Orphan fund' : 'Other fund'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">{language === 'bn' ? 'প্রতিষ্ঠান ফি:' : 'Institute base:'}</span>
+                  <span className="font-bold">৳{toBn(feeArrangement.baseAmount.toLocaleString('en-US'))}</span>
+                </div>
+                {feeArrangement.waiverAmount > 0 && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">{language === 'bn' ? 'ওয়েভার:' : 'Waiver:'}</span>
+                    <span className="font-bold text-emerald-700">− ৳{toBn(feeArrangement.waiverAmount.toLocaleString('en-US'))}</span>
+                  </div>
+                )}
+                {feeArrangement.fundAmount > 0 && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">{language === 'bn' ? 'ফান্ড:' : 'Fund:'}</span>
+                    <span className="font-bold">
+                      − ৳{toBn(feeArrangement.fundAmount.toLocaleString('en-US'))}
+                      {feeArrangement.fundSource ? ` (${feeArrangement.fundSource})` : ''}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-2 pt-1 border-t border-slate-100">
+                  <span className="text-slate-500">{language === 'bn' ? 'শিক্ষার্থীকে দিতে হবে:' : 'Student pays:'}</span>
+                  <span className="font-black text-slate-900">৳{toBn(feeArrangement.payableAmount.toLocaleString('en-US'))}</span>
+                </div>
+                {feeArrangement.fundAmount > 0 && (
+                  <p className="text-[11px] text-slate-500">
+                    {language === 'bn' ? 'ফান্ডের টাকা শিক্ষার্থীর ঋণ নয়।' : 'The fund share is not student debt.'}
+                  </p>
+                )}
+              </div>
+            ) : monthlyExpected > 0 ? (
+              <div className="text-xs space-y-1.5 text-slate-700">
+                <p className="text-slate-500">
+                  {language === 'bn' ? 'কোনো বিশেষ ছাড়/ফান্ড ব্যবস্থা নেই — শ্রেণির নির্ধারিত ফি প্রযোজ্য।' : 'No special discount/fund arrangement — the class fee applies.'}
+                </p>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">{language === 'bn' ? 'মাসিক ফি:' : 'Monthly fee:'}</span>
+                  <span className="font-black text-slate-900">৳{toBn(monthlyExpected.toLocaleString('en-US'))}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">
+                {language === 'bn' ? 'এই শ্রেণির ফি কাঠামো নির্ধারিত হয়নি।' : 'No fee structure set for this class.'}
+              </p>
+            )}
+          </div>
+
+          {/* 5.2 Aged dues */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 mb-3">
+              {language === 'bn' ? 'বকেয়া (সমাপ্ত মাসের হিসাব)' : 'Aged Dues (finished months)'}
+            </h3>
+            {feeAging && monthlyExpected > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl font-black ${feeAging.totalAged > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    ৳{toBn(feeAging.totalAged.toLocaleString('en-US'))}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {feeAging.totalAged > 0
+                      ? (language === 'bn' ? `মোট বকেয়া · ${toBn(feeAging.byMonth.length)} মাস` : `total due · ${feeAging.byMonth.length} months`)
+                      : (language === 'bn' ? 'কোনো বকেয়া নেই' : 'No dues outstanding')}
+                  </span>
+                </div>
+                {feeAging.byMonth.length > 0 && (
+                  <div className="text-xs space-y-1 text-slate-700">
+                    {feeAging.byMonth.map(m => (
+                      <div key={m.month} className="flex justify-between gap-2 border-b border-slate-50 pb-1">
+                        <span className="text-slate-500">{toBn(m.month)}</span>
+                        <span className="font-bold text-rose-600">৳{toBn(m.due.toLocaleString('en-US'))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {feeAging.currentMonthDue > 0 && (
+                  <p className="text-[11px] text-slate-500">
+                    {language === 'bn'
+                      ? `চলতি (অসমাপ্ত) মাস: ৳${toBn(feeAging.currentMonthDue.toLocaleString('en-US'))} — এটি এখনো বকেয়া নয়, উপরের মোটে ধরা হয়নি।`
+                      : `Current (unfinished) month: ৳${feeAging.currentMonthDue.toLocaleString('en-US')} — not yet due, excluded from the total above.`}
+                  </p>
+                )}
+                {feeAging.startMonth && (
+                  <p className="text-[11px] text-slate-500">
+                    {language === 'bn' ? `হিসাব শুরু: ${toBn(feeAging.startMonth)}` : `Counted from: ${feeAging.startMonth}`}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">
+                {language === 'bn' ? 'এই শ্রেণির ফি কাঠামো নির্ধারিত হয়নি।' : 'No fee structure set for this class.'}
+              </p>
+            )}
+          </div>
+
+          {/* 5.3 Fee transactions */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 mb-3">
+              {language === 'bn' ? 'ফি লেনদেন' : 'Fee Transactions'}
+            </h3>
+            {myTransactions.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b border-slate-100">
+                      <th className="py-1.5 pr-2 font-semibold">{language === 'bn' ? 'তারিখ' : 'Date'}</th>
+                      <th className="py-1.5 pr-2 font-semibold">{language === 'bn' ? 'রসিদ' : 'Receipt'}</th>
+                      <th className="py-1.5 pr-2 font-semibold">{language === 'bn' ? 'ধরন' : 'Type'}</th>
+                      <th className="py-1.5 pr-2 font-semibold">{language === 'bn' ? 'মাস' : 'Month'}</th>
+                      <th className="py-1.5 pr-2 font-semibold text-right">{language === 'bn' ? 'টাকা' : 'Amount'}</th>
+                      <th className="py-1.5 font-semibold">{language === 'bn' ? 'মাধ্যম' : 'Mode'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myTransactions.map(tx => (
+                      <tr key={tx.id} className="border-b border-slate-50">
+                        <td className="py-1.5 pr-2 whitespace-nowrap">{toBn(tx.date || '')}</td>
+                        <td className="py-1.5 pr-2 font-mono">{tx.voucherNo || '—'}</td>
+                        <td className="py-1.5 pr-2">{tx.categoryName || tx.category}</td>
+                        <td className="py-1.5 pr-2">{tx.feeMonth ? toBn(tx.feeMonth) : '—'}</td>
+                        <td className="py-1.5 pr-2 text-right font-bold text-emerald-700">৳{toBn(Number(tx.amount || 0).toLocaleString('en-US'))}</td>
+                        <td className="py-1.5">{paymentMethodLabel(tx.paymentMethod, language === 'bn')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">{language === 'bn' ? 'কোনো লেনদেন নেই।' : 'No transactions.'}</p>
+            )}
+          </div>
+
+          {/* 5.4 Exam-fee pending (derived; never enters monthly dues) */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 mb-3">
+              {language === 'bn' ? 'পরীক্ষার ফি বাকি' : 'Exam Fee Pending'}
+            </h3>
+            {pendingExamFees.length > 0 ? (
+              <div className="text-xs space-y-1.5 text-slate-700">
+                {pendingExamFees.map(e => (
+                  <div key={e.id} className="flex justify-between gap-2 border-b border-slate-50 pb-1">
+                    <span className="font-semibold">{language === 'bn' ? (e.nameBn || e.name) : e.name}</span>
+                    <span>
+                      <span className="font-bold text-rose-600">৳{toBn(Number(e.examFee || 0).toLocaleString('en-US'))}</span>
+                      <span className="ml-2 px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black">
+                        {language === 'bn' ? 'বাকি' : 'Pending'}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+                <p className="text-[11px] text-slate-500 pt-1">
+                  {language === 'bn' ? 'পরীক্ষার ফি মাসিক বকেয়ায় ধরা হয় না; শ্রেণি শিক্ষকের মাধ্যমে আদায় হয়।' : 'Exam fees never enter monthly dues; they are collected by the class teacher.'}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">{language === 'bn' ? 'কোনো পরীক্ষার ফি বাকি নেই।' : 'No exam fee pending.'}</p>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* STAFF-ONLY RECENT ACTIVITY (existing data only) */}
+      {isStaffView && timelineItems.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-3">
+            <History size={18} className="text-indigo-600" />
+            <h3 className="text-sm font-bold text-slate-900">
+              {language === 'bn' ? 'সাম্প্রতিক কার্যক্রম' : 'Recent Activity'}
+            </h3>
+          </div>
+          <div className="text-xs space-y-1.5 text-slate-700">
+            {timelineItems.map((item, idx) => (
+              <div key={`${item.date}-${idx}`} className="flex justify-between gap-2 border-b border-slate-50 pb-1">
+                <span className="font-semibold">{item.label}</span>
+                <span className="text-slate-500 whitespace-nowrap">{item.date ? toBn(item.date) : ''}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
