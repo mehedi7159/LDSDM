@@ -11,9 +11,6 @@ import {
   Menu, 
   X,
   Languages,
-  Cloud,
-  RefreshCw,
-  AlertCircle,
   CheckCircle2,
   Lock,
   ShieldCheck,
@@ -56,7 +53,6 @@ import {
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { AdminAuthModal } from './AdminAuthModal';
-import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { MobileMoreSheet } from './ui/MobileMoreSheet';
 import { ThemeSwitcherModal } from './ui/ThemeSwitcherModal';
@@ -300,15 +296,26 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       icon: Settings,
       targetTab: 'settings',
       associatedTabs: [
-        'settings', 'branding_settings', 'backup_recovery',
+        'settings', 'branding_settings',
         'recycle_bin', 'superadmin_audit', 'system_diagnostics'
       ],
       isAdminOnly: true,
       permissions: ['institution.settings.view']
     },
     {
-      id: 'portals',
+      id: 'backup',
       orderNumber: '১০',
+      titleBn: 'ডাটা সুরক্ষা ও ব্যাকআপ',
+      titleEn: 'Data Safety & Backup',
+      icon: ShieldCheck,
+      targetTab: 'backup_recovery',
+      associatedTabs: ['backup_recovery'],
+      isAdminOnly: true,
+      permissions: ['institution.settings.view']
+    },
+    {
+      id: 'portals',
+      orderNumber: '১১',
       titleBn: 'পোর্টাল ও সেবা',
       titleEn: 'Portals & Services',
       icon: Globe,
@@ -510,159 +517,99 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
       {/* Main Content Viewport */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Top Header */}
+        {/* Top Header — name only, small controls (3 Nov 2026 redesign:
+            black menu button removed — md+ navigation lives in the rail
+            toggle, phone navigation in the bottom dock's More button;
+            Backup Hub shortcut removed — the feature lives in the rail
+            (Data Safety & Backup, after Settings & System) and the
+            mobile More sheet; address line removed; name click goes
+            home from any tab). */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 z-30 print:hidden shadow-xs sticky top-0 transition-colors">
           <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 gap-2">
-            
-            {/* Left: Interactive Menu Button & Institution Header */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <button 
-                onClick={() => {
-                  // Desktop: toggle the collapsible rail. Phone widths
-                  // (Layout's admin/owner path): the rail is hidden, so
-                  // open the mobile More sheet instead — the dark drawer
-                  // this replaced is gone.
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) setIsMobileMoreOpen(true);
-                  else setIsRailExpanded(v => !v);
-                }}
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
-                title="Open Navigation Menu"
-              >
-                <Menu size={16} className="text-[var(--color-brand)]" />
-                <span className="hidden xs:inline">{language === 'bn' ? 'মেনু' : 'Menu'}</span>
-              </button>
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white truncate">
-                    {language === 'bn' ? (schoolProfile.nameBn || schoolProfile.name) : schoolProfile.name}
-                  </h1>
-                </div>
-                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-400 truncate max-w-[200px] sm:max-w-md hidden sm:block">
-                  {schoolProfile.address}
-                </p>
-              </div>
+            {/* Left: madrasa name only — click goes home from any tab */}
+            <div className="flex min-w-0 flex-1 items-center">
+              <button
+                type="button"
+                onClick={() => handleTabClick(homeTab)}
+                title={language === 'bn' ? 'হোমে যান' : 'Go to home'}
+                className="min-w-0 flex-1 truncate text-left text-base sm:text-lg lg:text-xl font-extrabold tracking-wide text-slate-900 dark:text-white hover:text-[var(--color-brand)] transition-colors cursor-pointer"
+              >
+                {language === 'bn' ? (schoolProfile.nameBn || schoolProfile.name) : schoolProfile.name}
+              </button>
             </div>
 
-            {/* Right Tools & Mode Switcher */}
-            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-              {/* Theme Customizer Button (Palette modal) */}
+            {/* Right: small useful controls only, all one quiet size */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Cloud sync status — tiny dot only, display-only. The old
+                  pill's click-through to settings is gone; settings lives
+                  in the rail. */}
+              <span
+                title={
+                  cloudStatus === 'connected'
+                    ? (language === 'bn' ? 'সংযুক্ত' : 'Connected')
+                    : cloudStatus === 'syncing'
+                    ? (language === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...')
+                    : cloudStatus === 'offline'
+                    ? (language === 'bn' ? 'অফলাইন' : 'Offline')
+                    : cloudStatus === 'error'
+                    ? (language === 'bn' ? 'অনুমতি ত্রুটি' : 'Auth Error')
+                    : (language === 'bn' ? 'ক্লাউড স্ট্যাটাস' : 'Cloud status')
+                }
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  cloudStatus === 'connected'
+                    ? 'bg-emerald-500'
+                    : cloudStatus === 'syncing'
+                    ? 'bg-blue-500 animate-pulse'
+                    : cloudStatus === 'offline'
+                    ? 'bg-amber-500'
+                    : cloudStatus === 'error'
+                    ? 'bg-rose-500'
+                    : 'bg-slate-300'
+                }`}
+              />
+
+              {/* Theme Customizer (same modal trigger, icon only) */}
               <button
                 type="button"
                 onClick={() => setIsThemeModalOpen(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px]"
+                className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 title={language === 'bn' ? 'ডিজাইন ও কালার থিম' : 'Accent Theme'}
               >
-                <Palette size={14} className="text-[var(--color-brand)] shrink-0" />
-                <span className="hidden lg:inline">{language === 'bn' ? 'থিম' : 'Theme'}</span>
+                <Palette size={16} className="text-[var(--color-brand)]" />
               </button>
 
-              {/* PWA In-App Install Button */}
-              <PWAInstallButton />
-
-              {/* Backup Hub Button — hidden for non-admin roles: the
-                  backup_recovery tab is admin-only, so for them this was
-                  a one-click dead end into a restricted wall. */}
-              {isAdminTier && (
+              {/* Language switcher (same en/bn toggle, compact icon button) */}
               <button
-                onClick={() => setActiveTab('backup_recovery')}
-                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition-all cursor-pointer min-h-[36px]"
-                title={language === 'bn' ? 'ডাটা সুরক্ষা ও ব্যাকআপ কেন্দ্র' : 'Data Safety & Backup Hub'}
-              >
-                <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="hidden sm:inline">
-                  {language === 'bn' ? 'ব্যাকআপ হাব' : 'Backup Hub'}
-                </span>
-              </button>
-              )}
-
-              {/* Cloud Status — display-only for non-admin roles (the chip
-                  used to navigate to 'settings', which they cannot open);
-                  admin-tier users keep the click-through. */}
-              <div
-                onClick={isAdminTier ? () => setActiveTab('settings') : undefined}
-                className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                title="Cloud Status"
-              >
-                <Cloud size={13} className="text-[var(--color-brand)]" />
-                {cloudStatus === 'connected' && (
-                  <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span>{language === 'bn' ? 'সংযুক্ত' : 'Connected'}</span>
-                  </span>
-                )}
-                {cloudStatus === 'syncing' && (
-                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 text-xs font-semibold">
-                    <RefreshCw size={11} className="animate-spin text-blue-500" />
-                    <span>{language === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...'}</span>
-                  </span>
-                )}
-                {cloudStatus === 'offline' && (
-                  <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-semibold">
-                    <AlertCircle size={11} className="text-amber-500" />
-                    <span>{language === 'bn' ? 'অফলাইন' : 'Offline'}</span>
-                  </span>
-                )}
-                {cloudStatus === 'error' && (
-                  <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 text-xs font-semibold">
-                    <AlertCircle size={11} className="text-rose-500" />
-                    <span>{language === 'bn' ? 'অনুমতি ত্রুটি' : 'Auth Error'}</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Language switcher */}
-              <button 
+                type="button"
                 onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')}
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer min-h-[36px]"
+                className="h-9 min-w-[52px] px-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1 transition-colors cursor-pointer shrink-0"
                 title="Switch Language"
               >
-                <Languages size={13} className="text-[var(--color-brand)] shrink-0" />
-                <span className="hidden xs:inline">{language === 'en' ? 'বাংলা' : 'English'}</span>
-                <span className="xs:hidden font-bold">{language === 'en' ? 'বাং' : 'EN'}</span>
+                <Languages size={15} className="text-[var(--color-brand)] shrink-0" />
+                <span className="text-[11px] font-bold">{language === 'en' ? 'বাং' : 'EN'}</span>
               </button>
 
-              {/* User Profile & Logout */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                {authUser && (
-                  <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs">
-                    <div className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
-                      {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
-                    </div>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
-                      {authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
-                    </span>
+              {/* User identity (compact) + logout (icon only, same action) */}
+              {authUser && (
+                <div className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs shrink-0">
+                  <div className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
+                    {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
                   </div>
-                )}
-
-                <div className={`hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold ${
-                  isSuperAdmin
-                    ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300'
-                    : 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300'
-                }`}>
-                  <ShieldCheck size={13} className={isSuperAdmin ? 'text-purple-600 dark:text-purple-400' : 'text-indigo-600 dark:text-indigo-400'} />
-                  <span>
-                    {isSuperAdmin 
-                      ? 'Super Admin'
-                      : currentMember?.roleId === 'role_principal'
-                      ? 'Principal'
-                      : currentMember?.roleId === 'role_teacher'
-                      ? 'Teacher'
-                      : currentMember?.roleId === 'role_accountant'
-                      ? 'Cashier'
-                      : 'Admin'}
+                  <span className="hidden xs:inline font-bold text-slate-800 dark:text-slate-200 truncate max-w-[90px]">
+                    {authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
                   </span>
                 </div>
+              )}
 
-                <button 
-                  onClick={() => logoutAdmin()}
-                  title={language === 'bn' ? 'লগআউট' : 'Logout'}
-                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold transition-colors cursor-pointer active:scale-95 min-h-[36px]"
-                >
-                  <LogOut size={13} />
-                  <span className="hidden sm:inline">{language === 'bn' ? 'লগআউট' : 'Exit'}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => logoutAdmin()}
+                title={language === 'bn' ? 'লগআউট' : 'Logout'}
+                className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 flex items-center justify-center transition-colors cursor-pointer active:scale-95 shrink-0"
+              >
+                <LogOut size={15} />
+              </button>
             </div>
           </div>
         </header>
