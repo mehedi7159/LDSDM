@@ -7,9 +7,14 @@ import { useApp } from '../../context/AppContext';
 // not on boot, not after a timeout, not offline).
 //
 // - Until the first main_store snapshot lands: a plain syncing panel naming
-//   the data being loaded.
-// - After the 6 s hydration timeout with no snapshot: a server-unavailable
-//   panel (retry = full reload, which re-runs the feed). NEVER stale rows.
+//   the data being loaded. A slow connection keeps the spinner — the
+//   unavailable panel appears ONLY when the listener actually errors or
+//   the 30 s backstop expires with still no snapshot (3 Nov 2026
+//   false-unavailable fix; the old 6 s timer fired while a ~2.5 MB doc
+//   was merely still downloading).
+// - After a listener error / the 30 s backstop with no snapshot: a
+//   server-unavailable panel (retry = full reload, which re-runs the
+//   feed). NEVER stale rows.
 // - Once hydrated, children render directly (fragment) so parent layout
 //   classes like space-y keep working unchanged.
 // - This gates DISPLAY only. It does not change applyRemoteData, auto-sync,

@@ -889,11 +889,18 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus>('syncing');
   const [cloudLastSynced, setCloudLastSynced] = useState<string>('Initializing...');
 
-  // First main_store snapshot gate (Nov 2026 stale-flash fix):
+  // First main_store snapshot gate (Nov 2026 stale-flash fix, hardened
+  // 3 Nov 2026 against false 'unavailable' on slow connections):
   // cloudHydrated turns true when the first main_store getDoc/snapshot
-  // is applied; cloudHydrationTimedOut turns true 6s after boot if no
-  // snapshot landed (offline/slow network) so local data can render
-  // WITH an explicit stale/offline label instead of blocking forever.
+  // is applied; cloudHydrationTimedOut turns true ONLY when the
+  // main-store listener actually ERRORS (network failure /
+  // permission-denied / offline) or when the 30 s backstop below
+  // expires with still no snapshot. While the first snapshot is merely
+  // still on its way — the doc is ~2.5 MB, so a slow mobile connection
+  // routinely needs more than the old 6 s — the syncing spinner keeps
+  // showing and the unavailable panel must NOT appear. Server-only
+  // display is preserved exactly: no localStorage-derived row is ever
+  // rendered, not on boot, not after timeout, not offline.
   const [cloudHydrated, setCloudHydrated] = useState(false);
   const [cloudHydrationTimedOut, setCloudHydrationTimedOut] = useState(false);
   
@@ -2312,6 +2319,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           } else {
             setCloudStatus('offline');
           }
+          // Honest immediate error panel (3 Nov 2026 false-unavailable
+          // fix): a listener error means no snapshot is coming on this
+          // listen, so stop showing the spinner and show the
+          // server-unavailable panel with retry right away instead of
+          // waiting out the 30 s backstop. A later snapshot (SDK retry
+          // after reconnect) still recovers via setCloudHydrated, which
+          // the gate checks first — the panel never blocks a recovery.
+          setCloudHydrationTimedOut(true);
         }
       );
     };
@@ -2415,13 +2430,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     };
   }, []);
 
-  // First-snapshot timeout (Nov 2026 stale-flash fix): if no main_store
-  // snapshot lands within 6s (offline / very slow network), fall back
-  // to local data — StaffManager then labels it stale/offline instead
-  // of presenting it as current, and never blocks forever.
+  // First-snapshot backstop (Nov 2026 stale-flash fix, re-tuned
+  // 3 Nov 2026): the old 6 s timer cried 'unavailable' while a ~2.5 MB
+  // main_store snapshot was merely still downloading on a slow mobile
+  // connection. The panel now appears only on a real listener error
+  // (wired above) or when 30 s pass with still no snapshot — long
+  // enough for the big doc on a slow connection, still bounded so a
+  // hung feed never spins forever. Never stale rows: the panel (with
+  // retry = reload) is the only non-spinner state before hydration.
   useEffect(() => {
     if (cloudHydrated) return;
-    const t = setTimeout(() => setCloudHydrationTimedOut(true), 6000);
+    const t = setTimeout(() => setCloudHydrationTimedOut(true), 30000);
     return () => clearTimeout(t);
   }, [cloudHydrated]);
 
