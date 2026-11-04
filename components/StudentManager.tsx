@@ -78,12 +78,15 @@ interface StudentManagerProps {
   initialOpenPromotion?: boolean;
   initialSubTab?: StudentSubTab;
   onNavigateTab?: (tab: string) => void;
+  /** Open the full staff profile tab for one student (from the compact profile modal). */
+  onViewFullProfile?: (studentId: string) => void;
 }
 
 export const StudentManager: React.FC<StudentManagerProps> = ({ 
   initialOpenPromotion = false,
   initialSubTab = 'list',
-  onNavigateTab
+  onNavigateTab,
+  onViewFullProfile
 }) => {
   const { 
     students, 
@@ -2223,6 +2226,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         student={profileStudent}
         onClose={() => setProfileStudent(null)}
         language={language}
+        onViewFullProfile={onViewFullProfile}
         feeBase={profileStudent ? (() => {
           const struct = feeStructures.find(f => f.classLevel === profileStudent.classLevel);
           return struct ? classFeeBase(struct, feeTypes) : undefined;

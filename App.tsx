@@ -93,6 +93,25 @@ const AppContent = () => {
   const [bypassAuthLoading, setBypassAuthLoading] = useState(false);
   const [unauthScreen, setUnauthScreen] = useState<'landing' | 'results' | 'login' | 'student_profile'>('landing');
 
+  // Staff-path full-profile entry: the student id requested from the
+  // compact StudentProfileModal ('বিস্তারিত প্রোফাইল'). Passed to the staff
+  // student_profile tab only; the portal call site never receives it.
+  const [profileStudentId, setProfileStudentId] = useState<string | undefined>(undefined);
+
+  // Clear a stale modal-requested id when leaving the profile tab, so a
+  // later entry via another path (e.g. WebResultView's localStorage id)
+  // is never overridden by an old initialStudentId (the view prefers the
+  // prop over localStorage on mount).
+  useEffect(() => {
+    if (activeTab !== 'student_profile') setProfileStudentId(undefined);
+  }, [activeTab]);
+
+  // Open the full staff profile tab for one student (from the compact modal).
+  const viewFullProfile = (studentId: string) => {
+    setProfileStudentId(studentId);
+    setActiveTab('student_profile');
+  };
+
   // Determine if current user is one of the dedicated non-admin roles (Teacher, Cashier, Parent, Staff)
   const isNonAdminRole = useMemo(() => {
     if (isSuperAdmin || isAdmin || currentUser?.role === 'super_admin' || currentUser?.role === 'principal') return false;
@@ -412,35 +431,35 @@ const AppContent = () => {
           : <AccessRestrictedView moduleName={language === 'bn' ? 'আর্থিক রিপোর্ট' : 'Financial Reports'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'students': 
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.view') || hasPermission('students.create')) 
-          ? <StudentManager initialSubTab="list" onNavigateTab={(tab) => setActiveTab(tab)} /> 
+          ? <StudentManager initialSubTab="list" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} /> 
           : <AccessRestrictedView moduleName={t('students')} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'student_admission':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.create') || hasPermission('students.view'))
-          ? <StudentManager initialSubTab="admission" onNavigateTab={(tab) => setActiveTab(tab)} />
+          ? <StudentManager initialSubTab="admission" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'নতুন ভর্তি' : 'New Admission'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'admission_applications':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.view') || hasPermission('students.create'))
-          ? <StudentManager initialSubTab="applications" onNavigateTab={(tab) => setActiveTab(tab)} />
+          ? <StudentManager initialSubTab="applications" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'ভর্তি আবেদন' : 'Admission Applications'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'class_wise_students':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.view'))
-          ? <StudentManager initialSubTab="classes" onNavigateTab={(tab) => setActiveTab(tab)} />
+          ? <StudentManager initialSubTab="classes" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'শ্রেণি ও শাখাভিত্তিক শিক্ষার্থী' : 'Class-wise Students'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'guardian_info':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.view'))
-          ? <StudentManager initialSubTab="guardians" onNavigateTab={(tab) => setActiveTab(tab)} />
+          ? <StudentManager initialSubTab="guardians" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'অভিভাবকের তথ্য' : 'Guardian Directory'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'promotion':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.edit') || hasPermission('students.create'))
-          ? <StudentManager initialOpenPromotion={true} initialSubTab="promotion" onNavigateTab={(tab) => setActiveTab(tab)} />
+          ? <StudentManager initialOpenPromotion={true} initialSubTab="promotion" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'শ্রেণি উত্তরণ (প্রমোশন)' : 'Class Promotion'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'student_tc':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.view') || hasPermission('students.edit'))
-          ? <StudentManager initialSubTab="tc" onNavigateTab={(tab) => setActiveTab(tab)} />
+          ? <StudentManager initialSubTab="tc" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'শিক্ষার্থী ছাড়পত্র (TC)' : 'Transfer Certificate (TC)'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'former_students':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.view'))
-          ? <StudentManager initialSubTab="former" onNavigateTab={(tab) => setActiveTab(tab)} />
+          ? <StudentManager initialSubTab="former" onNavigateTab={(tab) => setActiveTab(tab)} onViewFullProfile={viewFullProfile} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'সাবেক শিক্ষার্থী' : 'Former Students'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'student_reports':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('students.view') || hasPermission('reports.view')) 
@@ -501,7 +520,7 @@ const AppContent = () => {
       case 'web_results':
         return <ExamResultsManager initialSubTab="web_results" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'student_profile':
-        return <StudentProfileView onBack={() => setActiveTab('dashboard')} onNavigateTab={(tab) => setActiveTab(tab)} />;
+        return <StudentProfileView initialStudentId={profileStudentId} onBack={() => setActiveTab('dashboard')} onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'notice_board':
         return <ReportsSettingsManager initialSubTab="notices" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'student_id_cards':

@@ -25,6 +25,8 @@ interface StudentProfileModalProps {
   language?: 'bn' | 'en';
   /** Institute-set monthly base for the student's class (from the fee structure). */
   feeBase?: number;
+  /** Open the full staff profile tab for this student (staff path only). */
+  onViewFullProfile?: (studentId: string) => void;
 }
 
 export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
@@ -32,7 +34,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   isOpen,
   onClose,
   language = 'bn',
-  feeBase
+  feeBase,
+  onViewFullProfile
 }) => {
   if (!isOpen || !student) return null;
 
@@ -327,12 +330,24 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           <span className="font-mono text-[11px]">
             UUID: {student.id.substring(0, 16)}...
           </span>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-sm"
-          >
-            {isBn ? 'বন্ধ করুন' : 'Close'}
-          </button>
+          <div className="flex items-center gap-2">
+            {onViewFullProfile && (
+              <button
+                type="button"
+                onClick={() => { onViewFullProfile(student.studentId || student.id); onClose(); }}
+                className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <User className="w-4 h-4" />
+                {isBn ? 'বিস্তারিত প্রোফাইল' : 'Full Profile'}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-sm"
+            >
+              {isBn ? 'বন্ধ করুন' : 'Close'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
