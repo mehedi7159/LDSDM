@@ -267,6 +267,49 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     });
   }, [currentStudent, exams, transactions, classes, studentClass]);
 
+  // Fee summary cards + fee-wise breakdown (at-a-glance, top of the fee
+  // section). Definitions — all from the canonical sources above, nothing
+  // recomputed: পরিশোধিত = this student's fee income transactions (the
+  // exact set listed in 5.3); বকেয়া = totalAged (finished months only,
+  // current unfinished month never due) + derived exam-fee pending
+  // (never in monthly dues); মোট = পরিশোধিত + বকেয়া (to-date account
+  // total, NOT a lifetime total). Breakdown rows reconcile EXACTLY with
+  // the cards (column sums = cards; every row balances) because the
+  // canonical aging applies ALL income fungibly to finished months'
+  // tuition (oldest first): tuition row = gross aged obligation G
+  // (monthlyExpected x finished months) / applied A = G - totalAged /
+  // totalAged; exam row = pending only (paid exam money is already
+  // inside পরিশোধিত, counted under tuition-applied or other-collections
+  // by its month); other row = totalPaid - A (current-month payments +
+  // payments beyond the gross aged obligation). Per-category one-time
+  // rows (admission/session/...) are deliberately NOT split out: their
+  // payments are already absorbed into the tuition row by the canonical
+  // aging, so separate rows would double-count (the residual would go
+  // negative) — see the job report for the proof.
+  const feeSummary = useMemo(() => {
+    if (!currentStudent) return null;
+    const totalPaid = myTransactions.reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+    const examPending = pendingExamFees.reduce((s, e) => s + (Number(e.examFee) || 0), 0);
+    const totalAged = feeAging ? feeAging.totalAged : 0;
+    let grossAged = 0;
+    if (feeAging && feeAging.startMonth && monthlyExpected > 0) {
+      const asOf = feeAging.asOfMonth;
+      const finishedMonths =
+        (Number(asOf.slice(0, 4)) - Number(feeAging.startMonth.slice(0, 4))) * 12 +
+        (Number(asOf.slice(5, 7)) - Number(feeAging.startMonth.slice(5, 7)));
+      grossAged = monthlyExpected * Math.max(0, finishedMonths);
+    }
+    const tuitionApplied = Math.max(0, grossAged - totalAged);
+    const due = totalAged + examPending;
+    const total = totalPaid + due;
+    const otherPaid = Math.max(0, totalPaid - tuitionApplied);
+    const rows: Array<{ key: 'tuition' | 'exam' | 'other'; total: number; paid: number; due: number }> = [];
+    if (grossAged > 0 || totalAged > 0) rows.push({ key: 'tuition', total: grossAged, paid: tuitionApplied, due: totalAged });
+    if (examPending > 0) rows.push({ key: 'exam', total: examPending, paid: 0, due: examPending });
+    if (otherPaid > 0) rows.push({ key: 'other', total: otherPaid, paid: otherPaid, due: 0 });
+    return { totalPaid, totalAged, examPending, due, total, rows };
+  }, [currentStudent, myTransactions, pendingExamFees, feeAging, monthlyExpected]);
+
   // Real attendance records for this student (newest first).
   const myAttendanceRecords = useMemo(() => {
     if (!currentStudent) return [];
@@ -1592,6 +1635,108 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   );
   const feesSection = (
         <div className="space-y-6">
+
+          {/* 5.0 Fee summary cards + fee-wise breakdown (at-a-glance) */}
+          {feeSummary && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <h3 className="text-sm font-bold text-slate-900 mb-3">
+                {language === 'bn' ? 'ফি সারাংশ' : 'Fee Summary'}
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-center">
+                  <div className="text-[11px] font-bold text-slate-500">{language === 'bn' ? 'মোট' : 'Total'}</div>
+                  <div className="text-base sm:text-xl font-black text-indigo-700 break-words">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div>
+                </div>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
+                  <div className="text-[11px] font-bold text-slate-500">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div>
+                  <div className="text-base sm:text-xl font-black text-emerald-700 break-words">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</div>
+                </div>
+                <div className="rounded-xl bg-rose-50 border border-rose-100 p-3 text-center">
+                  <div className="text-[11px] font-bold text-slate-500">{language === 'bn' ? 'বকেয়া' : 'Pending'}</div>
+                  <div className={`text-base sm:text-xl font-black break-words ${feeSummary.due > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>৳{toBn(feeSummary.due.toLocaleString('en-US'))}</div>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2">
+                {language === 'bn'
+                  ? 'মোট = পরিশোধিত + বকেয়া (আজ পর্যন্ত)। পরিশোধিত-এ চলতি মাসের আদায়ও আছে; বকেয়ায় চলতি অসমাপ্ত মাসের ফি ধরা হয়নি।'
+                  : 'Total = paid + due (to date). Paid includes current-month collections; due excludes the current unfinished month.'}
+              </p>
+
+              {feeSummary.rows.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <h4 className="text-xs font-black text-slate-900 mb-2">
+                    {language === 'bn' ? 'ফি-ভিত্তিক বিবরণ' : 'Fee-wise Breakdown'}
+                  </h4>
+                  {/* Desktop: table like the reference; mobile: stacked rows (no sideways scroll) */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-slate-500 border-b border-slate-100">
+                          <th className="py-1.5 pr-2 font-semibold">{language === 'bn' ? 'ফি-র ধরন' : 'Fee Type'}</th>
+                          <th className="py-1.5 pr-2 font-semibold text-right">{language === 'bn' ? 'মোট' : 'Total'}</th>
+                          <th className="py-1.5 pr-2 font-semibold text-right">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</th>
+                          <th className="py-1.5 font-semibold text-right">{language === 'bn' ? 'বাকি' : 'Balance'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feeSummary.rows.map(row => (
+                          <tr key={row.key} className="border-b border-slate-50">
+                            <td className="py-1.5 pr-2 font-semibold">
+                              {row.key === 'tuition'
+                                ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
+                                : row.key === 'exam'
+                                  ? (language === 'bn' ? 'পরীক্ষার ফি বাকি' : 'Exam Fee Pending')
+                                  : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
+                            </td>
+                            <td className="py-1.5 pr-2 text-right font-bold">৳{toBn(row.total.toLocaleString('en-US'))}</td>
+                            <td className="py-1.5 pr-2 text-right font-bold text-emerald-700">৳{toBn(row.paid.toLocaleString('en-US'))}</td>
+                            <td className="py-1.5 text-right font-bold text-rose-600">৳{toBn(row.due.toLocaleString('en-US'))}</td>
+                          </tr>
+                        ))}
+                        <tr className="border-t border-slate-200">
+                          <td className="py-1.5 pr-2 font-black">{language === 'bn' ? 'মোট' : 'Total'}</td>
+                          <td className="py-1.5 pr-2 text-right font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</td>
+                          <td className="py-1.5 pr-2 text-right font-black text-emerald-700">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</td>
+                          <td className="py-1.5 text-right font-black text-rose-600">৳{toBn(feeSummary.due.toLocaleString('en-US'))}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="sm:hidden space-y-2">
+                    {feeSummary.rows.map(row => (
+                      <div key={row.key} className="rounded-xl border border-slate-100 p-3">
+                        <div className="font-bold text-xs mb-1.5">
+                          {row.key === 'tuition'
+                            ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
+                            : row.key === 'exam'
+                              ? (language === 'bn' ? 'পরীক্ষার ফি বাকি' : 'Exam Fee Pending')
+                              : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'মোট' : 'Total'}</div><div className="text-xs font-black">৳{toBn(row.total.toLocaleString('en-US'))}</div></div>
+                          <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div><div className="text-xs font-black text-emerald-700">৳{toBn(row.paid.toLocaleString('en-US'))}</div></div>
+                          <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600">৳{toBn(row.due.toLocaleString('en-US'))}</div></div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                      <div className="font-black text-xs mb-1.5">{language === 'bn' ? 'মোট' : 'Total'}</div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'মোট' : 'Total'}</div><div className="text-xs font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div></div>
+                        <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div><div className="text-xs font-black text-emerald-700">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</div></div>
+                        <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600">৳{toBn(feeSummary.due.toLocaleString('en-US'))}</div></div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-2">
+                    {language === 'bn'
+                      ? 'আদায়কৃত পরীক্ষার ফি মোট পরিশোধিত-এর মধ্যে আছে (আদায়ের মাস অনুযায়ী মাসিক বেতন বা অন্যান্য সারিতে); এখানে শুধু বাকি পরীক্ষার ফি আলাদা দেখানো হয়েছে। ভর্তি/সেশন/অন্য ফি-র আলাদা সারি নেই, কারণ বকেয়ার নিয়মে সমাপ্ত মাসে আদায় হওয়া যেকোনো ফি-র টাকা পুরনো মাসের বকেয়ায় ধরা হয়।'
+                      : 'Collected exam fees are inside total paid (under tuition or other collections by collection month); only pending exam fees are split out here. No separate admission/session rows: under the dues rule, any fee collected in a finished month counts against that month\'s dues.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 5.1 Fee arrangement */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
