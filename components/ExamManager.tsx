@@ -46,7 +46,9 @@ export const ExamManager = () => {
     feeStructures = [],
     t,
     language,
-    hasPermission
+    hasPermission,
+    markEntryEnabled,
+    setMarkEntryEnabled
   } = useApp();
   const { showToast } = useTheme();
 
@@ -193,6 +195,36 @@ export const ExamManager = () => {
         icon={Calendar}
         title={language === 'bn' ? 'পরীক্ষা ব্যবস্থাপনা ও সিডিউল' : 'Exam Management & Scheduling'}
       >
+        {/* Admin mark-entry master switch (Nov 2026 emergency): OFF closes
+            entry for every exam, for every role, instantly. Per-exam
+            toggles below still work while the master is off, so an exam
+            can be pre-opened; effective permission = master AND exam. */}
+        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700">
+          <label className="text-xs font-bold text-gray-600 dark:text-slate-300">{language === 'bn' ? 'মার্ক এন্ট্রি (সব পরীক্ষা):' : 'Mark entry (all exams):'}</label>
+          <button
+            type="button"
+            aria-pressed={markEntryEnabled}
+            title={language === 'bn' ? 'চাপ দিলে সব পরীক্ষার মার্ক এন্ট্রি খুলবে/বন্ধ হবে' : 'Toggle mark entry for all exams'}
+            onClick={() => {
+              const next = !markEntryEnabled;
+              setMarkEntryEnabled(next);
+              showToast({
+                type: next ? 'success' : 'info',
+                title: language === 'bn' ? (next ? 'মার্ক এন্ট্রি খোলা হয়েছে' : 'মার্ক এন্ট্রি বন্ধ করা হয়েছে') : (next ? 'Mark entry opened' : 'Mark entry closed'),
+                message: language === 'bn'
+                  ? (next ? 'সব পরীক্ষায় মার্ক এন্ট্রি আবার চালু হয়েছে (যে পরীক্ষার নিজস্ব টগল বন্ধ, সেটি বন্ধই থাকবে)।' : 'এখন থেকে কেউ কোনো পরীক্ষায় মার্ক এন্ট্রি করতে পারবে না।')
+                  : (next ? 'Mark entry is open again for all exams (exams with their own toggle off stay closed).' : 'Nobody can enter marks for any exam now.')
+              });
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+              markEntryEnabled
+                ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300'
+                : 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300'
+            }`}
+          >
+            {markEntryEnabled ? (language === 'bn' ? 'খোলা' : 'Open') : (language === 'bn' ? 'বন্ধ' : 'Closed')}
+          </button>
+        </div>
         <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700">
           <label className="text-xs font-bold text-gray-600 dark:text-slate-300">শিক্ষাবর্ষ:</label>
           <select
@@ -281,6 +313,11 @@ export const ExamManager = () => {
                               <Lock size={12} /> চূড়ান্তকৃত (Finalized)
                             </span>
                           )}
+                          {exam.markEntryAllowed === false && (
+                            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 flex items-center gap-1">
+                              <Lock size={12} /> {language === 'bn' ? 'মার্ক এন্ট্রি বন্ধ' : 'Mark entry closed'}
+                            </span>
+                          )}
                         </div>
 
                         <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex flex-wrap gap-3">
@@ -297,6 +334,26 @@ export const ExamManager = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {/* Per-exam mark-entry toggle (Nov 2026): one tap
+                            closes/opens entry for this exam only. Works
+                            even while the master switch is off (effective
+                            permission = master AND exam), so exams can be
+                            pre-opened. Absent flag = open. */}
+                        <button
+                          onClick={() => updateExam({ ...exam, markEntryAllowed: exam.markEntryAllowed === false })}
+                          title={language === 'bn' ? 'চাপ দিলে এই পরীক্ষার মার্ক এন্ট্রি খুলবে/বন্ধ হবে' : 'Toggle mark entry for this exam'}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer ${
+                            exam.markEntryAllowed === false
+                              ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 hover:bg-rose-100'
+                              : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <Lock size={14} />
+                          {language === 'bn'
+                            ? (exam.markEntryAllowed === false ? 'মার্ক এন্ট্রি: বন্ধ' : 'মার্ক এন্ট্রি: খোলা')
+                            : (exam.markEntryAllowed === false ? 'Mark entry: Closed' : 'Mark entry: Open')}
+                        </button>
+
                         {/* Subject Scheduling Button */}
                         <button
                           onClick={() => setSchedulingExam(exam)}

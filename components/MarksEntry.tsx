@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
 import { MARKS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
+import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle } from 'lucide-react';
 import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
 import { EmptyState } from './ui/EmptyState';
@@ -110,6 +111,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     classes, 
     bulkUpdateMarks, 
     confirmMarksCloudSync,
+    markEntryEnabled,
     t, 
     language, 
     authContext,
@@ -183,6 +185,14 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   const currentExam = exams.find(e => e.id === selectedExamId);
   const isExamLocked = !isOwnerAdmin && (currentExam?.status === 'FINALIZED' || currentExam?.status === 'ARCHIVED');
 
+  // Admin mark-entry switches (Nov 2026): global OFF or this exam's
+  // toggle OFF closes entry for EVERYONE here, including the owner
+  // admin (unlike the FINALIZED lock above, which the owner bypasses)
+  // — admin re-enables from Exam Management to enter again. Missing
+  // flags = allowed. Entry inputs + Save honour the combined block.
+  const isEntryClosedByAdmin = !isMarkEntryAllowedForExam(currentExam, markEntryEnabled);
+  const isEntryDisabled = isExamLocked || isEntryClosedByAdmin;
+
   const enrolledStudents = students
     .filter(s => s.classLevel === selectedClass && s.status === 'Active' && !s.isFormer)
     .filter(s => {
@@ -206,6 +216,15 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     if (!currentSubject || !selectedExamId || isExamLocked) return 'idle';
     const studentIds = Object.keys(pendingUpdatesRef.current);
     if (studentIds.length === 0) return 'idle';
+
+    // Admin switch gate: pending edits for a closed exam are refused,
+    // never silently saved — the closed banner above explains why.
+    // Pending edits are left untouched so they can still save if the
+    // admin re-opens entry.
+    if (isEntryClosedByAdmin) {
+      setSaveStatus('error');
+      return 'error';
+    }
 
     const updates: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
     const remainingPending: Record<string, EditableMark> = {};
@@ -250,6 +269,12 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     }
     
     pendingUpdatesRef.current = remainingPending;
+    // bulkUpdateMarks returns null when the exam closed after the
+    // edits were typed — refuse, do not confirm anything.
+    if (nextMarks === null) {
+      setSaveStatus('error');
+      return 'error';
+    }
     if (nextMarks) {
       const result = await confirmMarksCloudSync(nextMarks);
       if (!result.success) {
@@ -267,7 +292,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     }
     setSaveStatus('saved');
     return 'saved';
-  }, [currentSubject, selectedExamId, bulkUpdateMarks, confirmMarksCloudSync, language, isExamLocked]);
+  }, [currentSubject, selectedExamId, bulkUpdateMarks, confirmMarksCloudSync, language, isExamLocked, isEntryClosedByAdmin]);
 
   // Retry re-confirms the last failed marks list (never re-saves).
   const retryMarksCloudSync = async () => {
@@ -319,7 +344,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   }, [flushPendingSave]);
 
   const handleInputChange = (studentId: string, field: 'obtained' | 'cq' | 'mcq' | 'practical' | 'isAbsent' | 'absentReason', value: string | boolean) => {
-    if (isExamLocked) return;
+    if (isExamLocked || isEntryClosedByAdmin) return;
 
     setLocalMarks(prev => {
       const current = prev[studentId] || { obtained: '', cq: '', mcq: '', practical: '', isAbsent: false };
@@ -379,6 +404,13 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
             </div>
           )}
 
+          {isEntryClosedByAdmin && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 text-xs font-bold rounded-xl border border-rose-200 dark:border-rose-800">
+              <Lock size={14} />
+              {language === 'bn' ? 'মার্ক এন্ট্রি বন্ধ (এডমিন)' : 'Marks entry closed (admin)'}
+            </div>
+          )}
+
           {/* Auto-Save Indicator */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-slate-800/60 text-gray-600 dark:text-slate-300 text-xs font-bold rounded-xl border border-gray-200 dark:border-slate-700">
             {saveStatus === 'saving' && (
@@ -403,7 +435,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
           <button
             onClick={flushPendingSave}
-            disabled={isExamLocked}
+            disabled={isEntryDisabled}
             className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
           >
             <Save size={14} />
@@ -411,6 +443,21 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           </button>
         </div>
       </PageHeader>
+
+      {/* Admin-switch closed banner (Nov 2026): entry refused while
+          closed; pending edits stay untouched for a later re-open. No
+          retry button — retrying a cloud confirm must never write
+          marks for a closed exam. */}
+      {isEntryClosedByAdmin && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 flex items-center gap-3">
+          <Lock size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />
+          <div className="flex-1 text-xs font-bold leading-relaxed">
+            {language === 'bn'
+              ? 'মার্ক এন্ট্রি এখন বন্ধ আছে — এডমিন এই পরীক্ষার জন্য এন্ট্রি বন্ধ রেখেছেন। এন্ট্রি চালু করতে Exam Management থেকে মার্ক এন্ট্রি খুলতে হবে।'
+              : 'Marks entry is closed for this exam by the admin. Re-open it from Exam Management to enter marks again.'}
+          </div>
+        </div>
+      )}
 
       {/* Truthful-save Step 2-বাকি: cloud-failure banner (marks stay local, retry re-confirms only) */}
       {cloudFailure && (
@@ -583,7 +630,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                         <td className="px-3 py-2 text-center">
                           <input
                             type="number"
-                            disabled={isAbsent || isExamLocked}
+                            disabled={isAbsent || isEntryDisabled}
                             value={mark.cq ?? ''}
                             onChange={e => handleInputChange(student.id, 'cq', e.target.value)}
                             className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
@@ -599,7 +646,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                         <td className="px-3 py-2 text-center">
                           <input
                             type="number"
-                            disabled={isAbsent || isExamLocked}
+                            disabled={isAbsent || isEntryDisabled}
                             value={mark.mcq ?? ''}
                             onChange={e => handleInputChange(student.id, 'mcq', e.target.value)}
                             className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
@@ -615,7 +662,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                         <td className="px-3 py-2 text-center">
                           <input
                             type="number"
-                            disabled={isAbsent || isExamLocked}
+                            disabled={isAbsent || isEntryDisabled}
                             value={mark.practical ?? ''}
                             onChange={e => handleInputChange(student.id, 'practical', e.target.value)}
                             className={`w-20 text-center border rounded-lg p-1.5 text-xs font-bold ${
@@ -630,7 +677,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                       <td className="px-3 py-2 text-center">
                         <input
                           type="number"
-                          disabled={isAbsent || isExamLocked || currentSubject?.hasCQ || currentSubject?.hasMCQ || currentSubject?.hasPractical}
+                          disabled={isAbsent || isEntryDisabled || currentSubject?.hasCQ || currentSubject?.hasMCQ || currentSubject?.hasPractical}
                           value={mark.obtained ?? ''}
                           onChange={e => handleInputChange(student.id, 'obtained', e.target.value)}
                           className={`w-24 text-center border rounded-lg p-1.5 text-xs font-black ${
@@ -663,7 +710,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                         <label className="inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            disabled={isExamLocked}
+                            disabled={isEntryDisabled}
                             checked={isAbsent}
                             onChange={e => handleInputChange(student.id, 'isAbsent', e.target.checked)}
                             className="rounded text-red-600 dark:text-red-400 focus:ring-red-500"

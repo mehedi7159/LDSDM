@@ -75,6 +75,13 @@ export interface Exam {
    * from the teacher mobile view (never via the accountant's flow).
    * Absent/0 on old exams = no exam-fee pending for that exam. */
   examFee?: number;
+  /**
+   * Admin-controlled per-exam mark-entry switch (Nov 2026): when
+   * explicitly false, mark entry for this exam is closed for everyone
+   * (the global switch off also closes everything). Absent/undefined
+   * = allowed — existing exams stay open; nothing closes by itself.
+   */
+  markEntryAllowed?: boolean;
   contributions?: ExamContribution[];
   enableContributions?: boolean;
   createdAt?: string;

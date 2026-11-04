@@ -67,6 +67,7 @@ import {
   isGoogleOnlyAccount
 } from '../services/googleSignupRules';
 import { buildMainStorePayload } from '../services/mainStorePayload';
+import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { buildPublicPortalData } from '../services/publicPortal';
 import {
   dailyAttendanceService,
@@ -323,7 +324,10 @@ interface AppContextType extends AppState {
   archiveClassTeacherAssignment: (id: string) => void;
   setClassTeacherAssignments: (assignments: ClassTeacherAssignment[]) => void;
   updateMark: (mark: Omit<MarkRecord, 'id'> & { id?: string }) => void;
-  bulkUpdateMarks: (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => MarkRecord[];
+  // Admin mark-entry gate (Nov 2026): returns null (distinct from [] =
+  // no-op) when any update targets a closed exam — the caller must not
+  // confirm a write that must not happen.
+  bulkUpdateMarks: (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => MarkRecord[] | null;
   addExam: (name: string, category: Exam['category'], nameBn?: string, details?: Partial<Exam>) => void;
   updateExam: (exam: Exam) => void;
   archiveExam: (id: string) => void;
@@ -374,6 +378,10 @@ interface AppContextType extends AppState {
   setSubjects: (subjects: Subject[]) => void;
   setClasses: (classes: SchoolClass[]) => void;
   setExams: (exams: Exam[]) => void;
+  // Admin global mark-entry switch (Nov 2026): false closes every exam
+  // for every role. Absent on old cloud docs = allowed (default true).
+  markEntryEnabled: boolean;
+  setMarkEntryEnabled: (v: boolean) => void;
   setMarks: (marks: MarkRecord[]) => void;
   setRemarks: (remarks: RemarkRecord[]) => void;
   seedDemoMadrashaData: () => void;
@@ -728,6 +736,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const [exams, setExams] = useState<Exam[]>(() => {
     const saved = localStorage.getItem('exams');
     return saved ? JSON.parse(saved) : [{ id: '1', name: 'Annual Examination', academicYear: '2024', category: 'Term' }];
+  });
+
+  // Admin-controlled global mark-entry switch (Nov 2026 emergency):
+  // false closes mark entry for every exam, for every role. Default
+  // true — old cloud docs without the flag stay open; nothing closes
+  // by itself. Propagates via the auto-sync payload (cloud), never
+  // localStorage alone, so teachers' phones receive it on snapshot.
+  const [markEntryEnabled, setMarkEntryEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('markEntryEnabled');
+    if (saved === 'false') return false;
+    return true;
   });
 
   const [examSubjectAssignments, setExamSubjectAssignments] = useState<ExamSubjectAssignment[]>(() => {
@@ -2047,6 +2066,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setExams(data.exams);
       try { localStorage.setItem('exams', JSON.stringify(data.exams)); } catch {}
     }
+    // Admin global mark-entry switch: only a real boolean overwrites
+    // the default — an old cloud doc without the flag leaves it open.
+    if (typeof data.markEntryEnabled === 'boolean') {
+      setMarkEntryEnabled(data.markEntryEnabled);
+      try { localStorage.setItem('markEntryEnabled', JSON.stringify(data.markEntryEnabled)); } catch {}
+    }
     if (data.marks && Array.isArray(data.marks)) {
       const cleanMarks = data.marks.filter(m => !m.id?.startsWith('demo-mark-'));
       setMarks(cleanMarks);
@@ -2497,7 +2522,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             dailyStaffAttendance,
             classRoutines,
             syllabusItems,
-            calendarEvents
+            calendarEvents,
+            markEntryEnabled
           },
           currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user'
         );
@@ -2529,12 +2555,18 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, feeTypes, trashBin, promotionHistory, users, notices, staffLeaves, dailyStudentAttendance, dailyStaffAttendance, classRoutines, syllabusItems, calendarEvents, currentUser, isAdmin, authUser, adminEmail]);
+  }, [schoolProfile, students, subjects, teachers, classSubjectAssignments, teacherSubjectAssignments, classTeacherAssignments, exams, examSubjectAssignments, marks, remarks, classes, academicYears, sections, transactions, feeStructures, feeTypes, trashBin, promotionHistory, users, notices, staffLeaves, dailyStudentAttendance, dailyStaffAttendance, classRoutines, syllabusItems, calendarEvents, markEntryEnabled, currentUser, isAdmin, authUser, adminEmail]);
 
   // Offline LocalStorage updates
   useEffect(() => {
     localStorage.setItem('schoolProfile', JSON.stringify(schoolProfile));
   }, [schoolProfile]);
+
+  // Admin mark-entry switch persists locally too, so a reload before
+  // the first snapshot echo never silently re-opens a closed gate.
+  useEffect(() => {
+    localStorage.setItem('markEntryEnabled', JSON.stringify(markEntryEnabled));
+  }, [markEntryEnabled]);
 
   useEffect(() => {
     localStorage.setItem('academicYears', JSON.stringify(academicYears));
@@ -2966,7 +2998,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           dailyStaffAttendance,
           classRoutines,
           syllabusItems,
-          calendarEvents
+          calendarEvents,
+          markEntryEnabled
         },
         currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || SUPER_ADMIN_EMAIL
       );
@@ -5054,6 +5087,18 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const bulkUpdateMarks = (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => {
     if (!newMarks || newMarks.length === 0) return [] as MarkRecord[];
+
+    // Admin mark-entry gate (Nov 2026): refuse the whole merge when
+    // ANY update targets a closed exam (global off, or that exam's
+    // toggle off). Returning null — distinct from [] = no-op — tells
+    // the caller the save was refused, so it must not confirm a write
+    // that never happened. An exam missing from state is not closed
+    // (only an explicit false closes).
+    for (const nm of newMarks) {
+      const ex = exams.find(e => e.id === nm.examId);
+      if (!isMarkEntryAllowedForExam(ex, markEntryEnabled)) return null;
+    }
+
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
 
     // Truthful-save Step 2: the merged list is computed once (same
@@ -5107,6 +5152,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         endDate: details?.endDate,
         status: details?.status || 'SCHEDULED',
         examFee: details?.examFee,
+        markEntryAllowed: details?.markEntryAllowed,
         contributions: details?.contributions,
         enableContributions: details?.enableContributions,
         description: details?.description
@@ -5601,6 +5647,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setSubjects,
       setClasses,
       setExams,
+      markEntryEnabled,
+      setMarkEntryEnabled,
       setMarks,
       setRemarks,
       seedDemoMadrashaData,

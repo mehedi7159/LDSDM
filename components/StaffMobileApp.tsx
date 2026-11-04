@@ -11,6 +11,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
+import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { STAFF_LEAVE_TYPE_OPTIONS, computeLeaveDays, buildStaffLeaveRequest, sanitizeProfileEdit } from '../services/staffSelfService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
@@ -243,6 +244,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     updateStudent,
     deleteStudent,
     bulkUpdateMarks,
+    markEntryEnabled,
     language,
     setLanguage,
     hasPermission,
@@ -751,6 +753,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   const handleSaveMarks = async () => {
     if (!canEnterMarks) return; // Permission gate: admin has not enabled entry
+    // Admin switch gate: a closed exam cannot be saved, even from a
+    // form opened before admin closed it (the closed notice is on
+    // screen; this is defense in depth, not the only guard).
+    if (!isMarkEntryAllowedForExam(exams.find(e => e.id === selectedExamId), markEntryEnabled)) return;
     if (!selectedExamId || !selectedSubjectId) return;
     const markRecordsToUpdate: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
 
@@ -776,7 +782,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       // Truthful save (Step 2): success only after the awaited cloud
       // confirmation; on failure the marks stay local and an honest
       // failure banner with a retry action is shown instead.
+      // bulkUpdateMarks returns null when the exam is closed by admin
+      // — then nothing is confirmed and no success is shown.
       const nextMarks = bulkUpdateMarks(markRecordsToUpdate);
+      if (!nextMarks) return;
       const result = await confirmMarksCloudSync(nextMarks);
       if (result.success) {
         setMarksCloudFailure(null);
@@ -1435,6 +1444,23 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return true;
     }
   }, [hasPermission, currentMember, currentUser]);
+
+  // Admin mark-entry switches (Nov 2026): effective permission = role
+  // permission AND global switch AND per-exam toggle. Missing flags =
+  // allowed — existing exams stay open until admin closes them. When
+  // closed by admin, the entry form is replaced by the notice + the
+  // view-only marks below (and the result-report shortcut), and the
+  // save path refuses — the exam-fee card below is untouched (fee
+  // collection is its own job, never gated on marks entry).
+  const selectedExamForMarks = useMemo(
+    () => exams.find(e => e.id === selectedExamId),
+    [exams, selectedExamId]
+  );
+  const isMarkEntryClosedByAdmin = useMemo(
+    () => !isMarkEntryAllowedForExam(selectedExamForMarks, markEntryEnabled),
+    [selectedExamForMarks, markEntryEnabled]
+  );
+  const canEnterMarksForExam = canEnterMarks && !isMarkEntryClosedByAdmin;
 
   // This month's attendance report for the teacher's selected class
   const monthlyAttendance = useMemo(() => {
@@ -3133,13 +3159,35 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </div>
                 </div>
               )}
+              {canEnterMarks && isMarkEntryClosedByAdmin && (
+                <div className="p-4 rounded-[24px] bg-[#fef3c7] dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 flex items-start gap-3">
+                  <span className="w-9 h-9 rounded-2xl bg-[#f59e0b] text-white flex items-center justify-center shrink-0">
+                    <Lock size={16} />
+                  </span>
+                  <div className="flex-1">
+                    <h3 className="text-[13px] font-bold text-[#92400e] dark:text-amber-200">{isEn ? 'Marks entry is closed' : 'মার্ক এন্ট্রি এখন বন্ধ আছে'}</h3>
+                    <p className="text-[11px] text-[#92400e]/80 dark:text-amber-200/70 mt-0.5 leading-relaxed">
+                      {isEn
+                        ? 'The admin has closed marks entry for this exam. You can only view the entered marks and result below — entry will work again when the admin opens it.'
+                        : 'এডমিন এই পরীক্ষার জন্য মার্ক এন্ট্রি বন্ধ রেখেছেন। নিচে শুধু আগের দেওয়া নম্বর ও ফলাফল দেখতে পারবেন — এডমিন খুলে দিলে আবার এন্ট্রি করা যাবে।'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModule('teacher_report_result')}
+                      className="mt-2 px-3 py-1.5 rounded-xl bg-[#f59e0b] text-white text-[11px] font-bold active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      {isEn ? 'View result report' : 'ফলাফল রিপোর্ট দেখুন'}
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className={`${cardCls} p-4 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-9 h-9 rounded-2xl brand-soft flex items-center justify-center">
                       <PenTool size={17} />
                     </span>
-                    <h2 className="text-sm font-bold">{canEnterMarks ? (isEn ? 'Marks Entry' : 'নম্বর এন্ট্রি') : (isEn ? 'View Marks' : 'নম্বর দেখুন')}</h2>
+                    <h2 className="text-sm font-bold">{canEnterMarksForExam ? (isEn ? 'Marks Entry' : 'নম্বর এন্ট্রি') : (isEn ? 'View Marks' : 'নম্বর দেখুন')}</h2>
                   </div>
                   <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">{selectedClass}</span>
                 </div>
@@ -3199,7 +3247,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           </span>
                         </div>
                       </div>
-                      {canEnterMarks ? (
+                      {canEnterMarksForExam ? (
                         <input
                           type="number"
                           min="0"
@@ -3228,7 +3276,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 </div>
               )}
 
-              {canEnterMarks && classStudents.length > 0 && (
+              {canEnterMarksForExam && classStudents.length > 0 && (
                 <div className="sticky bottom-[84px] z-30 pt-1">
                   <button
                     onClick={handleSaveMarks}

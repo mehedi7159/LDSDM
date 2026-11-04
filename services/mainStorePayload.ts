@@ -43,6 +43,8 @@ export interface MainStoreSlices {
   classRoutines: any;
   syllabusItems: any;
   calendarEvents: any;
+  /** Admin global mark-entry switch (Nov 2026). Absent on old docs = allowed. */
+  markEntryEnabled: any;
 }
 
 export function buildMainStorePayload(slices: MainStoreSlices, updatedBy: string) {
@@ -74,6 +76,7 @@ export function buildMainStorePayload(slices: MainStoreSlices, updatedBy: string
     classRoutines: slices.classRoutines,
     syllabusItems: slices.syllabusItems,
     calendarEvents: slices.calendarEvents,
+    markEntryEnabled: slices.markEntryEnabled,
     updatedBy,
     updatedAt: new Date().toISOString()
   };
