@@ -443,7 +443,6 @@ interface AppContextType extends AppState {
   setMarks: (marks: MarkRecord[]) => void;
   setRemarks: (remarks: RemarkRecord[]) => void;
   seedDemoMadrashaData: () => void;
-  clearAllDemoData: () => Promise<{ success: boolean; message: string }>;
   loginWithGoogle: () => Promise<boolean>;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUpWithEmail: (email: string, password: string, displayName: string, requestedRole: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
@@ -955,12 +954,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const deleteNotice = (id: string) => {
+    const notice = notices.find(n => n.id === id);
+    // Phase 2 trash-first: the notice snapshot goes to the bin in the
+    // SAME confirmed delete write as the list removal, so a deleted
+    // notice is restorable from the Recycle Bin (previously: no trash
+    // entry at all).
+    const trashEntry = notice
+      ? [{ id: generateId(), type: 'notice', data: notice, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'notice_delete' }]
+      : [];
+    if (trashEntry.length > 0) {
+      setTrashBin(prev => [trashEntry[0], ...prev]);
+    }
     setNotices(prev => prev.filter(n => n.id !== id));
-    // Phase 1: notices previously had no trash and no confirm — the
-    // union confirm (if a caller used it) would have resurrected the
-    // notice. The delete writer removes exactly this id. Trash-first
-    // for notices is Phase 2 (today: no trash entry, same as before).
-    void confirmDeleteRecordsCloudSync([{ field: 'notices', ids: [id] }], [], NOTICE_DELETE_CLOUD_FAILURE_MESSAGE);
+    void confirmDeleteRecordsCloudSync([{ field: 'notices', ids: [id] }], trashEntry, NOTICE_DELETE_CLOUD_FAILURE_MESSAGE);
   };
 
   const togglePinNotice = (id: string) => {
@@ -1257,11 +1263,42 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const rejectMember = async (uid: string): Promise<{ success: boolean; message?: string }> => {
     try {
+      // Phase 2 DECISION (reversible on the user's word): a rejected
+      // application goes to the Recycle Bin as a member_application
+      // record instead of vanishing — and the matching users/teachers
+      // list entries are removed through the confirmed delete writer.
+      // Previously the lists were filtered locally only (no main_store
+      // write at all), so the next snapshot resurrected the rejected
+      // user in the lists, and the application itself left no trace.
+      // NOTE: the bin entry is a RECORD, not a one-click restore —
+      // its member doc lives in the members subcollection, so bringing
+      // an applicant back means re-adding them (the preserved data in
+      // the bin shows exactly what was rejected).
+      const member = pendingMembers.find(m => m.uid === uid);
+      const matchedUserIds = users.filter(u => u.id === uid).map(u => u.id);
+      const matchedTeacherIds = teachers.filter(t => t.id === uid).map(t => t.id);
+      const trashEntry = member
+        ? [{ id: generateId(), type: 'member_application', data: member, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'application_rejected' }]
+        : [];
       await deleteInstitutionMember('inst_madrasah_primary', uid);
       setUsers(prev => prev.filter(u => u.id !== uid));
       setTeachers(prev => prev.filter(t => t.id !== uid));
+      if (trashEntry.length > 0) {
+        setTrashBin(prev => [trashEntry[0], ...prev]);
+      }
+      const removals = [
+        ...(matchedUserIds.length > 0 ? [{ field: 'users', ids: matchedUserIds }] : []),
+        ...(matchedTeacherIds.length > 0 ? [{ field: 'teachers', ids: matchedTeacherIds }] : []),
+      ];
+      // The member-doc delete already happened above; this write only
+      // persists the list removals + the trash entry. On failure the
+      // delete payload is queued for retry (never silently dropped).
+      const cloudSync = await confirmDeleteRecordsCloudSync(removals, trashEntry, DELETE_CLOUD_FAILURE_MESSAGE);
       await refreshPendingMembers();
-      return { success: true, message: 'আবেদনটি বাতিল করা হয়েছে।' };
+      if (!cloudSync.success) {
+        return { success: true, message: 'আবেদনটি বাতিল করা হয়েছে। তবে তালিকা/ট্র্যাশ আপডেট cloud-এ যায়নি — স্বয়ংক্রিয়ভাবে আবার চেষ্টা হবে।' };
+      }
+      return { success: true, message: 'আবেদনটি বাতিল করে রিসাইকেল বিনে সংরক্ষণ করা হয়েছে।' };
     } catch (e: any) {
       return { success: false, message: e.message || 'বাতিল করা যায়নি।' };
     }
@@ -1666,6 +1703,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       t.id !== userId &&
       !(email !== '' && (t.email || '').toLowerCase() === email)
     );
+    // Phase 2 trash-first: the removed user + linked staff snapshots
+    // go to the bin in the SAME confirmed delete write.
+    const removedUserRecords = users.filter(u => u.id === userId);
+    const removedTeacherRecords = teachers.filter(t =>
+      t.id === userId ||
+      (email !== '' && (t.email || '').toLowerCase() === email)
+    );
+    const trashEntries = [
+      ...removedUserRecords.map(u => ({ id: generateId(), type: 'user', data: u, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'user_delete' })),
+      ...removedTeacherRecords.map(t => ({ id: generateId(), type: 'teacher', data: t, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'user_delete' })),
+    ];
+    if (trashEntries.length > 0) {
+      setTrashBin(prev => [...trashEntries, ...prev]);
+    }
     setUsers(remainingUsers);
     setTeachers(remainingTeachers);
     // Awaited cloud confirm (was: unconditional success while the
@@ -1681,7 +1732,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         { field: 'teachers', ids: removedTeacherIds },
         { field: 'users', ids: removedUserIds },
       ],
-      [],
+      trashEntries,
       DELETE_CLOUD_FAILURE_MESSAGE
     );
     if (!cloudSync.success) {
@@ -1694,9 +1745,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const memberRes = await deleteInstitutionMembers('inst_madrasah_primary', [userId]);
     try { await refreshPendingMembers(); } catch {}
     if (!memberRes.ok) {
-      return { success: true, message: 'ব্যবহারকারী ডিলিট হয়েছে। তবে member তথ্য মোছা যায়নি — আবার চেষ্টা করুন।' };
+      return { success: true, message: 'ব্যবহারকারী রিসাইকেল বিনে পাঠানো হয়েছে। তবে member তথ্য মোছা যায়নি — আবার চেষ্টা করুন।' };
     }
-    return { success: true, message: 'ব্যবহারকারী সফলভাবে ডিলিট হয়েছে।' };
+    return { success: true, message: 'ব্যবহারকারী রিসাইকেল বিনে পাঠানো হয়েছে — প্রয়োজনে ফিরিয়ে আনা যাবে।' };
   };
 
   const loginWithEmailOrPhone = async (
@@ -4508,10 +4559,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // Phase 1: the delete travels through the delete writer — it
     // removes EXACTLY the matched ids (never a list replacement, so a
     // stale closure can no longer wipe newer staff records) and
-    // queues the named ids on failure. Trash-first for teacher/user
-    // deletes is Phase 2 (today: no trash entry, same as before).
+    // queues the named ids on failure. Phase 2 trash-first: the
+    // removed staff + login-account snapshots go to the bin in the
+    // SAME confirmed delete write, so a deleted teacher/user is
+    // restorable from the Recycle Bin (previously: permanent, no
+    // trash entry).
     const removedTeacherIds = teachers.filter(matches).map(t => t.id);
     const removedUserIds = users.filter(matches).map(u => u.id);
+    const trashEntries = [
+      ...teachers.filter(matches).map(t => ({ id: generateId(), type: 'teacher', data: t, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'staff_delete' })),
+      ...users.filter(matches).map(u => ({ id: generateId(), type: 'user', data: u, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'staff_delete' })),
+    ];
+    if (trashEntries.length > 0) {
+      setTrashBin(prev => [...trashEntries, ...prev]);
+    }
 
     setTeachers(prev => prev.filter(t => !matches(t)));
     setUsers(prev => prev.filter(u => !matches(u)));
@@ -4527,7 +4588,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         { field: 'teachers', ids: removedTeacherIds },
         { field: 'users', ids: removedUserIds },
       ],
-      [],
+      trashEntries,
       DELETE_CLOUD_FAILURE_MESSAGE
     );
     if (!cloudSync.success) {
@@ -4543,9 +4604,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const memberRes = await deleteInstitutionMembers('inst_madrasah_primary', memberUids);
     try { await refreshPendingMembers(); } catch {}
     if (!memberRes.ok) {
-      return { success: true, message: `শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট মুছে ফেলা হয়েছে। তবে ${memberRes.failedUids.length}টি member তথ্য মোছা যায়নি — আবার চেষ্টা করুন।` };
+      return { success: true, message: `শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট রিসাইকেল বিনে পাঠানো হয়েছে। তবে ${memberRes.failedUids.length}টি member তথ্য মোছা যায়নি — আবার চেষ্টা করুন।` };
     }
-    return { success: true, message: 'শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট সম্পূর্ণভাবে মুছে ফেলা হয়েছে।' };
+    return { success: true, message: 'শিক্ষক/কর্মী ও তার লগইন অ্যাকাউন্ট রিসাইকেল বিনে পাঠানো হয়েছে — প্রয়োজনে ফিরিয়ে আনা যাবে।' };
   };
 
   // Truthful-save cloud confirmation (25 Oct 2026) — teacher attendance
@@ -6078,6 +6139,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       class: 'classes',
       transaction: 'transactions',
       section: 'sections',
+      teacher: 'teachers',
+      user: 'users',
+      notice: 'notices',
     };
     if (item.type === 'student') {
       setStudents(prev => [...prev, item.data]);
@@ -6093,6 +6157,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // Phase 1 fix: sections were dropped from trash without being
       // restored anywhere (no branch existed) — now they restore.
       setSections(prev => [...prev, item.data]);
+    } else if (item.type === 'teacher') {
+      setTeachers(prev => [...prev, item.data]);
+    } else if (item.type === 'user') {
+      setUsers(prev => [...prev, item.data]);
+    } else if (item.type === 'notice') {
+      setNotices(prev => [...prev, item.data]);
+    } else if (item.type === 'member_application') {
+      // Phase 2: a rejected application is a RECORD in the bin, not a
+      // one-click restore — its member doc lives in the members
+      // subcollection, not main_store, so bringing an applicant back
+      // needs the approval flow, not the trash-op writer. Return
+      // BEFORE the trash removal below, so a restore click here can
+      // never silently delete the record (the Recycle Bin hides the
+      // restore button for this type).
+      return;
     }
 
     setTrashBin(prev => prev.filter(t => t.id !== trashId));
@@ -6139,10 +6218,22 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       } else if (item.type === 'section') {
         setSections(prev => [...prev, item.data]);
         pushUpsert('sections', item.data);
+      } else if (item.type === 'teacher') {
+        setTeachers(prev => [...prev, item.data]);
+        pushUpsert('teachers', item.data);
+      } else if (item.type === 'user') {
+        setUsers(prev => [...prev, item.data]);
+        pushUpsert('users', item.data);
+      } else if (item.type === 'notice') {
+        setNotices(prev => [...prev, item.data]);
+        pushUpsert('notices', item.data);
       }
+      // member_application items are records, not restores — skipped
+      // here and kept in the bin below (see restoreFromTrash).
     });
-    const allTrashIds = trashBin.map(t => t.id);
-    setTrashBin([]);
+    const restorableItems = trashBin.filter(t => t.type !== 'member_application');
+    const allTrashIds = restorableItems.map(t => t.id);
+    setTrashBin(prev => prev.filter(t => t.type === 'member_application'));
     void confirmTrashOpCloudSync(allTrashIds, upserts, TRASH_CLOUD_FAILURE_MESSAGE);
   };
 
@@ -6169,6 +6260,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const seedDemoMadrashaData = () => {
+    // Phase 2 gating: demo data must never be seeded into a live
+    // system unguarded — owner-only AND only into an empty system
+    // (no students yet). Otherwise this is a silent no-op.
+    if (!isOwnerAdmin) {
+      console.warn('[Phase 2] seedDemoMadrashaData refused — not the owner session.');
+      return;
+    }
+    if (students.length > 0) {
+      console.warn('[Phase 2] seedDemoMadrashaData refused — system already has students.');
+      return;
+    }
     const { sampleStudents, sampleSubjects, sampleMarks, sampleExams } = generateSampleMadrashaData(classes, exams);
     if (sampleExams && sampleExams.length > exams.length) {
       setExams(sampleExams);
@@ -6195,81 +6297,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const toAdd = sampleFinance.filter(t => !existingIds.has(t.id));
       return [...toAdd, ...prev];
     });
-  };
-
-  const clearAllDemoData = async (): Promise<{ success: boolean; message: string }> => {
-    try {
-      // 1. Take safety snapshot before clearing
-      try {
-        const current = readCurrentLocalStoragePayload();
-        await saveToIndexedDbVault(current, 'manual', 'ডেমো ডেটা মোছার পূর্ববর্তী ব্যাকআপ', 'Pre-Clear Safety Checkpoint');
-      } catch (e) {
-        console.warn('Pre-clear checkpoint snapshot:', e);
-      }
-
-      // 2. Clear state
-      setStudents([]);
-      setMarks([]);
-      setRemarks([]);
-      setTransactions([]);
-      setPromotionHistory([]);
-      setNotices([]);
-
-      // 3. Clear localStorage items
-      localStorage.setItem('students', JSON.stringify([]));
-      localStorage.setItem('marks', JSON.stringify([]));
-      localStorage.setItem('remarks', JSON.stringify([]));
-      localStorage.setItem('madrasha_transactions', JSON.stringify([]));
-      localStorage.setItem('promotionHistory', JSON.stringify([]));
-      localStorage.setItem('madrasha_notices', JSON.stringify([]));
-      localStorage.setItem('madrasha_fee_structures', JSON.stringify([]));
-      localStorage.setItem('madrasah_staff_leaves', JSON.stringify([]));
-      localStorage.setItem('madrasah_books_catalog', JSON.stringify([]));
-      localStorage.setItem('madrasah_book_issues', JSON.stringify([]));
-      localStorage.setItem('madrasah_transport_vehicles', JSON.stringify([]));
-      localStorage.setItem('madrasah_transport_roster', JSON.stringify([]));
-      localStorage.setItem('madrasah_mahfil_events', JSON.stringify([]));
-      localStorage.setItem('madrasah_cocurricular_clubs', JSON.stringify([]));
-      localStorage.setItem('madrasha_ops_v1_assets', JSON.stringify([]));
-      localStorage.setItem('madrasha_ops_v1_store', JSON.stringify([]));
-      localStorage.setItem('madrasha_ops_v1_movements', JSON.stringify([]));
-      localStorage.setItem('madrasha_ops_v1_houses', JSON.stringify([]));
-      localStorage.setItem('madrasha_ops_v1_house_logs', JSON.stringify([]));
-      localStorage.setItem('madrasha_ops_v1_alumni', JSON.stringify([]));
-      localStorage.setItem('madrasha_ops_v1_health', JSON.stringify([]));
-      localStorage.setItem('madrasha_admissions_v1', JSON.stringify([]));
-      localStorage.setItem('madrasah_admissions_v1', JSON.stringify([]));
-      localStorage.setItem('madrasha_sms_logs_v1', JSON.stringify([]));
-      localStorage.setItem('madrasha_welfare_v1', JSON.stringify([]));
-
-      // 4. Push clean state to Cloud Firestore
-      try {
-        const docRef = doc(db, 'institution', 'main_store');
-        await setDoc(docRef, {
-          students: [],
-          marks: [],
-          remarks: [],
-          transactions: [],
-          promotionHistory: [],
-          notices: [],
-          feeStructures: [],
-          updatedAt: new Date().toISOString(),
-          updatedBy: authUser?.email || adminEmail || SUPER_ADMIN_EMAIL
-        }, { merge: true });
-      } catch (err) {
-        console.warn('Cloud clear notice:', err);
-      }
-
-      return {
-        success: true,
-        message: 'সকল ডেমো ডেটা সফলভাবে মুছে ফেলা হয়েছে! সিস্টেম এখন সম্পূর্ণ ফ্রেশ।'
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        message: 'ডেমো ডেটা মুছতে ত্রুটি হয়েছে: ' + (err?.message || 'অজ্ঞাত ত্রুটি')
-      };
-    }
   };
 
   const isModuleEnabled = (module: ModuleKey): boolean => {
@@ -6458,7 +6485,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setMarks,
       setRemarks,
       seedDemoMadrashaData,
-      clearAllDemoData,
       loginWithGoogle,
       signUpWithGoogle,
       signInWithEmail,

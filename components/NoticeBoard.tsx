@@ -1573,7 +1573,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
         title={isBn ? 'নোটিশ ডিলিট নিশ্চিতকরণ' : 'Confirm Notice Deletion'}
         message={pendingDelete
           ? (NOTICE_DELETE_CLOUD_FAILURE_MESSAGE)
-          : (isBn ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?')}
+          : (isBn ? 'আপনি কি নিশ্চিত যে এই নোটিশটি মুছে ফেলতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)' : 'Delete this notice? (It will be moved to the Trash Bin and can be restored later.)')}
         highlightText={noticeToDelete ? noticeToDelete.title : undefined}
         confirmLabel={pendingDelete ? (isBn ? RETRY_LABEL : 'Retry') : (isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete')}
         cancelLabel={isBn ? 'বাতিল' : 'Cancel'}

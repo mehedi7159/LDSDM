@@ -217,6 +217,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
   // Staff removal (confirm dialog) + per-card password reveal
   const [staffToDelete, setStaffToDelete] = useState<AcademicTeacher | null>(null);
+  // Phase 2: rejecting an application confirms first (previously the
+  // reject buttons called rejectMember directly, no dialog at all).
+  const [applicantToReject, setApplicantToReject] = useState<AcademicTeacher | null>(null);
   const [isDeletingStaff, setIsDeletingStaff] = useState(false);
   const [revealedPwId, setRevealedPwId] = useState<string | null>(null);
 
@@ -812,6 +815,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     }
   };
 
+  const handleConfirmRejectApplicant = async () => {
+    if (!applicantToReject) return;
+    await handleRejectApplicant(applicantToReject);
+    setApplicantToReject(null);
+  };
+
   // Phase 4/5: demo-clear, moved from the removed Tab 2 into the
   // merged tab. DELIBERATE behavior fix vs the old version: the old
   // button deleted EVERY non-self user when pressed (real staff
@@ -1243,7 +1252,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleRejectApplicant(staff)}
+                        onClick={() => setApplicantToReject(staff)}
                         className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 text-xs font-bold transition-all shadow-xs cursor-pointer"
                       >
                         <span>{isBn ? 'বাতিল' : 'Reject'}</span>
@@ -1347,6 +1356,21 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
               variant="danger"
               isLoading={isClearingDemo}
+            />
+
+            {/* Phase 2: reject-application confirmation (trash note). */}
+            <ConfirmDialog
+              isOpen={!!applicantToReject}
+              onClose={() => setApplicantToReject(null)}
+              onConfirm={handleConfirmRejectApplicant}
+              title={isBn ? 'আবেদন বাতিল করবেন?' : 'Reject this application?'}
+              message={isBn
+                ? 'আবেদনটি বাতিল হলে রিসাইকেল বিনে সংরক্ষিত থাকবে — তথ্য হারাবে না। আবেদনকারীর কোনো অ্যাক্সেস থাকবে না।'
+                : 'The rejected application will be kept in the Recycle Bin — no data is lost. The applicant will have no access.'}
+              highlightText={applicantToReject ? (applicantToReject.nameBn || applicantToReject.name) : undefined}
+              confirmLabel={isBn ? 'হ্যাঁ, বাতিল করুন' : 'Yes, reject'}
+              cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
+              variant="danger"
             />
 
             {/* Staff Grid Cards (Phase 4: cards are the main view;
@@ -1618,7 +1642,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                               {isPendingCard ? (
                                 <>
                                   <button type="button" onClick={() => handleQuickApproveStaff(staff)} className="px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer">{isBn ? '✓ অনুমোদন' : 'Approve'}</button>
-                                  <button type="button" onClick={() => handleRejectApplicant(staff)} className="px-2 py-1 rounded-md text-[10px] font-bold bg-white border border-rose-300 text-rose-700 cursor-pointer">{isBn ? 'বাতিল' : 'Reject'}</button>
+                                  <button type="button" onClick={() => setApplicantToReject(staff)} className="px-2 py-1 rounded-md text-[10px] font-bold bg-white border border-rose-300 text-rose-700 cursor-pointer">{isBn ? 'বাতিল' : 'Reject'}</button>
                                 </>
                               ) : (
                                 <>
@@ -2383,15 +2407,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 <Trash2 size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">{isBn ? 'স্থায়ীভাবে মুছে ফেলবেন?' : 'Remove permanently?'}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'এই কাজটি আর ফেরত নেওয়া যাবে না' : 'This action cannot be undone'}</p>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">{isBn ? 'রিসাইকেল বিনে পাঠাবেন?' : 'Move to Recycle Bin?'}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'পরে রিসাইকেল বিন থেকে ফিরিয়ে আনা যাবে' : 'You can restore it later from the Recycle Bin'}</p>
               </div>
             </div>
             <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-100 dark:border-rose-900/60 rounded-2xl p-3.5 text-xs text-slate-700 dark:text-slate-200 space-y-1">
               <p className="font-bold text-slate-900 dark:text-white text-sm">{staffToDelete.nameBn || staffToDelete.name}</p>
               <p>{staffToDelete.designation || (isBn ? 'সহকারী শিক্ষক' : 'Assistant Teacher')}{staffToDelete.phone ? ` · ${staffToDelete.phone}` : ''}</p>
-              <p className="text-slate-500 dark:text-slate-400 pt-1">{isBn ? 'তার স্টাফ রেকর্ড, লগইন অ্যাকাউন্ট ও অ্যাক্সেস — সব একসাথে মুছে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record, login account and access will all be removed together. Past salary and attendance records stay untouched.'}</p>
-              <p className="text-amber-700 dark:text-amber-300 font-bold pt-1">{isBn ? 'মুছে দেওয়ার পর এই অ্যাকাউন্ট দিয়ে আর লগইন করা যাবে না (অ্যাক্সেস সাথে সাথে বন্ধ হবে)। Firebase Authentication-এর রেকর্ডটি পুরোপুরি মুছতে চাইলে Console → Authentication থেকে মুছুন।' : 'After removal, this account can no longer log in (access stops immediately). To fully remove the Firebase Authentication record, delete it from Console → Authentication.'}</p>
+              <p className="text-slate-500 dark:text-slate-400 pt-1">{isBn ? 'তার স্টাফ রেকর্ড ও লগইন অ্যাকাউন্ট রিসাইকেল বিনে চলে যাবে। পুরনো বেতন ও হাজিরার রেকর্ড আগের মতোই থাকবে।' : 'Their staff record and login account will move to the Recycle Bin. Past salary and attendance records stay untouched.'}</p>
+              <p className="text-amber-700 dark:text-amber-300 font-bold pt-1">{isBn ? 'রিসাইকেল বিনে পাঠানোর পর এই অ্যাকাউন্ট দিয়ে আর লগইন করা যাবে না (অ্যাক্সেস সাথে সাথে বন্ধ হবে)। Firebase Authentication-এর রেকর্ডটি পুরোপুরি মুছতে চাইলে Console → Authentication থেকে মুছুন।' : 'After removal, this account can no longer log in (access stops immediately). To fully remove the Firebase Authentication record, delete it from Console → Authentication.'}</p>
             </div>
             <div className="flex justify-end gap-2 pt-2 shrink-0">
               <button
@@ -2408,7 +2432,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs flex items-center gap-1.5 text-xs disabled:opacity-60 cursor-pointer"
               >
                 <Trash2 size={13} />
-                <span>{isDeletingStaff ? (isBn ? 'মোছা হচ্ছে...' : 'Removing...') : (isBn ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, remove')}</span>
+                <span>{isDeletingStaff ? (isBn ? 'মোছা হচ্ছে...' : 'Removing...') : (isBn ? 'হ্যাঁ, বিনে পাঠান' : 'Yes, move to bin')}</span>
               </button>
             </div>
           </div>

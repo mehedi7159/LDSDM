@@ -173,7 +173,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
   const confirmDelete = () => {
     if (!txToDelete) return;
     onDeleteTransaction(txToDelete.id);
-    showToast(isBn ? `ভাউচার ${txToDelete.voucher} মুছে ফেলা হয়েছে!` : `Voucher ${txToDelete.voucher} deleted!`);
+    showToast(isBn ? `ভাউচার ${txToDelete.voucher} রিসাইকেল বিনে পাঠানো হয়েছে!` : `Voucher ${txToDelete.voucher} moved to the Recycle Bin!`);
     setTxToDelete(null);
   };
 
@@ -507,7 +507,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
         onClose={() => setTxToDelete(null)}
         onConfirm={confirmDelete}
         title={isBn ? 'ভাউচার ডিলিট নিশ্চিতকরণ' : 'Confirm Voucher Deletion'}
-        message={txToDelete ? (isBn ? `আপনি কি নিশ্চিতভাবে ভাউচার নং ${txToDelete.voucher} মুছে ফেলতে চান?` : `Are you sure you want to delete voucher ${txToDelete.voucher}?`) : ''}
+        message={txToDelete ? (isBn ? `আপনি কি নিশ্চিতভাবে ভাউচার নং ${txToDelete.voucher} মুছে ফেলতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)` : `Are you sure you want to delete voucher ${txToDelete.voucher}? (It will be moved to the Trash Bin and can be restored later.)`) : ''}
         confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
         cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
         variant="danger"

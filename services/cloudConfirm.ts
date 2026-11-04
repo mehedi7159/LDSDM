@@ -72,6 +72,7 @@ import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser,
 import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent, AcademicYear, Section, ClassSubjectAssignment, TeacherSubjectAssignment, ClassTeacherAssignment, ExamSubjectAssignment } from '../types/academic';
 import type { PromotionHistoryRecord } from '../types/promotion';
 import {
+  assertTripwire,
   assertUpsertRecords,
   findDegradingStudentIds,
   validateDeleteOp,
@@ -660,16 +661,27 @@ export async function writeDeleteFieldsToCloud(
     const snap = await getDoc(ref);
     const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
     const payload: Record<string, unknown> = { updatedBy, updatedAt: new Date().toISOString() };
+    const oldSizes: Record<string, number> = {};
+    const newSizes: Record<string, number> = {};
     for (const removal of cleanRemovals) {
       const existing = data[removal.field] as Record<string, any>[] | undefined;
       const keyFn = fieldKeyFn(removal.field);
       const ids = new Set(removal.ids);
       payload[removal.field] = (existing || []).filter((r) => !ids.has(keyFn(r)));
+      oldSizes[removal.field] = (existing || []).length;
+      newSizes[removal.field] = (payload[removal.field] as any[]).length;
     }
     if (cleanTrash.length > 0) {
       const existingTrash = (data.trashBin as { id: string }[] | undefined) || [];
       payload.trashBin = mergeRecordsByKey(existingTrash, cleanTrash as any, (r: any) => (r.id ? String(r.id) : '')).map(stripUndefinedRecord);
     }
+    // Phase 2 client tripwire (plan §5, client-side first): this is
+    // the only normal write site that shrinks protected lists, so the
+    // check lives here — a shrink beyond the same-write trash growth
+    // throws before setDoc. Restores never reach this writer.
+    const oldTrashSize = ((data.trashBin as { id: string }[] | undefined) || []).length;
+    const newTrashSize = cleanTrash.length > 0 ? (payload.trashBin as { id: string }[]).length : oldTrashSize;
+    assertTripwire(oldSizes, newSizes, oldTrashSize, newTrashSize);
     await setDoc(ref, payload, { merge: true });
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'delete cloud confirm');
@@ -705,6 +717,24 @@ export async function writeTrashOpToCloud(
       assertUpsertRecords(field, records, keyFn);
       const existing = data[field] as Record<string, any>[] | undefined;
       payload[field] = mergeRecordsByKey(existing || [], records, keyFn).map(stripUndefinedRecord);
+    }
+    // Phase 2 tripwire (defense in depth — trash ops never shrink a
+    // protected list in practice: restores grow them, permanent
+    // deletes touch only trash, so this passes trivially unless a
+    // future caller misuses the writer).
+    {
+      const trashOldSizes: Record<string, number> = {};
+      const trashNewSizes: Record<string, number> = {};
+      for (const [field] of upsertFields) {
+        trashOldSizes[field] = ((data[field] as any[] | undefined) || []).length;
+        trashNewSizes[field] = (payload[field] as any[]).length;
+      }
+      assertTripwire(
+        trashOldSizes,
+        trashNewSizes,
+        ((data.trashBin as { id: string }[] | undefined) || []).length,
+        (payload.trashBin as { id: string }[]).length
+      );
     }
     await setDoc(ref, payload, { merge: true });
   };

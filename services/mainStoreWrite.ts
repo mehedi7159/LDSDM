@@ -33,6 +33,13 @@
  *     entries appended in the same write. An empty delete (no ids, no
  *     trash) is a caller bug and throws.
  *
+ *  5. Client tripwire (Phase 2, plan §5 count condition, CLIENT-SIDE
+ *     FIRST — it must see >= 1 week of real use before any server
+ *     enforcement): a normal write may shrink a protected array only
+ *     up to the trash growth in the SAME write. Restores are a
+ *     separate write class and never shrink a protected list, so they
+ *     pass trivially. A violation throws before any setDoc.
+ *
  * What this module deliberately does NOT do: strip unknown top-level
  * fields. Restores legitimately carry extras (version, recoveryMeta,
  * restoredFromSnapshotAt), and the pre-existing `test: true` field in
@@ -169,6 +176,42 @@ export function assertRestorePayloadSafe(
           `[Phase 1 choke point] restore shrinks ${field} from ${prev.length} to 0 — explicit restore, allowed, but verify the snapshot is the intended one.`
         );
       }
+    }
+  }
+}
+
+/** Protected arrays for the Phase 2 client tripwire (plan §5). */
+export const TRIPWIRE_FIELDS = ['teachers', 'users', 'students', 'marks', 'subjects', 'exams', 'transactions'];
+
+/**
+ * Phase 2 client tripwire (plan §5 count condition, client-side
+ * first). `oldSizes`/`newSizes` are per-field array lengths
+ * before/after the write; `oldTrashSize`/`newTrashSize` are the
+ * trashBin lengths in the SAME write. Throws naming the field and
+ * the counts when a protected array would shrink beyond the trash
+ * growth in that write:
+ *   newA >= oldA - max(0, newTrash - oldTrash)
+ * A clobber (teachers -4, trash +0) is refused; a trash-bound delete
+ * (students -1, trash +1) passes. Fields absent from both maps are
+ * untouched by the write and skipped. Never silently applied.
+ */
+export function assertTripwire(
+  oldSizes: Record<string, number>,
+  newSizes: Record<string, number>,
+  oldTrashSize: number,
+  newTrashSize: number
+): void {
+  const trashGrowth = Math.max(0, newTrashSize - oldTrashSize);
+  for (const field of TRIPWIRE_FIELDS) {
+    const oldSize = oldSizes[field];
+    const newSize = newSizes[field];
+    if (typeof oldSize !== 'number' || typeof newSize !== 'number') continue;
+    if (newSize < oldSize - trashGrowth) {
+      throw new Error(
+        `Phase 2 tripwire: ${field} write rejected — list would shrink from ${oldSize} to ${newSize} ` +
+          `while trash grows by only ${trashGrowth} in the same write. ` +
+          `A list may shrink only up to the trash growth in the same write; the write was refused.`
+      );
     }
   }
 }

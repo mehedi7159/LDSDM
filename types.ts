@@ -484,9 +484,14 @@ export interface ModuleDependencyRule {
 
 export interface TrashItem {
   id: string;
-  type: 'student' | 'subject' | 'exam' | 'class' | 'transaction';
+  type: 'student' | 'subject' | 'exam' | 'class' | 'transaction' | 'section' | 'teacher' | 'user' | 'notice' | 'member_application';
   data: any;
   deletedAt: string;
+  // Phase 2: who deleted it + why (staff/user/notice deletes record
+  // the actor; member_application records the rejected application).
+  // 'section' was previously cast with `as any` at the call site.
+  deletedBy?: string;
+  reason?: string;
 }
 
 export type UserRole = 'super_admin' | 'principal' | 'teacher' | 'accountant' | 'staff' | 'guardian';

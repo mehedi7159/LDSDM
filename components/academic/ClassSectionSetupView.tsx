@@ -551,7 +551,7 @@ export const ClassSectionSetupView: React.FC = () => {
           }
         }}
         title={isBn ? 'শাখা ডিলিট নিশ্চিতকরণ' : 'Confirm Section Deletion'}
-        message={isBn ? 'এই শাখাটি মুছে ফেলতে চান?' : 'Delete this section?'}
+        message={isBn ? 'এই শাখাটি মুছে ফেলতে চান? (এটি ট্র্যাশ বিনে জমা হবে এবং পরে প্রয়োজনে রিস্টোর করা যাবে)' : 'Delete this section? (It will be moved to the Trash Bin and can be restored later.)'}
         confirmLabel={isBn ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete'}
         cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
         variant="danger"

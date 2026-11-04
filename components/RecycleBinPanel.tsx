@@ -13,28 +13,42 @@ import { SegmentedControl } from './ui/SegmentedControl';
 // delete removes only that bin entry, empty-trash asks first.
 export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { trashBin, restoreFromTrash, permanentlyDeleteTrashItem, restoreAllFromTrash, emptyTrash } = useApp();
-  const [trashFilter, setTrashFilter] = useState<'all' | 'student' | 'subject' | 'exam' | 'class' | 'transaction'>('all');
+  const [trashFilter, setTrashFilter] = useState<'all' | 'student' | 'subject' | 'exam' | 'class' | 'transaction' | 'section' | 'teacher' | 'user' | 'notice' | 'member_application'>('all');
   const [confirmEmptyTrashOpen, setConfirmEmptyTrashOpen] = useState(false);
+  // Phase 2: EVERY trash op confirms first, with a count/name preview.
+  // Previously restore, restore-all and per-item permanent delete all
+  // ran on a single click — per-item permanent delete had NO dialog
+  // at all. Restore-all keeps rejected applications in the bin (they
+  // are records, not restores — see AppContext restoreFromTrash).
+  const [confirmPermanentItem, setConfirmPermanentItem] = useState<{ id: string; name: string } | null>(null);
+  const [confirmRestoreItem, setConfirmRestoreItem] = useState<{ id: string; name: string } | null>(null);
+  const [confirmRestoreAllOpen, setConfirmRestoreAllOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'info'; text: string } | null>(null);
+  const restorableCount = trashBin.filter(t => t.type !== 'member_application').length;
 
-  const handleRestoreItem = (id: string, name?: string) => {
-    restoreFromTrash(id);
+  const handleRestoreItemConfirm = () => {
+    if (!confirmRestoreItem) return;
+    restoreFromTrash(confirmRestoreItem.id);
     setStatusMessage({
       type: 'success',
-      text: `"${name || 'আইটেমটি'}" সফলভাবে রিসাইকেল বিন থেকে পুনরুদ্ধার করা হয়েছে!`
+      text: `"${confirmRestoreItem.name}" সফলভাবে রিসাইকেল বিন থেকে পুনরুদ্ধার করা হয়েছে!`
     });
+    setConfirmRestoreItem(null);
   };
 
-  const handlePermanentDelete = (id: string, name?: string) => {
-    permanentlyDeleteTrashItem(id);
+  const handlePermanentDeleteConfirm = () => {
+    if (!confirmPermanentItem) return;
+    permanentlyDeleteTrashItem(confirmPermanentItem.id);
     setStatusMessage({
       type: 'info',
-      text: `"${name || 'আইটেমটি'}" রিসাইকেল বিন থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।`
+      text: `"${confirmPermanentItem.name}" রিসাইকেল বিন থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।`
     });
+    setConfirmPermanentItem(null);
   };
 
-  const handleRestoreAll = () => {
+  const handleRestoreAllConfirm = () => {
     restoreAllFromTrash();
+    setConfirmRestoreAllOpen(false);
     setStatusMessage({
       type: 'success',
       text: 'রিসাইকেল বিনের সকল তথ্য সফলভাবে মূল সিস্টেমে ফিরিয়ে আনা হয়েছে!'
@@ -47,7 +61,7 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
     setConfirmEmptyTrashOpen(false);
     setStatusMessage({
       type: 'info',
-      text: 'রিসাইকেল বিন সম্পূর্ণ খালি ও পরিষ্কার করা হয়েছে।'
+      text: `রিসাইকেল বিনের ${trashBin.length}টি আইটেম স্থায়ীভাবে মুছে ফেলা হয়েছে।`
     });
   };
 
@@ -70,7 +84,7 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
             </h3>
             {!onClose && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                ভুল করে মুছে ফেলা শিক্ষার্থী, বিষয়, পরীক্ষা বা লেনদেন এখানে থাকে — ফিরিয়ে আনতে বা স্থায়ীভাবে মুছতে পারবেন।
+                ভুল করে মুছে ফেলা শিক্ষার্থী, শিক্ষক/কর্মী, বিষয়, পরীক্ষা, নোটিশ বা লেনদেন এখানে থাকে — ফিরিয়ে আনতে বা স্থায়ীভাবে মুছতে পারবেন। বাতিল করা আবেদন শুধু রেকর্ড হিসেবে থাকে।
               </p>
             )}
           </div>
@@ -103,7 +117,12 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
             { id: 'subject', label: 'বিষয়', badge: trashBin.filter(t => t.type === 'subject').length },
             { id: 'exam', label: 'পরীক্ষা', badge: trashBin.filter(t => t.type === 'exam').length },
             { id: 'class', label: 'শ্রেণি', badge: trashBin.filter(t => t.type === 'class').length },
+            { id: 'section', label: 'শাখা', badge: trashBin.filter(t => t.type === 'section').length },
+            { id: 'teacher', label: 'শিক্ষক/কর্মী', badge: trashBin.filter(t => t.type === 'teacher').length },
+            { id: 'user', label: 'অ্যাকাউন্ট', badge: trashBin.filter(t => t.type === 'user').length },
+            { id: 'notice', label: 'নোটিশ', badge: trashBin.filter(t => t.type === 'notice').length },
             { id: 'transaction', label: 'লেনদেন', badge: trashBin.filter(t => t.type === 'transaction').length },
+            { id: 'member_application', label: 'বাতিল আবেদন', badge: trashBin.filter(t => t.type === 'member_application').length },
           ]}
         />
       </div>
@@ -120,17 +139,29 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
         ) : (
           filteredItems.map(item => {
             const itemName = item.data?.name || item.data?.nameBn || item.data?.title || item.data?.description || `আইটেম #${item.id.slice(0, 6)}`;
+            // Phase 2: every type gets its own label — previously
+            // 'section' (and any new type) fell through to 'লেনদেন'.
             const typeLabel =
               item.type === 'student' ? 'শিক্ষার্থী' :
               item.type === 'subject' ? 'বিষয়' :
               item.type === 'exam' ? 'পরীক্ষা' :
-              item.type === 'class' ? 'শ্রেণি' : 'লেনদেন';
+              item.type === 'class' ? 'শ্রেণি' :
+              item.type === 'section' ? 'শাখা' :
+              item.type === 'teacher' ? 'শিক্ষক/কর্মী' :
+              item.type === 'user' ? 'অ্যাকাউন্ট' :
+              item.type === 'notice' ? 'নোটিশ' :
+              item.type === 'member_application' ? 'বাতিল আবেদন' : 'লেনদেন';
 
             const typeBg =
               item.type === 'student' ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
               item.type === 'subject' ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800' :
               item.type === 'exam' ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800' :
-              item.type === 'class' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800';
+              item.type === 'class' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' :
+              item.type === 'section' ? 'bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-400 border-teal-200 dark:border-teal-800' :
+              item.type === 'teacher' ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800' :
+              item.type === 'user' ? 'bg-cyan-50 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800' :
+              item.type === 'notice' ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800' :
+              item.type === 'member_application' ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800';
 
             return (
               <div
@@ -154,16 +185,22 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {item.type === 'member_application' ? (
+                    <span className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs border border-slate-200 dark:border-slate-700" title="বাতিল আবেদন শুধু রেকর্ড হিসেবে থাকে — ফিরিয়ে আনতে হলে নতুন করে যুক্ত করুন">
+                      শুধু রেকর্ড
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRestoreItem({ id: item.id, name: itemName })}
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center gap-1 border border-emerald-200 dark:border-emerald-800 cursor-pointer transition-all active:scale-95"
+                      title="পুনরুদ্ধার করুন"
+                    >
+                      <RotateCcw size={12} />
+                      <span>ফিরিয়ে আনুন</span>
+                    </button>
+                  )}
                   <button
-                    onClick={() => handleRestoreItem(item.id, itemName)}
-                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center gap-1 border border-emerald-200 dark:border-emerald-800 cursor-pointer transition-all active:scale-95"
-                    title="পুনরুদ্ধার করুন"
-                  >
-                    <RotateCcw size={12} />
-                    <span>ফিরিয়ে আনুন</span>
-                  </button>
-                  <button
-                    onClick={() => handlePermanentDelete(item.id, itemName)}
+                    onClick={() => setConfirmPermanentItem({ id: item.id, name: itemName })}
                     className="p-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer"
                     title="স্থায়ীভাবে মুছুন"
                   >
@@ -182,7 +219,7 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
           {trashBin.length > 0 && (
             <>
               <button
-                onClick={handleRestoreAll}
+                onClick={() => setConfirmRestoreAllOpen(true)}
                 className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
               >
                 <RotateCcw size={13} />
@@ -208,13 +245,45 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
         )}
       </div>
 
+      {/* Phase 2: every trash op confirms with a preview first. */}
+      <ConfirmDialog
+        isOpen={!!confirmRestoreItem}
+        onClose={() => setConfirmRestoreItem(null)}
+        onConfirm={handleRestoreItemConfirm}
+        title="এই আইটেমটি ফিরিয়ে আনতে চান?"
+        message="আইটেমটি রিসাইকেল বিন থেকে মূল সিস্টেমে ফিরে যাবে।"
+        highlightText={confirmRestoreItem ? confirmRestoreItem.name : undefined}
+        confirmLabel="হ্যাঁ, ফিরিয়ে আনুন"
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={!!confirmPermanentItem}
+        onClose={() => setConfirmPermanentItem(null)}
+        onConfirm={handlePermanentDeleteConfirm}
+        title="এই আইটেমটি স্থায়ীভাবে মুছে ফেলতে চান?"
+        message="একবার স্থায়ীভাবে মুছলে এটি আর ফিরিয়ে আনা যাবে না।"
+        highlightText={confirmPermanentItem ? confirmPermanentItem.name : undefined}
+        confirmLabel="হ্যাঁ, স্থায়ীভাবে মুছুন"
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={confirmRestoreAllOpen}
+        onClose={() => setConfirmRestoreAllOpen(false)}
+        onConfirm={handleRestoreAllConfirm}
+        title="সকল ডেটা ফিরিয়ে আনতে চান?"
+        message={trashBin.some(t => t.type === 'member_application')
+          ? `রিসাইকেল বিনের ${restorableCount}টি আইটেম মূল সিস্টেমে ফিরে যাবে। বাতিল করা আবেদনগুলো রেকর্ড হিসেবে বিনেই থাকবে।`
+          : `রিসাইকেল বিনের ${restorableCount}টি আইটেম মূল সিস্টেমে ফিরে যাবে।`}
+        confirmLabel="হ্যাঁ, সব ফিরিয়ে আনুন"
+        variant="danger"
+      />
       {/* Confirmation Dialog for Empty Trash */}
       <ConfirmDialog
         isOpen={confirmEmptyTrashOpen}
         onClose={() => setConfirmEmptyTrashOpen(false)}
         onConfirm={handleEmptyTrashConfirm}
         title="রিসাইকেল বিন স্থায়ীভাবে খালি করতে চান?"
-        message="আপনি কি নিশ্চিত যে রিসাইকেল বিনের সমস্ত মুছে ফেলা আইটেম স্থায়ীভাবে মুছে ফেলতে চান? একবার খালি করলে এগুলি আর পুনরুদ্ধার করা সম্ভব হবে না।"
+        message={`আপনি কি নিশ্চিত যে রিসাইকেল বিনের সমস্ত ${trashBin.length}টি আইটেম স্থায়ীভাবে মুছে ফেলতে চান? একবার খালি করলে এগুলি আর পুনরুদ্ধার করা সম্ভব হবে না।`}
         confirmLabel="হ্যাঁ, স্থায়ীভাবে খালি করুন"
         variant="danger"
       />
