@@ -5,6 +5,7 @@ import {
   googleProvider 
 } from './firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { assertRestorePayloadSafe } from './mainStoreWrite';
 import type {
   SchoolProfile,
   SchoolClass,
@@ -594,6 +595,21 @@ export const restoreFromGoogleDriveBackup = async (
 
   // 3. If full mode and authenticated, sync to Firestore
   if (restoreMode === 'full' && auth.currentUser) {
+    // Phase 1 choke point: refuse a degrading restore before the
+    // write. (The duplicate wholesale write itself is removed in
+    // Phase 3, when all channels share one validated restore path.)
+    const { doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('./firebase');
+    const checkRef = doc(db, 'institution', 'main_store');
+    const checkSnap = await getDoc(checkRef);
+    assertRestorePayloadSafe(
+      {
+        ...packageData.payload,
+        updatedBy: email,
+        updatedAt: new Date().toISOString()
+      },
+      checkSnap.exists() ? (checkSnap.data() as Record<string, any>) : null
+    );
     try {
       const { doc, setDoc } = await import('firebase/firestore');
       const { db } = await import('./firebase');

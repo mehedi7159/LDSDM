@@ -55,7 +55,11 @@ export const CloudSyncWidget: React.FC = () => {
     loginWithGoogle,
     logoutAdmin,
     forcePushToCloud,
-    forcePullFromCloud
+    forcePullFromCloud,
+    pendingPayloads,
+    pendingSyncCount,
+    retryPendingCloudConfirms,
+    discardPendingPayload
   } = useApp();
   
   const [showAdminAuthModal, setShowAdminAuthModal] = useState<boolean>(false);
@@ -221,6 +225,53 @@ export const CloudSyncWidget: React.FC = () => {
         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-in fade-in duration-150">
           <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
           <span className="leading-relaxed">{syncNotification}</span>
+        </div>
+      )}
+
+      {/* Phase 1 (Sadia fix): pending cloud payloads — records that
+          are saved on this device but have NOT reached the cloud yet.
+          Each entry carries its full payload, so a retry sends the
+          stored records (never current state) and a snapshot cannot
+          wipe them. Retry is manual here; automatic retry also runs
+          on app start, foreground, online, and login. Discard is
+          explicit only — it drops the queued payload on purpose. */}
+      {pendingSyncCount > 0 && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-2xl shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
+              {language === 'bn'
+                ? `অপেক্ষমাণ সিঙ্ক: ${pendingSyncCount}টি তথ্য এখনো cloud-এ যায়নি — শুধু এই ডিভাইসে আছে`
+                : `Pending sync: ${pendingSyncCount} item(s) not in cloud yet — only on this device`}
+            </span>
+            <button
+              type="button"
+              onClick={() => retryPendingCloudConfirms()}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer shrink-0"
+            >
+              {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Retry now'}
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            {pendingPayloads.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 text-[11px] text-amber-900 dark:text-amber-200">
+                <span className="font-semibold truncate">
+                  {item.op === 'delete'
+                    ? (language === 'bn' ? `মোছা: ${(item.removals || []).map(r => r.field).join(', ')}` : `Delete: ${(item.removals || []).map(r => r.field).join(', ')}`)
+                    : item.op === 'trashOp'
+                      ? (language === 'bn' ? 'ট্র্যাশ অপারেশন' : 'Trash operation')
+                      : (language === 'bn' ? `${item.field} — ${(item.records || []).length}টি রেকর্ড` : `${item.field} — ${(item.records || []).length} record(s)`)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => discardPendingPayload(item.id)}
+                  className="text-amber-700 dark:text-amber-300 hover:text-rose-700 underline shrink-0"
+                  title={language === 'bn' ? 'এই অপেক্ষমাণ তথ্য ইচ্ছাকৃতভাবে বাদ দিন' : 'Deliberately discard this queued payload'}
+                >
+                  {language === 'bn' ? 'বাদ দিন' : 'Discard'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

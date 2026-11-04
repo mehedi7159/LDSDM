@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, auth, firebaseConfig } from './firebase';
+import { assertRestorePayloadSafe } from './mainStoreWrite';
 import type {
   SchoolProfile,
   SchoolClass,
@@ -793,6 +794,22 @@ export async function executeFullSystemRestore(
   await saveToIndexedDbVault(payload, 'manual', 'সফল ফাইল রিস্টোর স্ন্যাপশট', 'Restored from Backup File');
 
   // Step 4: Write to Cloud Firestore if connected
+  // Phase 1 choke point: a restore payload that would degrade fuller
+  // cloud student records is refused BEFORE any write — it throws to
+  // the caller and must not degrade into the warn-and-success below.
+  {
+    const checkRef = doc(db, 'institution', 'main_store');
+    const checkSnap = await getDoc(checkRef);
+    assertRestorePayloadSafe(
+      {
+        ...toCloudStorePayload(payload),
+        updatedAt: new Date().toISOString(),
+        updatedBy: adminEmail || 'admin',
+        version: '3.0.0-permanent-vault'
+      },
+      checkSnap.exists() ? (checkSnap.data() as Record<string, any>) : null
+    );
+  }
   try {
     const docRef = doc(db, 'institution', 'main_store');
     await setDoc(docRef, {
@@ -1117,6 +1134,20 @@ export async function restoreFromCloudSnapshotPackage(
 
   // 4. If full mode, also write to Firestore database (institution/main_store)
   if (targetMode === 'full') {
+    // Phase 1 choke point: refuse a degrading restore before the
+    // write (throws to the caller, not a warn-and-success).
+    const checkRef = doc(db, 'institution', 'main_store');
+    const checkSnap = await getDoc(checkRef);
+    assertRestorePayloadSafe(
+      {
+        ...toCloudStorePayload(payload),
+        updatedAt: new Date().toISOString(),
+        updatedBy: adminEmail || snapshotPkg.exportedBy || 'admin',
+        version: '3.0.0-cloud-snapshot-restored',
+        restoredFromSnapshotAt: snapshotPkg.exportedAt
+      },
+      checkSnap.exists() ? (checkSnap.data() as Record<string, any>) : null
+    );
     try {
       const docRef = doc(db, 'institution', 'main_store');
       await setDoc(docRef, {

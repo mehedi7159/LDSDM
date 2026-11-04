@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import {
   Users,
   UserCheck,
@@ -104,7 +105,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     currentUser,
     currentMember,
     cloudHydrated,
-    cloudHydrationTimedOut
+    cloudHydrationTimedOut,
+    isRecordUnconfirmed
   } = useApp();
 
   const isBn = language === 'bn';
@@ -1365,6 +1367,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
                           {isBn ? (staff.nameBn || staff.name) : staff.name}
                         </h4>
+                        {/* Phase 1 (Sadia fix): a record whose cloud
+                            confirm failed stays visibly marked until
+                            its queued payload lands. */}
+                        {(isRecordUnconfirmed('teachers', staff.id) || isRecordUnconfirmed('users', staff.id)) && (
+                          <UnconfirmedBadge isBn={isBn} />
+                        )}
                         {Boolean(staff.status?.toUpperCase() === 'PENDING' || pendingMembers.some(m => m.uid === staff.id || (staff.email && m.email?.toLowerCase() === staff.email.toLowerCase()))) ? (
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">

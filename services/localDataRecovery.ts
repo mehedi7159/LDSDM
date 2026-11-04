@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { assertRestorePayloadSafe } from './mainStoreWrite';
 import type {
   SchoolProfile,
   SchoolClass,
@@ -381,6 +382,12 @@ export async function restoreValidatedSnapshotToFirestore(
   };
 
   const docRef = doc(db, 'institution', 'main_store');
+  // Phase 1 choke point: this subset payload carries no teachers/users
+  // keys by design, so the degradation check compares its students
+  // against the CURRENT cloud records — a public-shaped snapshot
+  // restoring over fuller cloud records is refused, not applied.
+  const existingSnap = await getDoc(docRef);
+  assertRestorePayloadSafe(payload, existingSnap.exists() ? (existingSnap.data() as Record<string, any>) : null);
   await setDoc(docRef, payload, { merge: true });
 
   return {

@@ -54,7 +54,14 @@ const pickList = (list: any, keys: string[]): any[] =>
   Array.isArray(list) ? list.map((item) => pickFields(item, keys)) : [];
 
 // Fields of a student record that the public portal displays or searches by.
-const PUBLIC_STUDENT_FIELDS = [
+/**
+ * The public-portal field list is also the Phase 1 choke point's
+ * reference shape (services/mainStoreWrite.ts): a student record whose
+ * keys are all in this list, replacing a fuller cloud record, is a
+ * public-subset degradation and is refused at write time. Keep this
+ * list in sync with what the portal actually renders.
+ */
+export const PUBLIC_STUDENT_FIELDS = [
   'id',
   'studentId',      // public lookup key (printed on ID card / result)
   'studentCode',    // public lookup key (StudentProfileView login)

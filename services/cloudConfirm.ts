@@ -51,12 +51,32 @@
  *   lose each other's records (last-write-wins on the array) — the union
  *   only protects sequential writes. This matches the existing auto-sync
  *   behavior; it is not made worse.
+ *
+ * PHASE 1 (sync hardening, 4 Nov 2026): the kind-only queue above is
+ * now LEGACY — AppContext drains it once (migration) and new failures
+ * queue the full PAYLOAD instead (services/payloadQueue.ts). The
+ * writers below also gained: id assertion (loud, never silent skip),
+ * public-shape degradation refusal for students, a non-union delete
+ * writer (student deletes no longer resurrect via union), a trash-op
+ * writer, scalar writers (schoolProfile, markEntryEnabled), and
+ * confirmed writers for every field that previously depended on the
+ * wholesale auto-sync (exams, assignments, promotion, remarks,
+ * subjects, classes, academic years, sections). The wholesale
+ * auto-sync itself is replaced by a diff/union propagator in
+ * AppContext — no writer in this module can shrink a list.
  */
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { DailyStudentAttendanceRecord, DailyStaffAttendanceRecord } from './dailyAttendanceService';
-import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem, StaffLeaveRecord } from '../types';
-import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../types/academic';
+import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem, StaffLeaveRecord, Exam, Subject, SchoolClass, RemarkRecord } from '../types';
+import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent, AcademicYear, Section, ClassSubjectAssignment, TeacherSubjectAssignment, ClassTeacherAssignment, ExamSubjectAssignment } from '../types/academic';
+import type { PromotionHistoryRecord } from '../types/promotion';
+import {
+  assertUpsertRecords,
+  findDegradingStudentIds,
+  validateDeleteOp,
+} from './mainStoreWrite';
+import { fieldKeyFn } from './payloadQueue';
 
 export const ATTENDANCE_CLOUD_FAILURE_MESSAGE =
   'হাজিরা এই ফোনে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
@@ -99,6 +119,34 @@ export const FEE_TYPES_CLOUD_FAILURE_MESSAGE =
 export const LEAVE_CLOUD_FAILURE_MESSAGE =
   'ছুটির আবেদন এই ফোনে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
+// Phase 1 (sync hardening, 4 Nov 2026): failure texts for the fields
+// that had no confirmed writer before. Same honest shape: saved
+// locally, NOT yet in cloud, retry action. Never "saved" without
+// confirmation.
+export const EXAMS_CLOUD_FAILURE_MESSAGE =
+  'পরীক্ষার তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const ASSIGNMENTS_CLOUD_FAILURE_MESSAGE =
+  'অ্যাসাইনমেন্টের তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const PROMOTION_CLOUD_FAILURE_MESSAGE =
+  'প্রমোশনের তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const REMARKS_CLOUD_FAILURE_MESSAGE =
+  'মন্তব্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE =
+  'প্রতিষ্ঠানের তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const MARK_ENTRY_CLOUD_FAILURE_MESSAGE =
+  'মার্ক এন্ট্রি সেটিং এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const DELETE_CLOUD_FAILURE_MESSAGE =
+  'মোছা তথ্য এই ডিভাইসে আপডেট হয়েছে, কিন্তু cloud-এ যায়নি — আবার চেষ্টা না করলে পরের বার ফিরে আসতে পারে। ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const TRASH_CLOUD_FAILURE_MESSAGE =
+  'ট্র্যাশের তথ্য এই ডিভাইসে আপডেট হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
 // HR Phase 5: payroll salary saves reuse the transactions-field confirm
 // (confirmFeeCloudSync) with their own failure text — the voucher is
 // local-only until the confirm lands, so no receipt may print before it.
@@ -132,19 +180,30 @@ export type PendingConfirmKind =
 
 export type CloudConfirmResult = { success: boolean; message?: string };
 
+/** Union by record key; incoming (local) records win on key conflict. */
+export function mergeRecordsByKey<T>(
+  existing: T[],
+  incoming: T[],
+  keyFn: (r: T) => string
+): T[] {
+  const map = new Map<string, T>();
+  (existing || []).forEach((r) => {
+    const k = r ? keyFn(r) : '';
+    if (k) map.set(k, r);
+  });
+  (incoming || []).forEach((r) => {
+    const k = r ? keyFn(r) : '';
+    if (k) map.set(k, r);
+  });
+  return Array.from(map.values());
+}
+
 /** Union by record id; incoming (local) records win on id conflict. */
 export function mergeRecordsById<T extends { id: string }>(
   existing: T[],
   incoming: T[]
 ): T[] {
-  const map = new Map<string, T>();
-  (existing || []).forEach(r => {
-    if (r && r.id) map.set(r.id, r);
-  });
-  (incoming || []).forEach(r => {
-    if (r && r.id) map.set(r.id, r);
-  });
-  return Array.from(map.values());
+  return mergeRecordsByKey(existing, incoming, (r) => (r && r.id ? r.id : ''));
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -169,41 +228,72 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * — '', 0, false and null are valid Firestore values and are kept.
  * Records without undefined keys pass through untouched (same object).
  */
-function stripUndefinedRecord<T extends { id: string }>(record: T): T {
+function stripUndefinedRecord<T>(record: T): T {
   if (!record || typeof record !== 'object') return record;
   let dirty = false;
-  for (const value of Object.values(record)) {
+  for (const value of Object.values(record as Record<string, unknown>)) {
     if (value === undefined) { dirty = true; break; }
   }
   if (!dirty) return record;
   const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(record)) {
+  for (const [key, value] of Object.entries(record as Record<string, unknown>)) {
     if (value !== undefined) out[key] = value;
   }
   return out as T;
 }
 
+/**
+ * Phase 1 choke-point routing (4 Nov 2026): every confirmed writer
+ * passes through here, so no writer can bypass the validators.
+ *  - Id assertion: a record without its field's stable key throws
+ *    (the old merge silently skipped id-less records — a save that
+ *    looked successful while the record never landed).
+ *  - Students degradation: an incoming public-shaped student record
+ *    replacing a fuller cloud record throws the WHOLE write (fail
+ *    closed) — the 11:17 degradation class, at one-record blast
+ *    radius instead of whole-store.
+ *  - Empty incoming lists are skipped, never written: a union write
+ *    of [] is a no-op anyway, and skipping keeps an empty local list
+ *    from ever being mistaken for an instruction to clear the field.
+ *    Deletions never flow through here — they use the delete writers.
+ */
 async function writeFieldsToCloud(
-  fields: Record<string, { id: string }[]>,
-  updatedBy: string
+  fields: Record<string, Record<string, any>[]>,
+  updatedBy: string,
+  keyFns?: Record<string, (r: Record<string, any>) => string>
 ): Promise<void> {
   const ref = doc(db, 'institution', 'main_store');
   const snap = await getDoc(ref);
   const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
   const payload: Record<string, unknown> = { updatedBy, updatedAt: new Date().toISOString() };
   for (const [field, localRecords] of Object.entries(fields)) {
-    const existing = data[field] as { id: string }[] | undefined;
-    payload[field] = mergeRecordsById(existing || [], localRecords).map(stripUndefinedRecord);
+    const records = localRecords || [];
+    if (records.length === 0) continue;
+    const keyFn = (keyFns && keyFns[field]) || fieldKeyFn(field);
+    assertUpsertRecords(field, records, keyFn, field === 'remarks' ? 'studentId+examId' : field === 'feeStructures' ? 'classLevel' : 'id');
+    const existing = data[field] as Record<string, any>[] | undefined;
+    if (field === 'students') {
+      const degrading = findDegradingStudentIds(existing || [], records);
+      if (degrading.length > 0) {
+        throw new Error(
+          `Phase 1 choke point: students write rejected — ${degrading.length} record(s) carry only public fields while the cloud holds fuller records for them. ` +
+            `Writing them would degrade those records, so the whole write was refused.`
+        );
+      }
+    }
+    payload[field] = mergeRecordsByKey(existing || [], records, keyFn).map(stripUndefinedRecord);
   }
+  if (Object.keys(payload).length <= 2) return;
   await setDoc(ref, payload, { merge: true });
 }
 
 async function writeFieldToCloud(
   field: string,
-  localRecords: { id: string }[],
-  updatedBy: string
+  localRecords: Record<string, any>[],
+  updatedBy: string,
+  keyFn?: (r: Record<string, any>) => string
 ): Promise<void> {
-  await writeFieldsToCloud({ [field]: localRecords }, updatedBy);
+  await writeFieldsToCloud({ [field]: localRecords }, updatedBy, keyFn ? { [field]: keyFn } : undefined);
 }
 
 export async function writeAttendanceFieldToCloud(
@@ -267,14 +357,55 @@ export async function writeStudentsFieldToCloud(
   );
 }
 
-/** Student delete touches two fields at once (students + trashBin), so one write carries both — never a half-deleted state. */
+/**
+ * Phase 1 (sync hardening) — student-delete derivation, shared by the
+ * writer and by AppContext's failure path (so the queued payload names
+ * exactly the same ids the write would have removed).
+ *
+ * The removed ids come ONLY from trash entries: a student-type trash
+ * entry whose data.id is missing from the post-delete student list.
+ * Deriving from "cloud students minus local students" would be WRONG
+ * for a stale local list — it would delete newer cloud students the
+ * device had never seen. Trash entries are the explicit delete
+ * evidence, so they are the only safe source.
+ */
+export function deriveStudentDeleteOp(
+  students: Student[],
+  trashBin: { id: string; type?: string; data?: any }[]
+): { deletedIds: string[]; trashEntries: { id: string }[] } {
+  const studentIds = new Set((students || []).map((s) => s.id));
+  const deletedIds: string[] = [];
+  (trashBin || []).forEach((t) => {
+    if (t && t.type === 'student' && t.data && t.data.id && !studentIds.has(t.data.id)) {
+      deletedIds.push(String(t.data.id));
+    }
+  });
+  if (deletedIds.length === 0) {
+    throw new Error(
+      'Phase 1 choke point: student delete refused — no trashed student id found in the delete payload. ' +
+        'Refusing instead of guessing which students to remove.'
+    );
+  }
+  return { deletedIds, trashEntries: (trashBin || []).filter((t) => t && t.id) as { id: string }[] };
+}
+
+/**
+ * Student delete (Phase 1 fix for audit rank 3): the old version
+ * unioned students + trashBin, so the deleted student — absent
+ * locally — was MERGED BACK from the cloud existing list and the
+ * delete never stuck via this path (it depended on a later wholesale
+ * auto-sync). Now the write REMOVES exactly the trashed ids and
+ * appends the trash entries in the SAME write — no resurrection, no
+ * half-deleted state.
+ */
 export async function writeStudentDeleteFieldsToCloud(
   students: Student[],
-  trashBin: { id: string }[],
+  trashBin: { id: string; type?: string; data?: any }[],
   updatedBy: string
 ): Promise<void> {
+  const { deletedIds, trashEntries } = deriveStudentDeleteOp(students, trashBin);
   await withTimeout(
-    writeFieldsToCloud({ students, trashBin }, updatedBy),
+    writeDeleteFieldsToCloud([{ field: 'students', ids: deletedIds }], trashEntries as any, updatedBy),
     CONFIRM_TIMEOUT_MS,
     'student delete cloud confirm'
   );
@@ -342,15 +473,17 @@ export async function writeFeeStructuresFieldToCloud(
   updatedBy: string
 ): Promise<void> {
   const write = async (): Promise<void> => {
+    // Phase 1: classLevel assertion is now loud (was silently skipped
+    // by the old map loop) — a structure without a classLevel can
+    // never be keyed, so the write is refused instead of dropped.
+    assertUpsertRecords('feeStructures', structures as any, (r) => (r.classLevel ? String(r.classLevel) : ''), 'classLevel');
+    if (structures.length === 0) return;
     const ref = doc(db, 'institution', 'main_store');
     const snap = await getDoc(ref);
     const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
     const existing = (data.feeStructures as { id: string; classLevel: string }[] | undefined) || [];
-    const map = new Map<string, { id: string; classLevel: string }>();
-    existing.forEach(r => { if (r && r.classLevel) map.set(r.classLevel, r); });
-    structures.forEach(r => { if (r && r.classLevel) map.set(r.classLevel, r); });
     await setDoc(ref, {
-      feeStructures: Array.from(map.values()),
+      feeStructures: mergeRecordsByKey(existing, structures, (r) => (r.classLevel ? r.classLevel : '')),
       updatedBy,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
@@ -372,6 +505,210 @@ export async function writeFeeTypesFieldToCloud(
     CONFIRM_TIMEOUT_MS,
     'fee types cloud confirm'
   );
+}
+
+// --- Phase 1 writers (4 Nov 2026): every field that previously had
+// NO confirmed writer and therefore depended on the wholesale
+// auto-sync. Same union-by-key, merge:true shape as the Step 2
+// writers; each write names exactly the records it touches.
+// Remarks key by studentId+examId (RemarkRecord carries no id);
+// feeStructures keeps classLevel keying (above); everything else by id.
+
+export async function writeExamsFieldToCloud(
+  exams: Exam[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('exams', exams as any, updatedBy), CONFIRM_TIMEOUT_MS, 'exams cloud confirm');
+}
+
+export async function writeExamSubjectAssignmentsFieldToCloud(
+  assignments: ExamSubjectAssignment[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('examSubjectAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'exam subject assignments cloud confirm');
+}
+
+export async function writeClassSubjectAssignmentsFieldToCloud(
+  assignments: ClassSubjectAssignment[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('classSubjectAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'class subject assignments cloud confirm');
+}
+
+export async function writeTeacherSubjectAssignmentsFieldToCloud(
+  assignments: TeacherSubjectAssignment[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('teacherSubjectAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'teacher subject assignments cloud confirm');
+}
+
+export async function writeClassTeacherAssignmentsFieldToCloud(
+  assignments: ClassTeacherAssignment[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('classTeacherAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'class teacher assignments cloud confirm');
+}
+
+export async function writePromotionHistoryFieldToCloud(
+  records: PromotionHistoryRecord[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('promotionHistory', records as any, updatedBy), CONFIRM_TIMEOUT_MS, 'promotion history cloud confirm');
+}
+
+export async function writeRemarksFieldToCloud(
+  remarks: RemarkRecord[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('remarks', remarks as any, updatedBy), CONFIRM_TIMEOUT_MS, 'remarks cloud confirm');
+}
+
+export async function writeSubjectsFieldToCloud(
+  subjects: Subject[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('subjects', subjects as any, updatedBy), CONFIRM_TIMEOUT_MS, 'subjects cloud confirm');
+}
+
+export async function writeClassesFieldToCloud(
+  classes: SchoolClass[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('classes', classes as any, updatedBy), CONFIRM_TIMEOUT_MS, 'classes cloud confirm');
+}
+
+export async function writeAcademicYearsFieldToCloud(
+  years: AcademicYear[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('academicYears', years as any, updatedBy), CONFIRM_TIMEOUT_MS, 'academic years cloud confirm');
+}
+
+export async function writeSectionsFieldToCloud(
+  sections: Section[],
+  updatedBy: string
+): Promise<void> {
+  await withTimeout(writeFieldToCloud('sections', sections as any, updatedBy), CONFIRM_TIMEOUT_MS, 'sections cloud confirm');
+}
+
+/**
+ * Scalar writers: schoolProfile is an object (not an array) and
+ * markEntryEnabled is a boolean. Both are single-field setDoc merge
+ * writes — they touch nothing else. A non-boolean markEntryEnabled or
+ * a non-object profile is refused loudly, never written.
+ */
+export async function writeSchoolProfileFieldToCloud(
+  profile: Record<string, any>,
+  updatedBy: string
+): Promise<void> {
+  const write = async (): Promise<void> => {
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
+      throw new Error('Phase 1 choke point: schoolProfile write rejected — profile is not an object.');
+    }
+    const ref = doc(db, 'institution', 'main_store');
+    await setDoc(ref, {
+      schoolProfile: stripUndefinedRecord(profile),
+      updatedBy,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'school profile cloud confirm');
+}
+
+export async function writeMarkEntryEnabledFieldToCloud(
+  enabled: boolean,
+  updatedBy: string
+): Promise<void> {
+  const write = async (): Promise<void> => {
+    if (typeof enabled !== 'boolean') {
+      throw new Error('Phase 1 choke point: markEntryEnabled write rejected — value is not a boolean.');
+    }
+    const ref = doc(db, 'institution', 'main_store');
+    await setDoc(ref, {
+      markEntryEnabled: enabled,
+      updatedBy,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'mark entry cloud confirm');
+}
+
+/**
+ * Phase 1 DELETE writer (upsert/delete split): removes EXACTLY the
+ * named ids from their fields AND appends the given trash entries in
+ * the SAME write, failing closed if the write itself fails. An id
+ * that is already absent from the cloud is treated as already gone
+ * (idempotent success for that id) — a local-only record's delete
+ * must not fail forever just because the cloud never had it. This is
+ * the writer the plan's "fail closed if the ids are not found" means:
+ * the WRITE fails closed, not the id lookup. Trash-first UI (which
+ * deletes gain trash entries) is Phase 2; this writer accepts an
+ * empty trash list so today's no-trash deletes (teacher/user,
+ * notice) keep their current behavior while gaining confirmation.
+ */
+export async function writeDeleteFieldsToCloud(
+  removals: { field: string; ids: string[] }[],
+  trashEntries: { id: string }[],
+  updatedBy: string
+): Promise<void> {
+  const write = async (): Promise<void> => {
+    const cleanRemovals = (removals || []).filter((r) => r && r.ids && r.ids.length > 0);
+    const cleanTrash = (trashEntries || []).filter((t) => t && t.id);
+    if (cleanRemovals.length === 0 && cleanTrash.length === 0) return;
+    validateDeleteOp(cleanRemovals, cleanTrash);
+    const ref = doc(db, 'institution', 'main_store');
+    const snap = await getDoc(ref);
+    const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
+    const payload: Record<string, unknown> = { updatedBy, updatedAt: new Date().toISOString() };
+    for (const removal of cleanRemovals) {
+      const existing = data[removal.field] as Record<string, any>[] | undefined;
+      const keyFn = fieldKeyFn(removal.field);
+      const ids = new Set(removal.ids);
+      payload[removal.field] = (existing || []).filter((r) => !ids.has(keyFn(r)));
+    }
+    if (cleanTrash.length > 0) {
+      const existingTrash = (data.trashBin as { id: string }[] | undefined) || [];
+      payload.trashBin = mergeRecordsByKey(existingTrash, cleanTrash as any, (r: any) => (r.id ? String(r.id) : '')).map(stripUndefinedRecord);
+    }
+    await setDoc(ref, payload, { merge: true });
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'delete cloud confirm');
+}
+
+/**
+ * Phase 1 TRASH-OP writer (non-union, by id): restore, permanent
+ * delete, restore-all and empty all flow through one read-modify-
+ * write. The trash list itself is computed from the CURRENT cloud
+ * trash minus the named ids (never from a stale local list), so a
+ * newer trash entry added by another device is never dropped; the
+ * restored records are unioned into their lists in the same write,
+ * so a restore can never leave a record in neither list nor trash.
+ */
+export async function writeTrashOpToCloud(
+  removeTrashIds: string[],
+  upserts: Record<string, Record<string, any>[]>,
+  updatedBy: string
+): Promise<void> {
+  const write = async (): Promise<void> => {
+    const ids = (removeTrashIds || []).filter((id) => typeof id === 'string' && id.length > 0);
+    const upsertFields = Object.entries(upserts || {}).filter(([, recs]) => recs && recs.length > 0);
+    if (ids.length === 0 && upsertFields.length === 0) return;
+    const ref = doc(db, 'institution', 'main_store');
+    const snap = await getDoc(ref);
+    const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
+    const payload: Record<string, unknown> = { updatedBy, updatedAt: new Date().toISOString() };
+    const existingTrash = (data.trashBin as { id: string }[] | undefined) || [];
+    const idSet = new Set(ids);
+    payload.trashBin = existingTrash.filter((t) => !t.id || !idSet.has(String(t.id)));
+    for (const [field, records] of upsertFields) {
+      const keyFn = fieldKeyFn(field);
+      assertUpsertRecords(field, records, keyFn);
+      const existing = data[field] as Record<string, any>[] | undefined;
+      payload[field] = mergeRecordsByKey(existing || [], records, keyFn).map(stripUndefinedRecord);
+    }
+    await setDoc(ref, payload, { merge: true });
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'trash op cloud confirm');
 }
 
 /** Runs a caller-supplied write and maps its outcome (deleteTeacher template). */

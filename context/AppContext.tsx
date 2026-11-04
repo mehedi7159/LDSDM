@@ -66,7 +66,6 @@ import {
   googlePopupErrorMessage,
   isGoogleOnlyAccount
 } from '../services/googleSignupRules';
-import { buildMainStorePayload } from '../services/mainStorePayload';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { buildPublicPortalData } from '../services/publicPortal';
 import {
@@ -102,7 +101,6 @@ import {
   recordStudentAuditEvent,
   hydrateStudentLifecycle
 } from '../services/studentService';
-import { confirmDeleteCloudSync } from '../services/staffDeletion';
 import {
   writeAttendanceFieldToCloud,
   writeStaffAttendanceFieldToCloud,
@@ -126,13 +124,50 @@ import {
   STUDENT_DELETE_CLOUD_FAILURE_MESSAGE,
   STAFF_CLOUD_FAILURE_MESSAGE,
   NOTICES_CLOUD_FAILURE_MESSAGE,
+  NOTICE_DELETE_CLOUD_FAILURE_MESSAGE,
   SCHEDULE_CLOUD_FAILURE_MESSAGE,
   LEAVE_CLOUD_FAILURE_MESSAGE,
-  queuePendingConfirm,
+  writeExamsFieldToCloud,
+  writeExamSubjectAssignmentsFieldToCloud,
+  writeClassSubjectAssignmentsFieldToCloud,
+  writeTeacherSubjectAssignmentsFieldToCloud,
+  writeClassTeacherAssignmentsFieldToCloud,
+  writePromotionHistoryFieldToCloud,
+  writeRemarksFieldToCloud,
+  writeSubjectsFieldToCloud,
+  writeClassesFieldToCloud,
+  writeAcademicYearsFieldToCloud,
+  writeSectionsFieldToCloud,
+  writeSchoolProfileFieldToCloud,
+  writeMarkEntryEnabledFieldToCloud,
+  writeDeleteFieldsToCloud,
+  writeTrashOpToCloud,
+  deriveStudentDeleteOp,
+  mergeRecordsByKey,
+  EXAMS_CLOUD_FAILURE_MESSAGE,
+  ASSIGNMENTS_CLOUD_FAILURE_MESSAGE,
+  PROMOTION_CLOUD_FAILURE_MESSAGE,
+  REMARKS_CLOUD_FAILURE_MESSAGE,
+  SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE,
+  MARK_ENTRY_CLOUD_FAILURE_MESSAGE,
+  DELETE_CLOUD_FAILURE_MESSAGE,
+  TRASH_CLOUD_FAILURE_MESSAGE,
   clearPendingConfirm,
   readPendingConfirms,
   type CloudConfirmResult,
 } from '../services/cloudConfirm';
+import {
+  readPendingPayloads,
+  queuePendingPayload,
+  clearPendingPayload,
+  clearPendingPayloadsForField,
+  removePendingPayloadRecords,
+  queuedKeysForField,
+  mergeQueuedIntoList,
+  hasQueuedUpsertForField,
+  fieldKeyFn,
+  type PendingPayloadItem,
+} from '../services/payloadQueue';
 import {
   buildCreateAcademicYearPayload,
   buildUpdateAcademicYearPayload,
@@ -361,6 +396,29 @@ interface AppContextType extends AppState {
   updateFeeTypes: (types: FeeTypeDef[]) => void;
   confirmFeeStructuresCloudSync: (nextStructures?: ClassFeeStructure[]) => Promise<CloudConfirmResult>;
   confirmFeeTypesCloudSync: (nextTypes?: FeeTypeDef[]) => Promise<CloudConfirmResult>;
+  // Phase 1: confirmed writers for the fields that previously depended
+  // on the wholesale auto-sync, plus the generic delete/trash confirms
+  // and the payload-queue surface (badge + queue widget).
+  confirmExamsCloudSync: (nextExams?: Exam[]) => Promise<CloudConfirmResult>;
+  confirmExamSubjectAssignmentsCloudSync: (next?: ExamSubjectAssignment[]) => Promise<CloudConfirmResult>;
+  confirmClassSubjectAssignmentsCloudSync: (next?: ClassSubjectAssignment[]) => Promise<CloudConfirmResult>;
+  confirmTeacherSubjectAssignmentsCloudSync: (next?: TeacherSubjectAssignment[]) => Promise<CloudConfirmResult>;
+  confirmClassTeacherAssignmentsCloudSync: (next?: ClassTeacherAssignment[]) => Promise<CloudConfirmResult>;
+  confirmPromotionHistoryCloudSync: (next?: PromotionHistoryRecord[]) => Promise<CloudConfirmResult>;
+  confirmRemarksCloudSync: (next?: RemarkRecord[]) => Promise<CloudConfirmResult>;
+  confirmSubjectsCloudSync: (next?: Subject[]) => Promise<CloudConfirmResult>;
+  confirmClassesCloudSync: (next?: SchoolClass[]) => Promise<CloudConfirmResult>;
+  confirmAcademicYearsCloudSync: (next?: AcademicYear[]) => Promise<CloudConfirmResult>;
+  confirmSectionsCloudSync: (next?: Section[]) => Promise<CloudConfirmResult>;
+  confirmSchoolProfileCloudSync: (nextProfile?: SchoolProfile) => Promise<CloudConfirmResult>;
+  confirmMarkEntryEnabledCloudSync: (nextValue?: boolean) => Promise<CloudConfirmResult>;
+  confirmDeleteRecordsCloudSync: (removals: { field: string; ids: string[] }[], trashEntries: { id: string }[], failureMessage?: string) => Promise<CloudConfirmResult>;
+  confirmTrashOpCloudSync: (removeTrashIds: string[], upserts: Record<string, any[]>, failureMessage?: string) => Promise<CloudConfirmResult>;
+  retryPendingCloudConfirms: () => Promise<void>;
+  pendingPayloads: PendingPayloadItem[];
+  pendingSyncCount: number;
+  isRecordUnconfirmed: (field: string, key: string) => boolean;
+  discardPendingPayload: (id: string) => void;
   addNotice: (notice: Omit<NoticeItem, 'id' | 'createdAt'>) => NoticeItem;
   updateNotice: (notice: NoticeItem) => NoticeItem;
   deleteNotice: (id: string) => void;
@@ -898,6 +956,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const deleteNotice = (id: string) => {
     setNotices(prev => prev.filter(n => n.id !== id));
+    // Phase 1: notices previously had no trash and no confirm — the
+    // union confirm (if a caller used it) would have resurrected the
+    // notice. The delete writer removes exactly this id. Trash-first
+    // for notices is Phase 2 (today: no trash entry, same as before).
+    void confirmDeleteRecordsCloudSync([{ field: 'notices', ids: [id] }], [], NOTICE_DELETE_CLOUD_FAILURE_MESSAGE);
   };
 
   const togglePinNotice = (id: string) => {
@@ -1606,14 +1669,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setUsers(remainingUsers);
     setTeachers(remainingTeachers);
     // Awaited cloud confirm (was: unconditional success while the
-    // write lived in the debounced auto-sync).
-    const cloudSync = await confirmDeleteCloudSync(() =>
-      setDoc(doc(db, 'institution', 'main_store'), {
-        teachers: remainingTeachers,
-        users: remainingUsers,
-        updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user',
-        updatedAt: new Date().toISOString(),
-      }, { merge: true })
+    // write lived in the debounced auto-sync). Phase 1: the delete
+    // writer removes exactly these ids (never a list replacement).
+    const removedUserIds = users.filter(u => u.id === userId).map(u => u.id);
+    const removedTeacherIds = teachers.filter(t =>
+      t.id === userId ||
+      (email !== '' && (t.email || '').toLowerCase() === email)
+    ).map(t => t.id);
+    const cloudSync = await confirmDeleteRecordsCloudSync(
+      [
+        { field: 'teachers', ids: removedTeacherIds },
+        { field: 'users', ids: removedUserIds },
+      ],
+      [],
+      DELETE_CLOUD_FAILURE_MESSAGE
     );
     if (!cloudSync.success) {
       setCloudStatus('error');
@@ -1878,6 +1947,72 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // (institution/public_portal, anonymous portal visitors).
   const feedKindRef = useRef<'none' | 'main' | 'public'>('none');
 
+  // Phase 1 (sync hardening, 4 Nov 2026) — last CONFIRMED server
+  // snapshot, per field. The diff auto-sync compares current state
+  // against this ref (never against a wholesale cloud doc), so a stale
+  // session can only ever ADD/UPDATE records, never replace a list.
+  // Updated (a) by applyRemoteData for every field present in the
+  // snapshot, and (b) by every successful confirm/diff write for the
+  // fields it wrote. A field never present in a snapshot stays
+  // undefined until its first confirmed write.
+  const lastConfirmedRef = useRef<Record<string, any>>({});
+
+  // Phase 1 — refs for the fields that previously had no confirm
+  // reader (same pattern as studentsRef/transactionsRef above).
+  const examsRef = useRef<Exam[]>([]);
+  useEffect(() => { examsRef.current = exams; }, [exams]);
+  const subjectsRef = useRef<Subject[]>([]);
+  useEffect(() => { subjectsRef.current = subjects; }, [subjects]);
+  const classesRef = useRef<SchoolClass[]>([]);
+  useEffect(() => { classesRef.current = classes; }, [classes]);
+  const academicYearsRef = useRef<AcademicYear[]>([]);
+  useEffect(() => { academicYearsRef.current = academicYears; }, [academicYears]);
+  const sectionsRef = useRef<Section[]>([]);
+  useEffect(() => { sectionsRef.current = sections; }, [sections]);
+  const schoolProfileRef = useRef<SchoolProfile>(schoolProfile);
+  useEffect(() => { schoolProfileRef.current = schoolProfile; }, [schoolProfile]);
+  const markEntryEnabledRef = useRef<boolean>(markEntryEnabled);
+  useEffect(() => { markEntryEnabledRef.current = markEntryEnabled; }, [markEntryEnabled]);
+  const classSubjectAssignmentsRef = useRef<ClassSubjectAssignment[]>([]);
+  useEffect(() => { classSubjectAssignmentsRef.current = classSubjectAssignments; }, [classSubjectAssignments]);
+  const teacherSubjectAssignmentsRef = useRef<TeacherSubjectAssignment[]>([]);
+  useEffect(() => { teacherSubjectAssignmentsRef.current = teacherSubjectAssignments; }, [teacherSubjectAssignments]);
+  const classTeacherAssignmentsRef = useRef<ClassTeacherAssignment[]>([]);
+  useEffect(() => { classTeacherAssignmentsRef.current = classTeacherAssignments; }, [classTeacherAssignments]);
+  const examSubjectAssignmentsRef = useRef<ExamSubjectAssignment[]>([]);
+  useEffect(() => { examSubjectAssignmentsRef.current = examSubjectAssignments; }, [examSubjectAssignments]);
+  const promotionHistoryRef = useRef<PromotionHistoryRecord[]>([]);
+  useEffect(() => { promotionHistoryRef.current = promotionHistory; }, [promotionHistory]);
+  const remarksRef = useRef<RemarkRecord[]>([]);
+  useEffect(() => { remarksRef.current = remarks; }, [remarks]);
+  const classRoutinesRef = useRef<ClassRoutineItem[]>([]);
+  useEffect(() => { classRoutinesRef.current = classRoutines; }, [classRoutines]);
+  const syllabusItemsRef = useRef<SyllabusItem[]>([]);
+  useEffect(() => { syllabusItemsRef.current = syllabusItems; }, [syllabusItems]);
+  const calendarEventsRef = useRef<AcademicCalendarEvent[]>([]);
+  useEffect(() => { calendarEventsRef.current = calendarEvents; }, [calendarEvents]);
+
+  // Phase 1 — payload-queue mirror for UI (unconfirmed badge + queue
+  // widget). localStorage is the source of truth; this state is only
+  // a render mirror, refreshed whenever the queue changes.
+  const [pendingPayloads, setPendingPayloads] = useState<PendingPayloadItem[]>(() => {
+    try { return readPendingPayloads(); } catch { return []; }
+  });
+  const refreshPendingPayloads = () => {
+    try { setPendingPayloads(readPendingPayloads()); } catch {}
+  };
+  const pendingSyncCount = pendingPayloads.length;
+  const isRecordUnconfirmed = (field: string, key: string): boolean => {
+    try { return queuedKeysForField(field, pendingPayloads).has(key); } catch { return false; }
+  };
+  const discardPendingPayload = (id: string) => {
+    try {
+      const items = readPendingPayloads().filter((i) => i.id !== id);
+      localStorage.setItem('ldsdm_pending_cloud_payloads', JSON.stringify(items));
+    } catch {}
+    refreshPendingPayloads();
+  };
+
   // Monitor Firebase Auth changes and authoritatively verify Custom Claims (role: "admin") or designated Owner
   useEffect(() => {
     // Safety fail-safe: Ensure the UI never hangs in an infinite loading state
@@ -2055,9 +2190,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
+    // Phase 1: the values this snapshot actually applied, so the
+    // queued-payload preservation at the end can merge over them.
+    const snapshotApplied: Record<string, any> = {};
 
-    if (data.schoolProfile) {
+    if (data.schoolProfile && !hasQueuedUpsertForField('schoolProfile')) {
       setSchoolProfile(data.schoolProfile);
+      lastConfirmedRef.current['schoolProfile'] = data.schoolProfile;
+      snapshotApplied['schoolProfile'] = data.schoolProfile;
       try { localStorage.setItem('schoolProfile', JSON.stringify(data.schoolProfile)); } catch {}
     }
     if (data.students && Array.isArray(data.students)) {
@@ -2065,71 +2205,103 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         .filter(s => !s.id?.startsWith('demo-std-') && s.id !== 'st-1' && s.id !== 'st-2')
         .map(hydrateStudentLifecycle);
       setStudents(cleanStudents);
+      lastConfirmedRef.current['students'] = cleanStudents;
+      snapshotApplied['students'] = cleanStudents;
       try { localStorage.setItem('students', JSON.stringify(cleanStudents)); } catch {}
     }
     if (data.subjects && Array.isArray(data.subjects)) {
       const cleanSubjects = data.subjects.filter(s => !s.id?.startsWith('demo-sub-'));
       setSubjects(cleanSubjects);
+      lastConfirmedRef.current['subjects'] = cleanSubjects;
+      snapshotApplied['subjects'] = cleanSubjects;
       try { localStorage.setItem('subjects', JSON.stringify(cleanSubjects)); } catch {}
     }
     if (data.exams && Array.isArray(data.exams)) {
       setExams(data.exams);
+      lastConfirmedRef.current['exams'] = data.exams;
+      snapshotApplied['exams'] = data.exams;
       try { localStorage.setItem('exams', JSON.stringify(data.exams)); } catch {}
     }
     // Admin global mark-entry switch: only a real boolean overwrites
     // the default — an old cloud doc without the flag leaves it open.
-    if (typeof data.markEntryEnabled === 'boolean') {
+    if (typeof data.markEntryEnabled === 'boolean' && !hasQueuedUpsertForField('markEntryEnabled')) {
       setMarkEntryEnabled(data.markEntryEnabled);
+      lastConfirmedRef.current['markEntryEnabled'] = data.markEntryEnabled;
+      snapshotApplied['markEntryEnabled'] = data.markEntryEnabled;
       try { localStorage.setItem('markEntryEnabled', JSON.stringify(data.markEntryEnabled)); } catch {}
     }
     if (data.marks && Array.isArray(data.marks)) {
       const cleanMarks = data.marks.filter(m => !m.id?.startsWith('demo-mark-'));
       setMarks(cleanMarks);
+      lastConfirmedRef.current['marks'] = cleanMarks;
+      snapshotApplied['marks'] = cleanMarks;
       try { localStorage.setItem('marks', JSON.stringify(cleanMarks)); } catch {}
     }
     if (data.remarks && Array.isArray(data.remarks)) {
       setRemarks(data.remarks);
+      lastConfirmedRef.current['remarks'] = data.remarks;
+      snapshotApplied['remarks'] = data.remarks;
       try { localStorage.setItem('remarks', JSON.stringify(data.remarks)); } catch {}
     }
     if (data.classes && Array.isArray(data.classes)) {
       setClasses(data.classes);
+      lastConfirmedRef.current['classes'] = data.classes;
+      snapshotApplied['classes'] = data.classes;
       try { localStorage.setItem('classes', JSON.stringify(data.classes)); } catch {}
     }
     if (data.academicYears && Array.isArray(data.academicYears)) {
       setAcademicYears(data.academicYears);
+      lastConfirmedRef.current['academicYears'] = data.academicYears;
+      snapshotApplied['academicYears'] = data.academicYears;
       try { localStorage.setItem('academicYears', JSON.stringify(data.academicYears)); } catch {}
     }
     if (data.sections && Array.isArray(data.sections)) {
       setSections(data.sections);
+      lastConfirmedRef.current['sections'] = data.sections;
+      snapshotApplied['sections'] = data.sections;
       try { localStorage.setItem('sections', JSON.stringify(data.sections)); } catch {}
     }
     if (data.transactions && Array.isArray(data.transactions)) {
       const cleanTransactions = data.transactions.filter(t => !t.id?.startsWith('tx-init-'));
       setTransactions(cleanTransactions);
+      lastConfirmedRef.current['transactions'] = cleanTransactions;
+      snapshotApplied['transactions'] = cleanTransactions;
       try { localStorage.setItem('madrasha_transactions', JSON.stringify(cleanTransactions)); } catch {}
     }
     if (data.feeStructures && Array.isArray(data.feeStructures)) {
       setFeeStructures(data.feeStructures);
+      lastConfirmedRef.current['feeStructures'] = data.feeStructures;
+      snapshotApplied['feeStructures'] = data.feeStructures;
       try { localStorage.setItem('madrasha_fee_structures', JSON.stringify(data.feeStructures)); } catch {}
     }
     if (data.feeTypes && Array.isArray(data.feeTypes) && data.feeTypes.length > 0) {
       setFeeTypes(data.feeTypes);
+      lastConfirmedRef.current['feeTypes'] = data.feeTypes;
+      snapshotApplied['feeTypes'] = data.feeTypes;
       try { localStorage.setItem('madrasha_fee_types', JSON.stringify(data.feeTypes)); } catch {}
     }
     if (data.trashBin && Array.isArray(data.trashBin)) {
       setTrashBin(data.trashBin);
+      lastConfirmedRef.current['trashBin'] = data.trashBin;
+      snapshotApplied['trashBin'] = data.trashBin;
       try { localStorage.setItem('madrasha_trash_bin', JSON.stringify(data.trashBin)); } catch {}
     }
     if (data.promotionHistory && Array.isArray(data.promotionHistory)) {
       setPromotionHistory(data.promotionHistory);
+      lastConfirmedRef.current['promotionHistory'] = data.promotionHistory;
+      snapshotApplied['promotionHistory'] = data.promotionHistory;
       try { localStorage.setItem('madrasha_promotion_history', JSON.stringify(data.promotionHistory)); } catch {}
     }
     if (data.teachers && Array.isArray(data.teachers)) {
       setTeachers(data.teachers);
+      lastConfirmedRef.current['teachers'] = data.teachers;
+      snapshotApplied['teachers'] = data.teachers;
       try { localStorage.setItem('teachers', JSON.stringify(data.teachers)); } catch {}
     }
     if (data.staffLeaves && Array.isArray(data.staffLeaves)) {
       setStaffLeaves(data.staffLeaves);
+      lastConfirmedRef.current['staffLeaves'] = data.staffLeaves;
+      snapshotApplied['staffLeaves'] = data.staffLeaves;
       try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(data.staffLeaves)); } catch {}
     }
     // Attendance hydration MERGES into the local services (24 Oct 2026
@@ -2145,37 +2317,55 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (data.dailyStudentAttendance && Array.isArray(data.dailyStudentAttendance)) {
       dailyAttendanceService.mergeStudentRecords(data.dailyStudentAttendance);
       setDailyStudentAttendance(dailyAttendanceService.getAllStudentRecords());
+      lastConfirmedRef.current['dailyStudentAttendance'] = dailyAttendanceService.getAllStudentRecords();
+      snapshotApplied['dailyStudentAttendance'] = dailyAttendanceService.getAllStudentRecords();
     }
     if (data.dailyStaffAttendance && Array.isArray(data.dailyStaffAttendance)) {
       dailyAttendanceService.mergeStaffRecords(data.dailyStaffAttendance);
       setDailyStaffAttendance(dailyAttendanceService.getAllStaffRecords());
+      lastConfirmedRef.current['dailyStaffAttendance'] = dailyAttendanceService.getAllStaffRecords();
+      snapshotApplied['dailyStaffAttendance'] = dailyAttendanceService.getAllStaffRecords();
     }
     if (data.classRoutines && Array.isArray(data.classRoutines)) {
       setClassRoutines(data.classRoutines);
+      lastConfirmedRef.current['classRoutines'] = data.classRoutines;
+      snapshotApplied['classRoutines'] = data.classRoutines;
       academicScheduleService.replaceRoutines(data.classRoutines);
     }
     if (data.syllabusItems && Array.isArray(data.syllabusItems)) {
       setSyllabusItems(data.syllabusItems);
+      lastConfirmedRef.current['syllabusItems'] = data.syllabusItems;
+      snapshotApplied['syllabusItems'] = data.syllabusItems;
       academicScheduleService.replaceSyllabusItems(data.syllabusItems);
     }
     if (data.calendarEvents && Array.isArray(data.calendarEvents)) {
       setCalendarEvents(data.calendarEvents);
+      lastConfirmedRef.current['calendarEvents'] = data.calendarEvents;
+      snapshotApplied['calendarEvents'] = data.calendarEvents;
       academicScheduleService.replaceCalendarEvents(data.calendarEvents);
     }
     if (data.classSubjectAssignments && Array.isArray(data.classSubjectAssignments)) {
       setClassSubjectAssignments(data.classSubjectAssignments);
+      lastConfirmedRef.current['classSubjectAssignments'] = data.classSubjectAssignments;
+      snapshotApplied['classSubjectAssignments'] = data.classSubjectAssignments;
       try { localStorage.setItem('madrasha_class_subject_assignments', JSON.stringify(data.classSubjectAssignments)); } catch {}
     }
     if (data.teacherSubjectAssignments && Array.isArray(data.teacherSubjectAssignments)) {
       setTeacherSubjectAssignments(data.teacherSubjectAssignments);
+      lastConfirmedRef.current['teacherSubjectAssignments'] = data.teacherSubjectAssignments;
+      snapshotApplied['teacherSubjectAssignments'] = data.teacherSubjectAssignments;
       try { localStorage.setItem('madrasha_teacher_subject_assignments', JSON.stringify(data.teacherSubjectAssignments)); } catch {}
     }
     if (data.classTeacherAssignments && Array.isArray(data.classTeacherAssignments)) {
       setClassTeacherAssignments(data.classTeacherAssignments);
+      lastConfirmedRef.current['classTeacherAssignments'] = data.classTeacherAssignments;
+      snapshotApplied['classTeacherAssignments'] = data.classTeacherAssignments;
       try { localStorage.setItem('madrasha_class_teacher_assignments', JSON.stringify(data.classTeacherAssignments)); } catch {}
     }
     if (data.examSubjectAssignments && Array.isArray(data.examSubjectAssignments)) {
       setExamSubjectAssignments(data.examSubjectAssignments);
+      lastConfirmedRef.current['examSubjectAssignments'] = data.examSubjectAssignments;
+      snapshotApplied['examSubjectAssignments'] = data.examSubjectAssignments;
       try { localStorage.setItem('madrasha_exam_subject_assignments', JSON.stringify(data.examSubjectAssignments)); } catch {}
     }
     if (data.users && Array.isArray(data.users)) {
@@ -2228,13 +2418,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           : withAdditional;
       });
       setUsers(healedUsers);
+      lastConfirmedRef.current['users'] = healedUsers;
+      snapshotApplied['users'] = healedUsers;
       try { localStorage.setItem('madrasha_app_users', JSON.stringify(healedUsers)); } catch {}
     }
     if (data.notices && Array.isArray(data.notices)) {
       const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
       setNotices(cleanNotices);
+      lastConfirmedRef.current['notices'] = cleanNotices;
+      snapshotApplied['notices'] = cleanNotices;
       try { localStorage.setItem('madrasha_notices', JSON.stringify(cleanNotices)); } catch {}
     }
+
+    // Phase 1 (Sadia fix, snapshot side): queued payloads survive
+    // the snapshot — merge them back over the just-applied snapshot
+    // lists for their ids, so an unconfirmed record is never wiped by
+    // a server snapshot arriving after a failed confirm.
+    preserveQueuedPayloads(snapshotApplied);
 
     setCloudStatus('connected');
     const timeStr = new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -2481,7 +2681,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return () => clearTimeout(t);
   }, [cloudHydrated]);
 
-  // Background debounced auto-sync to Firebase Firestore on local state changes
+  // Phase 1 (sync hardening, 4 Nov 2026): the auto-sync is now a
+  // DIFF/UNION-ONLY propagator. It compares each slice against the
+  // last CONFIRMED server snapshot and union-writes only new/changed
+  // records. It can NEVER shrink an array: deletions are absent from
+  // the diff by construction and flow only through the delete writers.
+  // Fields with queued payloads are skipped here — the retry owns
+  // them. The old wholesale full-payload setDoc is gone: a stale
+  // session holding old lists can no longer overwrite the cloud's
+  // newer lists, and a public-feed session can never write at all
+  // (guards below, unchanged from the 4 Nov clobber fix).
   useEffect(() => {
     if (isRemoteUpdateRef.current) return;
 
@@ -2489,25 +2698,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (!hasLoadedRemoteRef.current) return;
 
     // 4 Nov 2026 CLOBBER GUARD: never auto-sync until the MAIN store
-    // has hydrated. A session still on the public feed holds only the
-    // public subset (no teachers/users, picked student/mark fields).
-    // The old guard below used to let a signed-in session sync exactly
-    // that partial state: auth.currentUser is set the moment Firebase
-    // sign-in succeeds, BEFORE the feed switches to main — so when the
-    // main snapshot was slower than the 1200 ms debounce, the
-    // public-subset sync fired first and overwrote the full store
-    // (teachers/users wiped, students/marks degraded, 4 Nov 2026).
+    // has hydrated (see the guards' original comment — unchanged).
     if (!hasLoadedMainStoreRef.current) return;
 
     // Phase 2 (public-data split): a session on the public feed must
-    // never write back, signed in or not — it only holds the public
-    // subset. It syncs again once the main feed has landed (flag above).
+    // never write back, signed in or not.
     if (feedKindRef.current === 'public') {
-      return;
-    }
-
-    // CRITICAL EMPTY DATA PROTECTION: Never overwrite cloud data with empty local state
-    if (students.length === 0 && marks.length === 0) {
       return;
     }
 
@@ -2520,54 +2716,22 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // may predate the main feed, so re-check before any write.
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current) return;
       try {
-        const payload = buildMainStorePayload(
-          {
-            schoolProfile,
-            students,
-            subjects,
-            teachers,
-            classSubjectAssignments,
-            teacherSubjectAssignments,
-            classTeacherAssignments,
-            exams,
-            examSubjectAssignments,
-            marks,
-            remarks,
-            classes,
-            academicYears,
-            sections,
-            transactions,
-            feeStructures,
-            feeTypes,
-            trashBin,
-            promotionHistory,
-            users,
-            notices,
-            staffLeaves,
-            dailyStudentAttendance,
-            dailyStaffAttendance,
-            classRoutines,
-            syllabusItems,
-            calendarEvents,
-            markEntryEnabled
-          },
-          currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user'
-        );
-
-        await setDoc(doc(db, 'institution', 'main_store'), payload, { merge: true });
-
-        // Phase 2 (public-data split): keep the derived public portal
-        // document in step with the store. Written as a full replace (no
-        // merge) so records deleted from the store also disappear from
-        // the public document. A failure here never fails the main sync.
-        try {
-          await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData(payload));
-        } catch (pubErr: any) {
-          console.warn('Public portal sync notice:', pubErr?.message || pubErr);
+        const { wrote, failedFields } = await pushDiffToCloud();
+        if (wrote) {
+          // The public portal is derived from CONFIRMED cloud state
+          // (fresh getDoc), never from local state — so a degraded or
+          // unconfirmed local state can no longer propagate to the
+          // public document the way the 11:17 payload did.
+          await rebuildPublicPortalFromCloud();
         }
-
-        setCloudStatus('connected');
-        setCloudLastSynced(new Date().toLocaleTimeString());
+        if (failedFields.length > 0) {
+          // Failed deltas are queued as payloads by pushDiffToCloud;
+          // the error status + queue badge carry the retry story.
+          setCloudStatus('error');
+        } else {
+          setCloudStatus('connected');
+          setCloudLastSynced(new Date().toLocaleTimeString());
+        }
       } catch (err: any) {
         console.warn('Failed to sync changes to Firestore:', err?.message || err);
         if (err?.code === 'permission-denied') {
@@ -2993,66 +3157,53 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   ]);
 
   // Force Push/Pull functions
+  // Phase 1: the manual push is now a DIFF push, not a full-payload
+  // overwrite. It pushes every unconfirmed upsert (the same diff the
+  // auto-sync runs), flushes the payload queue (so a pending DELETE
+  // is not left behind a "push successful" message — deletions never
+  // travel through the diff), and rebuilds the portal from confirmed
+  // cloud state. It deliberately does NOT push deletions by list
+  // replacement: deletions travel through the delete writers at
+  // delete time, and the queue flush replays them by named ids.
+  // The pre-hydration refusal (4 Nov clobber guard) is unchanged.
   const forcePushToCloud = async () => {
-    // 4 Nov 2026 clobber guard: a manual push from a session that has
-    // not hydrated the MAIN store would write partial (e.g. public
-    // subset) state over the full store. Both call sites catch and
-    // surface this as an error instead of a false success.
     if (!hasLoadedMainStoreRef.current) {
       setCloudStatus('error');
       throw new Error('মূল ডাটা এখনও লোড হয়নি — ক্লাউড পুশ করা যাবে না।');
     }
     setCloudStatus('syncing');
     try {
-      const payload = buildMainStorePayload(
-        {
-          schoolProfile,
-          students,
-          subjects,
-          teachers,
-          classSubjectAssignments,
-          teacherSubjectAssignments,
-          classTeacherAssignments,
-          exams,
-          examSubjectAssignments,
-          marks,
-          remarks,
-          classes,
-          academicYears,
-          sections,
-          transactions,
-          feeStructures,
-          feeTypes,
-          trashBin,
-          promotionHistory,
-          users,
-          notices,
-          staffLeaves,
-          dailyStudentAttendance,
-          dailyStaffAttendance,
-          classRoutines,
-          syllabusItems,
-          calendarEvents,
-          markEntryEnabled
-        },
-        currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || SUPER_ADMIN_EMAIL
-      );
-      await setDoc(doc(db, 'institution', 'main_store'), payload, { merge: true });
-
-      // Phase 2 (public-data split): refresh the derived public portal
-      // document alongside the manual push as well.
-      try {
-        await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData(payload));
-      } catch (pubErr: any) {
-        console.warn('Public portal sync notice:', pubErr?.message || pubErr);
+      const { failedFields } = await pushDiffToCloud();
+      await retryPendingCloudConfirms();
+      await rebuildPublicPortalFromCloud();
+      const remaining = readPendingPayloads();
+      if (failedFields.length > 0 || remaining.length > 0) {
+        setCloudStatus('error');
+        const detail = [
+          ...(failedFields.length > 0 ? [`এই ফিল্ডগুলো যায়নি: ${failedFields.join(', ')}`] : []),
+          ...(remaining.length > 0 ? [`${remaining.length}টি অপেক্ষমাণ তথ্য এখনো cloud-এ যায়নি`] : []),
+        ].join('। ');
+        throw new Error(`ক্লাউড পুশ আংশিক ব্যর্থ — ${detail}। অপেক্ষমাণ তালিকায় সংরক্ষিত আছে, আবার চেষ্টা করুন।`);
       }
-
       setCloudStatus('connected');
       setCloudLastSynced(new Date().toLocaleTimeString());
     } catch (e: any) {
       setCloudStatus('error');
       console.warn('Force push error:', e?.message || e);
       throw e;
+    }
+  };
+
+  // Phase 1: the public portal is derived from a FRESH confirmed
+  // main_store read, never from local state. A failure here never
+  // fails the main sync (same as before).
+  const rebuildPublicPortalFromCloud = async () => {
+    try {
+      const snap = await getDoc(doc(db, 'institution', 'main_store'));
+      if (!snap.exists()) return;
+      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData(snap.data()));
+    } catch (pubErr: any) {
+      console.warn('Public portal rebuild notice:', pubErr?.message || pubErr);
     }
   };
 
@@ -3968,8 +4119,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const deleteClass = (id: string) => {
     const cls = classes.find(c => c.id === id);
     if (cls) {
-      setTrashBin(prev => [{ id: generateId(), type: 'class', data: cls, deletedAt: new Date().toLocaleString() }, ...prev]);
+      const trashEntry = { id: generateId(), type: 'class', data: cls, deletedAt: new Date().toLocaleString() };
+      setTrashBin(prev => [trashEntry, ...prev]);
       setClasses(prev => prev.filter(c => c.id !== id));
+      void confirmDeleteRecordsCloudSync([{ field: 'classes', ids: [id] }], [trashEntry], DELETE_CLOUD_FAILURE_MESSAGE);
       if (authUser) {
         recordClassAuditEvent({
           action: 'CLASS_ARCHIVED',
@@ -4029,8 +4182,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const deleteSection = (id: string) => {
     const sec = sections.find(s => s.id === id);
     if (sec) {
-      setTrashBin(prev => [{ id: generateId(), type: 'section' as any, data: sec, deletedAt: new Date().toLocaleString() }, ...prev]);
+      const trashEntry = { id: generateId(), type: 'section' as any, data: sec, deletedAt: new Date().toLocaleString() };
+      setTrashBin(prev => [trashEntry, ...prev]);
       setSections(prev => prev.filter(s => s.id !== id));
+      void confirmDeleteRecordsCloudSync([{ field: 'sections', ids: [id] }], [trashEntry], DELETE_CLOUD_FAILURE_MESSAGE);
       if (authUser) {
         recordSectionAuditEvent({
           action: 'SECTION_ARCHIVED',
@@ -4129,8 +4284,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const clearPromotionHistory = () => {
+    const allIds = promotionHistory.map(h => h.id).filter(Boolean);
     setPromotionHistory([]);
     localStorage.removeItem('madrasha_promotion_history');
+    // Phase 1: an explicit clear is a delete, not a diff — the diff
+    // auto-sync never shrinks a list, so the clear travels through
+    // the delete writer (otherwise the next snapshot would resurrect
+    // the history).
+    if (allIds.length > 0) {
+      void confirmDeleteRecordsCloudSync([{ field: 'promotionHistory', ids: allIds }], [], DELETE_CLOUD_FAILURE_MESSAGE);
+    }
   };
 
   const addSubject = (subject: Omit<Subject, 'id'>) => {
@@ -4182,8 +4345,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const deleteSubject = (id: string) => {
     const sub = subjects.find(s => s.id === id);
     if (sub) {
-      setTrashBin(prev => [{ id: generateId(), type: 'subject', data: sub, deletedAt: new Date().toLocaleString() }, ...prev]);
+      const trashEntry = { id: generateId(), type: 'subject', data: sub, deletedAt: new Date().toLocaleString() };
+      setTrashBin(prev => [trashEntry, ...prev]);
       setSubjects(prev => prev.filter(s => s.id !== id));
+      void confirmDeleteRecordsCloudSync([{ field: 'subjects', ids: [id] }], [trashEntry], DELETE_CLOUD_FAILURE_MESSAGE);
       if (authUser) {
         recordSubjectAuditEvent({
           action: 'SUBJECT_ARCHIVED',
@@ -4340,33 +4505,30 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return { success: false, message: 'নিজের অ্যাকাউন্ট এখান থেকে মোছা যাবে না।' };
     }
 
-    // Lists as they must look after this delete — computed from the same
-    // closure values the guard above used, so the forced cloud write
-    // below carries exactly the deletion (React state updates are async,
-    // so awaiting the regular forcePushToCloud here would still push the
-    // OLD lists containing the deleted record).
-    const remainingTeachers = teachers.filter(t => !matches(t));
-    const remainingUsers = users.filter(u => !matches(u));
+    // Phase 1: the delete travels through the delete writer — it
+    // removes EXACTLY the matched ids (never a list replacement, so a
+    // stale closure can no longer wipe newer staff records) and
+    // queues the named ids on failure. Trash-first for teacher/user
+    // deletes is Phase 2 (today: no trash entry, same as before).
+    const removedTeacherIds = teachers.filter(matches).map(t => t.id);
+    const removedUserIds = users.filter(matches).map(u => u.id);
 
     setTeachers(prev => prev.filter(t => !matches(t)));
     setUsers(prev => prev.filter(u => !matches(u)));
 
-    // Cloud confirmation (25 Oct 2026 follow-up): previously this returned
-    // success unconditionally while the real cloud write lived in the
-    // debounced auto-sync and could fail silently (unauthenticated
-    // session, offline) — so a "deleted" record came back on the next
-    // hydration. Now the main_store teachers/users write is awaited here
-    // and a failure is reported plainly instead of a false success. The
-    // write touches ONLY teachers/users (+ metadata) so no other
-    // collection can be disturbed; the regular auto-sync still runs after
-    // the state change and rewrites the same filtered lists.
-    const cloudSync = await confirmDeleteCloudSync(() =>
-      setDoc(doc(db, 'institution', 'main_store'), {
-        teachers: remainingTeachers,
-        users: remainingUsers,
-        updatedBy: currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user',
-        updatedAt: new Date().toISOString(),
-      }, { merge: true })
+    // Cloud confirmation (25 Oct 2026 follow-up, Phase 1 writer):
+    // previously this returned success unconditionally while the real
+    // cloud write lived in the debounced auto-sync and could fail
+    // silently — so a "deleted" record came back on the next
+    // hydration. Now the delete writer is awaited here and a failure
+    // is reported plainly instead of a false success.
+    const cloudSync = await confirmDeleteRecordsCloudSync(
+      [
+        { field: 'teachers', ids: removedTeacherIds },
+        { field: 'users', ids: removedUserIds },
+      ],
+      [],
+      DELETE_CLOUD_FAILURE_MESSAGE
     );
     if (!cloudSync.success) {
       setCloudStatus('error');
@@ -4398,6 +4560,372 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const confirmActorName = () =>
     currentUser?.name || currentUser?.email || auth.currentUser?.email || authUser?.email || adminEmail || 'system_user';
 
+
+  // ---------------------------------------------------------------
+  // Phase 1 (sync hardening) helpers: diff, preservation, confirms.
+  // ---------------------------------------------------------------
+
+  /** Key-order-insensitive JSON compare for one record. */
+  const stableStringify = (value: any): string => {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value);
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+  };
+
+  /** Records in `current` that are new or changed vs `confirmed`. */
+  const diffRecords = (field: string, confirmed: any[] | undefined, current: any[]): any[] => {
+    const keyFn = fieldKeyFn(field);
+    const byKey = new Map<string, any>();
+    (confirmed || []).forEach((r) => {
+      const k = keyFn(r);
+      if (k) byKey.set(k, r);
+    });
+    return (current || []).filter((r) => {
+      const k = keyFn(r);
+      // Key-less records can never be confirmed; the writer rejects
+      // them loudly, so the diff never silently carries them.
+      if (!k) return false;
+      const prev = byKey.get(k);
+      if (!prev) return true;
+      return stableStringify(prev) !== stableStringify(r);
+    });
+  };
+
+  const confirmUpsertSuccess = (field: string, list: any[], legacyKind?: string) => {
+    lastConfirmedRef.current[field] = mergeRecordsByKey(lastConfirmedRef.current[field] || [], list, fieldKeyFn(field));
+    clearPendingPayloadsForField(field);
+    if (legacyKind) clearPendingConfirm(legacyKind as any);
+    refreshPendingPayloads();
+    void rebuildPublicPortalFromCloud();
+    setCloudStatus('connected');
+    setCloudLastSynced(new Date().toLocaleTimeString());
+  };
+
+  const confirmUpsertFailure = (field: string, list: any[]) => {
+    const delta = diffRecords(field, lastConfirmedRef.current[field], list);
+    if (delta.length > 0) {
+      queuePendingPayload({ field, op: 'upsert', records: delta, updatedBy: confirmActorName() });
+      refreshPendingPayloads();
+    }
+    setCloudStatus('error');
+  };
+
+  const confirmScalarSuccess = (field: string, value: any) => {
+    lastConfirmedRef.current[field] = value;
+    clearPendingPayloadsForField(field);
+    refreshPendingPayloads();
+    void rebuildPublicPortalFromCloud();
+    setCloudStatus('connected');
+    setCloudLastSynced(new Date().toLocaleTimeString());
+  };
+
+  const confirmScalarFailure = (field: string, value: any) => {
+    queuePendingPayload({ field, op: 'upsert', scalarValue: value, hasScalar: true, updatedBy: confirmActorName() });
+    refreshPendingPayloads();
+    setCloudStatus('error');
+  };
+
+  // Phase 1: the localStorage key each snapshot field mirrors to (the
+  // same keys applyRemoteData writes). Used by preservation so a
+  // merged list persists, not just renders.
+  const FIELD_LOCALSTORAGE_KEY: Record<string, string> = {
+    students: 'students',
+    subjects: 'subjects',
+    exams: 'exams',
+    marks: 'marks',
+    remarks: 'remarks',
+    classes: 'classes',
+    academicYears: 'academicYears',
+    sections: 'sections',
+    transactions: 'madrasha_transactions',
+    feeStructures: 'madrasha_fee_structures',
+    feeTypes: 'madrasha_fee_types',
+    trashBin: 'madrasha_trash_bin',
+    promotionHistory: 'madrasha_promotion_history',
+    teachers: 'teachers',
+    staffLeaves: 'madrasah_staff_leaves',
+    classSubjectAssignments: 'madrasha_class_subject_assignments',
+    teacherSubjectAssignments: 'madrasha_teacher_subject_assignments',
+    classTeacherAssignments: 'madrasha_class_teacher_assignments',
+    examSubjectAssignments: 'madrasha_exam_subject_assignments',
+    users: 'madrasha_app_users',
+    notices: 'madrasha_notices',
+  };
+
+  /**
+   * Phase 1 (Sadia fix, snapshot side): merge queued payloads back
+   * over the just-applied snapshot lists. Only fields the snapshot
+   * actually touched are considered (an absent field leaves local
+   * state — and its queued records — untouched already). Service-
+   * backed fields (attendance, schedule) are repaired in the services
+   * too, because snapshot hydration overwrote them there as well.
+   */
+  const preserveQueuedPayloads = (snapshotApplied: Record<string, any>) => {
+    const queued = readPendingPayloads();
+    if (queued.length === 0) return;
+    const applyList = (field: string, merged: any[]) => {
+      switch (field) {
+        case 'students': setStudents(merged); break;
+        case 'subjects': setSubjects(merged); break;
+        case 'exams': setExams(merged); break;
+        case 'marks': setMarks(merged); break;
+        case 'remarks': setRemarks(merged); break;
+        case 'classes': setClasses(merged); break;
+        case 'academicYears': setAcademicYears(merged); break;
+        case 'sections': setSections(merged); break;
+        case 'transactions': setTransactions(merged); break;
+        case 'feeStructures': setFeeStructures(merged); break;
+        case 'feeTypes': setFeeTypes(merged); break;
+        case 'trashBin': setTrashBin(merged); break;
+        case 'promotionHistory': setPromotionHistory(merged); break;
+        case 'teachers': setTeachers(merged); break;
+        case 'staffLeaves': setStaffLeaves(merged); break;
+        case 'classSubjectAssignments': setClassSubjectAssignments(merged); break;
+        case 'teacherSubjectAssignments': setTeacherSubjectAssignments(merged); break;
+        case 'classTeacherAssignments': setClassTeacherAssignments(merged); break;
+        case 'examSubjectAssignments': setExamSubjectAssignments(merged); break;
+        case 'users': setUsers(merged); break;
+        case 'notices': setNotices(merged); break;
+        default: break;
+      }
+      const key = FIELD_LOCALSTORAGE_KEY[field];
+      if (key) {
+        try { localStorage.setItem(key, JSON.stringify(merged)); } catch {}
+      }
+    };
+    for (const field of Object.keys(snapshotApplied)) {
+      if (field === 'schoolProfile' || field === 'markEntryEnabled') continue;
+      if (queuedKeysForField(field, queued).size === 0) continue;
+      if (field === 'dailyStudentAttendance') {
+        const deltas: any[] = [];
+        queued.forEach((item) => {
+          if (item.op === 'upsert' && item.field === field && item.records) deltas.push(...item.records);
+        });
+        if (deltas.length > 0) {
+          // Snapshot merge lets cloud win on key conflict; queued
+          // deltas are newer local truth, so they re-win here.
+          dailyAttendanceService.mergeStudentRecords(deltas);
+          setDailyStudentAttendance(dailyAttendanceService.getAllStudentRecords());
+        }
+        continue;
+      }
+      if (field === 'dailyStaffAttendance') {
+        const deltas: any[] = [];
+        queued.forEach((item) => {
+          if (item.op === 'upsert' && item.field === field && item.records) deltas.push(...item.records);
+        });
+        if (deltas.length > 0) {
+          dailyAttendanceService.mergeStaffRecords(deltas);
+          setDailyStaffAttendance(dailyAttendanceService.getAllStaffRecords());
+        }
+        continue;
+      }
+      const merged = mergeQueuedIntoList(snapshotApplied[field], field, queued);
+      if (field === 'classRoutines') {
+        academicScheduleService.replaceRoutines(merged as ClassRoutineItem[]);
+        setClassRoutines(merged);
+      } else if (field === 'syllabusItems') {
+        academicScheduleService.replaceSyllabusItems(merged as SyllabusItem[]);
+        setSyllabusItems(merged);
+      } else if (field === 'calendarEvents') {
+        academicScheduleService.replaceCalendarEvents(merged as AcademicCalendarEvent[]);
+        setCalendarEvents(merged);
+      } else {
+        applyList(field, merged);
+      }
+    }
+  };
+
+  /**
+   * Phase 1 diff/union push, shared by the auto-sync effect and the
+   * manual force push. Writes ONLY new/changed records (union), never
+   * a list replacement, and never a deletion. Returns whether any
+   * write happened and which fields failed (their deltas are queued).
+   */
+  const pushDiffToCloud = async (): Promise<{ wrote: boolean; failedFields: string[] }> => {
+    const queued = readPendingPayloads();
+    const actor = confirmActorName();
+    const failedFields: string[] = [];
+    let wrote = false;
+    const currentByField: Record<string, any[]> = {
+      students, subjects, exams, examSubjectAssignments, classSubjectAssignments,
+      teacherSubjectAssignments, classTeacherAssignments, marks, remarks, classes,
+      academicYears, sections, transactions, feeStructures, feeTypes,
+      promotionHistory, notices, staffLeaves, dailyStudentAttendance,
+      dailyStaffAttendance,
+    };
+    const singleWriters: Record<string, (records: any[], actor: string) => Promise<void>> = {
+      students: writeStudentsFieldToCloud,
+      subjects: writeSubjectsFieldToCloud,
+      exams: writeExamsFieldToCloud,
+      examSubjectAssignments: writeExamSubjectAssignmentsFieldToCloud,
+      classSubjectAssignments: writeClassSubjectAssignmentsFieldToCloud,
+      teacherSubjectAssignments: writeTeacherSubjectAssignmentsFieldToCloud,
+      classTeacherAssignments: writeClassTeacherAssignmentsFieldToCloud,
+      marks: writeMarksFieldToCloud,
+      remarks: writeRemarksFieldToCloud,
+      classes: writeClassesFieldToCloud,
+      academicYears: writeAcademicYearsFieldToCloud,
+      sections: writeSectionsFieldToCloud,
+      transactions: writeTransactionsFieldToCloud,
+      feeStructures: writeFeeStructuresFieldToCloud,
+      feeTypes: writeFeeTypesFieldToCloud,
+      promotionHistory: writePromotionHistoryFieldToCloud,
+      notices: writeNoticesFieldToCloud,
+      staffLeaves: writeStaffLeavesFieldToCloud,
+      dailyStudentAttendance: writeAttendanceFieldToCloud,
+      dailyStaffAttendance: writeStaffAttendanceFieldToCloud,
+    };
+    for (const field of Object.keys(singleWriters)) {
+      // Retry owns queued fields — the diff must not fight it.
+      if (queuedKeysForField(field, queued).size > 0) continue;
+      const delta = diffRecords(field, lastConfirmedRef.current[field], currentByField[field] || []);
+      if (delta.length === 0) continue;
+      try {
+        await singleWriters[field](delta, actor);
+        lastConfirmedRef.current[field] = mergeRecordsByKey(lastConfirmedRef.current[field] || [], delta, fieldKeyFn(field));
+        removePendingPayloadRecords(field, delta.map((r) => fieldKeyFn(field)(r)));
+        wrote = true;
+      } catch (e: any) {
+        console.warn(`Phase 1 diff sync failed for ${field}:`, e?.message || e);
+        failedFields.push(field);
+        queuePendingPayload({ field, op: 'upsert', records: delta, updatedBy: actor });
+      }
+    }
+    // Staff travels together (teachers + users in one write).
+    if (queuedKeysForField('teachers', queued).size === 0 && queuedKeysForField('users', queued).size === 0) {
+      const tDelta = diffRecords('teachers', lastConfirmedRef.current['teachers'], teachers);
+      const uDelta = diffRecords('users', lastConfirmedRef.current['users'], users);
+      if (tDelta.length > 0 || uDelta.length > 0) {
+        try {
+          await writeStaffFieldsToCloud(tDelta, uDelta, actor);
+          lastConfirmedRef.current['teachers'] = mergeRecordsByKey(lastConfirmedRef.current['teachers'] || [], tDelta, fieldKeyFn('teachers'));
+          lastConfirmedRef.current['users'] = mergeRecordsByKey(lastConfirmedRef.current['users'] || [], uDelta, fieldKeyFn('users'));
+          wrote = true;
+        } catch (e: any) {
+          console.warn('Phase 1 diff sync failed for staff:', e?.message || e);
+          failedFields.push('teachers', 'users');
+          if (tDelta.length > 0) queuePendingPayload({ field: 'teachers', op: 'upsert', records: tDelta, updatedBy: actor });
+          if (uDelta.length > 0) queuePendingPayload({ field: 'users', op: 'upsert', records: uDelta, updatedBy: actor });
+        }
+      }
+    }
+    // Schedule travels together (routines + syllabus + calendar).
+    if (['classRoutines', 'syllabusItems', 'calendarEvents'].every((f) => queuedKeysForField(f, queued).size === 0)) {
+      const rDelta = diffRecords('classRoutines', lastConfirmedRef.current['classRoutines'], classRoutines);
+      const sDelta = diffRecords('syllabusItems', lastConfirmedRef.current['syllabusItems'], syllabusItems);
+      const cDelta = diffRecords('calendarEvents', lastConfirmedRef.current['calendarEvents'], calendarEvents);
+      if (rDelta.length > 0 || sDelta.length > 0 || cDelta.length > 0) {
+        try {
+          await writeScheduleFieldsToCloud(rDelta, sDelta, cDelta, actor);
+          lastConfirmedRef.current['classRoutines'] = mergeRecordsByKey(lastConfirmedRef.current['classRoutines'] || [], rDelta, fieldKeyFn('classRoutines'));
+          lastConfirmedRef.current['syllabusItems'] = mergeRecordsByKey(lastConfirmedRef.current['syllabusItems'] || [], sDelta, fieldKeyFn('syllabusItems'));
+          lastConfirmedRef.current['calendarEvents'] = mergeRecordsByKey(lastConfirmedRef.current['calendarEvents'] || [], cDelta, fieldKeyFn('calendarEvents'));
+          wrote = true;
+        } catch (e: any) {
+          console.warn('Phase 1 diff sync failed for schedule:', e?.message || e);
+          failedFields.push('classRoutines', 'syllabusItems', 'calendarEvents');
+          if (rDelta.length > 0) queuePendingPayload({ field: 'classRoutines', op: 'upsert', records: rDelta, updatedBy: actor });
+          if (sDelta.length > 0) queuePendingPayload({ field: 'syllabusItems', op: 'upsert', records: sDelta, updatedBy: actor });
+          if (cDelta.length > 0) queuePendingPayload({ field: 'calendarEvents', op: 'upsert', records: cDelta, updatedBy: actor });
+        }
+      }
+    }
+    // Scalars: schoolProfile (object) and markEntryEnabled (boolean).
+    if (!hasQueuedUpsertForField('schoolProfile', queued) && stableStringify(lastConfirmedRef.current['schoolProfile']) !== stableStringify(schoolProfile)) {
+      try {
+        await writeSchoolProfileFieldToCloud(schoolProfile as any, actor);
+        lastConfirmedRef.current['schoolProfile'] = schoolProfile;
+        wrote = true;
+      } catch (e: any) {
+        console.warn('Phase 1 diff sync failed for schoolProfile:', e?.message || e);
+        failedFields.push('schoolProfile');
+        queuePendingPayload({ field: 'schoolProfile', op: 'upsert', scalarValue: schoolProfile, hasScalar: true, updatedBy: actor });
+      }
+    }
+    if (!hasQueuedUpsertForField('markEntryEnabled', queued) && lastConfirmedRef.current['markEntryEnabled'] !== markEntryEnabled) {
+      try {
+        await writeMarkEntryEnabledFieldToCloud(markEntryEnabled, actor);
+        lastConfirmedRef.current['markEntryEnabled'] = markEntryEnabled;
+        wrote = true;
+      } catch (e: any) {
+        console.warn('Phase 1 diff sync failed for markEntryEnabled:', e?.message || e);
+        failedFields.push('markEntryEnabled');
+        queuePendingPayload({ field: 'markEntryEnabled', op: 'upsert', scalarValue: markEntryEnabled, hasScalar: true, updatedBy: actor });
+      }
+    }
+    refreshPendingPayloads();
+    return { wrote, failedFields };
+  };
+
+  /**
+   * Phase 1 generic delete confirm: removals name their ids, trash
+   * entries travel in the same write. Trash-first UI (which deletes
+   * gain trash entries) is Phase 2; this writer accepts an empty
+   * trash list so today's no-trash deletes keep their behavior while
+   * gaining confirmation + payload queuing.
+   */
+  const confirmDeleteRecordsCloudSync = async (
+    removals: { field: string; ids: string[] }[],
+    trashEntries: { id: string }[],
+    failureMessage?: string
+  ): Promise<CloudConfirmResult> => {
+    const result = await confirmCloudWrite(
+      () => writeDeleteFieldsToCloud(removals, trashEntries, confirmActorName()),
+      failureMessage || DELETE_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      for (const removal of removals) {
+        const keyFn = fieldKeyFn(removal.field);
+        lastConfirmedRef.current[removal.field] = (lastConfirmedRef.current[removal.field] || []).filter((r: any) => !removal.ids.includes(keyFn(r)));
+        clearPendingPayloadsForField(removal.field);
+      }
+      if (trashEntries.length > 0) {
+        lastConfirmedRef.current['trashBin'] = mergeRecordsByKey(lastConfirmedRef.current['trashBin'] || [], trashEntries, (r: any) => (r.id ? String(r.id) : ''));
+      }
+      refreshPendingPayloads();
+      void rebuildPublicPortalFromCloud();
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingPayload({ op: 'delete', removals, trashEntries, updatedBy: confirmActorName() });
+      refreshPendingPayloads();
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
+  /** Phase 1 trash-op confirm: restore / permanent-delete / empty. */
+  const confirmTrashOpCloudSync = async (
+    removeTrashIds: string[],
+    upserts: Record<string, any[]>,
+    failureMessage?: string
+  ): Promise<CloudConfirmResult> => {
+    const result = await confirmCloudWrite(
+      () => writeTrashOpToCloud(removeTrashIds, upserts, confirmActorName()),
+      failureMessage || TRASH_CLOUD_FAILURE_MESSAGE
+    );
+    if (result.success) {
+      const idSet = new Set(removeTrashIds);
+      lastConfirmedRef.current['trashBin'] = (lastConfirmedRef.current['trashBin'] || []).filter((t: any) => !t.id || !idSet.has(String(t.id)));
+      for (const [field, records] of Object.entries(upserts)) {
+        lastConfirmedRef.current[field] = mergeRecordsByKey(lastConfirmedRef.current[field] || [], records, fieldKeyFn(field));
+        clearPendingPayloadsForField(field);
+      }
+      clearPendingPayloadsForField('trashBin');
+      refreshPendingPayloads();
+      void rebuildPublicPortalFromCloud();
+      setCloudStatus('connected');
+      setCloudLastSynced(new Date().toLocaleTimeString());
+    } else {
+      queuePendingPayload({ op: 'trashOp', removeTrashIds, upserts, updatedBy: confirmActorName() });
+      refreshPendingPayloads();
+      setCloudStatus('error');
+    }
+    return result;
+  };
+
   const confirmAttendanceCloudSync = async (): Promise<CloudConfirmResult> => {
     const records = dailyAttendanceService.getAllStudentRecords();
     setDailyStudentAttendance(records);
@@ -4406,12 +4934,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       ATTENDANCE_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('attendance');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('dailyStudentAttendance', records, 'attendance');
     } else {
-      queuePendingConfirm('attendance');
-      setCloudStatus('error');
+      confirmUpsertFailure('dailyStudentAttendance', records);
     }
     return result;
   };
@@ -4424,12 +4949,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       ATTENDANCE_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('staffAttendance');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('dailyStaffAttendance', records, 'staffAttendance');
     } else {
-      queuePendingConfirm('staffAttendance');
-      setCloudStatus('error');
+      confirmUpsertFailure('dailyStaffAttendance', records);
     }
     return result;
   };
@@ -4447,12 +4969,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       failureMessage || FEE_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('fee');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('transactions', list, 'fee');
     } else {
-      queuePendingConfirm('fee');
-      setCloudStatus('error');
+      confirmUpsertFailure('transactions', list);
     }
     return result;
   };
@@ -4471,12 +4990,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       MARKS_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('marks');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('marks', list, 'marks');
     } else {
-      queuePendingConfirm('marks');
-      setCloudStatus('error');
+      confirmUpsertFailure('marks', list);
     }
     return result;
   };
@@ -4490,32 +5006,48 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       STUDENTS_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('students');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('students', list, 'students');
     } else {
-      queuePendingConfirm('students');
-      setCloudStatus('error');
+      confirmUpsertFailure('students', list);
     }
     return result;
   };
 
+  // Phase 1: the student delete now travels through the non-union
+  // delete writer (rank-3 fix: the old union merged the deleted
+  // student back from cloud). Ids derive ONLY from trash entries —
+  // never from "cloud minus local", which would delete newer cloud
+  // students a stale device never saw.
   const confirmStudentDeleteCloudSync = async (
     nextStudents?: Student[],
     nextTrashBin?: TrashItem[]
   ): Promise<CloudConfirmResult> => {
     const studentList = nextStudents ?? studentsRef.current;
     const trashList = nextTrashBin ?? trashBinRef.current;
+    let op: { deletedIds: string[]; trashEntries: { id: string }[] };
+    try {
+      op = deriveStudentDeleteOp(studentList, trashList);
+    } catch (e: any) {
+      setCloudStatus('error');
+      return { success: false, message: e?.message || STUDENT_DELETE_CLOUD_FAILURE_MESSAGE };
+    }
     const result = await confirmCloudWrite(
-      () => writeStudentDeleteFieldsToCloud(studentList, trashList, confirmActorName()),
+      () => writeDeleteFieldsToCloud([{ field: 'students', ids: op.deletedIds }], op.trashEntries, confirmActorName()),
       STUDENT_DELETE_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
       clearPendingConfirm('studentDelete');
+      lastConfirmedRef.current['students'] = (lastConfirmedRef.current['students'] || []).filter((s: any) => !op.deletedIds.includes(s.id));
+      lastConfirmedRef.current['trashBin'] = mergeRecordsByKey(lastConfirmedRef.current['trashBin'] || [], op.trashEntries, (r: any) => (r.id ? String(r.id) : ''));
+      clearPendingPayloadsForField('students');
+      clearPendingPayloadsForField('trashBin');
+      refreshPendingPayloads();
+      void rebuildPublicPortalFromCloud();
       setCloudStatus('connected');
       setCloudLastSynced(new Date().toLocaleTimeString());
     } else {
-      queuePendingConfirm('studentDelete');
+      queuePendingPayload({ op: 'delete', removals: [{ field: 'students', ids: op.deletedIds }], trashEntries: op.trashEntries, updatedBy: confirmActorName() });
+      refreshPendingPayloads();
       setCloudStatus('error');
     }
     return result;
@@ -4532,12 +5064,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       STAFF_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('staff');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('teachers', teacherList, 'staff');
+      confirmUpsertSuccess('users', userList, 'staff');
     } else {
-      queuePendingConfirm('staff');
-      setCloudStatus('error');
+      confirmUpsertFailure('teachers', teacherList);
+      confirmUpsertFailure('users', userList);
     }
     return result;
   };
@@ -4551,12 +5082,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       NOTICES_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('notices');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('notices', list, 'notices');
     } else {
-      queuePendingConfirm('notices');
-      setCloudStatus('error');
+      confirmUpsertFailure('notices', list);
     }
     return result;
   };
@@ -4572,12 +5100,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       SCHEDULE_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('schedule');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('classRoutines', academicScheduleService.getRoutines(), 'schedule');
+      confirmUpsertSuccess('syllabusItems', academicScheduleService.getSyllabusItems(), 'schedule');
+      confirmUpsertSuccess('calendarEvents', academicScheduleService.getCalendarEvents(), 'schedule');
     } else {
-      queuePendingConfirm('schedule');
-      setCloudStatus('error');
+      confirmUpsertFailure('classRoutines', academicScheduleService.getRoutines());
+      confirmUpsertFailure('syllabusItems', academicScheduleService.getSyllabusItems());
+      confirmUpsertFailure('calendarEvents', academicScheduleService.getCalendarEvents());
     }
     return result;
   };
@@ -4596,12 +5125,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       LEAVE_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('leaves');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('staffLeaves', list, 'leaves');
     } else {
-      queuePendingConfirm('leaves');
-      setCloudStatus('error');
+      confirmUpsertFailure('staffLeaves', list);
     }
     return result;
   };
@@ -4619,12 +5145,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       FEE_STRUCTURES_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('feeStructures');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('feeStructures', list, 'feeStructures');
     } else {
-      queuePendingConfirm('feeStructures');
-      setCloudStatus('error');
+      confirmUpsertFailure('feeStructures', list);
     }
     return result;
   };
@@ -4638,13 +5161,104 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       FEE_TYPES_CLOUD_FAILURE_MESSAGE
     );
     if (result.success) {
-      clearPendingConfirm('feeTypes');
-      setCloudStatus('connected');
-      setCloudLastSynced(new Date().toLocaleTimeString());
+      confirmUpsertSuccess('feeTypes', list, 'feeTypes');
     } else {
-      queuePendingConfirm('feeTypes');
-      setCloudStatus('error');
+      confirmUpsertFailure('feeTypes', list);
     }
+    return result;
+  };
+
+  // Phase 1: confirmed writers for fields that previously depended
+  // on the wholesale auto-sync. Same truthful-save shape as the Step 2
+  // confirms (explicit next-list or ref, confirmed-or-payload-queued).
+  const confirmExamsCloudSync = async (nextExams?: Exam[]): Promise<CloudConfirmResult> => {
+    const list = nextExams ?? examsRef.current;
+    const result = await confirmCloudWrite(() => writeExamsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('exams', list); } else { confirmUpsertFailure('exams', list); }
+    return result;
+  };
+
+  const confirmExamSubjectAssignmentsCloudSync = async (next?: ExamSubjectAssignment[]): Promise<CloudConfirmResult> => {
+    const list = next ?? examSubjectAssignmentsRef.current;
+    const result = await confirmCloudWrite(() => writeExamSubjectAssignmentsFieldToCloud(list, confirmActorName()), ASSIGNMENTS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('examSubjectAssignments', list); } else { confirmUpsertFailure('examSubjectAssignments', list); }
+    return result;
+  };
+
+  const confirmClassSubjectAssignmentsCloudSync = async (next?: ClassSubjectAssignment[]): Promise<CloudConfirmResult> => {
+    const list = next ?? classSubjectAssignmentsRef.current;
+    const result = await confirmCloudWrite(() => writeClassSubjectAssignmentsFieldToCloud(list, confirmActorName()), ASSIGNMENTS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('classSubjectAssignments', list); } else { confirmUpsertFailure('classSubjectAssignments', list); }
+    return result;
+  };
+
+  const confirmTeacherSubjectAssignmentsCloudSync = async (next?: TeacherSubjectAssignment[]): Promise<CloudConfirmResult> => {
+    const list = next ?? teacherSubjectAssignmentsRef.current;
+    const result = await confirmCloudWrite(() => writeTeacherSubjectAssignmentsFieldToCloud(list, confirmActorName()), ASSIGNMENTS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('teacherSubjectAssignments', list); } else { confirmUpsertFailure('teacherSubjectAssignments', list); }
+    return result;
+  };
+
+  const confirmClassTeacherAssignmentsCloudSync = async (next?: ClassTeacherAssignment[]): Promise<CloudConfirmResult> => {
+    const list = next ?? classTeacherAssignmentsRef.current;
+    const result = await confirmCloudWrite(() => writeClassTeacherAssignmentsFieldToCloud(list, confirmActorName()), ASSIGNMENTS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('classTeacherAssignments', list); } else { confirmUpsertFailure('classTeacherAssignments', list); }
+    return result;
+  };
+
+  const confirmPromotionHistoryCloudSync = async (next?: PromotionHistoryRecord[]): Promise<CloudConfirmResult> => {
+    const list = next ?? promotionHistoryRef.current;
+    const result = await confirmCloudWrite(() => writePromotionHistoryFieldToCloud(list, confirmActorName()), PROMOTION_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('promotionHistory', list); } else { confirmUpsertFailure('promotionHistory', list); }
+    return result;
+  };
+
+  const confirmRemarksCloudSync = async (next?: RemarkRecord[]): Promise<CloudConfirmResult> => {
+    const list = next ?? remarksRef.current;
+    const result = await confirmCloudWrite(() => writeRemarksFieldToCloud(list, confirmActorName()), REMARKS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('remarks', list); } else { confirmUpsertFailure('remarks', list); }
+    return result;
+  };
+
+  const confirmSubjectsCloudSync = async (next?: Subject[]): Promise<CloudConfirmResult> => {
+    const list = next ?? subjectsRef.current;
+    const result = await confirmCloudWrite(() => writeSubjectsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('subjects', list); } else { confirmUpsertFailure('subjects', list); }
+    return result;
+  };
+
+  const confirmClassesCloudSync = async (next?: SchoolClass[]): Promise<CloudConfirmResult> => {
+    const list = next ?? classesRef.current;
+    const result = await confirmCloudWrite(() => writeClassesFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('classes', list); } else { confirmUpsertFailure('classes', list); }
+    return result;
+  };
+
+  const confirmAcademicYearsCloudSync = async (next?: AcademicYear[]): Promise<CloudConfirmResult> => {
+    const list = next ?? academicYearsRef.current;
+    const result = await confirmCloudWrite(() => writeAcademicYearsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('academicYears', list); } else { confirmUpsertFailure('academicYears', list); }
+    return result;
+  };
+
+  const confirmSectionsCloudSync = async (next?: Section[]): Promise<CloudConfirmResult> => {
+    const list = next ?? sectionsRef.current;
+    const result = await confirmCloudWrite(() => writeSectionsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmUpsertSuccess('sections', list); } else { confirmUpsertFailure('sections', list); }
+    return result;
+  };
+
+  const confirmSchoolProfileCloudSync = async (nextProfile?: SchoolProfile): Promise<CloudConfirmResult> => {
+    const profile = nextProfile ?? schoolProfileRef.current;
+    const result = await confirmCloudWrite(() => writeSchoolProfileFieldToCloud(profile as any, confirmActorName()), SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmScalarSuccess('schoolProfile', profile); } else { confirmScalarFailure('schoolProfile', profile); }
+    return result;
+  };
+
+  const confirmMarkEntryEnabledCloudSync = async (nextValue?: boolean): Promise<CloudConfirmResult> => {
+    const value = nextValue ?? markEntryEnabledRef.current;
+    const result = await confirmCloudWrite(() => writeMarkEntryEnabledFieldToCloud(value, confirmActorName()), MARK_ENTRY_CLOUD_FAILURE_MESSAGE);
+    if (result.success) { confirmScalarSuccess('markEntryEnabled', value); } else { confirmScalarFailure('markEntryEnabled', value); }
     return result;
   };
 
@@ -4656,27 +5270,111 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // trigger, and the user is never spammed — the save-time failure
   // notice is where the retry action lives. Skipped without an identity
   // (the write rule would deny it) or while offline.
+  // Phase 1 retry: the payload queue FIRST (stored payloads, never
+  // current state — the Sadia fix), then a one-time drain of the
+  // legacy kind-only queue (migration: those confirms union current
+  // state, which is safe, and the legacy key is then dropped for
+  // good — new failures never write it). A failed legacy confirm is
+  // NOT lost: its changes are still in state but not in
+  // lastConfirmed, so the diff auto-sync picks them up.
   const retryInFlightRef = useRef(false);
   const retryPendingCloudConfirms = async (): Promise<void> => {
     if (retryInFlightRef.current) return;
-    const pending = readPendingConfirms();
-    if (pending.length === 0) return;
+    const payloadItems = readPendingPayloads();
+    const legacy = readPendingConfirms();
+    if (payloadItems.length === 0 && legacy.length === 0) return;
     const hasSession = !!(auth.currentUser || localStorage.getItem('madrasha_active_auth_session') || localStorage.getItem('madrasha_active_app_user_id'));
     if (!hasSession) return;
     retryInFlightRef.current = true;
     try {
-      if (pending.includes('attendance')) await confirmAttendanceCloudSync();
-      if (pending.includes('staffAttendance')) await confirmStaffAttendanceCloudSync();
-      if (pending.includes('fee')) await confirmFeeCloudSync();
-      if (pending.includes('marks')) await confirmMarksCloudSync();
-      if (pending.includes('students')) await confirmStudentsCloudSync();
-      if (pending.includes('studentDelete')) await confirmStudentDeleteCloudSync();
-      if (pending.includes('staff')) await confirmStaffCloudSync();
-      if (pending.includes('notices')) await confirmNoticesCloudSync();
-      if (pending.includes('schedule')) await confirmScheduleCloudSync();
-      if (pending.includes('leaves')) await confirmLeavesCloudSync();
-      if (pending.includes('feeStructures')) await confirmFeeStructuresCloudSync();
-      if (pending.includes('feeTypes')) await confirmFeeTypesCloudSync();
+      const fieldWriter: Record<string, (records: any[], actor: string) => Promise<void>> = {
+        students: writeStudentsFieldToCloud,
+        subjects: writeSubjectsFieldToCloud,
+        exams: writeExamsFieldToCloud,
+        examSubjectAssignments: writeExamSubjectAssignmentsFieldToCloud,
+        classSubjectAssignments: writeClassSubjectAssignmentsFieldToCloud,
+        teacherSubjectAssignments: writeTeacherSubjectAssignmentsFieldToCloud,
+        classTeacherAssignments: writeClassTeacherAssignmentsFieldToCloud,
+        marks: writeMarksFieldToCloud,
+        remarks: writeRemarksFieldToCloud,
+        classes: writeClassesFieldToCloud,
+        academicYears: writeAcademicYearsFieldToCloud,
+        sections: writeSectionsFieldToCloud,
+        transactions: writeTransactionsFieldToCloud,
+        feeStructures: writeFeeStructuresFieldToCloud,
+        feeTypes: writeFeeTypesFieldToCloud,
+        promotionHistory: writePromotionHistoryFieldToCloud,
+        notices: writeNoticesFieldToCloud,
+        staffLeaves: writeStaffLeavesFieldToCloud,
+        dailyStudentAttendance: writeAttendanceFieldToCloud,
+        dailyStaffAttendance: writeStaffAttendanceFieldToCloud,
+        teachers: (recs, actor) => writeStaffFieldsToCloud(recs, [], actor),
+        users: (recs, actor) => writeStaffFieldsToCloud([], recs, actor),
+        classRoutines: (recs, actor) => writeScheduleFieldsToCloud(recs, [], [], actor),
+        syllabusItems: (recs, actor) => writeScheduleFieldsToCloud([], recs, [], actor),
+        calendarEvents: (recs, actor) => writeScheduleFieldsToCloud([], [], recs, actor),
+      };
+      for (const item of readPendingPayloads()) {
+        try {
+          const actor = confirmActorName();
+          if (item.op === 'upsert' && item.field) {
+            if (item.hasScalar) {
+              if (item.field === 'schoolProfile') {
+                await writeSchoolProfileFieldToCloud(item.scalarValue as any, actor);
+              } else if (item.field === 'markEntryEnabled') {
+                await writeMarkEntryEnabledFieldToCloud(item.scalarValue as boolean, actor);
+              } else {
+                continue;
+              }
+              lastConfirmedRef.current[item.field] = item.scalarValue;
+            } else if (item.records && item.records.length > 0) {
+              const writer = fieldWriter[item.field];
+              if (!writer) continue;
+              await writer(item.records, actor);
+              lastConfirmedRef.current[item.field] = mergeRecordsByKey(lastConfirmedRef.current[item.field] || [], item.records, fieldKeyFn(item.field));
+            } else {
+              continue;
+            }
+            clearPendingPayload(item.id);
+          } else if (item.op === 'delete' && item.removals) {
+            await writeDeleteFieldsToCloud(item.removals, (item.trashEntries || []) as { id: string }[], actor);
+            for (const removal of item.removals) {
+              const keyFn = fieldKeyFn(removal.field);
+              lastConfirmedRef.current[removal.field] = (lastConfirmedRef.current[removal.field] || []).filter((r: any) => !removal.ids.includes(keyFn(r)));
+            }
+            if (item.trashEntries && item.trashEntries.length > 0) {
+              lastConfirmedRef.current['trashBin'] = mergeRecordsByKey(lastConfirmedRef.current['trashBin'] || [], item.trashEntries, (r: any) => (r.id ? String(r.id) : ''));
+            }
+            clearPendingPayload(item.id);
+          } else if (item.op === 'trashOp') {
+            await writeTrashOpToCloud(item.removeTrashIds || [], item.upserts || {}, actor);
+            const idSet = new Set(item.removeTrashIds || []);
+            lastConfirmedRef.current['trashBin'] = (lastConfirmedRef.current['trashBin'] || []).filter((t: any) => !t.id || !idSet.has(String(t.id)));
+            for (const [field, records] of Object.entries(item.upserts || {})) {
+              lastConfirmedRef.current[field] = mergeRecordsByKey(lastConfirmedRef.current[field] || [], records, fieldKeyFn(field));
+            }
+            clearPendingPayload(item.id);
+          }
+        } catch {
+          // Stays queued for the next trigger; never spam the user.
+        }
+      }
+      refreshPendingPayloads();
+      if (legacy.length > 0) {
+        if (legacy.includes('attendance')) await confirmAttendanceCloudSync();
+        if (legacy.includes('staffAttendance')) await confirmStaffAttendanceCloudSync();
+        if (legacy.includes('fee')) await confirmFeeCloudSync();
+        if (legacy.includes('marks')) await confirmMarksCloudSync();
+        if (legacy.includes('students')) await confirmStudentsCloudSync();
+        if (legacy.includes('studentDelete')) await confirmStudentDeleteCloudSync();
+        if (legacy.includes('staff')) await confirmStaffCloudSync();
+        if (legacy.includes('notices')) await confirmNoticesCloudSync();
+        if (legacy.includes('schedule')) await confirmScheduleCloudSync();
+        if (legacy.includes('leaves')) await confirmLeavesCloudSync();
+        if (legacy.includes('feeStructures')) await confirmFeeStructuresCloudSync();
+        if (legacy.includes('feeTypes')) await confirmFeeTypesCloudSync();
+        try { localStorage.removeItem('ldsdm_pending_cloud_confirms'); } catch {}
+      }
     } finally {
       retryInFlightRef.current = false;
     }
@@ -5274,8 +5972,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const deleteExam = (id: string) => {
     const exam = exams.find(e => e.id === id);
     if (exam) {
-      setTrashBin(prev => [{ id: generateId(), type: 'exam', data: exam, deletedAt: new Date().toLocaleString() }, ...prev]);
+      const trashEntry = { id: generateId(), type: 'exam', data: exam, deletedAt: new Date().toLocaleString() };
+      setTrashBin(prev => [trashEntry, ...prev]);
       setExams(prev => prev.filter(e => e.id !== id));
+      void confirmDeleteRecordsCloudSync([{ field: 'exams', ids: [id] }], [trashEntry], DELETE_CLOUD_FAILURE_MESSAGE);
       if (authUser) {
         recordExamAuditEvent({
           action: 'EXAM_ARCHIVED',
@@ -5345,8 +6045,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const deleteTransaction = (id: string) => {
     const tx = transactions.find(t => t.id === id);
     if (tx) {
-      setTrashBin(prev => [{ id: generateId(), type: 'transaction', data: tx, deletedAt: new Date().toLocaleString() }, ...prev]);
+      const trashEntry = { id: generateId(), type: 'transaction', data: tx, deletedAt: new Date().toLocaleString() };
+      setTrashBin(prev => [trashEntry, ...prev]);
       setTransactions(prev => prev.filter(t => t.id !== id));
+      void confirmDeleteRecordsCloudSync([{ field: 'transactions', ids: [id] }], [trashEntry], DELETE_CLOUD_FAILURE_MESSAGE);
     }
   };
 
@@ -5369,6 +6071,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const item = trashBin.find(t => t.id === trashId);
     if (!item) return;
 
+    const trashFieldByType: Record<string, string> = {
+      student: 'students',
+      subject: 'subjects',
+      exam: 'exams',
+      class: 'classes',
+      transaction: 'transactions',
+      section: 'sections',
+    };
     if (item.type === 'student') {
       setStudents(prev => [...prev, item.data]);
     } else if (item.type === 'subject') {
@@ -5379,36 +6089,72 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setClasses(prev => [...prev, item.data]);
     } else if (item.type === 'transaction') {
       setTransactions(prev => [item.data, ...prev]);
+    } else if (item.type === 'section') {
+      // Phase 1 fix: sections were dropped from trash without being
+      // restored anywhere (no branch existed) — now they restore.
+      setSections(prev => [...prev, item.data]);
     }
 
     setTrashBin(prev => prev.filter(t => t.id !== trashId));
+    // Phase 1: the restore travels through the trash-op writer — the
+    // trash removal is computed from CURRENT cloud trash (never a
+    // stale local list) and the record is unioned back in the SAME
+    // write, so a restore can never leave a record in neither place.
+    const restoreField = trashFieldByType[item.type];
+    void confirmTrashOpCloudSync(
+      [trashId],
+      restoreField ? { [restoreField]: [item.data] } : {},
+      TRASH_CLOUD_FAILURE_MESSAGE
+    );
   };
 
   const permanentlyDeleteTrashItem = (trashId: string) => {
     setTrashBin(prev => prev.filter(t => t.id !== trashId));
+    // Phase 1: permanent deletes travel through the trash-op writer
+    // (named id, computed against current cloud trash).
+    void confirmTrashOpCloudSync([trashId], {}, TRASH_CLOUD_FAILURE_MESSAGE);
   };
 
   const restoreAllFromTrash = () => {
+    const upserts: Record<string, any[]> = {};
+    const pushUpsert = (field: string, data: any) => {
+      (upserts[field] || (upserts[field] = [])).push(data);
+    };
     trashBin.forEach(item => {
       if (item.type === 'student') {
         setStudents(prev => [...prev, item.data]);
+        pushUpsert('students', item.data);
       } else if (item.type === 'subject') {
         setSubjects(prev => [...prev, item.data]);
+        pushUpsert('subjects', item.data);
       } else if (item.type === 'exam') {
         setExams(prev => [...prev, item.data]);
+        pushUpsert('exams', item.data);
       } else if (item.type === 'class') {
         setClasses(prev => [...prev, item.data]);
+        pushUpsert('classes', item.data);
       } else if (item.type === 'transaction') {
         setTransactions(prev => [item.data, ...prev]);
+        pushUpsert('transactions', item.data);
+      } else if (item.type === 'section') {
+        setSections(prev => [...prev, item.data]);
+        pushUpsert('sections', item.data);
       }
     });
+    const allTrashIds = trashBin.map(t => t.id);
     setTrashBin([]);
+    void confirmTrashOpCloudSync(allTrashIds, upserts, TRASH_CLOUD_FAILURE_MESSAGE);
   };
 
   // Confirmation lives at the single call site (DataSecurityBackupCenter's
   // ConfirmDialog) — this action itself just empties the bin.
   const emptyTrash = () => {
+    const allTrashIds = trashBin.map(t => t.id);
     setTrashBin([]);
+    // Phase 1: emptying travels through the trash-op writer (named
+    // ids, computed against current cloud trash — newer entries added
+    // by another device after this click survive, correctly).
+    void confirmTrashOpCloudSync(allTrashIds, {}, TRASH_CLOUD_FAILURE_MESSAGE);
   };
 
   const updateRemark = (studentId: string, examId: string, data: Partial<RemarkRecord>) => {
@@ -5661,6 +6407,26 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       confirmLeavesCloudSync,
       confirmFeeStructuresCloudSync,
       confirmFeeTypesCloudSync,
+      confirmExamsCloudSync,
+      confirmExamSubjectAssignmentsCloudSync,
+      confirmClassSubjectAssignmentsCloudSync,
+      confirmTeacherSubjectAssignmentsCloudSync,
+      confirmClassTeacherAssignmentsCloudSync,
+      confirmPromotionHistoryCloudSync,
+      confirmRemarksCloudSync,
+      confirmSubjectsCloudSync,
+      confirmClassesCloudSync,
+      confirmAcademicYearsCloudSync,
+      confirmSectionsCloudSync,
+      confirmSchoolProfileCloudSync,
+      confirmMarkEntryEnabledCloudSync,
+      confirmDeleteRecordsCloudSync,
+      confirmTrashOpCloudSync,
+      retryPendingCloudConfirms,
+      pendingPayloads,
+      pendingSyncCount,
+      isRecordUnconfirmed,
+      discardPendingPayload,
       updateTransaction,
       deleteTransaction,
       setTransactions,

@@ -47,6 +47,17 @@ export interface MainStoreSlices {
   markEntryEnabled: any;
 }
 
+/**
+ * Main-store payload assembly (27 slices + updatedBy/updatedAt).
+ *
+ * PHASE 1 RETIRED FROM CLOUD WRITES (4 Nov 2026): this builder is no
+ * longer used for any main_store write. The auto-sync and the manual
+ * push now go through the diff/union propagator (AppContext
+ * pushDiffToCloud) and every writer routes through the choke point
+ * (services/mainStoreWrite.ts). The function is kept, unused, so a
+ * future reader can see exactly what the old wholesale payload
+ * contained — do NOT reintroduce it as a write path.
+ */
 export function buildMainStorePayload(slices: MainStoreSlices, updatedBy: string) {
   return {
     schoolProfile: slices.schoolProfile,
