@@ -817,344 +817,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
   // ==========================================
   // VIEW: LOGGED-IN STUDENT PROFILE VIEW
-  // ==========================================
-  return (
-    <div className={`space-y-6 pb-12 ${language === 'bn' ? 'font-bangla' : ''}`}>
-      
-      {/* 0. NOTICE BOARD MARQUEE & URGENT ALERT BANNER */}
-      <NoticeBoardAlertBanner />
-
-      {/* 1. STUDENT PROFILE HEADER CARD */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/80 border border-slate-800 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden print:hidden">
-        
-        {/* Ambient Top Glow */}
-        <div className="absolute top-0 right-0 w-80 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          
-          {/* Student Identity Block */}
-          <div className="flex items-start sm:items-center gap-4">
-            {/* Avatar Photo */}
-            <div className="relative shrink-0">
-              {currentStudent.photoUrl ? (
-                <img 
-                  src={currentStudent.photoUrl} 
-                  alt={currentStudent.name} 
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-indigo-500/50 shadow-md"
-                />
-              ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-indigo-600/30 border-2 border-indigo-500/40 text-indigo-300 flex items-center justify-center font-bold text-2xl sm:text-3xl shadow-inner">
-                  {(currentStudent.name || 'S').charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow">
-                {language === 'bn' ? 'নিয়মিত' : 'Active'}
-              </span>
-            </div>
-
-            {/* Info details */}
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  {language === 'bn' ? (currentStudent.nameBn || currentStudent.name) : currentStudent.name}
-                </h2>
-                {currentStudent.nameBn && language !== 'bn' && (
-                  <span className="text-xs text-slate-400 font-normal">({currentStudent.nameBn})</span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="text-slate-400">{language === 'bn' ? 'আইডি:' : 'ID:'}</span>
-                  <span className="font-mono font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-800/60">
-                    {currentStudent.studentId || currentStudent.id}
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400">{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</span>
-                  <span className="font-bold text-white">{currentStudent.classLevel || studentClass}</span>
-                </span>
-
-                <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400">{language === 'bn' ? 'রোল:' : 'Roll:'}</span>
-                  <span className="font-bold text-white">{toBn(currentStudent.rollNumber || currentStudent.roll || '1')}</span>
-                </span>
-
-                {currentStudent.group && (
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-slate-400">{language === 'bn' ? 'বিভাগ:' : 'Group:'}</span>
-                    <span className="font-semibold text-slate-300">{currentStudent.group}</span>
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400">{language === 'bn' ? 'অবস্থা:' : 'Status:'}</span>
-                  <span className="font-semibold text-slate-300">
-                    {currentStudent.isFormer || currentStudent.status === 'Former' || currentStudent.status === 'archived'
-                      ? (language === 'bn' ? 'প্রাক্তন' : 'Former')
-                      : currentStudent.status === 'inactive' || currentStudent.status === 'Inactive'
-                        ? (language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')
-                        : currentStudent.status === 'transferred'
-                          ? (language === 'bn' ? 'বদলি' : 'Transferred')
-                          : currentStudent.status === 'graduated'
-                            ? (language === 'bn' ? 'উত্তীর্ণ' : 'Graduated')
-                            : currentStudent.status === 'dropped'
-                              ? (language === 'bn' ? 'ঝরে পড়া' : 'Dropped')
-                              : (language === 'bn' ? 'সক্রিয়' : 'Active')}
-                  </span>
-                </span>
-              </div>
-
-              {/* Extra Demographics */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-1">
-                {currentStudent.fatherName && (
-                  <span>{language === 'bn' ? 'পিতা: ' : 'Father: '}{language === 'bn' ? (currentStudent.fatherNameBn || currentStudent.fatherName) : currentStudent.fatherName}</span>
-                )}
-                {currentStudent.admissionDate && (
-                  <span>{language === 'bn' ? 'ভর্তি: ' : 'Admitted: '}{language === 'bn' ? toBn(currentStudent.admissionDate) : currentStudent.admissionDate}</span>
-                )}
-                {currentStudent.guardianPhone && (
-                  <span className="flex items-center gap-1">
-                    <Phone size={11} className="text-slate-500" />
-                    <span>{toBn(currentStudent.guardianPhone)}</span>
-                  </span>
-                )}
-                {currentStudent.bloodGroup && (
-                  <span className="flex items-center gap-1 text-rose-400 font-bold">
-                    <Droplet size={11} />
-                    <span>{currentStudent.bloodGroup}</span>
-                  </span>
-                )}
-                {/* Show-when-present demographics (staff view only): sensitive
-                    personal fields — DOB, guardian email, home address — must
-                    never newly appear on the anonymous portal or for guardians,
-                    so each row below is gated on isStaffView and rendered only
-                    when the record actually has a non-empty value. Legacy
-                    records without these fields render exactly as before. */}
-                {isStaffView && (
-                  <>
-                    {currentStudent.motherName?.trim() && (
-                      <span>{language === 'bn' ? 'মাতা: ' : 'Mother: '}{language === 'bn' ? (currentStudent.motherNameBn || currentStudent.motherName) : currentStudent.motherName}</span>
-                    )}
-                    {currentStudent.dateOfBirth?.trim() && (
-                      <span>{language === 'bn' ? 'জন্ম তারিখ: ' : 'DOB: '}{language === 'bn' ? toBn(currentStudent.dateOfBirth) : currentStudent.dateOfBirth}</span>
-                    )}
-                    {currentStudent.gender && (
-                      <span>{language === 'bn' ? 'লিঙ্গ: ' : 'Gender: '}{language === 'bn'
-                        ? (currentStudent.gender === 'male' ? 'পুরুষ' : currentStudent.gender === 'female' ? 'মহিলা' : currentStudent.gender === 'other' ? 'অন্যান্য' : currentStudent.gender)
-                        : (currentStudent.gender === 'male' ? 'Male' : currentStudent.gender === 'female' ? 'Female' : currentStudent.gender === 'other' ? 'Other' : currentStudent.gender)}</span>
-                    )}
-                    {currentStudent.guardianName?.trim() && (
-                      <span>{language === 'bn' ? 'অভিভাবক: ' : 'Guardian: '}{currentStudent.guardianName}</span>
-                    )}
-                    {currentStudent.guardianEmail?.trim() && (
-                      <span>{language === 'bn' ? 'ইমেইল: ' : 'Email: '}{currentStudent.guardianEmail}</span>
-                    )}
-                    {currentStudent.address?.trim() && (
-                      <span>{language === 'bn' ? 'ঠিকানা: ' : 'Address: '}{currentStudent.address}</span>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-end md:self-center">
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-              >
-                <ArrowLeft size={14} />
-                <span>{language === 'bn' ? 'মূল পাতা' : 'Back'}</span>
-              </button>
-            )}
-
-            <button
-              onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-              title={language === 'bn' ? 'প্রিন্ট করুন' : 'Print Document'}
-            >
-              <Printer size={14} className="text-indigo-400" />
-              <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
-            </button>
-
-            {/* Staff-only quick actions (never rendered on the anonymous portal) */}
-            {isStaffView && (
-              <button
-                onClick={() => setActiveTab('id_card')}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-              >
-                <QrCode size={14} className="text-indigo-400" />
-                <span>{language === 'bn' ? 'আইডি কার্ড' : 'ID Card'}</span>
-              </button>
-            )}
-            {isStaffView && onNavigateTab && (
-              <button
-                onClick={() => onNavigateTab('student_reports')}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-              >
-                <FileText size={14} className="text-indigo-400" />
-                <span>{language === 'bn' ? 'রিপোর্ট কার্ড' : 'Report Card'}</span>
-              </button>
-            )}
-            {isStaffView && whatsappDuesLink && (
-              <a
-                href={whatsappDuesLink}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition cursor-pointer flex items-center gap-1.5"
-              >
-                <MessageCircle size={14} />
-                <span>{language === 'bn' ? 'বকেয়া WhatsApp' : 'WhatsApp Dues'}</span>
-              </a>
-            )}
-
-            <button
-              onClick={handleLogout}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer flex items-center gap-1.5"
-              title={language === 'bn' ? 'অন্য আইডি দিয়ে প্রবেশ করুন' : 'Switch Student'}
-            >
-              <LogOut size={14} />
-              <span>{language === 'bn' ? 'লগআউট / আইডি পরিবর্তন' : 'Switch Student'}</span>
-            </button>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* 1.5. STAFF-ONLY ALERT STRIP (real figures only; never on the portal) */}
-      {isStaffView && profileAlerts.length > 0 && (
-        <div className="space-y-2 print:hidden">
-          {profileAlerts.map((alert, idx) => (
-            <div
-              key={`${alert.kind}-${idx}`}
-              className={`flex items-start gap-2.5 rounded-2xl border p-3.5 ${
-                alert.kind === 'dues'
-                  ? 'bg-rose-50 border-rose-200 text-rose-800'
-                  : alert.kind === 'absent'
-                    ? 'bg-violet-50 border-violet-200 text-violet-800'
-                    : 'bg-amber-50 border-amber-200 text-amber-800'
-              }`}
-            >
-              <span className="shrink-0 mt-0.5">
-                {alert.kind === 'dues' ? (
-                  <AlertTriangle size={16} className="text-rose-600" />
-                ) : alert.kind === 'absent' ? (
-                  <AlertCircle size={16} className="text-violet-600" />
-                ) : (
-                  <TrendingUp size={16} className="text-amber-600" />
-                )}
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-black">{alert.title}</p>
-                <p className="text-xs font-medium opacity-80">{alert.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 2. TAB NAVIGATION BAR */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white p-1.5 rounded-2xl shadow-xs print:hidden gap-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none w-full sm:w-auto">
-          
-          {/* TAB 1: ATTENDANCE */}
-          <button
-            onClick={() => setActiveTab('attendance')}
-            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
-              activeTab === 'attendance'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <CalendarCheck size={16} />
-            <span className="hidden sm:inline">{language === 'bn' ? 'হাজিরা খতিয়ান (Attendance)' : 'Attendance History'}</span>
-            <span className="sm:hidden">{language === 'bn' ? 'হাজিরা' : 'Attendance'}</span>
-          </button>
-
-          {/* TAB 2: MARKS & RESULTS */}
-          <button
-            onClick={() => setActiveTab('marks')}
-            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
-              activeTab === 'marks'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Award size={16} />
-            <span className="hidden sm:inline">{language === 'bn' ? 'পরীক্ষার নম্বর ও রেজাল্ট (Marks)' : 'Marks & Results'}</span>
-            <span className="sm:hidden">{language === 'bn' ? 'রেজাল্ট' : 'Results'}</span>
-          </button>
-
-          {/* TAB 3: UPCOMING EXAM SCHEDULE */}
-          <button
-            onClick={() => setActiveTab('schedule')}
-            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
-              activeTab === 'schedule'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Clock size={16} />
-            <span className="hidden sm:inline">{language === 'bn' ? 'পরীক্ষার রুটিন ও সিডিউল' : 'Exam Schedules'}</span>
-            <span className="sm:hidden">{language === 'bn' ? 'রুটিন' : 'Routine'}</span>
-            {upcomingSchedules.length > 0 && (
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                activeTab === 'schedule' ? 'bg-white text-indigo-700' : 'bg-indigo-100 text-indigo-700'
-              }`}>
-                {toBn(upcomingSchedules.length)}
-              </span>
-            )}
-          </button>
-
-          {/* TAB 4: DIGITAL ID CARD */}
-          <button
-            onClick={() => setActiveTab('id_card')}
-            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
-              activeTab === 'id_card'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <QrCode size={16} />
-            <span className="hidden sm:inline">{language === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Student ID Card'}</span>
-            <span className="sm:hidden">{language === 'bn' ? 'আইডি কার্ড' : 'ID Card'}</span>
-          </button>
-
-          {/* TAB 5: FEES & DUES (staff-only; never rendered on the portal) */}
-          {isStaffView && (
-            <button
-              onClick={() => setActiveTab('fees')}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
-                activeTab === 'fees'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Banknote size={16} />
-              <span className="hidden sm:inline">{language === 'bn' ? 'ফি ও বকেয়া' : 'Fees & Dues'}</span>
-              <span className="sm:hidden">{language === 'bn' ? 'ফি' : 'Fees'}</span>
-            </button>
-          )}
-
-        </div>
-
-        {/* Quick Language Toggle */}
-        <button
-          onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer shrink-0"
-        >
-          {language === 'bn' ? 'English' : 'বাংলা'}
-        </button>
-      </div>
-
-      {/* ==================================================== */}
-      {/* TAB CONTENT 1: ATTENDANCE HISTORY                   */}
-      {/* ==================================================== */}
-      {activeTab === 'attendance' && (
+  // One-page stacked profile (staff view): each tab body below is defined
+  // ONCE here and rendered either stacked on one page (staff, no tab bar)
+  // or behind the tab bar (portal/guardian, unchanged). No content is
+  // duplicated; only the container changes.
+  const attendanceSection = (
         <div className="space-y-6">
           
           {/* 1.1 KPI METRIC CARDS */}
@@ -1395,12 +1062,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           </div>
 
         </div>
-      )}
-
-      {/* ==================================================== */}
-      {/* TAB CONTENT 2: MARKS & ACADEMIC RESULTS             */}
-      {/* ==================================================== */}
-      {activeTab === 'marks' && (
+  );
+  const marksSection = (
         <div className="space-y-6">
           
           {/* 2.1 EXAM SELECTOR BAR */}
@@ -1678,12 +1341,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           )}
 
         </div>
-      )}
-
-      {/* ==================================================== */}
-      {/* TAB CONTENT 3: UPCOMING EXAM SCHEDULES              */}
-      {/* ==================================================== */}
-      {activeTab === 'schedule' && (
+  );
+  const scheduleSection = (
         <div className="space-y-6">
           
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1816,12 +1475,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           </div>
 
         </div>
-      )}
-
-      {/* ==================================================== */}
-      {/* TAB CONTENT 4: DIGITAL ID CARD                       */}
-      {/* ==================================================== */}
-      {activeTab === 'id_card' && (
+  );
+  const idCardSection = (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1934,12 +1589,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {/* ==================================================== */}
-      {/* TAB CONTENT 5: FEES & DUES (staff-only)              */}
-      {/* ==================================================== */}
-      {isStaffView && activeTab === 'fees' && (
+  );
+  const feesSection = (
         <div className="space-y-6">
 
           {/* 5.1 Fee arrangement */}
@@ -2126,6 +1777,393 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           </div>
 
         </div>
+  );
+
+  // ==========================================
+  return (
+    <div className={`space-y-6 pb-12 ${language === 'bn' ? 'font-bangla' : ''}`}>
+      
+      {/* 0. NOTICE BOARD MARQUEE & URGENT ALERT BANNER */}
+      <NoticeBoardAlertBanner />
+
+      {/* 1. STUDENT PROFILE HEADER CARD */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/80 border border-slate-800 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden print:hidden">
+        
+        {/* Ambient Top Glow */}
+        <div className="absolute top-0 right-0 w-80 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          
+          {/* Student Identity Block */}
+          <div className="flex items-start sm:items-center gap-4">
+            {/* Avatar Photo */}
+            <div className="relative shrink-0">
+              {currentStudent.photoUrl ? (
+                <img 
+                  src={currentStudent.photoUrl} 
+                  alt={currentStudent.name} 
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-indigo-500/50 shadow-md"
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-indigo-600/30 border-2 border-indigo-500/40 text-indigo-300 flex items-center justify-center font-bold text-2xl sm:text-3xl shadow-inner">
+                  {(currentStudent.name || 'S').charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow">
+                {language === 'bn' ? 'নিয়মিত' : 'Active'}
+              </span>
+            </div>
+
+            {/* Info details */}
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  {language === 'bn' ? (currentStudent.nameBn || currentStudent.name) : currentStudent.name}
+                </h2>
+                {currentStudent.nameBn && language !== 'bn' && (
+                  <span className="text-xs text-slate-400 font-normal">({currentStudent.nameBn})</span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="text-slate-400">{language === 'bn' ? 'আইডি:' : 'ID:'}</span>
+                  <span className="font-mono font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-800/60">
+                    {currentStudent.studentId || currentStudent.id}
+                  </span>
+                </span>
+
+                <span className="flex items-center gap-1.5">
+                  <span className="text-slate-400">{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</span>
+                  <span className="font-bold text-white">{currentStudent.classLevel || studentClass}</span>
+                </span>
+
+                <span className="flex items-center gap-1.5">
+                  <span className="text-slate-400">{language === 'bn' ? 'রোল:' : 'Roll:'}</span>
+                  <span className="font-bold text-white">{toBn(currentStudent.rollNumber || currentStudent.roll || '1')}</span>
+                </span>
+
+                {currentStudent.group && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-slate-400">{language === 'bn' ? 'বিভাগ:' : 'Group:'}</span>
+                    <span className="font-semibold text-slate-300">{currentStudent.group}</span>
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  <span className="text-slate-400">{language === 'bn' ? 'অবস্থা:' : 'Status:'}</span>
+                  <span className="font-semibold text-slate-300">
+                    {currentStudent.isFormer || currentStudent.status === 'Former' || currentStudent.status === 'archived'
+                      ? (language === 'bn' ? 'প্রাক্তন' : 'Former')
+                      : currentStudent.status === 'inactive' || currentStudent.status === 'Inactive'
+                        ? (language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')
+                        : currentStudent.status === 'transferred'
+                          ? (language === 'bn' ? 'বদলি' : 'Transferred')
+                          : currentStudent.status === 'graduated'
+                            ? (language === 'bn' ? 'উত্তীর্ণ' : 'Graduated')
+                            : currentStudent.status === 'dropped'
+                              ? (language === 'bn' ? 'ঝরে পড়া' : 'Dropped')
+                              : (language === 'bn' ? 'সক্রিয়' : 'Active')}
+                  </span>
+                </span>
+              </div>
+
+              {/* Extra Demographics */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-1">
+                {currentStudent.fatherName && (
+                  <span>{language === 'bn' ? 'পিতা: ' : 'Father: '}{language === 'bn' ? (currentStudent.fatherNameBn || currentStudent.fatherName) : currentStudent.fatherName}</span>
+                )}
+                {currentStudent.admissionDate && (
+                  <span>{language === 'bn' ? 'ভর্তি: ' : 'Admitted: '}{language === 'bn' ? toBn(currentStudent.admissionDate) : currentStudent.admissionDate}</span>
+                )}
+                {currentStudent.guardianPhone && (
+                  <span className="flex items-center gap-1">
+                    <Phone size={11} className="text-slate-500" />
+                    <span>{toBn(currentStudent.guardianPhone)}</span>
+                  </span>
+                )}
+                {currentStudent.bloodGroup && (
+                  <span className="flex items-center gap-1 text-rose-400 font-bold">
+                    <Droplet size={11} />
+                    <span>{currentStudent.bloodGroup}</span>
+                  </span>
+                )}
+                {/* Show-when-present demographics (staff view only): sensitive
+                    personal fields — DOB, guardian email, home address — must
+                    never newly appear on the anonymous portal or for guardians,
+                    so each row below is gated on isStaffView and rendered only
+                    when the record actually has a non-empty value. Legacy
+                    records without these fields render exactly as before. */}
+                {isStaffView && (
+                  <>
+                    {currentStudent.motherName?.trim() && (
+                      <span>{language === 'bn' ? 'মাতা: ' : 'Mother: '}{language === 'bn' ? (currentStudent.motherNameBn || currentStudent.motherName) : currentStudent.motherName}</span>
+                    )}
+                    {currentStudent.dateOfBirth?.trim() && (
+                      <span>{language === 'bn' ? 'জন্ম তারিখ: ' : 'DOB: '}{language === 'bn' ? toBn(currentStudent.dateOfBirth) : currentStudent.dateOfBirth}</span>
+                    )}
+                    {currentStudent.gender && (
+                      <span>{language === 'bn' ? 'লিঙ্গ: ' : 'Gender: '}{language === 'bn'
+                        ? (currentStudent.gender === 'male' ? 'পুরুষ' : currentStudent.gender === 'female' ? 'মহিলা' : currentStudent.gender === 'other' ? 'অন্যান্য' : currentStudent.gender)
+                        : (currentStudent.gender === 'male' ? 'Male' : currentStudent.gender === 'female' ? 'Female' : currentStudent.gender === 'other' ? 'Other' : currentStudent.gender)}</span>
+                    )}
+                    {currentStudent.guardianName?.trim() && (
+                      <span>{language === 'bn' ? 'অভিভাবক: ' : 'Guardian: '}{currentStudent.guardianName}</span>
+                    )}
+                    {currentStudent.guardianEmail?.trim() && (
+                      <span>{language === 'bn' ? 'ইমেইল: ' : 'Email: '}{currentStudent.guardianEmail}</span>
+                    )}
+                    {currentStudent.address?.trim() && (
+                      <span>{language === 'bn' ? 'ঠিকানা: ' : 'Address: '}{currentStudent.address}</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-end md:self-center">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <ArrowLeft size={14} />
+                <span>{language === 'bn' ? 'মূল পাতা' : 'Back'}</span>
+              </button>
+            )}
+
+            <button
+              onClick={handlePrint}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              title={language === 'bn' ? 'প্রিন্ট করুন' : 'Print Document'}
+            >
+              <Printer size={14} className="text-indigo-400" />
+              <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
+            </button>
+
+            {/* Staff-only quick actions (never rendered on the anonymous portal) */}
+            {isStaffView && (
+              <button
+                onClick={() => { if (isStaffView) { document.getElementById('profile-section-id_card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } else { setActiveTab('id_card'); } }}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <QrCode size={14} className="text-indigo-400" />
+                <span>{language === 'bn' ? 'আইডি কার্ড' : 'ID Card'}</span>
+              </button>
+            )}
+            {isStaffView && onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('student_reports')}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <FileText size={14} className="text-indigo-400" />
+                <span>{language === 'bn' ? 'রিপোর্ট কার্ড' : 'Report Card'}</span>
+              </button>
+            )}
+            {isStaffView && whatsappDuesLink && (
+              <a
+                href={whatsappDuesLink}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <MessageCircle size={14} />
+                <span>{language === 'bn' ? 'বকেয়া WhatsApp' : 'WhatsApp Dues'}</span>
+              </a>
+            )}
+
+            <button
+              onClick={handleLogout}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer flex items-center gap-1.5"
+              title={language === 'bn' ? 'অন্য আইডি দিয়ে প্রবেশ করুন' : 'Switch Student'}
+            >
+              <LogOut size={14} />
+              <span>{language === 'bn' ? 'লগআউট / আইডি পরিবর্তন' : 'Switch Student'}</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* 1.5. STAFF-ONLY ALERT STRIP (real figures only; never on the portal) */}
+      {isStaffView && profileAlerts.length > 0 && (
+        <div className="space-y-2 print:hidden">
+          {profileAlerts.map((alert, idx) => (
+            <div
+              key={`${alert.kind}-${idx}`}
+              className={`flex items-start gap-2.5 rounded-2xl border p-3.5 ${
+                alert.kind === 'dues'
+                  ? 'bg-rose-50 border-rose-200 text-rose-800'
+                  : alert.kind === 'absent'
+                    ? 'bg-violet-50 border-violet-200 text-violet-800'
+                    : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}
+            >
+              <span className="shrink-0 mt-0.5">
+                {alert.kind === 'dues' ? (
+                  <AlertTriangle size={16} className="text-rose-600" />
+                ) : alert.kind === 'absent' ? (
+                  <AlertCircle size={16} className="text-violet-600" />
+                ) : (
+                  <TrendingUp size={16} className="text-amber-600" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-black">{alert.title}</p>
+                <p className="text-xs font-medium opacity-80">{alert.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 2. TAB NAVIGATION BAR (portal/guardian only — staff view stacks all sections, no tabs) */}
+      {!isStaffView && (
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white p-1.5 rounded-2xl shadow-xs print:hidden gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none w-full sm:w-auto">
+          
+          {/* TAB 1: ATTENDANCE */}
+          <button
+            onClick={() => setActiveTab('attendance')}
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
+              activeTab === 'attendance'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <CalendarCheck size={16} />
+            <span className="hidden sm:inline">{language === 'bn' ? 'হাজিরা খতিয়ান (Attendance)' : 'Attendance History'}</span>
+            <span className="sm:hidden">{language === 'bn' ? 'হাজিরা' : 'Attendance'}</span>
+          </button>
+
+          {/* TAB 2: MARKS & RESULTS */}
+          <button
+            onClick={() => setActiveTab('marks')}
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
+              activeTab === 'marks'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Award size={16} />
+            <span className="hidden sm:inline">{language === 'bn' ? 'পরীক্ষার নম্বর ও রেজাল্ট (Marks)' : 'Marks & Results'}</span>
+            <span className="sm:hidden">{language === 'bn' ? 'রেজাল্ট' : 'Results'}</span>
+          </button>
+
+          {/* TAB 3: UPCOMING EXAM SCHEDULE */}
+          <button
+            onClick={() => setActiveTab('schedule')}
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
+              activeTab === 'schedule'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Clock size={16} />
+            <span className="hidden sm:inline">{language === 'bn' ? 'পরীক্ষার রুটিন ও সিডিউল' : 'Exam Schedules'}</span>
+            <span className="sm:hidden">{language === 'bn' ? 'রুটিন' : 'Routine'}</span>
+            {upcomingSchedules.length > 0 && (
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                activeTab === 'schedule' ? 'bg-white text-indigo-700' : 'bg-indigo-100 text-indigo-700'
+              }`}>
+                {toBn(upcomingSchedules.length)}
+              </span>
+            )}
+          </button>
+
+          {/* TAB 4: DIGITAL ID CARD */}
+          <button
+            onClick={() => setActiveTab('id_card')}
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
+              activeTab === 'id_card'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <QrCode size={16} />
+            <span className="hidden sm:inline">{language === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Student ID Card'}</span>
+            <span className="sm:hidden">{language === 'bn' ? 'আইডি কার্ড' : 'ID Card'}</span>
+          </button>
+
+          {/* TAB 5: FEES & DUES (staff-only; never rendered on the portal) */}
+          {isStaffView && (
+            <button
+              onClick={() => setActiveTab('fees')}
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
+                activeTab === 'fees'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Banknote size={16} />
+              <span className="hidden sm:inline">{language === 'bn' ? 'ফি ও বকেয়া' : 'Fees & Dues'}</span>
+              <span className="sm:hidden">{language === 'bn' ? 'ফি' : 'Fees'}</span>
+            </button>
+          )}
+
+        </div>
+
+        {/* Quick Language Toggle */}
+        <button
+          onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
+          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer shrink-0"
+        >
+          {language === 'bn' ? 'English' : 'বাংলা'}
+        </button>
+      </div>
+      )}
+
+      {/* STAFF: ONE SCROLLABLE PAGE — the five tab bodies are stacked here
+          (fee -> attendance -> marks -> schedule -> ID card), then the
+          timeline below. No tab bar in staff view. PORTAL/GUARDIAN: the tab
+          bar above and the active tab body below, exactly as before. */}
+      {isStaffView ? (
+        <div className="space-y-6">
+          <section id="profile-section-fees" className="space-y-4 scroll-mt-24">
+            <div className="flex items-center gap-2 px-1">
+              <Banknote size={18} className="text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">{language === 'bn' ? 'ফি ও বকেয়া' : 'Fees & Dues'}</h3>
+            </div>
+            {feesSection}
+          </section>
+          <section id="profile-section-attendance" className="space-y-4 scroll-mt-24">
+            <div className="flex items-center gap-2 px-1">
+              <CalendarCheck size={18} className="text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">{language === 'bn' ? 'হাজিরা খতিয়ান' : 'Attendance History'}</h3>
+            </div>
+            {attendanceSection}
+          </section>
+          <section id="profile-section-marks" className="space-y-4 scroll-mt-24">
+            <div className="flex items-center gap-2 px-1">
+              <Award size={18} className="text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">{language === 'bn' ? 'পরীক্ষার নম্বর ও রেজাল্ট' : 'Marks & Results'}</h3>
+            </div>
+            {marksSection}
+          </section>
+          <section id="profile-section-schedule" className="space-y-4 scroll-mt-24">
+            <div className="flex items-center gap-2 px-1">
+              <Clock size={18} className="text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">{language === 'bn' ? 'পরীক্ষার রুটিন ও সিডিউল' : 'Exam Schedules'}</h3>
+            </div>
+            {scheduleSection}
+          </section>
+          <section id="profile-section-id_card" className="space-y-4 scroll-mt-24">
+            <div className="flex items-center gap-2 px-1">
+              <QrCode size={18} className="text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">{language === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Student ID Card'}</h3>
+            </div>
+            {idCardSection}
+          </section>
+        </div>
+      ) : (
+        <>
+          {activeTab === 'attendance' && attendanceSection}
+          {activeTab === 'marks' && marksSection}
+          {activeTab === 'schedule' && scheduleSection}
+          {activeTab === 'id_card' && idCardSection}
+        </>
       )}
 
       {/* STAFF-ONLY RECENT ACTIVITY (existing data only) */}

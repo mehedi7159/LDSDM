@@ -1,6 +1,6 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import { normalizeRoleKey, roleHomeTab } from '../services/roleResolution';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -35,6 +35,7 @@ import {
   Receipt,
   Landmark,
   UserPlus,
+  User,
   Phone,
   FileText,
   UserMinus,
@@ -56,6 +57,7 @@ import { AdminAuthModal } from './AdminAuthModal';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { MobileMoreSheet } from './ui/MobileMoreSheet';
 import { ThemeSwitcherModal } from './ui/ThemeSwitcherModal';
+import { RailFlyoutMenu } from './ui/RailFlyoutMenu';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -135,24 +137,65 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
-  // Student Management nested Profile submenu (expanded rail only): the
-  // row body still navigates to 'students'; only the chevron toggles this.
-  // It defaults open when the profile tab becomes active (a manual close
-  // while staying on the tab sticks until the tab is entered again).
-  const [studentSubOpen, setStudentSubOpen] = useState(false);
-  useEffect(() => {
-    if (activeTab === 'student_profile') setStudentSubOpen(true);
-  }, [activeTab]);
+  // Student Management smart flyout submenu (BOTH rail states): a floating
+  // panel beside the row — no layout shift, no content squeeze, no rail
+  // expansion needed to reach Profile. Desktop: ~300ms hover dwell opens
+  // it; touch/mouse: the chevron toggles it. Row body still navigates to
+  // 'students'. The panel is a reusable component (ui/RailFlyoutMenu),
+  // wired only for Student Management for now.
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const [flyoutAnchorEl, setFlyoutAnchorEl] = useState<HTMLElement | null>(null);
+  const studentsRowRef = useRef<HTMLElement | null>(null);
+  const dwellTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+  const clearFlyoutTimers = () => {
+    if (dwellTimer.current) window.clearTimeout(dwellTimer.current);
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    dwellTimer.current = null;
+    closeTimer.current = null;
+  };
+  const openFlyout = () => {
+    clearFlyoutTimers();
+    if (studentsRowRef.current) {
+      setFlyoutAnchorEl(studentsRowRef.current);
+      setFlyoutOpen(true);
+    }
+  };
+  const closeFlyout = () => {
+    clearFlyoutTimers();
+    setFlyoutOpen(false);
+  };
+  const handleStudentsRowMouseEnter = () => {
+    if (closeTimer.current) { window.clearTimeout(closeTimer.current); closeTimer.current = null; }
+    if (flyoutOpen) return;
+    dwellTimer.current = window.setTimeout(() => { openFlyout(); }, 300);
+  };
+  const handleStudentsRowMouseLeave = () => {
+    if (dwellTimer.current) { window.clearTimeout(dwellTimer.current); dwellTimer.current = null; }
+    closeTimer.current = window.setTimeout(() => setFlyoutOpen(false), 150);
+  };
+  const handleFlyoutPanelMouseEnter = () => {
+    if (closeTimer.current) { window.clearTimeout(closeTimer.current); closeTimer.current = null; }
+  };
+  const handleFlyoutPanelMouseLeave = () => {
+    closeTimer.current = window.setTimeout(() => setFlyoutOpen(false), 150);
+  };
+  // The flyout is transient: any navigation, and any rail expand/collapse
+  // (which unmounts the anchor row), closes it.
+  useEffect(() => { setFlyoutOpen(false); }, [activeTab]);
+  useEffect(() => { setFlyoutOpen(false); }, [isRailExpanded]);
 
-  // Collapse the expanded rail on ESC key press (replaces the old
-  // drawer Esc-close; the drawer itself is gone).
+  // ESC: first press closes the flyout (if open); next press collapses
+  // the expanded rail (replaces the old drawer Esc-close).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsRailExpanded(false);
+      if (e.key !== 'Escape') return;
+      if (flyoutOpen) setFlyoutOpen(false);
+      else setIsRailExpanded(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [flyoutOpen]);
 
   // Helper function: Strictly check if a navigation item should be visible to the current user's role
   const isMenuVisible = (menu: MainMenuItem): boolean => {
@@ -196,7 +239,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // Phase 1 live notice: pending-applicant count for the HR menu badge.
   const pendingHrCount = (pendingMembers || []).length;
 
-  // Single-level clean direct menus (No sub-menus)
+  // Direct menus: single-level rows, except Student Management, which gets
+  // the floating flyout submenu (see the rail rendering below).
   const mainMenuItems: MainMenuItem[] = [
     {
       id: 'dashboard',
@@ -427,12 +471,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           )}
 
           {/* Menu list: drawer order, drawer targets, drawer visibility gate */}
-          <div className={`flex-1 overflow-y-auto w-full custom-scrollbar ${isRailExpanded ? 'px-2 space-y-1' : 'px-2 flex flex-col items-center gap-1.5'}`}>
+          <div onScroll={() => { if (flyoutOpen) setFlyoutOpen(false); }} className={`flex-1 overflow-y-auto w-full custom-scrollbar ${isRailExpanded ? 'px-2 space-y-1' : 'px-2 flex flex-col items-center gap-1.5'}`}>
             {visibleMenus.map((menu) => {
               const Icon = menu.icon;
               const isActive = activeTab === menu.targetTab || menu.associatedTabs.includes(activeTab);
               if (!isRailExpanded) {
-                return (
+                const rowButton = (
                   <button
                     key={menu.id}
                     type="button"
@@ -459,15 +503,40 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                     )}
                   </button>
                 );
+                // Student Management alone: the collapsed icon row anchors
+                // the flyout (hover dwell or the chevron badge) — reaching
+                // Profile never requires expanding the rail.
+                if (menu.id !== 'students') return rowButton;
+                return (
+                  <div
+                    key={menu.id}
+                    ref={(el) => { studentsRowRef.current = el; }}
+                    onMouseEnter={handleStudentsRowMouseEnter}
+                    onMouseLeave={handleStudentsRowMouseLeave}
+                    className="relative"
+                  >
+                    {rowButton}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); if (flyoutOpen) closeFlyout(); else openFlyout(); }}
+                      aria-expanded={flyoutOpen}
+                      title={language === 'bn' ? 'সাবমেনু' : 'Submenu'}
+                      className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center shadow-sm border border-white dark:border-slate-900 cursor-pointer"
+                      style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                    >
+                      <ChevronDown size={11} />
+                    </button>
+                  </div>
+                );
               }
-              // Student Management alone gets a nested Profile submenu in
-              // the expanded rail: the row body still goes to 'students';
-              // only the chevron toggles the submenu. Collapsed rail and
-              // all other groups stay untouched single-level rows.
+              // Student Management alone gets the floating flyout submenu
+              // (both rail states): the row body still goes to 'students';
+              // hover dwell (~300ms) or the chevron opens the flyout. The
+              // inline nested expansion from 58520e23 is gone — one
+              // mechanism only. All other groups stay single-level rows.
               const isStudentsGroup = menu.id === 'students';
               const profileSearchHit = isStudentsGroup && !!menuSearchQuery.trim() &&
                 ['প্রোফাইল', 'profile', 'student_profile'].some(t => t.includes(menuSearchQuery.toLowerCase().trim()));
-              const showStudentSub = isStudentsGroup && (studentSubOpen || profileSearchHit);
               if (!isStudentsGroup) {
                 return (
                   <button
@@ -506,45 +575,54 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               }
               const isProfileActive = activeTab === 'student_profile';
               return (
-                <div key={menu.id}>
+                <React.Fragment key={menu.id}>
                   <div
-                    className={`w-full rounded-xl flex items-stretch transition-all ${isActive ? 'text-white font-bold shadow-sm' : ''}`}
-                    style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+                    ref={(el) => { studentsRowRef.current = el; }}
+                    onMouseEnter={handleStudentsRowMouseEnter}
+                    onMouseLeave={handleStudentsRowMouseLeave}
                   >
-                    <button
-                      type="button"
-                      onClick={() => handleTabClick(menu.targetTab)}
-                      className="flex-1 min-w-0 px-3 py-2.5 rounded-l-xl text-xs font-semibold flex items-center gap-2.5 text-left cursor-pointer"
+                    <div
+                      className={`w-full rounded-xl flex items-stretch transition-all ${isActive ? 'text-white font-bold shadow-sm' : ''}`}
+                      style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
                     >
-                      <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
-                        style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                      <button
+                        type="button"
+                        onClick={() => handleTabClick(menu.targetTab)}
+                        className="flex-1 min-w-0 px-3 py-2.5 rounded-l-xl text-xs font-semibold flex items-center gap-2.5 text-left cursor-pointer"
                       >
-                        <Icon size={15} />
-                      </div>
-                      <span className="truncate">
-                        {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
-                        {language === 'bn' ? menu.titleBn : menu.titleEn}
-                      </span>
-                      {menu.badge && (
-                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950 shrink-0 ml-1">
-                          {menu.badge}
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
+                          style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                        >
+                          <Icon size={15} />
+                        </div>
+                        <span className="truncate">
+                          {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
+                          {language === 'bn' ? menu.titleBn : menu.titleEn}
                         </span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStudentSubOpen(v => !v)}
-                      aria-expanded={showStudentSub}
-                      title={showStudentSub
-                        ? (language === 'bn' ? 'সাবমেনু লুকান' : 'Hide submenu')
-                        : (language === 'bn' ? 'সাবমেনু দেখান' : 'Show submenu')}
-                      className={`px-2.5 flex items-center justify-center rounded-r-xl shrink-0 cursor-pointer transition ${isActive ? 'text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                    >
-                      {showStudentSub ? <ChevronDown size={15} /> : <ChevronRight size={13} />}
-                    </button>
+                        {menu.badge && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950 shrink-0 ml-1">
+                            {menu.badge}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { if (flyoutOpen) closeFlyout(); else openFlyout(); }}
+                        aria-expanded={flyoutOpen}
+                        title={flyoutOpen
+                          ? (language === 'bn' ? 'সাবমেনু লুকান' : 'Hide submenu')
+                          : (language === 'bn' ? 'সাবমেনু দেখান' : 'Show submenu')}
+                        className={`px-2.5 flex items-center justify-center rounded-r-xl shrink-0 cursor-pointer transition ${isActive ? 'text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                      >
+                        {flyoutOpen ? <ChevronDown size={15} /> : <ChevronRight size={13} />}
+                      </button>
+                    </div>
                   </div>
-                  {showStudentSub && (
+                  {/* Search hit: a Profile query surfaces a direct result row
+                      (navigates straight to the profile tab — no inline
+                      expansion exists anymore). */}
+                  {profileSearchHit && (
                     <div className="pl-6 mt-1">
                       <button
                         type="button"
@@ -556,13 +634,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                           className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${isProfileActive ? 'bg-white/20 text-white' : ''}`}
                           style={isProfileActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
                         >
-                          <Icon size={13} />
+                          <User size={13} />
                         </div>
                         <span className="truncate">{language === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
                       </button>
                     </div>
                   )}
-                </div>
+                </React.Fragment>
               );
             })}
 
@@ -599,6 +677,33 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           </button>
         </div>
       </aside>
+
+      {/* Student Management smart flyout submenu: floating panel (both rail
+          states), anchored to the row — icons + short names, clickable,
+          no layout shift, no content squeeze. */}
+      <RailFlyoutMenu
+        open={flyoutOpen}
+        anchorEl={flyoutAnchorEl}
+        onClose={closeFlyout}
+        onPanelMouseEnter={handleFlyoutPanelMouseEnter}
+        onPanelMouseLeave={handleFlyoutPanelMouseLeave}
+        items={[
+          {
+            key: 'students',
+            icon: Users,
+            label: language === 'bn' ? 'শিক্ষার্থী তালিকা' : 'Student List',
+            active: activeTab === 'students',
+            onSelect: () => handleTabClick('students'),
+          },
+          {
+            key: 'student_profile',
+            icon: User,
+            label: language === 'bn' ? 'প্রোফাইল' : 'Profile',
+            active: activeTab === 'student_profile',
+            onSelect: () => handleTabClick('student_profile'),
+          },
+        ]}
+      />
 
       {/* Main Content Viewport */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
