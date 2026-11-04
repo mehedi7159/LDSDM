@@ -925,6 +925,36 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     <span>{currentStudent.bloodGroup}</span>
                   </span>
                 )}
+                {/* Show-when-present demographics (staff view only): sensitive
+                    personal fields — DOB, guardian email, home address — must
+                    never newly appear on the anonymous portal or for guardians,
+                    so each row below is gated on isStaffView and rendered only
+                    when the record actually has a non-empty value. Legacy
+                    records without these fields render exactly as before. */}
+                {isStaffView && (
+                  <>
+                    {currentStudent.motherName?.trim() && (
+                      <span>{language === 'bn' ? 'মাতা: ' : 'Mother: '}{language === 'bn' ? (currentStudent.motherNameBn || currentStudent.motherName) : currentStudent.motherName}</span>
+                    )}
+                    {currentStudent.dateOfBirth?.trim() && (
+                      <span>{language === 'bn' ? 'জন্ম তারিখ: ' : 'DOB: '}{language === 'bn' ? toBn(currentStudent.dateOfBirth) : currentStudent.dateOfBirth}</span>
+                    )}
+                    {currentStudent.gender && (
+                      <span>{language === 'bn' ? 'লিঙ্গ: ' : 'Gender: '}{language === 'bn'
+                        ? (currentStudent.gender === 'male' ? 'পুরুষ' : currentStudent.gender === 'female' ? 'মহিলা' : currentStudent.gender === 'other' ? 'অন্যান্য' : currentStudent.gender)
+                        : (currentStudent.gender === 'male' ? 'Male' : currentStudent.gender === 'female' ? 'Female' : currentStudent.gender === 'other' ? 'Other' : currentStudent.gender)}</span>
+                    )}
+                    {currentStudent.guardianName?.trim() && (
+                      <span>{language === 'bn' ? 'অভিভাবক: ' : 'Guardian: '}{currentStudent.guardianName}</span>
+                    )}
+                    {currentStudent.guardianEmail?.trim() && (
+                      <span>{language === 'bn' ? 'ইমেইল: ' : 'Email: '}{currentStudent.guardianEmail}</span>
+                    )}
+                    {currentStudent.address?.trim() && (
+                      <span>{language === 'bn' ? 'ঠিকানা: ' : 'Address: '}{currentStudent.address}</span>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
