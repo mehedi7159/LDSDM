@@ -32,13 +32,23 @@ import {
   getAllIndexedDbSnapshots,
   saveToIndexedDbVault,
   rollbackToSpecificSnapshot,
+  isDegradedPayload,
+  extractRestoreCounts,
+  buildRestorePreview,
+  snapshotIsDegraded,
+  snapshotCompletenessPct,
+  isLastKnownGoodSnapshot,
+  studentFieldCompletenessPct,
   SystemSnapshot,
-  BackupValidationInspection
+  BackupValidationInspection,
+  RestorePreview
 } from '../services/multiStorePersistence';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { RestorePreviewModal } from './ui/RestorePreview';
 import { RecycleBinPanel } from './RecycleBinPanel';
 import { formatNumber, formatSafeDateTime } from '../services/utils';
-import { auth } from '../services/firebase';
+import { auth, db } from '../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface DataSecurityBackupCenterProps {
   onClose?: () => void;
@@ -55,6 +65,8 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
     subjects,
     exams,
     marks,
+    teachers,
+    users,
     transactions,
     authUser,
     isAdmin,
@@ -77,24 +89,27 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
   // Restore states
   const [uploadedInspection, setUploadedInspection] = useState<BackupValidationInspection | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
 
   // Recycle Bin states
   const [isRecycleBinOpen, setIsRecycleBinOpen] = useState(false);
 
-  // Snapshots states
+  // Snapshots states (Phase 3: full list, paginated — the old 5-item cap hid older entries)
   const [snapshots, setSnapshots] = useState<SystemSnapshot[]>([]);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
-  const [snapshotToRollback, setSnapshotToRollback] = useState<SystemSnapshot | null>(null);
   const [isRollingBack, setIsRollingBack] = useState(false);
+  const [snapPage, setSnapPage] = useState(0);
+  const [snapFilter, setSnapFilter] = useState('');
+  const [restorePreview, setRestorePreview] = useState<{ kind: 'file' | 'vault'; snapshot?: SystemSnapshot; preview: RestorePreview } | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [confirmDownloadOpen, setConfirmDownloadOpen] = useState(false);
 
-  // Load recent snapshots on mount
+  // Load snapshots on mount (Phase 3: ALL vault snapshots, newest first)
   const refreshSnapshots = async () => {
     setIsLoadingSnapshots(true);
     try {
       const list = await getAllIndexedDbSnapshots();
-      // Keep most recent 5 snapshots
-      setSnapshots(list.slice(0, 5));
+      setSnapshots(list);
+      setSnapPage(0);
     } catch (e) {
       console.warn('Could not load snapshots:', e);
     } finally {
@@ -106,20 +121,29 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
     refreshSnapshots();
   }, []);
 
-  // 1. Download Backup
+  // 1. Download Backup (Phase 3: degraded-state warning before download)
+  const currentLocalPayload = readCurrentLocalStoragePayload();
+  const currentIsDegraded = isDegradedPayload(currentLocalPayload);
   const handleDownloadBackup = () => {
+    if (currentIsDegraded) {
+      setConfirmDownloadOpen(true);
+      return;
+    }
+    doDownloadBackup();
+  };
+  const doDownloadBackup = () => {
+    setConfirmDownloadOpen(false);
     try {
-      const current = readCurrentLocalStoragePayload();
-      const filename = downloadFullSystemBackup(current);
+      const filename = downloadFullSystemBackup(currentLocalPayload);
       setStatusMessage({
         type: 'success',
-        text: `সম্পূর্ণ ব্যাকআপ ফাইল সফলভাবে ডাউনলোড হয়েছে: ${filename}`
+        text: `সম্পূর্ণ ব্যাকআপ ফাইল সফলভাবে ডাউনলোড হয়েছে: ${filename}`
       });
       refreshSnapshots();
     } catch (err: any) {
       setStatusMessage({
         type: 'error',
-        text: 'ব্যাকআপ ডাউনলোড ব্যর্থ হয়েছে: ' + (err?.message || 'অজ্ঞাত ত্রুটি')
+        text: 'ব্যাকআপ ডাউনলোড ব্যর্থ হয়েছে: ' + (err?.message || 'অজ্ঞাত ত্রুটি')
       });
     }
   };
@@ -157,14 +181,43 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
     e.target.value = '';
   };
 
-  // 3. Confirm & Execute Restore
-  const handleExecuteRestore = async () => {
+  // 3. Preview & Execute Restore (Phase 3: preview first, then the
+  // writer refuses any shrink the preview did not confirm)
+  const openFilePreview = async () => {
     if (!uploadedInspection?.payload) return;
-    setIsRestoring(true);
-    setConfirmRestoreOpen(false);
-
+    setIsPreviewLoading(true);
     try {
-      const res = await executeFullSystemRestore(uploadedInspection.payload, authUser?.email || adminEmail);
+      const cloudSnap = await getDoc(doc(db, 'institution', 'main_store'));
+      if (!cloudSnap.exists()) {
+        setStatusMessage({ type: 'error', text: 'প্রিভিউ তৈরি করা যায়নি — ক্লাউড ডকুমেন্ট পাওয়া যায়নি।' });
+        return;
+      }
+      const preview = buildRestorePreview(
+        extractRestoreCounts(cloudSnap.data()),
+        extractRestoreCounts(uploadedInspection.payload),
+        {
+          labelBn: 'আপলোড করা ব্যাকআপ ফাইল',
+          labelEn: 'Uploaded backup file',
+          timestamp: uploadedInspection.exportedAt,
+          isDegraded: isDegradedPayload(uploadedInspection.payload),
+          completenessPct: studentFieldCompletenessPct(uploadedInspection.payload),
+        }
+      );
+      setRestorePreview({ kind: 'file', preview });
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: 'প্রিভিউ তৈরি ব্যর্থ: ' + (err?.message || 'অজ্ঞাত ত্রুটি') });
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const handleExecuteRestore = async () => {
+    if (!uploadedInspection?.payload || !restorePreview) return;
+    setIsRestoring(true);
+    const shrinks = restorePreview.preview.shrinks;
+    setRestorePreview(null);
+    try {
+      const res = await executeFullSystemRestore(uploadedInspection.payload, authUser?.email || adminEmail, { confirmedShrinks: shrinks });
       if (res.success) {
         setStatusMessage({
           type: 'success',
@@ -176,11 +229,16 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         setTimeout(() => {
           window.location.reload();
         }, 1500);
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: 'রিস্টোর সম্পন্ন হয়নি: ' + res.message
+        });
       }
     } catch (err: any) {
       setStatusMessage({
         type: 'error',
-        text: 'রিস্টোর ব্যর্থ হয়েছে: ' + (err?.message || 'অজ্ঞাত ত্রুটি')
+        text: 'রিস্টোর ব্যর্থ হয়েছে: ' + (err?.message || 'অজ্ঞাত ত্রুটি')
       });
     } finally {
       setIsRestoring(false);
@@ -227,31 +285,75 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
     }
   };
 
-  // 7. Rollback to Snapshot
-  const handleExecuteRollback = async () => {
-    if (!snapshotToRollback) return;
-    setIsRollingBack(true);
+  // 7. Rollback to Snapshot (Phase 3: via preview)
+  const openVaultPreview = async (snap: SystemSnapshot) => {
+    setIsPreviewLoading(true);
     try {
-      const res = await rollbackToSpecificSnapshot(snapshotToRollback.id, authUser?.email || adminEmail);
+      const cloudSnap = await getDoc(doc(db, 'institution', 'main_store'));
+      if (!cloudSnap.exists()) {
+        setStatusMessage({ type: 'error', text: 'প্রিভিউ তৈরি করা যায়নি — ক্লাউড ডকুমেন্ট পাওয়া যায়নি।' });
+        return;
+      }
+      const preview = buildRestorePreview(
+        extractRestoreCounts(cloudSnap.data()),
+        extractRestoreCounts(snap.payload),
+        {
+          labelBn: snap.labelBn,
+          labelEn: snap.labelEn,
+          timestamp: snap.timestamp,
+          isDegraded: snapshotIsDegraded(snap),
+          completenessPct: snapshotCompletenessPct(snap),
+        }
+      );
+      setRestorePreview({ kind: 'vault', snapshot: snap, preview });
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: 'প্রিভিউ তৈরি ব্যর্থ: ' + (err?.message || 'অজ্ঞাত ত্রুটি') });
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const handleExecuteRollback = async () => {
+    if (!restorePreview?.snapshot) return;
+    const snapId = restorePreview.snapshot.id;
+    const shrinks = restorePreview.preview.shrinks;
+    setIsRollingBack(true);
+    setRestorePreview(null);
+    try {
+      const res = await rollbackToSpecificSnapshot(snapId, authUser?.email || adminEmail, shrinks);
       if (res.success) {
         setStatusMessage({
           type: 'success',
           text: res.message
         });
-        setSnapshotToRollback(null);
         setTimeout(() => {
           window.location.reload();
         }, 1200);
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: 'রোলব্যাক সম্পন্ন হয়নি: ' + res.message
+        });
       }
     } catch (err: any) {
       setStatusMessage({
         type: 'error',
-        text: 'রোলব্যাক ব্যর্থ হয়েছে: ' + (err?.message || 'অজ্ঞাত ত্রুটি')
+        text: 'রোলব্যাক ব্যর্থ হয়েছে: ' + (err?.message || 'অজ্ঞাত ত্রুটি')
       });
     } finally {
       setIsRollingBack(false);
     }
   };
+
+  // Phase 3: filtered + paginated vault history (20/page, vertical scroll)
+  const lastKnownGoodId = snapshots.find((s) => isLastKnownGoodSnapshot(s))?.id;
+  const filteredSnapshots = snapFilter.trim()
+    ? snapshots.filter((s) => `${s.labelBn || ''} ${s.labelEn || ''}`.toLowerCase().includes(snapFilter.trim().toLowerCase()))
+    : snapshots;
+  const SNAP_PAGE_SIZE = 20;
+  const snapPageCount = Math.max(1, Math.ceil(filteredSnapshots.length / SNAP_PAGE_SIZE));
+  const safeSnapPage = Math.min(snapPage, snapPageCount - 1);
+  const visibleSnapshots = filteredSnapshots.slice(safeSnapPage * SNAP_PAGE_SIZE, safeSnapPage * SNAP_PAGE_SIZE + SNAP_PAGE_SIZE);
 
   return (
     <div className={`space-y-6 ${isModal ? 'p-4 sm:p-6' : 'max-w-6xl mx-auto'}`}>
@@ -435,7 +537,12 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             </div>
           </div>
 
-          <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    {currentIsDegraded && (
+            <div className="mt-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
+              সতর্কতা: বর্তমান অবস্থা ক্ষতিগ্রস্ত দেখাচ্ছে (শিক্ষার্থী আছে, শিক্ষক নেই) — এই ব্যাকআপ ফাইলেও শিক্ষক তথ্য থাকবে না। ডাউনলোড করলে সতর্কবার্তা দেখানো হবে।
+            </div>
+          )}
+<div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
               ফরম্যাট: .JSON (এনক্রিপ্টেড ও সম্পূর্ণ)
             </div>
@@ -494,12 +601,12 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                   <div>লেনদেন: <strong>{uploadedInspection.counts.transactions}</strong> টি</div>
                 </div>
                 <button
-                  onClick={() => setConfirmRestoreOpen(true)}
-                  disabled={isRestoring}
+                  onClick={openFilePreview}
+                  disabled={isRestoring || isPreviewLoading}
                   className="w-full mt-2 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <Upload size={14} />
-                  <span>{isRestoring ? 'রিস্টোর হচ্ছে...' : 'এই ব্যাকআপটি রিস্টোর করুন'}</span>
+                  <span>{isPreviewLoading ? 'প্রিভিউ তৈরি হচ্ছে...' : isRestoring ? 'রিস্টোর হচ্ছে...' : 'এই ব্যাকআপটি রিস্টোর করুন'}</span>
                 </button>
               </div>
             )}
@@ -636,13 +743,26 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             <span>রিফ্রেশ</span>
           </button>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={snapFilter}
+            onChange={(e) => { setSnapFilter(e.target.value); setSnapPage(0); }}
+            placeholder="লেবেল দিয়ে খুঁজুন..."
+            className="flex-1 min-w-[180px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            মোট {filteredSnapshots.length}টি স্ন্যাপশট
+            {lastKnownGoodId ? ' • সর্বশেষ ভালো স্ন্যাপশট চিহ্নিত আছে' : ''}
+          </span>
+        </div>
 
-        {snapshots.length === 0 ? (
+        {filteredSnapshots.length === 0 ? (
           <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
             এখনও কোনো অটোমেটিক স্ন্যাপশট ইতিহাস নেই। ব্যাকআপ ডাউনলোড বা রিস্টোরের সময় এখানে তৈরি হবে।
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="overflow-auto max-h-[480px]">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">
@@ -653,7 +773,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
-                {snapshots.map((snap) => (
+                {visibleSnapshots.map((snap) => (
                   <tr key={snap.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50/80 transition-colors">
                     <td className="py-3 px-3 font-medium text-slate-900 dark:text-white whitespace-nowrap">
                       {formatSafeDateTime(snap.timestamp, 'bn-BD', {
@@ -665,15 +785,26 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                       })}
                     </td>
                     <td className="py-3 px-3">
-                      <span className="font-semibold text-slate-800 dark:text-slate-100">{snap.labelBn || snap.label}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">{snap.labelBn || snap.labelEn}</span>
+                      <span className="flex flex-wrap gap-1 mt-1">
+                        {snap.pinned ? (
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">পিন করা</span>
+                        ) : null}
+                        {snapshotIsDegraded(snap) ? (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-[10px] font-bold">ক্ষতিগ্রস্ত</span>
+                        ) : null}
+                        {snap.id === lastKnownGoodId ? (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">সর্বশেষ ভালো</span>
+                        ) : null}
+                      </span>
                     </td>
                     <td className="py-3 px-3 text-slate-600 dark:text-slate-300">
                       শিক্ষার্থী: {snap.counts.students} | পরীক্ষা: {snap.counts.exams} | মার্কস: {snap.counts.marks}
                     </td>
                     <td className="py-3 px-3 text-right">
                       <button
-                        onClick={() => setSnapshotToRollback(snap)}
-                        disabled={isRollingBack}
+                        onClick={() => openVaultPreview(snap)}
+                        disabled={isRollingBack || isPreviewLoading}
                         className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 font-bold text-[11px] transition-colors cursor-pointer inline-flex items-center gap-1"
                       >
                         <RotateCcw size={12} />
@@ -685,19 +816,55 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
               </tbody>
             </table>
           </div>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              পৃষ্ঠা {safeSnapPage + 1} / {snapPageCount}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSnapPage(Math.max(0, safeSnapPage - 1))}
+                disabled={safeSnapPage === 0}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+              >
+                আগের
+              </button>
+              <button
+                onClick={() => setSnapPage(Math.min(snapPageCount - 1, safeSnapPage + 1))}
+                disabled={safeSnapPage >= snapPageCount - 1}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+              >
+                পরের
+              </button>
+            </div>
+          </div>
+          </>
         )}
       </div>
 
-      {/* Confirmation Dialog for Restore */}
+      {/* Phase 3: restore preview (replaces both plain confirm dialogs) */}
+      <RestorePreviewModal
+        isOpen={restorePreview !== null}
+        onClose={() => setRestorePreview(null)}
+        onConfirm={() => {
+          if (restorePreview?.kind === 'file') void handleExecuteRestore();
+          else void handleExecuteRollback();
+        }}
+        isConfirming={isRestoring || isRollingBack}
+        titleBn={restorePreview?.kind === 'vault' ? 'এই স্ন্যাপশটে রোলব্যাক করবেন?' : 'ব্যাকআপ ফাইল রিস্টোর করবেন?'}
+        titleEn={restorePreview?.kind === 'vault' ? 'Roll back to this snapshot?' : 'Restore this backup file?'}
+        preview={restorePreview?.preview || null}
+        language={language}
+      />
+
+      {/* Phase 3: degraded-state download warning */}
       <ConfirmDialog
-        isOpen={confirmRestoreOpen}
-        onClose={() => setConfirmRestoreOpen(false)}
-        onConfirm={handleExecuteRestore}
-        title="ব্যাকআপ রিস্টোর নিশ্চিত করুন"
-        message={`আপনি কি নিশ্চিত যে ব্যাকআপ ফাইল থেকে তথ্য রিস্টোর করতে চান? এতে বর্তমান তথ্যের স্থলে ব্যাকআপ ফাইলের তথ্য (${uploadedInspection?.counts.students || 0} জন শিক্ষার্থী) যুক্ত হবে। একটি নিরাপদ রোলব্যাক স্ন্যাপশট স্বয়ংক্রিয়ভাবে তৈরি হবে।`}
-        confirmLabel="হ্যাঁ, রিস্টোর সম্পন্ন করুন"
-        variant="primary"
-        isLoading={isRestoring}
+        isOpen={confirmDownloadOpen}
+        onClose={() => setConfirmDownloadOpen(false)}
+        onConfirm={doDownloadBackup}
+        title="ক্ষতিগ্রস্ত অবস্থার ব্যাকআপ ডাউনলোড করবেন?"
+        message="বর্তমান অবস্থায় শিক্ষার্থী আছে কিন্তু শিক্ষক নেই — এটি ক্ষতিগ্রস্ত (degraded) অবস্থার লক্ষণ। এই ফাইলে শিক্ষক তথ্য থাকবে না। তারপরও ডাউনলোড করতে চাইলে নিশ্চিত করুন।"
+        confirmLabel="হ্যাঁ, ডাউনলোড করুন"
+        variant="warning"
       />
 
       {/* Interactive Smart Recycle Bin Modal — same panel as the dedicated page */}
@@ -709,17 +876,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         </div>
       )}
 
-      {/* Confirmation Dialog for Snapshot Rollback */}
-      <ConfirmDialog
-        isOpen={Boolean(snapshotToRollback)}
-        onClose={() => setSnapshotToRollback(null)}
-        onConfirm={handleExecuteRollback}
-        title="পূর্ববর্তী স্ন্যাপশটে রোলব্যাক করতে চান?"
-        message={`আপনি কি "${snapshotToRollback?.labelBn || snapshotToRollback?.label}" সময়ের ব্যাকআপে ফিরে যেতে চান?`}
-        confirmLabel="হ্যাঁ, রোলব্যাক করুন"
-        variant="warning"
-        isLoading={isRollingBack}
-      />
+
     </div>
   );
 };

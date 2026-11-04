@@ -23,18 +23,28 @@ import {
   Camera,
   Trash2,
   ArrowDownToLine,
-  ShieldAlert
+  ShieldAlert,
+  Pin
 } from 'lucide-react';
 import firebaseConfig from '../firebase-applet-config.json';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { AdminAuthModal } from './AdminAuthModal';
 import { 
-  fetchFirestoreCloudSnapshots, 
+  fetchFirestoreCloudSnapshotsPage, 
   saveCloudSnapshotToFirestore, 
-  resurrectDataIfEmpty 
+  resurrectDataIfEmpty,
+  restoreCloudSnapshotDoc,
+  setCloudSnapshotPinned,
+  extractRestoreCounts,
+  buildRestorePreview,
+  snapshotIsDegraded,
+  snapshotCompletenessPct,
+  isLastKnownGoodSnapshot,
+  RestorePreview
 } from '../services/multiStorePersistence';
+import { RestorePreviewModal } from './ui/RestorePreview';
 import { db } from '../services/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { formatSafeDate, formatSafeTime } from '../services/utils';
 
 export const CloudSyncWidget: React.FC = () => {
@@ -66,10 +76,15 @@ export const CloudSyncWidget: React.FC = () => {
   const [showSnapshotModal, setShowSnapshotModal] = useState<boolean>(false);
   const [snapshotNote, setSnapshotNote] = useState<string>('');
   const [cloudSnapshots, setCloudSnapshots] = useState<any[]>([]);
+  const [cloudSnapHasMore, setCloudSnapHasMore] = useState(false);
+  const [cloudSnapLastCreatedAt, setCloudSnapLastCreatedAt] = useState<number | null>(null);
+  const [isLoadingMoreSnaps, setIsLoadingMoreSnaps] = useState(false);
+  const [pinBusyId, setPinBusyId] = useState<string | null>(null);
 
   // Confirmation dialogs state
   const [confirmPullOpen, setConfirmPullOpen] = useState(false);
-  const [selectedRestoreSnapshotId, setSelectedRestoreSnapshotId] = useState<string | null>(null);
+  const [cloudPreview, setCloudPreview] = useState<{ snap: any; preview: RestorePreview } | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selectedDeleteSnapshotId, setSelectedDeleteSnapshotId] = useState<string | null>(null);
 
   const [syncNotification, setSyncNotification] = useState<string | null>(null);
@@ -78,13 +93,30 @@ export const CloudSyncWidget: React.FC = () => {
   const [isRescuing, setIsRescuing] = useState<boolean>(false);
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState<boolean>(false);
 
-  // Load snapshots from Firestore on mount & when auth changes
+  // Load cloud snapshots (Phase 3: paginated — the old 20-item cap is gone)
   const refreshSnapshotsList = async () => {
     try {
-      const snaps = await fetchFirestoreCloudSnapshots();
-      setCloudSnapshots(snaps);
+      const page = await fetchFirestoreCloudSnapshotsPage(20);
+      setCloudSnapshots(page.items);
+      setCloudSnapHasMore(page.hasMore);
+      setCloudSnapLastCreatedAt(page.lastCreatedAt);
     } catch (e) {
       console.warn('Failed to fetch cloud snapshots:', e);
+    }
+  };
+
+  const loadMoreCloudSnapshots = async () => {
+    if (!cloudSnapHasMore || isLoadingMoreSnaps) return;
+    setIsLoadingMoreSnaps(true);
+    try {
+      const page = await fetchFirestoreCloudSnapshotsPage(20, cloudSnapLastCreatedAt);
+      setCloudSnapshots((prev) => [...prev, ...page.items]);
+      setCloudSnapHasMore(page.hasMore);
+      setCloudSnapLastCreatedAt(page.lastCreatedAt);
+    } catch (e) {
+      console.warn('Failed to fetch more cloud snapshots:', e);
+    } finally {
+      setIsLoadingMoreSnaps(false);
     }
   };
 
@@ -116,7 +148,7 @@ export const CloudSyncWidget: React.FC = () => {
     try {
       await forcePullFromCloud();
       setSyncNotification(language === 'bn' 
-        ? 'সফলভাবে ক্লাউড থেকে ডাটা রিস্টোর সম্পন্ন হয়েছে!' 
+        ? 'ক্লাউড থেকে বর্তমান ডাটা আনা হয়েছে!' 
         : 'Successfully restored all records from Cloud Database!');
       setTimeout(() => setSyncNotification(null), 3500);
     } catch (err: any) {
@@ -148,21 +180,76 @@ export const CloudSyncWidget: React.FC = () => {
     }
   };
 
-  const executeRestoreSnapshot = async () => {
-    if (!selectedRestoreSnapshotId) return;
-    setIsSyncingAction(true);
-    setSelectedRestoreSnapshotId(null);
+  // Phase 3: REAL cloud-snapshot restore — the old action only pulled
+  // CURRENT cloud while claiming a snapshot restore. Now: preview
+  // (fresh cloud counts vs this snapshot) → confirm → restore THAT
+  // snapshot through the validated path (safety snapshots, read-back,
+  // portal rebuild). Pull-from-cloud stays its own separate action.
+  const openCloudPreview = async (snap: any) => {
+    setIsPreviewLoading(true);
     try {
-      await forcePullFromCloud();
-      setSyncNotification(language === 'bn' 
-        ? 'ক্লাউড থেকে সফলভাবে ডাটা ফিরিয়ে আনা হয়েছে!' 
-        : 'Successfully restored from cloud snapshot!');
-      setTimeout(() => setSyncNotification(null), 3500);
-    } catch (e) {
-      setSyncNotification(language === 'bn' ? 'রিস্টোর ত্রুটি ঘটেছে।' : 'Restore error.');
+      const cloudSnap = await getDoc(doc(db, 'institution', 'main_store'));
+      if (!cloudSnap.exists()) {
+        setSyncNotification(language === 'bn' ? 'প্রিভিউ তৈরি করা যায়নি — ক্লাউড ডকুমেন্ট পাওয়া যায়নি।' : 'Preview failed — cloud document not found.');
+        setTimeout(() => setSyncNotification(null), 4000);
+        return;
+      }
+      const preview = buildRestorePreview(
+        extractRestoreCounts(cloudSnap.data()),
+        extractRestoreCounts(snap.payload),
+        {
+          labelBn: snap.labelBn,
+          labelEn: snap.labelEn,
+          timestamp: snap.timestamp,
+          isDegraded: snapshotIsDegraded(snap),
+          completenessPct: snapshotCompletenessPct(snap),
+        }
+      );
+      setCloudPreview({ snap, preview });
+    } catch (e: any) {
+      setSyncNotification(language === 'bn' ? 'প্রিভিউ তৈরি ব্যর্থ: ' + (e?.message || '') : 'Preview failed.');
+      setTimeout(() => setSyncNotification(null), 4000);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const executeCloudRestore = async () => {
+    if (!cloudPreview) return;
+    const { snap, preview } = cloudPreview;
+    setIsSyncingAction(true);
+    setCloudPreview(null);
+    try {
+      const res = await restoreCloudSnapshotDoc(snap.id, adminEmail, preview.shrinks);
+      if (res.success) {
+        await forcePullFromCloud();
+        await refreshSnapshotsList();
+        setSyncNotification(language === 'bn'
+          ? `স্ন্যাপশট রিস্টোর ও যাচাই সম্পন্ন: ${res.counts.students} জন শিক্ষার্থী, ${res.counts.marks} টি নম্বর।`
+          : `Snapshot restored and verified: ${res.counts.students} students, ${res.counts.marks} marks.`);
+        setTimeout(() => setSyncNotification(null), 4000);
+      } else {
+        setSyncNotification(language === 'bn' ? 'রিস্টোর সম্পন্ন হয়নি: ' + res.message : 'Restore not completed: ' + res.message);
+        setTimeout(() => setSyncNotification(null), 5000);
+      }
+    } catch (e: any) {
+      setSyncNotification(language === 'bn' ? 'রিস্টোর ত্রুটি ঘটেছে: ' + (e?.message || '') : 'Restore error.');
       setTimeout(() => setSyncNotification(null), 4000);
     } finally {
       setIsSyncingAction(false);
+    }
+  };
+
+  const handleTogglePinSnapshot = async (snap: any) => {
+    const next = !(snap.pinned === true);
+    setPinBusyId(snap.id);
+    try {
+      await setCloudSnapshotPinned(snap.id, next);
+      setCloudSnapshots((prev) => prev.map((s) => (s.id === snap.id ? { ...s, pinned: next } : s)));
+    } catch (e) {
+      console.warn('Pin toggle failed:', e);
+    } finally {
+      setPinBusyId(null);
     }
   };
 
@@ -217,6 +304,8 @@ export const CloudSyncWidget: React.FC = () => {
     setCopiedVercelSnippet(true);
     setTimeout(() => setCopiedVercelSnippet(false), 2500);
   };
+
+  const cloudLastKnownGoodId = cloudSnapshots.find((s) => isLastKnownGoodSnapshot(s))?.id;
 
   return (
     <div className="space-y-6">
@@ -456,7 +545,7 @@ export const CloudSyncWidget: React.FC = () => {
                 className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 <FolderSync size={14} className="text-blue-600" />
-                <span>{language === 'bn' ? 'ক্লাউড থেকে রিস্টোর (Pull Latest)' : 'Pull From Cloud'}</span>
+                <span>{language === 'bn' ? 'ক্লাউড থেকে বর্তমান ডাটা আনুন (Pull Latest)' : 'Pull From Cloud'}</span>
               </button>
             </div>
 
@@ -499,6 +588,7 @@ export const CloudSyncWidget: React.FC = () => {
             <p className="font-semibold">{language === 'bn' ? 'এখনো কোনো ক্লাউড স্ন্যাপশট ব্যাকআপ তৈরি করা হয়নি।' : 'No cloud snapshots saved yet.'}</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto border border-slate-200/70 rounded-2xl">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
@@ -517,7 +607,21 @@ export const CloudSyncWidget: React.FC = () => {
                       <div className="text-[10px] text-slate-400 font-mono">{formatSafeTime(snap.createdAt, language === 'bn' ? 'bn-BD' : 'en-US')}</div>
                     </td>
                     <td className="p-3.5 font-semibold text-slate-700">
-                      {snap.note}
+                      <div>{snap.labelBn || snap.labelEn || snap.note}</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {snap.pinned === true ? (
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold">পিন করা</span>
+                        ) : null}
+                        {snapshotIsDegraded(snap) ? (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-[10px] font-bold">ক্ষতিগ্রস্ত</span>
+                        ) : null}
+                        {snap.trigger === 'daily' ? (
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">দৈনিক</span>
+                        ) : null}
+                        {snap.id === cloudLastKnownGoodId ? (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">সর্বশেষ ভালো</span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="p-3.5 text-center">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-mono">
@@ -527,7 +631,16 @@ export const CloudSyncWidget: React.FC = () => {
                     <td className="p-3.5 text-right">
                       <div className="inline-flex items-center gap-2">
                         <button
-                          onClick={() => setSelectedRestoreSnapshotId(snap.id)}
+                          onClick={() => handleTogglePinSnapshot(snap)}
+                          disabled={pinBusyId === snap.id}
+                          className="px-2 py-1.5 rounded-lg bg-white hover:bg-indigo-50 text-slate-500 hover:text-indigo-700 border border-slate-200 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                          title={language === 'bn' ? (snap.pinned === true ? 'পিন সরান' : 'পিন করুন (প্রুন থেকে সুরক্ষিত)') : (snap.pinned === true ? 'Unpin' : 'Pin (protect from prune)')}
+                        >
+                          <Pin size={12} />
+                        </button>
+<button
+                          onClick={() => openCloudPreview(snap)}
+                          disabled={isPreviewLoading || isSyncingAction}
                           className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
                         >
                           <ArrowDownToLine size={12} />
@@ -547,6 +660,18 @@ export const CloudSyncWidget: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {cloudSnapHasMore && (
+            <div className="flex justify-center pt-1">
+              <button
+                onClick={loadMoreCloudSnapshots}
+                disabled={isLoadingMoreSnaps}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold cursor-pointer disabled:opacity-50"
+              >
+                {isLoadingMoreSnaps ? (language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...') : (language === 'bn' ? 'আরো স্ন্যাপশট দেখুন' : 'Load more snapshots')}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
 
@@ -694,7 +819,7 @@ export const CloudSyncWidget: React.FC = () => {
         isOpen={confirmPullOpen}
         onClose={() => setConfirmPullOpen(false)}
         onConfirm={executePullFromCloud}
-        title={language === 'bn' ? 'ক্লাউড থেকে ডেটা রিস্টোর করবেন?' : 'Restore From Cloud?'}
+        title={language === 'bn' ? 'ক্লাউড থেকে বর্তমান ডাটা আনবেন?' : 'Pull Current Data From Cloud?'}
         message={language === 'bn' 
           ? 'ক্লাউড ফায়ারবেস ডেটাবেজ থেকে সর্বশেষ ডেটা নামিয়ে আনা হবে। এটি আপনার বর্তমান লোকাল পরিবর্তন প্রতিস্থাপন করতে পারে।' 
           : 'This will pull all records from Firebase Firestore and overwrite local state.'}
@@ -703,18 +828,16 @@ export const CloudSyncWidget: React.FC = () => {
         variant="warning"
       />
 
-      {/* Confirmation Dialog: Restore from Snapshot */}
-      <ConfirmDialog
-        isOpen={!!selectedRestoreSnapshotId}
-        onClose={() => setSelectedRestoreSnapshotId(null)}
-        onConfirm={executeRestoreSnapshot}
-        title={language === 'bn' ? 'এই ক্লাউড স্ন্যাপশট রিস্টোর করবেন?' : 'Restore This Snapshot?'}
-        message={language === 'bn' 
-          ? 'এই স্ন্যাপশট ব্যাকআপে থাকা সকল শিক্ষার্থী, বিষয় ও পরীক্ষার নম্বর রিস্টোর হবে এবং ক্লাউডে আপডেট হবে।' 
-          : 'This will revert the institution state to this exact snapshot checkpoint.'}
-        confirmLabel={language === 'bn' ? 'হ্যাঁ, স্ন্যাপশট রিস্টোর করুন' : 'Yes, Restore'}
-        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
-        variant="primary"
+      {/* Phase 3: REAL snapshot restore preview (replaces the pull-as-restore dialog) */}
+      <RestorePreviewModal
+        isOpen={cloudPreview !== null}
+        onClose={() => setCloudPreview(null)}
+        onConfirm={executeCloudRestore}
+        isConfirming={isSyncingAction}
+        titleBn="এই ক্লাউড স্ন্যাপশট রিস্টোর করবেন?"
+        titleEn="Restore this cloud snapshot?"
+        preview={cloudPreview?.preview || null}
+        language={language}
       />
 
       {/* Confirmation Dialog: Delete Snapshot */}

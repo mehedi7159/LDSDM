@@ -11,6 +11,13 @@ import {
   CloudStatusCheck,
   RestoreVerificationResult
 } from '../services/localDataRecovery';
+import {
+  readCurrentLocalStoragePayload,
+  saveToIndexedDbVault,
+  saveCloudSnapshotToFirestore,
+  fetchFirestoreAuthoritativeSnapshot,
+  rebuildPublicPortalFromMain,
+} from '../services/multiStorePersistence';
 import { useApp } from '../context/AppContext';
 
 interface LocalDataRecoveryModalProps {
@@ -91,16 +98,37 @@ export const LocalDataRecoveryModal: React.FC<LocalDataRecoveryModalProps> = ({ 
     setErrorText(null);
 
     try {
-      // Step A: Restore to Firestore
+      // Phase 3: pre-restore safety snapshots BEFORE any mutation.
+      // Vault safety is best-effort; cloud safety is REQUIRED — if it
+      // fails, abort so the restore always has an undo point.
       const email = authUser?.email || adminEmail || 'admin';
+      try {
+        const localPayload = readCurrentLocalStoragePayload();
+        saveToIndexedDbVault(localPayload, 'pre_restore', 'রিস্টোরের আগের নিরাপত্তা কপি', 'Pre-restore safety snapshot');
+      } catch (e) {
+        console.warn('Vault safety snapshot failed (best-effort):', e);
+      }
+      try {
+        const { payload: authoritativePayload } = await fetchFirestoreAuthoritativeSnapshot();
+        await saveCloudSnapshotToFirestore(authoritativePayload, 'রিস্টোরের আগের নিরাপত্তা কপি', 'Pre-restore safety snapshot', email, { pinned: true, trigger: 'pre_restore' });
+      } catch (e: any) {
+        setErrorText('নিরাপত্তা স্ন্যাপশট তৈরি ব্যর্থ — রিস্টোর বাতিল করা হয়েছে: ' + (e?.message || e));
+        return;
+      }
+
+      // Step A: Restore to Firestore
       const res = await restoreValidatedSnapshotToFirestore(snapshot, email);
 
       // Step B: Post-restore count verification
       const verify = await verifyPostRestoreCounts(snapshot);
       setVerificationResult(verify);
 
+      // Phase 3: explicit portal rebuild after every restore (best-effort).
+      const portalOk = await rebuildPublicPortalFromMain();
+      if (!portalOk) console.warn('Portal rebuild after recovery restore failed (best-effort)');
+
       if (verify.isVerified) {
-        setRestoreSuccessMessage('✓ সমস্ত লোকাল ডাটা সফলভাবে ক্লাউড ফায়ারস্টোরে (institution/main_store) রিস্টোর এবং যাচাই সম্পন্ন হয়েছে!');
+        setRestoreSuccessMessage('✓ সমস্ত লোকাল ডাটা সফলভাবে ক্লাউড ফায়ারস্টোরে (institution/main_store) রিস্টোর এবং যাচাই সম্পন্ন হয়েছে!' + (portalOk ? '' : ' (পোর্টাল পুনর্গঠন ব্যর্থ — পরে আবার চেষ্টা করুন)'));
       } else {
         setErrorText('রিস্টোর সম্পন্ন হয়েছে তবে কিছু কাউন্টে অমিল দেখা গেছে: ' + verify.mismatches.join(', '));
       }
@@ -114,6 +142,23 @@ export const LocalDataRecoveryModal: React.FC<LocalDataRecoveryModalProps> = ({ 
   if (!isOpen) return null;
 
   const isCurrentBrowserEmpty = validation?.isEmpty ?? true;
+
+  // Phase 3: restore preview — current cloud counts vs local subset counts.
+  // This path writes ONLY its 10 subset fields; teachers/users are NOT in
+  // the subset, so they stay exactly as the cloud has them (never flagged
+  // as degraded here — the subset simply has no teachers key).
+  const previewFields = [
+    { key: 'students', label: 'শিক্ষার্থী', local: snapshot?.counts.students ?? 0, cloud: cloudStatus?.counts?.students ?? 0 },
+    { key: 'classes', label: 'শ্রেণি', local: snapshot?.counts.classes ?? 0, cloud: cloudStatus?.counts?.classes ?? 0 },
+    { key: 'subjects', label: 'বিষয়', local: snapshot?.counts.subjects ?? 0, cloud: cloudStatus?.counts?.subjects ?? 0 },
+    { key: 'exams', label: 'পরীক্ষা', local: snapshot?.counts.exams ?? 0, cloud: cloudStatus?.counts?.exams ?? 0 },
+    { key: 'marks', label: 'নম্বর', local: snapshot?.counts.marks ?? 0, cloud: cloudStatus?.counts?.marks ?? 0 },
+    { key: 'remarks', label: 'মন্তব্য', local: snapshot?.counts.remarks ?? 0, cloud: cloudStatus?.counts?.remarks ?? 0 },
+    { key: 'transactions', label: 'ভাউচার', local: snapshot?.counts.transactions ?? 0, cloud: cloudStatus?.counts?.transactions ?? 0 },
+    { key: 'feeStructures', label: 'ফি স্ট্রাকচার', local: snapshot?.counts.feeStructures ?? 0, cloud: cloudStatus?.counts?.feeStructures ?? 0 },
+  ];
+  const previewShrinkFields = previewFields.filter((f) => f.local < f.cloud);
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm overflow-y-auto">
@@ -245,6 +290,39 @@ export const LocalDataRecoveryModal: React.FC<LocalDataRecoveryModalProps> = ({ 
             )}
           </div>
         </div>
+
+        {/* Phase 3: Step 3.5 — Restore Preview (current cloud vs local subset) */}
+        {snapshot && cloudStatus && !isCurrentBrowserEmpty && (
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 text-xs font-bold">3.5</span>
+              রিস্টোর প্রিভিউ — বর্তমান ক্লাউড বনাম লোকাল ডাটা
+            </h3>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {previewFields.map((f) => (
+                <span
+                  key={f.key}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold ${
+                    f.local < f.cloud
+                      ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {f.label}: ক্লাউড {f.cloud} → লোকাল {f.local}
+                  {f.local < f.cloud ? ' ▼ কমবে' : ''}
+                </span>
+              ))}
+            </div>
+            {previewShrinkFields.length > 0 && (
+              <div className="mt-3 p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs rounded-xl">
+                সতর্কতা: এই রিস্টোরে {previewShrinkFields.map((f) => f.label).join(', ')}-এর সংখ্যা কমবে (লোকাল কপি পুরনো)। রিস্টোরের আগে নিরাপত্তা স্ন্যাপশট তৈরি করা হবে, তাই প্রয়োজনে আগের অবস্থায় ফেরা যাবে।
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              নোট: এই রিকভারি শুধু উপরের ১০টি ক্ষেত্র লেখে — শিক্ষক/ব্যবহারকারী অ্যাকাউন্ট এতে নেই, তাই ক্লাউডে যা আছে তাই থাকবে। রিস্টোরের আগে ভল্ট ও ক্লাউডে নিরাপত্তা স্ন্যাপশট তৈরি হবে, পরে ক্লাউড পুনরায় পড়ে যাচাই করা হবে এবং পোর্টাল পুনর্গঠন করা হবে।
+            </p>
+          </div>
+        )}
 
         {/* Step 4: Confirmation & Restore Execution */}
         <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800">

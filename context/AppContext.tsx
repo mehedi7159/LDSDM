@@ -225,7 +225,8 @@ import {
   resurrectDataIfEmpty,
   saveToIndexedDbVault,
   requestPersistentStorage,
-  readCurrentLocalStoragePayload
+  readCurrentLocalStoragePayload,
+  maybeCreateDailyCloudSnapshot
 } from '../services/multiStorePersistence';
 import {
   uploadBackupToGoogleDrive,
@@ -2782,6 +2783,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         } else {
           setCloudStatus('connected');
           setCloudLastSynced(new Date().toLocaleTimeString());
+          // Phase 3: first confirmed write of the day also drops an
+          // automatic daily cloud snapshot (fire-and-forget; the
+          // function guards date, auth, and degraded state itself).
+          void maybeCreateDailyCloudSnapshot(adminEmail).catch(() => {});
         }
       } catch (err: any) {
         console.warn('Failed to sync changes to Firestore:', err?.message || err);

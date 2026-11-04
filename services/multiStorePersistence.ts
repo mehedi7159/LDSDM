@@ -1,6 +1,7 @@
-import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, limit, updateDoc, deleteDoc, startAfter } from 'firebase/firestore';
 import { db, auth, firebaseConfig } from './firebase';
-import { assertRestorePayloadSafe } from './mainStoreWrite';
+import { assertRestorePayloadSafe, isPublicShapedStudent } from './mainStoreWrite';
+import { buildPublicPortalData } from './publicPortal';
 import type {
   SchoolProfile,
   SchoolClass,
@@ -126,6 +127,12 @@ export interface SystemSnapshot {
   labelEn: string;
   counts: SystemDataCounts;
   payload: SystemDataPayload;
+  /** Phase 3: pinned snapshots are never pruned (manual, pre_restore, pre_mutation triggers). */
+  pinned?: boolean;
+  /** Phase 3: true when the snapshot carries students but no teachers — a degraded-state copy. */
+  isDegraded?: boolean;
+  /** Phase 3: % of students carrying beyond-public fields (100 when no students). */
+  completenessPct?: number;
 }
 
 export interface MultiStoreHealth {
@@ -224,6 +231,175 @@ export function extractSystemCounts(payload: SystemDataPayload): SystemDataCount
     trashBin: Array.isArray(payload.trashBin) ? payload.trashBin.length : 0,
   };
 }
+
+// ----------------------------------------------------------------------------
+// Phase 3 (sync hardening, 4 Nov 2026): degraded detection, restore
+// previews, and vault save options.
+// ----------------------------------------------------------------------------
+
+/** Phase 3: a state is degraded when it carries students but no teachers
+ * (the 4 Nov 11:17 clobber signature). A payload without a teachers key
+ * at all (pre-staff backups) is NOT judged degraded — absence of the
+ * key is not evidence of loss. */
+export function isDegradedPayload(payload: any): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  const students = (payload as any).students;
+  const teachers = (payload as any).teachers;
+  return Array.isArray(students) && students.length > 0 && Array.isArray(teachers) && teachers.length === 0;
+}
+
+/** Phase 3: % of students carrying fields beyond the public-portal
+ * list. 100 when there are no students (nothing to degrade). */
+export function studentFieldCompletenessPct(payload: any): number {
+  const students = payload && Array.isArray(payload.students) ? payload.students : [];
+  if (students.length === 0) return 100;
+  let full = 0;
+  students.forEach((s: any) => { if (s && !isPublicShapedStudent(s)) full += 1; });
+  return Math.round((full / students.length) * 100);
+}
+
+/** Phase 3: stored flag wins; older entries without flags are judged
+ * from their payload. */
+export function snapshotIsDegraded(snap: { isDegraded?: boolean; payload?: any }): boolean {
+  if (typeof snap.isDegraded === 'boolean') return snap.isDegraded;
+  return isDegradedPayload(snap.payload);
+}
+
+export function snapshotCompletenessPct(snap: { completenessPct?: number; payload?: any }): number {
+  if (typeof snap.completenessPct === 'number') return snap.completenessPct;
+  return studentFieldCompletenessPct(snap.payload);
+}
+
+/** Phase 3: the "last known-good" test (plan §6): teachers > 0,
+ * users > 0, students > 0, and not degraded. A snapshot whose payload
+ * lacks a users key (pre-users backups) fails the users condition —
+ * it cannot be verified good. */
+export function isLastKnownGoodSnapshot(snap: { payload?: any; isDegraded?: boolean }): boolean {
+  if (snapshotIsDegraded(snap)) return false;
+  const p = snap.payload || {};
+  const teachers = Array.isArray(p.teachers) ? p.teachers.length : 0;
+  const users = Array.isArray(p.users) ? p.users.length : 0;
+  const students = Array.isArray(p.students) ? p.students.length : 0;
+  return teachers > 0 && users > 0 && students > 0;
+}
+
+/** Counts compared by every restore preview. Fields absent from a
+ * payload stay `undefined` (unknown) — the preview renders '—' and
+ * the shrink gate skips them. */
+export interface RestoreCounts {
+  students?: number;
+  teachers?: number;
+  users?: number;
+  marks?: number;
+  exams?: number;
+  subjects?: number;
+  classes?: number;
+  transactions?: number;
+  remarks?: number;
+  trashBin?: number;
+}
+
+const RESTORE_COUNT_FIELDS: Array<keyof RestoreCounts> = ['students', 'teachers', 'users', 'marks', 'exams', 'subjects', 'classes', 'transactions', 'remarks', 'trashBin'];
+
+export const RESTORE_COUNT_LABELS: Record<keyof RestoreCounts, { bn: string; en: string }> = {
+  students: { bn: 'শিক্ষার্থী', en: 'Students' },
+  teachers: { bn: 'শিক্ষক ও স্টাফ', en: 'Teachers & staff' },
+  users: { bn: 'ব্যবহারকারী', en: 'Users' },
+  marks: { bn: 'নম্বর', en: 'Marks' },
+  exams: { bn: 'পরীক্ষা', en: 'Exams' },
+  subjects: { bn: 'বিষয়', en: 'Subjects' },
+  classes: { bn: 'শ্রেণি', en: 'Classes' },
+  transactions: { bn: 'লেনদেন', en: 'Transactions' },
+  remarks: { bn: 'মন্তব্য', en: 'Remarks' },
+  trashBin: { bn: 'রিসাইকেল বিন', en: 'Recycle bin' },
+};
+
+export function extractRestoreCounts(payload: any): RestoreCounts {
+  if (!payload || typeof payload !== 'object') return {};
+  const out: RestoreCounts = {};
+  for (const f of RESTORE_COUNT_FIELDS) {
+    const v = (payload as any)[f];
+    if (Array.isArray(v)) out[f] = v.length;
+  }
+  return out;
+}
+
+export interface RestorePreviewRow {
+  key: keyof RestoreCounts;
+  labelBn: string;
+  labelEn: string;
+  from?: number;
+  to?: number;
+}
+
+export interface RestorePreview {
+  rows: RestorePreviewRow[];
+  /** Shrinking fields with their preview-confirmed target sizes. */
+  shrinks: Partial<Record<keyof RestoreCounts, number>>;
+  isDegraded: boolean;
+  completenessPct?: number;
+  warningsBn: string[];
+  warningsEn: string[];
+  sourceLabel: string;
+  sourceTime: string;
+}
+
+/** Phase 3: side-by-side current-vs-snapshot counts for EVERY restore
+ * path. Shrinks and degraded snapshots become explicit warnings —
+ * the user confirms THIS preview, and the restore writer refuses any
+ * shrink the preview did not confirm. */
+export function buildRestorePreview(
+  current: RestoreCounts,
+  snapshot: RestoreCounts,
+  meta: { labelBn?: string; labelEn?: string; timestamp?: string; isDegraded?: boolean; completenessPct?: number }
+): RestorePreview {
+  const rows: RestorePreviewRow[] = [];
+  const shrinks: Partial<Record<keyof RestoreCounts, number>> = {};
+  const warningsBn: string[] = [];
+  const warningsEn: string[] = [];
+  for (const f of RESTORE_COUNT_FIELDS) {
+    const from = current[f];
+    const to = snapshot[f];
+    rows.push({ key: f, labelBn: RESTORE_COUNT_LABELS[f].bn, labelEn: RESTORE_COUNT_LABELS[f].en, from, to });
+    if (typeof from === 'number' && typeof to === 'number' && to < from) {
+      shrinks[f] = to;
+      warningsBn.push(`${RESTORE_COUNT_LABELS[f].bn}: ${from} → ${to} (কমবে)`);
+      warningsEn.push(`${RESTORE_COUNT_LABELS[f].en}: ${from} → ${to} (will shrink)`);
+    }
+  }
+  const isDegraded = meta.isDegraded === true;
+  if (isDegraded) {
+    warningsBn.unshift('এই স্ন্যাপশট ক্ষতিগ্রস্ত (degraded) অবস্থার কপি হতে পারে — এতে শিক্ষার্থী আছে কিন্তু শিক্ষক নেই। রিস্টোর করলে বর্তমান শিক্ষক তথ্য হারাতে পারে।');
+    warningsEn.unshift('This snapshot may be a degraded copy — it has students but no teachers. Restoring it may lose current teacher records.');
+  }
+  if (typeof meta.completenessPct === 'number' && meta.completenessPct < 100) {
+    warningsBn.push(`এই স্ন্যাপশটের শিক্ষার্থী রেকর্ডের মাত্র ${meta.completenessPct}% সম্পূর্ণ ফিল্ড বহন করে — বাকিগুলো শুধু পাবলিক ফিল্ডের কপি হতে পারে।`);
+    warningsEn.push(`Only ${meta.completenessPct}% of this snapshot's student records carry full fields — the rest may be public-fields-only copies.`);
+  }
+  return {
+    rows,
+    shrinks,
+    isDegraded,
+    completenessPct: meta.completenessPct,
+    warningsBn,
+    warningsEn,
+    sourceLabel: meta.labelBn || meta.labelEn || '',
+    sourceTime: meta.timestamp || '',
+  };
+}
+
+/** Phase 3 vault save options (5th arg of saveToIndexedDbVault). */
+export interface VaultSaveOptions {
+  /** Pin this snapshot (never pruned). Defaults by trigger below. */
+  pinned?: boolean;
+  /** Allow saving a degraded state. Auto triggers refuse degraded states unless this is true. */
+  allowDegraded?: boolean;
+}
+
+/** Phase 3: these triggers are always pinned (plan §6). */
+const PINNED_VAULT_TRIGGERS: Array<SystemSnapshot['trigger']> = ['manual', 'pre_restore', 'pre_mutation'];
+/** Phase 3: these triggers are automatic — a degraded auto-save is skipped, never stored. */
+const AUTO_VAULT_TRIGGERS: Array<SystemSnapshot['trigger']> = ['auto_interval', 'resurrection', 'cloud_sync'];
 
 /**
  * localStorage keys of satellite modules that live outside AppContext
@@ -410,9 +586,19 @@ export async function saveToIndexedDbVault(
   payload: SystemDataPayload, 
   trigger: SystemSnapshot['trigger'] = 'auto_interval',
   labelBn?: string,
-  labelEn?: string
+  labelEn?: string,
+  options?: VaultSaveOptions
 ): Promise<SystemSnapshot | null> {
   try {
+    // Phase 3 degraded-skip: an automatic save must never rotate good
+    // entries out with a degraded state (students present, teachers
+    // gone — the 11:17 signature). Skip entirely, loudly, and keep
+    // the vault's last good state. Explicit saves (manual,
+    // pre-restore) always proceed — the user chose them.
+    if (AUTO_VAULT_TRIGGERS.includes(trigger) && !options?.allowDegraded && isDegradedPayload(payload)) {
+      console.warn('[Phase 3 vault] Auto-save skipped — state looks degraded (students present, teachers empty). Vault keeps its last good entries.');
+      return null;
+    }
     const db = await openIndexedDb();
     const counts = extractSystemCounts(payload);
     const totalRecords = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -445,7 +631,10 @@ export async function saveToIndexedDbVault(
         labelBn: labelBn || `স্বয়ংক্রিয় ব্যাকআপ (${dateStr}, ${timeStr})`,
         labelEn: labelEn || `Automatic Checkpoint (${now.toLocaleDateString()}, ${now.toLocaleTimeString()})`,
         counts,
-        payload
+        payload,
+        pinned: options?.pinned ?? PINNED_VAULT_TRIGGERS.includes(trigger),
+        isDegraded: isDegradedPayload(payload),
+        completenessPct: studentFieldCompletenessPct(payload)
       };
 
       await new Promise<void>((resolve, reject) => {
@@ -456,8 +645,8 @@ export async function saveToIndexedDbVault(
         tx.onerror = () => reject(tx.error);
       });
 
-      // Maintain max 30 rotating snapshots in IndexedDB
-      await pruneOldSnapshots(30);
+      // Phase 3: vault cap 30 → 100; pinned snapshots never rotate out.
+      await pruneOldSnapshots(100);
 
       return snapshot;
     }
@@ -468,21 +657,30 @@ export async function saveToIndexedDbVault(
 }
 
 /**
- * Prune old snapshots exceeding maximum retain count (FIFO)
+ * Phase 3: prune vault snapshots beyond maxKeep, newest-first.
+ * Pinned snapshots are NEVER deleted; when pinned entries alone
+ * reach maxKeep, nothing else is kept but pins still survive.
  */
-async function pruneOldSnapshots(maxKeep = 30): Promise<void> {
+async function pruneOldSnapshots(maxKeep = 100): Promise<void> {
   try {
     const db = await openIndexedDb();
     const snapshots = await getAllIndexedDbSnapshots();
-    if (snapshots.length > maxKeep) {
-      const sorted = [...snapshots].sort((a, b) => a.createdAt - b.createdAt);
-      const toDelete = sorted.slice(0, snapshots.length - maxKeep);
-
-      const tx = db.transaction([STORE_SNAPSHOTS], 'readwrite');
-      const store = tx.objectStore(STORE_SNAPSHOTS);
-      for (const item of toDelete) {
-        store.delete(item.id);
-      }
+    if (snapshots.length <= maxKeep) return;
+    const pinned = snapshots.filter((s) => (s as SystemSnapshot).pinned === true);
+    const unpinned = snapshots
+      .filter((s) => (s as SystemSnapshot).pinned !== true)
+      .sort((a, b) => b.createdAt - a.createdAt);
+    const keepUnpinned = Math.max(0, maxKeep - pinned.length);
+    const keepIds = new Set<string>([
+      ...pinned.map((s) => s.id),
+      ...unpinned.slice(0, keepUnpinned).map((s) => s.id),
+    ]);
+    const toDelete = snapshots.filter((s) => !keepIds.has(s.id));
+    if (toDelete.length === 0) return;
+    const tx = db.transaction([STORE_SNAPSHOTS], 'readwrite');
+    const store = tx.objectStore(STORE_SNAPSHOTS);
+    for (const item of toDelete) {
+      store.delete(item.id);
     }
   } catch (err) {
     console.warn('[IndexedDB Vault] Prune error:', err);
@@ -776,78 +974,297 @@ function toCloudStorePayload(payload: SystemDataPayload): Record<string, any> {
   return copy;
 }
 
-/**
- * Execute safe full system restore (writes to LocalStorage, IndexedDB Vault, and Cloud)
- */
-export async function executeFullSystemRestore(
-  payload: SystemDataPayload, 
-  adminEmail?: string
-): Promise<{ success: boolean; counts: SystemDataCounts; message: string }> {
-  // Step 1: Create a safety rollback snapshot of current state before overwriting
-  const current = readCurrentLocalStoragePayload();
-  await saveToIndexedDbVault(current, 'pre_restore', 'রিস্টোরের পূর্ববর্তী স্বয়ংক্রিয় সেফটি স্ন্যাপশট', 'Pre-Restore Safety Checkpoint');
-
-  // Step 2: Write to LocalStorage
-  writePayloadToLocalStorage(payload);
-
-  // Step 3: Write to IndexedDB Permanent Vault
-  await saveToIndexedDbVault(payload, 'manual', 'সফল ফাইল রিস্টোর স্ন্যাপশট', 'Restored from Backup File');
-
-  // Step 4: Write to Cloud Firestore if connected
-  // Phase 1 choke point: a restore payload that would degrade fuller
-  // cloud student records is refused BEFORE any write — it throws to
-  // the caller and must not degrade into the warn-and-success below.
-  {
-    const checkRef = doc(db, 'institution', 'main_store');
-    const checkSnap = await getDoc(checkRef);
-    assertRestorePayloadSafe(
-      {
-        ...toCloudStorePayload(payload),
-        updatedAt: new Date().toISOString(),
-        updatedBy: adminEmail || 'admin',
-        version: '3.0.0-permanent-vault'
-      },
-      checkSnap.exists() ? (checkSnap.data() as Record<string, any>) : null
-    );
+/** Phase 3: explicit shrink handling (resolves the future-rules
+ * false-positive class at the client level). A full restore may
+ * shrink a field ONLY when the user confirmed exactly that target
+ * size in the restore preview. Any other shrink throws BEFORE any
+ * write. Fields absent from the payload are untouched by merge and
+ * never count as shrinks. */
+export function assertRestoreShrinksConfirmed(
+  payload: any,
+  existing: Record<string, any> | null,
+  confirmedShrinks?: Partial<Record<keyof RestoreCounts, number>>
+): void {
+  if (!existing) return;
+  const next = extractRestoreCounts(payload);
+  const prev = extractRestoreCounts(existing);
+  for (const f of RESTORE_COUNT_FIELDS) {
+    const to = next[f];
+    const from = prev[f];
+    if (typeof to !== 'number' || typeof from !== 'number') continue;
+    if (to < from) {
+      const confirmed = confirmedShrinks ? confirmedShrinks[f] : undefined;
+      if (confirmed !== to) {
+        throw new Error(
+          `Phase 3 restore refused — ${RESTORE_COUNT_LABELS[f].bn} would shrink from ${from} to ${to} without preview confirmation. ` +
+            `A restore may shrink a list only when the preview confirmed exactly that size. Re-open the preview and confirm, or pick a newer snapshot.`
+        );
+      }
+    }
   }
+}
+
+export interface RestoreReadback {
+  verified: boolean;
+  mismatches: string[];
+  cloudCounts: RestoreCounts;
+}
+
+/** Phase 3: read-back verification for ALL restore paths (the
+ * localDataRecovery pattern, generalized). Re-reads main_store and
+ * checks every array field the payload carried: counts must match,
+ * and every restored student/teacher id must be present in cloud. */
+export async function verifyRestoreReadback(expectedPayload: any): Promise<RestoreReadback> {
+  const docRef = doc(db, 'institution', 'main_store');
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) {
+    return { verified: false, mismatches: ['রিস্টোরের পর main_store ডকুমেন্ট পাওয়া যায়নি।'], cloudCounts: {} };
+  }
+  const data = snap.data() as Record<string, any>;
+  const expected = extractRestoreCounts(expectedPayload);
+  const cloudCounts = extractRestoreCounts(data);
+  const mismatches: string[] = [];
+  for (const f of RESTORE_COUNT_FIELDS) {
+    const want = expected[f];
+    const got = cloudCounts[f];
+    if (typeof want === 'number' && typeof got === 'number' && want !== got) {
+      mismatches.push(`${RESTORE_COUNT_LABELS[f].bn}: আশা ${want}, ক্লাউডে ${got}`);
+    }
+  }
+  // Id parity for students + teachers (the two identity-critical lists).
+  for (const f of ['students', 'teachers'] as const) {
+    const wantList = (expectedPayload as any)?.[f];
+    const gotList = (data as any)?.[f];
+    if (Array.isArray(wantList) && Array.isArray(gotList)) {
+      const gotIds = new Set(gotList.map((r: any) => r && String(r.id)).filter(Boolean));
+      const missing = wantList.map((r: any) => r && String(r.id)).filter((id: string) => id && !gotIds.has(id));
+      if (missing.length > 0) mismatches.push(`${RESTORE_COUNT_LABELS[f].bn}: ${missing.length}টি আইডি ক্লাউডে পাওয়া যায়নি`);
+    }
+  }
+  return { verified: mismatches.length === 0, mismatches, cloudCounts };
+}
+
+/** Phase 3: explicit public-portal rebuild from a FRESH confirmed
+ * main_store read — every restore path calls this instead of relying
+ * on the next auto-sync. Returns false (never throws) on failure so
+ * a portal failure never masks a restore result. */
+export async function rebuildPublicPortalFromMain(): Promise<boolean> {
   try {
-    const docRef = doc(db, 'institution', 'main_store');
-    await setDoc(docRef, {
-      ...toCloudStorePayload(payload),
+    const snap = await getDoc(doc(db, 'institution', 'main_store'));
+    if (!snap.exists()) return false;
+    await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData(snap.data()));
+    return true;
+  } catch (err) {
+    console.warn('[Phase 3 restore] Public portal rebuild notice:', err);
+    return false;
+  }
+}
+
+export interface PreRestoreSafety {
+  vaultId: string | null;
+  cloudId: string | null;
+}
+
+/** Phase 3 (3g): EVERY full restore creates a pre-restore safety
+ * snapshot in vault AND cloud FIRST. The cloud safety snapshot is
+ * REQUIRED: if it cannot be created, the restore aborts before any
+ * write, because a bad restore without a cloud undo would be
+ * unrecoverable. Vault safety is best-effort (IndexedDB may be
+ * unavailable) and never blocks. */
+export async function createPreRestoreSafetySnapshots(adminEmail?: string): Promise<PreRestoreSafety> {
+  const current = readCurrentLocalStoragePayload();
+  let vaultId: string | null = null;
+  try {
+    const snap = await saveToIndexedDbVault(current, 'pre_restore', 'রিস্টোরের পূর্ববর্তী স্বয়ংক্রিয় সেফটি স্ন্যাপশট', 'Pre-Restore Safety Checkpoint');
+    vaultId = snap ? snap.id : null;
+  } catch (err) {
+    console.warn('[Phase 3 restore] Vault safety snapshot notice:', err);
+  }
+  if (!auth.currentUser) {
+    throw new Error('রিস্টোর বন্ধ করা হয়েছে — ক্লাউড সেফটি স্ন্যাপশট বানাতে লগইন প্রয়োজন। লগইন করে আবার চেষ্টা করুন।');
+  }
+  const { payload } = await fetchFirestoreAuthoritativeSnapshot(adminEmail);
+  const cloudId = await saveCloudSnapshotToFirestore(payload, 'রিস্টোরের পূর্ববর্তী সেফটি স্ন্যাপশট (ক্লাউড)', 'Pre-Restore Safety Snapshot (Cloud)', adminEmail, { pinned: true, trigger: 'pre_restore' });
+  return { vaultId, cloudId };
+}
+
+export interface FullRestoreOptions {
+  adminEmail?: string;
+  targetMode?: 'full' | 'client_only';
+  /** Preview-confirmed shrink targets (field -> new size). Any shrink
+   * not listed here with its exact size is refused before any write. */
+  confirmedShrinks?: Partial<Record<keyof RestoreCounts, number>>;
+  restoredFromLabel?: string;
+  version?: string;
+  vaultSuccessLabelBn?: string;
+  vaultSuccessLabelEn?: string;
+}
+
+export interface FullRestoreResult {
+  success: boolean;
+  counts: SystemDataCounts;
+  message: string;
+  /** Null for client_only restores (no cloud write, no read-back). */
+  verification: RestoreReadback | null;
+  portalRebuilt: boolean;
+  safety: PreRestoreSafety | null;
+}
+
+/**
+ * Phase 3 (single validated restore path for ALL channels): safety
+ * snapshots first (vault + cloud, cloud required), choke + shrink
+ * checks BEFORE any mutation, then local + vault + cloud writes,
+ * read-back verification, and an explicit portal rebuild. A refused
+ * restore mutates nothing (except the additive safety snapshots).
+ * Cloud-write or verification failure returns success: false — the
+ * caller must NOT claim success.
+ */
+async function performValidatedFullRestore(
+  payload: SystemDataPayload,
+  opts: FullRestoreOptions
+): Promise<FullRestoreResult> {
+  const adminEmail = opts.adminEmail;
+  const targetMode = opts.targetMode || 'full';
+  const counts = extractSystemCounts(payload);
+  const vaultLabelBn = opts.vaultSuccessLabelBn || 'সফল ফাইল রিস্টোর স্ন্যাপশট';
+  const vaultLabelEn = opts.vaultSuccessLabelEn || 'Restored from Backup File';
+  if (targetMode === 'client_only') {
+    // Local-only recovery: vault safety only, no cloud write, no
+    // cloud safety needed (cloud untouched), no read-back, no portal.
+    try {
+      const current = readCurrentLocalStoragePayload();
+      await saveToIndexedDbVault(current, 'pre_restore', 'রিস্টোরের পূর্ববর্তী স্বয়ংক্রিয় সেফটি স্ন্যাপশট', 'Pre-Restore Safety Checkpoint');
+    } catch (err) {
+      console.warn('[Phase 3 restore] Vault safety snapshot notice:', err);
+    }
+    writePayloadToLocalStorage(payload);
+    await saveToIndexedDbVault(payload, 'manual', vaultLabelBn, vaultLabelEn);
+    return {
+      success: true,
+      counts,
+      message: `সফলভাবে ${counts.students} জন শিক্ষার্থী, ${counts.exams} টি পরীক্ষা এবং ${counts.marks} টি মার্কস লোকাল স্টোরেজে রিস্টোর সম্পন্ন হয়েছে (ক্লাউড অপরিবর্তিত)!`,
+      verification: null,
+      portalRebuilt: false,
+      safety: null,
+    };
+  }
+
+  // 1. Safety FIRST (cloud safety throws → restore aborts, nothing mutated).
+  const safety = await createPreRestoreSafetySnapshots(adminEmail);
+
+  // 2. Choke + shrink checks against FRESH cloud state, BEFORE mutation.
+  const checkRef = doc(db, 'institution', 'main_store');
+  const checkSnap = await getDoc(checkRef);
+  const existing = checkSnap.exists() ? (checkSnap.data() as Record<string, any>) : null;
+  const cloudPayload = toCloudStorePayload(payload);
+  assertRestorePayloadSafe(
+    {
+      ...cloudPayload,
       updatedAt: new Date().toISOString(),
       updatedBy: adminEmail || 'admin',
-      version: '3.0.0-permanent-vault'
-    }, { merge: true });
-  } catch (err) {
-    console.warn('[Full Restore] Cloud write notice:', err);
+      version: opts.version || '3.0.0-permanent-vault',
+      ...(opts.restoredFromLabel ? { restoredFromSnapshotAt: opts.restoredFromLabel } : {}),
+    },
+    existing
+  );
+  assertRestoreShrinksConfirmed(cloudPayload, existing, opts.confirmedShrinks);
+
+  // 3. Local + vault writes.
+  writePayloadToLocalStorage(payload);
+  await saveToIndexedDbVault(payload, 'manual', vaultLabelBn, vaultLabelEn);
+
+  // 4. Cloud write (undefined top-level keys stripped: merge keeps
+  // the cloud value for fields an old backup predates, instead of
+  // throwing on undefined).
+  const writePayload: Record<string, any> = {};
+  for (const [k, v] of Object.entries(cloudPayload)) {
+    if (v !== undefined) writePayload[k] = v;
+  }
+  writePayload.updatedAt = new Date().toISOString();
+  writePayload.updatedBy = adminEmail || 'admin';
+  writePayload.version = opts.version || '3.0.0-permanent-vault';
+  if (opts.restoredFromLabel) writePayload.restoredFromSnapshotAt = opts.restoredFromLabel;
+  let cloudWriteError: string | null = null;
+  try {
+    await setDoc(doc(db, 'institution', 'main_store'), writePayload, { merge: true });
+  } catch (err: any) {
+    cloudWriteError = err?.message || 'অজ্ঞাত ত্রুটি';
+    console.warn('[Phase 3 restore] Cloud write notice:', err);
+  }
+  if (cloudWriteError) {
+    return {
+      success: false,
+      counts,
+      message: `রিস্টোর লোকালি হয়েছে কিন্তু ক্লাউডে লেখা যায়নি (${cloudWriteError})। সেফটি স্ন্যাপশট থেকে আগের অবস্থায় ফেরা যাবে।`,
+      verification: null,
+      portalRebuilt: false,
+      safety,
+    };
   }
 
-  const counts = extractSystemCounts(payload);
+  // 5. Read-back verification (re-reads cloud; mismatch = failure).
+  const verification = await verifyRestoreReadback(cloudPayload);
+  if (!verification.verified) {
+    return {
+      success: false,
+      counts,
+      message: `রিস্টোরের পর যাচাইয়ে অমিল পাওয়া গেছে: ${verification.mismatches.join('। ')}। সেফটি স্ন্যাপশট থেকে আগের অবস্থায় ফেরা যাবে।`,
+      verification,
+      portalRebuilt: false,
+      safety,
+    };
+  }
+
+  // 6. Explicit portal rebuild from restored main state.
+  const portalRebuilt = await rebuildPublicPortalFromMain();
   return {
     success: true,
     counts,
-    message: `সফলভাবে ${counts.students} জন শিক্ষার্থী, ${counts.exams} টি পরীক্ষা এবং ${counts.marks} টি মার্কস রিস্টোর সম্পন্ন হয়েছে!`
+    message: `সফলভাবে ${counts.students} জন শিক্ষার্থী, ${counts.exams} টি পরীক্ষা এবং ${counts.marks} টি মার্কস রিস্টোর ও যাচাই সম্পন্ন হয়েছে!${portalRebuilt ? '' : ' (পাবলিক পোর্টাল রিবিল্ড হয়নি — পরের সিঙ্কে হবে।)'}`,
+    verification,
+    portalRebuilt,
+    safety,
   };
 }
 
 /**
- * Rollback to a specific snapshot from history
+ * Execute safe full system restore (writes to LocalStorage, IndexedDB Vault, and Cloud).
+ * Phase 3: routes through the single validated restore path above.
+ */
+export async function executeFullSystemRestore(
+  payload: SystemDataPayload,
+  adminEmail?: string,
+  opts?: Omit<FullRestoreOptions, 'adminEmail'>
+): Promise<FullRestoreResult> {
+  return performValidatedFullRestore(payload, { ...(opts || {}), adminEmail });
+}
+
+/**
+ * Rollback to a specific snapshot from history.
+ * Phase 3: preview-confirmed shrinks pass through; refused restores mutate nothing.
  */
 export async function rollbackToSpecificSnapshot(
-  snapshotId: string, 
-  adminEmail?: string
-): Promise<{ success: boolean; message: string }> {
+  snapshotId: string,
+  adminEmail?: string,
+  confirmedShrinks?: Partial<Record<keyof RestoreCounts, number>>
+): Promise<FullRestoreResult> {
   const snapshots = await getAllIndexedDbSnapshots();
   const target = snapshots.find(s => s.id === snapshotId);
 
   if (!target || !target.payload) {
-    throw new Error('নির্দিষ্ট ব্যাকআপ স্ন্যাপশটটি পাওয়া যায়নি।');
+    throw new Error('নির্দিষ্ট ব্যাকআপ স্ন্যাপশটটি পাওয়া যায়নি।');
   }
-
-  await executeFullSystemRestore(target.payload, adminEmail);
+  const res = await performValidatedFullRestore(target.payload, {
+    adminEmail,
+    confirmedShrinks,
+    restoredFromLabel: target.timestamp,
+    version: '3.0.0-permanent-vault',
+    vaultSuccessLabelBn: 'সফল রোলব্যাক স্ন্যাপশট',
+    vaultSuccessLabelEn: 'Successful Rollback Snapshot',
+  });
   return {
-    success: true,
-    message: `সফলভাবে "${target.labelBn}" ভার্সনে রোলব্যাক করা হয়েছে!`
+    ...res,
+    message: res.success ? `সফলভাবে "${target.labelBn}" ভার্সনে রোলব্যাক ও যাচাই সম্পন্ন হয়েছে!` : res.message,
   };
 }
 
@@ -878,6 +1295,16 @@ export interface CloudStoredSnapshotMeta {
   exportedBy: string;
   counts: SystemDataCounts;
   payload: SystemDataPayload;
+  /** Phase 3: pinned snapshots are exempt from retention prune. */
+  pinned?: boolean;
+  /** Phase 3: how this snapshot was created. */
+  trigger?: 'manual' | 'daily' | 'pre_restore';
+  /** Phase 3: one daily keep per day, retained 90 days. */
+  dailyKeep?: boolean;
+  /** Phase 3: true when the snapshot carries students but no teachers. */
+  isDegraded?: boolean;
+  /** Phase 3: % of students carrying beyond-public fields. */
+  completenessPct?: number;
 }
 
 /**
@@ -966,14 +1393,23 @@ export async function downloadCloudFirestoreSnapshot(
   return { filename, snapshot };
 }
 
+export interface CloudSnapshotSaveOptions {
+  pinned?: boolean;
+  trigger?: 'manual' | 'daily' | 'pre_restore';
+  dailyKeep?: boolean;
+}
+
 /**
- * Saves a timestamped snapshot document directly into Firestore collection `cloud_snapshots`
+ * Saves a timestamped snapshot document directly into Firestore collection `cloud_snapshots`.
+ * Phase 3: stores pin/trigger/dailyKeep/degraded/completeness flags, and
+ * prunes beyond retention after a successful create (best-effort).
  */
 export async function saveCloudSnapshotToFirestore(
   payload?: SystemDataPayload,
   labelBn?: string,
   labelEn?: string,
-  adminEmail?: string
+  adminEmail?: string,
+  options?: CloudSnapshotSaveOptions
 ): Promise<string> {
   if (!auth.currentUser) {
     throw new Error('Authentication required: Firebase Authentication session is required to save snapshots to Cloud Firestore.');
@@ -992,33 +1428,144 @@ export async function saveCloudSnapshotToFirestore(
     exportedBy: adminEmail || 'admin',
     counts,
     payload: data,
-    version: '3.0.0-cloud-snapshot'
+    version: '3.0.0-cloud-snapshot',
+    pinned: options?.pinned === true,
+    trigger: options?.trigger || 'manual',
+    dailyKeep: options?.dailyKeep === true,
+    isDegraded: isDegradedPayload(data),
+    completenessPct: studentFieldCompletenessPct(data)
   };
 
   const docRef = doc(db, 'cloud_snapshots', snapId);
   await setDoc(docRef, snapshotDoc);
 
+  // Phase 3 retention: prune beyond policy after a successful create
+  // (best-effort — a prune failure never fails the snapshot itself).
+  try {
+    await pruneCloudSnapshots();
+  } catch (err) {
+    console.warn('[Cloud Snapshots] Retention prune notice:', err);
+  }
+
   return snapId;
 }
 
+export interface CloudSnapshotPage {
+  items: CloudStoredSnapshotMeta[];
+  hasMore: boolean;
+  lastCreatedAt: number | null;
+}
+
+/** Phase 3: cursor-paginated cloud snapshot list (20/page default).
+ * The old 20-item hard cap is gone — the UI pages through everything. */
+export async function fetchFirestoreCloudSnapshotsPage(
+  pageSize = 20,
+  startAfterCreatedAt?: number | null
+): Promise<CloudSnapshotPage> {
+  try {
+    const constraints: any[] = [orderBy('createdAt', 'desc')];
+    if (startAfterCreatedAt) constraints.push(startAfter(startAfterCreatedAt));
+    constraints.push(limit(pageSize + 1));
+    const q = query(collection(db, 'cloud_snapshots'), ...constraints);
+    const snapDocs = await getDocs(q);
+    const items: CloudStoredSnapshotMeta[] = [];
+    snapDocs.forEach((d) => {
+      items.push(d.data() as CloudStoredSnapshotMeta);
+    });
+    const hasMore = items.length > pageSize;
+    const page = hasMore ? items.slice(0, pageSize) : items;
+    return { items: page, hasMore, lastCreatedAt: page.length > 0 ? page[page.length - 1].createdAt : null };
+  } catch (err) {
+    console.warn('[Cloud Snapshots] Fetch page error:', err);
+    return { items: [], hasMore: false, lastCreatedAt: null };
+  }
+}
+
 /**
- * Fetches list of all cloud snapshots stored in Firestore collection `cloud_snapshots`
+ * Fetches the newest 50 cloud snapshots (kept for existing callers).
  */
 export async function fetchFirestoreCloudSnapshots(): Promise<CloudStoredSnapshotMeta[]> {
+  const page = await fetchFirestoreCloudSnapshotsPage(50);
+  return page.items;
+}
+
+/** Phase 3: pin/unpin a cloud snapshot (pinned snapshots are exempt from retention prune). */
+export async function setCloudSnapshotPinned(id: string, pinned: boolean): Promise<void> {
+  await updateDoc(doc(db, 'cloud_snapshots', id), { pinned });
+}
+
+/** Phase 3 retention (plan §6): keep pinned docs, the newest 50, and
+ * one daily-keep per day for 90 days; delete the rest, oldest first.
+ * Runs at most once per day per device (localStorage guard) so a
+ * snapshot create never pays for a full walk more than daily, and
+ * never throws to the create flow. */
+export async function pruneCloudSnapshots(): Promise<string[]> {
   try {
-    const q = query(collection(db, 'cloud_snapshots'), orderBy('createdAt', 'desc'), limit(20));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const today = new Date().toLocaleDateString('en-CA');
+      if (window.localStorage.getItem('ldsdm_last_cloud_prune') === today) return [];
+    }
+    const q = query(collection(db, 'cloud_snapshots'), orderBy('createdAt', 'desc'), limit(200));
     const snapDocs = await getDocs(q);
-    const list: CloudStoredSnapshotMeta[] = [];
-
+    const docs: CloudStoredSnapshotMeta[] = [];
     snapDocs.forEach((d) => {
-      const data = d.data() as CloudStoredSnapshotMeta;
-      list.push(data);
+      docs.push(d.data() as CloudStoredSnapshotMeta);
     });
-
-    return list;
+    const keep = new Set<string>();
+    docs.forEach((d, idx) => { if (idx < 50) keep.add(d.id); });
+    docs.forEach((d) => { if ((d as any).pinned === true) keep.add(d.id); });
+    const dailyByDay = new Map<string, CloudStoredSnapshotMeta>();
+    docs.forEach((d) => {
+      if ((d as any).dailyKeep !== true) return;
+      const day = new Date(d.createdAt).toLocaleDateString('en-CA');
+      const prev = dailyByDay.get(day);
+      if (!prev || d.createdAt > prev.createdAt) dailyByDay.set(day, d);
+    });
+    const now = Date.now();
+    const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+    dailyByDay.forEach((d) => { if (now - d.createdAt <= ninetyDays) keep.add(d.id); });
+    const toDelete = docs.filter((d) => !keep.has(d.id)).sort((a, b) => a.createdAt - b.createdAt);
+    const pruned: string[] = [];
+    for (const d of toDelete) {
+      try {
+        await deleteDoc(doc(db, 'cloud_snapshots', d.id));
+        pruned.push(d.id);
+      } catch (err) {
+        console.warn('[Cloud Snapshots] Prune delete notice:', d.id, err);
+      }
+    }
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('ldsdm_last_cloud_prune', new Date().toLocaleDateString('en-CA'));
+    }
+    if (pruned.length > 0) console.log(`[Phase 3 cloud retention] Pruned ${pruned.length} snapshot(s):`, pruned);
+    return pruned;
   } catch (err) {
-    console.warn('[Cloud Snapshots] Fetch error:', err);
+    console.warn('[Cloud Snapshots] Prune error:', err);
     return [];
+  }
+}
+
+/** Phase 3 (3b): automatic daily cloud snapshot — the FIRST confirmed
+ * write of the day triggers one. Best-effort: never throws, never
+ * updates its date key on failure or on a degraded skip, so a missed
+ * day retries on the next confirmed write. */
+export async function maybeCreateDailyCloudSnapshot(adminEmail?: string): Promise<'created' | 'skipped-today' | 'skipped-degraded' | 'skipped-noauth' | 'failed'> {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return 'failed';
+    const today = new Date().toLocaleDateString('en-CA');
+    if (window.localStorage.getItem('ldsdm_last_daily_cloud_snapshot') === today) return 'skipped-today';
+    if (!auth.currentUser) return 'skipped-noauth';
+    const data = readCurrentLocalStoragePayload();
+    if (isDegradedPayload(data)) {
+      console.warn('[Phase 3 daily snapshot] Skipped — current state looks degraded (students present, teachers empty). Will retry on a later confirmed write.');
+      return 'skipped-degraded';
+    }
+    await saveCloudSnapshotToFirestore(data, `দৈনিক স্বয়ংক্রিয় স্ন্যাপশট (${new Date().toLocaleDateString('bn-BD')})`, `Daily Automatic Snapshot (${new Date().toLocaleDateString()})`, adminEmail, { trigger: 'daily', dailyKeep: true });
+    window.localStorage.setItem('ldsdm_last_daily_cloud_snapshot', today);
+    return 'created';
+  } catch (err) {
+    console.warn('[Phase 3 daily snapshot] Failed:', err);
+    return 'failed';
   }
 }
 
@@ -1099,7 +1646,8 @@ export function validateCloudSnapshotPackage(jsonContent: string): {
 }
 
 /**
- * Restores data from a previously generated Cloud Snapshot package
+ * Restores data from a previously generated Cloud Snapshot package.
+ * Phase 3: routes through the single validated restore path.
  * Target mode:
  * - 'full': Restores client LocalStorage + IndexedDB Vault AND overwrites Firestore database
  * - 'client_only': Restores browser LocalStorage & IndexedDB (useful if client data was cleared, leaving cloud as-is)
@@ -1108,66 +1656,51 @@ export async function restoreFromCloudSnapshotPackage(
   snapshotPkg: CloudDataSnapshotPackage,
   targetMode: 'full' | 'client_only' = 'full',
   adminEmail?: string
-): Promise<{ success: boolean; counts: SystemDataCounts; message: string }> {
+): Promise<FullRestoreResult> {
   const payload = snapshotPkg.payload;
-  const counts = extractSystemCounts(payload);
-
-  // 1. Create safety pre-restore rollback checkpoint in IndexedDB
-  const current = readCurrentLocalStoragePayload();
-  await saveToIndexedDbVault(
-    current, 
-    'pre_restore', 
-    'ক্লাউড স্ন্যাপশট রিস্টোরের পূর্ববর্তী স্বয়ংক্রিয় সেফটি চেকপয়েন্ট', 
-    'Pre-Cloud Restore Safety Checkpoint'
-  );
-
-  // 2. Restore to LocalStorage (Instant client UI restoration)
-  writePayloadToLocalStorage(payload);
-
-  // 3. Save to IndexedDB Permanent Vault
-  await saveToIndexedDbVault(
-    payload, 
-    'manual', 
-    `ক্লাউড স্ন্যাপশট ফাইল থেকে রিস্টোর (${new Date().toLocaleTimeString('bn-BD')})`, 
-    `Restored from Cloud Snapshot (${new Date().toLocaleTimeString()})`
-  );
-
-  // 4. If full mode, also write to Firestore database (institution/main_store)
-  if (targetMode === 'full') {
-    // Phase 1 choke point: refuse a degrading restore before the
-    // write (throws to the caller, not a warn-and-success).
-    const checkRef = doc(db, 'institution', 'main_store');
-    const checkSnap = await getDoc(checkRef);
-    assertRestorePayloadSafe(
-      {
-        ...toCloudStorePayload(payload),
-        updatedAt: new Date().toISOString(),
-        updatedBy: adminEmail || snapshotPkg.exportedBy || 'admin',
-        version: '3.0.0-cloud-snapshot-restored',
-        restoredFromSnapshotAt: snapshotPkg.exportedAt
-      },
-      checkSnap.exists() ? (checkSnap.data() as Record<string, any>) : null
-    );
-    try {
-      const docRef = doc(db, 'institution', 'main_store');
-      await setDoc(docRef, {
-        ...toCloudStorePayload(payload),
-        updatedAt: new Date().toISOString(),
-        updatedBy: adminEmail || snapshotPkg.exportedBy || 'admin',
-        version: '3.0.0-cloud-snapshot-restored',
-        restoredFromSnapshotAt: snapshotPkg.exportedAt
-      }, { merge: true });
-    } catch (err: any) {
-      console.warn('[Cloud Restore] Firestore write notice:', err);
-    }
-  }
-
+  const res = await performValidatedFullRestore(payload, {
+    adminEmail: adminEmail || snapshotPkg.exportedBy || 'admin',
+    targetMode,
+    restoredFromLabel: snapshotPkg.exportedAt,
+    version: '3.0.0-cloud-snapshot-restored',
+    vaultSuccessLabelBn: 'ক্লাউড স্ন্যাপশট থেকে রিস্টোর',
+    vaultSuccessLabelEn: 'Restored from Cloud Snapshot',
+  });
   return {
-    success: true,
-    counts,
-    message: targetMode === 'full'
-      ? `✓ ক্লাউড স্ন্যাপশট থেকে ${counts.students} জন শিক্ষার্থী ও ${counts.marks} টি মার্কস সফলভাবে ক্লাউড ও লোকাল স্টোরেজে রিস্টোর সম্পন্ন হয়েছে!`
-      : `✓ ক্লাউড স্ন্যাপশট থেকে ক্লায়েন্ট স্টোরেজে ${counts.students} জন শিক্ষার্থী ও ${counts.marks} টি মার্কস পুনরুদ্ধার (Client Recovery) সম্পন্ন হয়েছে!`
+    ...res,
+    message: res.success
+      ? (targetMode === 'full'
+        ? `✓ ক্লাউড স্ন্যাপশট থেকে ${res.counts.students} জন শিক্ষার্থী ও ${res.counts.marks} টি মার্কস সফলভাবে ক্লাউড ও লোকাল স্টোরেজে রিস্টোর ও যাচাই সম্পন্ন হয়েছে!`
+        : `✓ ক্লাউড স্ন্যাপশট থেকে ক্লায়েন্ট স্টোরেজে ${res.counts.students} জন শিক্ষার্থী ও ${res.counts.marks} টি মার্কস পুনরুদ্ধার (Client Recovery) সম্পন্ন হয়েছে!`)
+      : res.message,
   };
 }
 
+/** Phase 3: REAL cloud-snapshot restore (fixes the CloudSyncWidget
+ * misnomer). Fetches the snapshot doc fresh, then restores THAT
+ * snapshot through the validated path — never a pull of current
+ * cloud dressed as a restore. */
+export async function restoreCloudSnapshotDoc(
+  snapshotId: string,
+  adminEmail?: string,
+  confirmedShrinks?: Partial<Record<keyof RestoreCounts, number>>
+): Promise<FullRestoreResult> {
+  const snapRef = doc(db, 'cloud_snapshots', snapshotId);
+  const snapDoc = await getDoc(snapRef);
+  if (!snapDoc.exists()) {
+    throw new Error('ক্লাউড স্ন্যাপশটটি পাওয়া যায়নি — হয়তো ডিলিট করা হয়েছে।');
+  }
+  const data = snapDoc.data() as CloudStoredSnapshotMeta;
+  if (!data.payload) {
+    throw new Error('ক্লাউড স্ন্যাপশটে কোনো ডাটা নেই।');
+  }
+  return performValidatedFullRestore(data.payload, {
+    adminEmail,
+    targetMode: 'full',
+    confirmedShrinks,
+    restoredFromLabel: data.timestamp,
+    version: '3.0.0-cloud-snapshot-restored',
+    vaultSuccessLabelBn: 'ক্লাউড স্ন্যাপশট থেকে রিস্টোর',
+    vaultSuccessLabelEn: 'Restored from Cloud Snapshot',
+  });
+}

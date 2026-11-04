@@ -5,7 +5,6 @@ import {
   googleProvider 
 } from './firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { assertRestorePayloadSafe } from './mainStoreWrite';
 import type {
   SchoolProfile,
   SchoolClass,
@@ -30,7 +29,6 @@ import {
   readCurrentLocalStoragePayload, 
   executeFullSystemRestore, 
   extractSystemCounts,
-  saveToIndexedDbVault,
   SystemDataCounts,
   CloudDataSnapshotPackage
 } from './multiStorePersistence';
@@ -574,7 +572,14 @@ export const downloadAndInspectDriveBackup = async (
 };
 
 /**
- * Restores system from a Google Drive backup package
+ * Restores system from a Google Drive backup package.
+ * Phase 3 (3f): the duplicate wholesale main_store write is removed —
+ * all channels share the single validated restore path
+ * (executeFullSystemRestore), which already writes to cloud with the
+ * choke-point check, safety snapshots, read-back verification, and
+ * portal rebuild. NOTE: this function currently has no UI callers;
+ * a Drive restore of a shrinking snapshot without preview-confirmed
+ * shrinks is refused loudly (fail-closed) rather than applied.
  */
 export const restoreFromGoogleDriveBackup = async (
   packageData: CloudDataSnapshotPackage,
@@ -585,48 +590,14 @@ export const restoreFromGoogleDriveBackup = async (
     throw new Error('Invalid Google Drive backup package: missing payload.');
   }
 
-  // 1. Create safety rollback checkpoint in IndexedDB
-  const current = readCurrentLocalStoragePayload();
-  await saveToIndexedDbVault(current, 'pre_restore', 'গুগল ড্রাইভ রিস্টোর পূর্ববর্তী ব্যাকআপ', 'Pre-Drive-Restore Checkpoint');
-
-  // 2. Execute full system restore to LocalStorage
   const email = adminEmail || auth.currentUser?.email || 'admin@madrasah.edu';
-  await executeFullSystemRestore(packageData.payload, email);
-
-  // 3. If full mode and authenticated, sync to Firestore
-  if (restoreMode === 'full' && auth.currentUser) {
-    // Phase 1 choke point: refuse a degrading restore before the
-    // write. (The duplicate wholesale write itself is removed in
-    // Phase 3, when all channels share one validated restore path.)
-    const { doc, getDoc } = await import('firebase/firestore');
-    const { db } = await import('./firebase');
-    const checkRef = doc(db, 'institution', 'main_store');
-    const checkSnap = await getDoc(checkRef);
-    assertRestorePayloadSafe(
-      {
-        ...packageData.payload,
-        updatedBy: email,
-        updatedAt: new Date().toISOString()
-      },
-      checkSnap.exists() ? (checkSnap.data() as Record<string, any>) : null
-    );
-    try {
-      const { doc, setDoc } = await import('firebase/firestore');
-      const { db } = await import('./firebase');
-      const docRef = doc(db, 'institution', 'main_store');
-      await setDoc(docRef, {
-        ...packageData.payload,
-        updatedBy: email,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {
-      console.warn('Firestore cloud sync after Drive restore note:', e);
-    }
-  }
+  const res = await executeFullSystemRestore(packageData.payload, email, { targetMode: restoreMode });
 
   return {
-    success: true,
-    message: `গুগল ড্রাইভ ব্যাকআপ থেকে ${packageData.counts.students} জন শিক্ষার্থী ও ${packageData.counts.marks} টি মার্কস রেকর্ড সফলভাবে রিস্টোর হয়েছে!`
+    success: res.success,
+    message: res.success
+      ? `গুগল ড্রাইভ ব্যাকআপ থেকে ${packageData.counts.students} জন শিক্ষার্থী ও ${packageData.counts.marks} টি মার্কস রেকর্ড সফলভাবে রিস্টোর ও যাচাই হয়েছে!`
+      : res.message,
   };
 };
 
