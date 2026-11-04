@@ -887,12 +887,28 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     <span className="font-semibold text-slate-300">{currentStudent.group}</span>
                   </span>
                 )}
+                <span className="flex items-center gap-1.5">
+                  <span className="text-slate-400">{language === 'bn' ? 'অবস্থা:' : 'Status:'}</span>
+                  <span className="font-semibold text-slate-300">
+                    {currentStudent.isFormer || currentStudent.status === 'Former' || currentStudent.status === 'archived'
+                      ? (language === 'bn' ? 'প্রাক্তন' : 'Former')
+                      : currentStudent.status === 'inactive' || currentStudent.status === 'Inactive'
+                        ? (language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')
+                        : currentStudent.status === 'transferred'
+                          ? (language === 'bn' ? 'বদলি' : 'Transferred')
+                          : currentStudent.status === 'graduated'
+                            ? (language === 'bn' ? 'উত্তীর্ণ' : 'Graduated')
+                            : currentStudent.status === 'dropped'
+                              ? (language === 'bn' ? 'ঝরে পড়া' : 'Dropped')
+                              : (language === 'bn' ? 'সক্রিয়' : 'Active')}
+                  </span>
+                </span>
               </div>
 
               {/* Extra Demographics */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-1">
                 {currentStudent.fatherName && (
-                  <span>{language === 'bn' ? 'পিতা: ' : 'Father: '}{currentStudent.fatherName}</span>
+                  <span>{language === 'bn' ? 'পিতা: ' : 'Father: '}{language === 'bn' ? (currentStudent.fatherNameBn || currentStudent.fatherName) : currentStudent.fatherName}</span>
                 )}
                 {currentStudent.admissionDate && (
                   <span>{language === 'bn' ? 'ভর্তি: ' : 'Admitted: '}{language === 'bn' ? toBn(currentStudent.admissionDate) : currentStudent.admissionDate}</span>

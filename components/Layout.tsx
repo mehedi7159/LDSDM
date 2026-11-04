@@ -135,6 +135,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
+  // Student Management nested Profile submenu (expanded rail only): the
+  // row body still navigates to 'students'; only the chevron toggles this.
+  // It defaults open when the profile tab becomes active (a manual close
+  // while staying on the tab sticks until the tab is entered again).
+  const [studentSubOpen, setStudentSubOpen] = useState(false);
+  useEffect(() => {
+    if (activeTab === 'student_profile') setStudentSubOpen(true);
+  }, [activeTab]);
+
   // Collapse the expanded rail on ESC key press (replaces the old
   // drawer Esc-close; the drawer itself is gone).
   useEffect(() => {
@@ -343,11 +352,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     .filter(menu => {
       if (!menuSearchQuery.trim()) return true;
       const q = menuSearchQuery.toLowerCase().trim();
-      return (
+      if (
         menu.titleBn.toLowerCase().includes(q) ||
         menu.titleEn.toLowerCase().includes(q) ||
         menu.targetTab.toLowerCase().includes(q)
-      );
+      ) return true;
+      // The nested Profile submenu has no group of its own: a search for
+      // it must still surface the Student Management group.
+      if (menu.id === 'students') {
+        return ['প্রোফাইল', 'profile', 'student_profile'].some(t => t.includes(q));
+      }
+      return false;
     });
 
   // Rail state is deliberately left untouched on navigation: a persistent
@@ -445,39 +460,109 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                   </button>
                 );
               }
-              return (
-                <button
-                  key={menu.id}
-                  type="button"
-                  onClick={() => handleTabClick(menu.targetTab)}
-                  className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
-                    isActive
-                      ? 'text-white font-bold shadow-sm'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                  style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
-                      style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
-                    >
-                      <Icon size={15} />
-                    </div>
-                    <span className="truncate">
-                      {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
-                      {language === 'bn' ? menu.titleBn : menu.titleEn}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    {menu.badge && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
-                        {menu.badge}
+              // Student Management alone gets a nested Profile submenu in
+              // the expanded rail: the row body still goes to 'students';
+              // only the chevron toggles the submenu. Collapsed rail and
+              // all other groups stay untouched single-level rows.
+              const isStudentsGroup = menu.id === 'students';
+              const profileSearchHit = isStudentsGroup && !!menuSearchQuery.trim() &&
+                ['প্রোফাইল', 'profile', 'student_profile'].some(t => t.includes(menuSearchQuery.toLowerCase().trim()));
+              const showStudentSub = isStudentsGroup && (studentSubOpen || profileSearchHit);
+              if (!isStudentsGroup) {
+                return (
+                  <button
+                    key={menu.id}
+                    type="button"
+                    onClick={() => handleTabClick(menu.targetTab)}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                      isActive
+                        ? 'text-white font-bold shadow-sm'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                    style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
+                        style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                      >
+                        <Icon size={15} />
+                      </div>
+                      <span className="truncate">
+                        {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
+                        {language === 'bn' ? menu.titleBn : menu.titleEn}
                       </span>
-                    )}
-                    <ChevronRight size={13} className={isActive ? 'text-white translate-x-0.5' : 'text-slate-400'} />
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {menu.badge && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
+                          {menu.badge}
+                        </span>
+                      )}
+                      <ChevronRight size={13} className={isActive ? 'text-white translate-x-0.5' : 'text-slate-400'} />
+                    </div>
+                  </button>
+                );
+              }
+              const isProfileActive = activeTab === 'student_profile';
+              return (
+                <div key={menu.id}>
+                  <div
+                    className={`w-full rounded-xl flex items-stretch transition-all ${isActive ? 'text-white font-bold shadow-sm' : ''}`}
+                    style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleTabClick(menu.targetTab)}
+                      className="flex-1 min-w-0 px-3 py-2.5 rounded-l-xl text-xs font-semibold flex items-center gap-2.5 text-left cursor-pointer"
+                    >
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
+                        style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                      >
+                        <Icon size={15} />
+                      </div>
+                      <span className="truncate">
+                        {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
+                        {language === 'bn' ? menu.titleBn : menu.titleEn}
+                      </span>
+                      {menu.badge && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950 shrink-0 ml-1">
+                          {menu.badge}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentSubOpen(v => !v)}
+                      aria-expanded={showStudentSub}
+                      title={showStudentSub
+                        ? (language === 'bn' ? 'সাবমেনু লুকান' : 'Hide submenu')
+                        : (language === 'bn' ? 'সাবমেনু দেখান' : 'Show submenu')}
+                      className={`px-2.5 flex items-center justify-center rounded-r-xl shrink-0 cursor-pointer transition ${isActive ? 'text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                    >
+                      {showStudentSub ? <ChevronDown size={15} /> : <ChevronRight size={13} />}
+                    </button>
                   </div>
-                </button>
+                  {showStudentSub && (
+                    <div className="pl-6 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleTabClick('student_profile')}
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 text-left cursor-pointer transition-all ${isProfileActive ? 'text-white font-bold shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        style={isProfileActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+                      >
+                        <div
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${isProfileActive ? 'bg-white/20 text-white' : ''}`}
+                          style={isProfileActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                        >
+                          <Icon size={13} />
+                        </div>
+                        <span className="truncate">{language === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               );
             })}
 
