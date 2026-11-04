@@ -1863,6 +1863,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const isRemoteUpdateRef = useRef(false);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasLoadedRemoteRef = useRef(false);
+  // 4 Nov 2026 clobber guard: set ONLY when the MAIN store
+  // (institution/main_store) has hydrated — never by the public feed.
+  // hasLoadedRemoteRef is set by EITHER feed, but the public portal
+  // document carries no users/teachers and only picked student/mark
+  // fields; gating a write or a login verdict on it lets partial
+  // public-subset state act as if it were the full store. On 4 Nov
+  // 2026 exactly that wiped teachers/users from the cloud (a signed-in
+  // session still on the public feed auto-synced its partial state
+  // when the main snapshot was slower than the 1200 ms debounce).
+  const hasLoadedMainStoreRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2314,6 +2324,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       getDoc(docRef)
         .then((snap) => {
           if (!cancelled && snap.exists()) {
+            hasLoadedMainStoreRef.current = true;
             applyRemoteData(snap.data());
             setCloudHydrated(true);
           }
@@ -2327,6 +2338,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         (snapshot) => {
           if (cancelled) return;
           if (snapshot.exists()) {
+            hasLoadedMainStoreRef.current = true;
             applyRemoteData(snapshot.data());
             setCloudHydrated(true);
           } else {
@@ -2476,15 +2488,26 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // CRITICAL CLOUD PROTECTION: Never auto-sync until initial remote data status has resolved
     if (!hasLoadedRemoteRef.current) return;
 
-    // CRITICAL EMPTY DATA PROTECTION: Never overwrite cloud data with empty local state
-    if (students.length === 0 && marks.length === 0) {
+    // 4 Nov 2026 CLOBBER GUARD: never auto-sync until the MAIN store
+    // has hydrated. A session still on the public feed holds only the
+    // public subset (no teachers/users, picked student/mark fields).
+    // The old guard below used to let a signed-in session sync exactly
+    // that partial state: auth.currentUser is set the moment Firebase
+    // sign-in succeeds, BEFORE the feed switches to main — so when the
+    // main snapshot was slower than the 1200 ms debounce, the
+    // public-subset sync fired first and overwrote the full store
+    // (teachers/users wiped, students/marks degraded, 4 Nov 2026).
+    if (!hasLoadedMainStoreRef.current) return;
+
+    // Phase 2 (public-data split): a session on the public feed must
+    // never write back, signed in or not — it only holds the public
+    // subset. It syncs again once the main feed has landed (flag above).
+    if (feedKindRef.current === 'public') {
       return;
     }
 
-    // Phase 2 (public-data split): an anonymous session holds ONLY the
-    // public subset in state. It must never write that partial state back
-    // over the full store. Signed-in sessions sync exactly as before.
-    if (feedKindRef.current === 'public' && !auth.currentUser) {
+    // CRITICAL EMPTY DATA PROTECTION: Never overwrite cloud data with empty local state
+    if (students.length === 0 && marks.length === 0) {
       return;
     }
 
@@ -2493,6 +2516,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
 
     syncTimeoutRef.current = setTimeout(async () => {
+      // Fire-time re-validation (belt & braces): the scheduled closure
+      // may predate the main feed, so re-check before any write.
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current) return;
       try {
         const payload = buildMainStorePayload(
           {
@@ -2968,6 +2994,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   // Force Push/Pull functions
   const forcePushToCloud = async () => {
+    // 4 Nov 2026 clobber guard: a manual push from a session that has
+    // not hydrated the MAIN store would write partial (e.g. public
+    // subset) state over the full store. Both call sites catch and
+    // surface this as an error instead of a false success.
+    if (!hasLoadedMainStoreRef.current) {
+      setCloudStatus('error');
+      throw new Error('মূল ডাটা এখনও লোড হয়নি — ক্লাউড পুশ করা যাবে না।');
+    }
     setCloudStatus('syncing');
     try {
       const payload = buildMainStorePayload(
@@ -3028,6 +3062,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const snap = await getDoc(doc(db, 'institution', 'main_store'));
       if (snap.exists()) {
         hasLoadedRemoteRef.current = true;
+        hasLoadedMainStoreRef.current = true;
         applyRemoteData(snap.data());
         setCloudStatus('connected');
         return snap.data();
@@ -3767,7 +3802,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // cheap some() scans and no-ops for backed sessions; denial clears
   // the session, so there is no loop.
   useEffect(() => {
-    if (!hasLoadedRemoteRef.current) return;
+    // 4 Nov 2026: the verdict must wait for MAIN-store users/teachers.
+    // hasLoadedRemoteRef is also set by the public feed, whose document
+    // carries no users/teachers — judging a fresh sign-in against that
+    // state denied every valid account before the main snapshot landed.
+    // Deleted accounts are still denied as soon as main truth arrives.
+    if (!hasLoadedMainStoreRef.current) return;
     // Case 1: Firebase session (restored or freshly signed in).
     if (authUser) {
       const email = (authUser.email || '').toLowerCase();
