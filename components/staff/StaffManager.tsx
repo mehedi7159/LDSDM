@@ -117,6 +117,41 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // After the timeout, local data renders WITH the stale banner below.
   const staffListSyncing = !cloudHydrated && !cloudHydrationTimedOut;
   const staffListStale = !cloudHydrated && cloudHydrationTimedOut;
+  // P2 (sync hardening): even behind the first-snapshot gate, records
+  // whose payload sits in the queue stay visible — badged, never passed
+  // for cloud truth. Every other row stays hidden exactly as before.
+  const gatedQueuedTeachers = teachers.filter(
+    (t) => isRecordUnconfirmed('teachers', t.id) || isRecordUnconfirmed('users', t.id)
+  );
+  // P2 gated list: compact cards for queued records only (no search,
+  // filter, edit or delete here — the full directory owns those once
+  // the gate lifts). The UnconfirmedBadge ('cloud-এ যায়নি') plus the
+  // local-only mark are what keep the server-only rule intact.
+  const gatedQueuedList = gatedQueuedTeachers.length > 0 ? (
+    <div className="space-y-3">
+      {gatedQueuedTeachers.map((staff) => (
+        <div key={staff.id} className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-amber-300 dark:border-amber-700 shadow-2xs space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              {(staff.nameBn || staff.name || 'উ')[0]}
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
+                {isBn ? (staff.nameBn || staff.name) : staff.name}
+              </h4>
+              <UnconfirmedBadge isBn={isBn} />
+              <span className="inline-block mt-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                {isBn ? 'শুধু এই ডিভাইসে' : 'This device only'}
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {staff.designation || 'সহকারী শিক্ষক'}{staff.phone || staff.email ? ` • ${staff.phone || staff.email}` : ''}
+          </p>
+        </div>
+      ))}
+    </div>
+  ) : null;
   const [activeTab, setActiveTab] = useState<StaffSubTab>(initialSubTab);
   // Design গ (merged tab): 'attendance' holds two inner sections —
   // daily attendance + leave records. Admin tier sees both; other
@@ -1189,13 +1224,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         {/* 1. Staff, Faculty & Accounts (merged directory + roles) */}
         {activeTab === 'directory' && (
           staffListSyncing ? (
+            <>
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center gap-3 text-center">
               <div className="h-8 w-8 rounded-full border-2 border-teal-200 border-t-teal-600 animate-spin" />
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{isBn ? 'সর্বশেষ তথ্য আসছে — পুরোনো তালিকা দেখানো হচ্ছে না' : 'Loading latest data — stale list hidden'}</p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">{isBn ? 'ক্লাউড থেকে নতুন তালিকা আসলেই এখানে দেখাবে' : 'The current list will appear once it arrives from the cloud'}</p>
             </div>
+            {gatedQueuedList}
+            </>
           ) : staffListStale ? (
+            <>
             <ServerUnavailablePanel dataNameBn="স্টাফ তথ্য" dataNameEn="Staff data" />
+            {gatedQueuedList}
+            </>
           ) : (
           <div className="space-y-4">
             {/* Pending list update failure (Phase 1): never silently

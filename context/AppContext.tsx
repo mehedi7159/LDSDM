@@ -4450,6 +4450,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // returned — the caller passes them to confirmStaffCloudSync.
       const nextTeachers = [...teachers, teacherWithCredentials];
       setTeachers(nextTeachers);
+      // P2 (sync hardening): queue the FULL new record optimistically,
+      // in the same step as setTeachers — not only after a confirm
+      // failure. If the app is killed while confirm is pending, the
+      // payload already sits in the queue, so the retry replays the
+      // stored record instead of losing it. Confirm success clears
+      // this field exactly as before; replay logic is untouched.
+      queuePendingPayload({ field: 'teachers', op: 'upsert', records: [teacherWithCredentials], updatedBy: confirmActorName() });
+      refreshPendingPayloads();
       
       // Auto-sync into institution members store with teacher.id as UID
       const memberData: InstitutionMember = {
