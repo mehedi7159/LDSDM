@@ -78,24 +78,24 @@ export const GuardianDirectoryView: React.FC<{
       
       {/* Top Guardian Metrics Banner */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{isBn ? 'মোট অভিভাবক রেকর্ড' : 'Guardian Records'}</p>
           <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{formatNumber(activeStudents.length, language)}</p>
           <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">{isBn ? 'সক্রিয় শিক্ষার্থী ভিত্তিক' : 'Active Students'}</span>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-2xs bg-teal-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-teal-200 dark:border-teal-800 bg-teal-50/30">
           <p className="text-xs font-bold text-teal-700 dark:text-teal-400 uppercase">{isBn ? 'স্বতন্ত্র পরিবার / মোবাইল' : 'Unique Families'}</p>
           <p className="text-2xl font-black text-teal-900 dark:text-teal-200 mt-1">{formatNumber(uniquePhonesCount, language)}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30">
           <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">{isBn ? 'মোবাইল নম্বর অন্তর্ভুক্ত' : 'Valid Phones'}</p>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1">
             {formatNumber(activeStudents.filter(s => s.guardianPhone?.trim()).length, language)}
           </p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-2xs bg-amber-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/30">
           <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase">{isBn ? 'ফোন নম্বর বিহীন' : 'Missing Phone'}</p>
-          <p className="text-2xl font-black text-amber-900 dark:text-amber-200 mt-1">
+          <p className="text-3xl font-black text-amber-900 dark:text-amber-200 mt-1">
             {formatNumber(activeStudents.filter(s => !s.guardianPhone?.trim()).length, language)}
           </p>
           <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">{isBn ? 'তথ্য হালনাগাদ প্রয়োজন' : 'Needs Update'}</span>
@@ -103,7 +103,7 @@ export const GuardianDirectoryView: React.FC<{
       </div>
 
       {/* Search & Actions Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex flex-1 items-center gap-3 w-full">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={17} />
@@ -133,7 +133,7 @@ export const GuardianDirectoryView: React.FC<{
           <Button 
             variant="secondary"
             onClick={handlePrint}
-            className="flex items-center gap-2 text-xs font-bold shadow-2xs"
+            className="flex items-center gap-2 text-xs font-bold"
           >
             <Printer size={16} />
             <span>{isBn ? 'অভিভাবক তালিকা প্রিন্ট' : 'Print List'}</span>
@@ -142,7 +142,7 @@ export const GuardianDirectoryView: React.FC<{
       </div>
 
       {/* Guardians Directory Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wider">

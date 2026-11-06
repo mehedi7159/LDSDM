@@ -10,18 +10,18 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({ onLogo
   const { authUser, currentMember, schoolProfile, language } = useApp();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-indigo-50 to-slate-200 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80 animate-in fade-in zoom-in-95 duration-200">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+ <div className="max-w-md w-full bg-white rounded-3xl overflow-hidden border border-slate-200/80 animate-in fade-in zoom-in-95 duration-200">
         {/* Header decoration */}
         <div className={`p-6 text-white text-center relative overflow-hidden ${
           currentMember?.status === 'suspended'
-            ? 'bg-gradient-to-r from-rose-600 to-red-600'
+            ? 'bg-rose-600'
             : currentMember?.status === 'inactive'
-            ? 'bg-gradient-to-r from-slate-700 to-slate-800'
-            : 'bg-gradient-to-r from-amber-500 to-orange-500'
+            ? 'bg-slate-700'
+            : 'bg-amber-500'
         }`}>
           <div className="absolute top-0 right-0 transform translate-x-4 -translate-y-4 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none" />
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner">
+ <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-3">
             {currentMember?.status === 'suspended' ? (
               <ShieldAlert size={32} className="text-white animate-bounce" />
             ) : (
@@ -124,7 +124,7 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({ onLogo
               onClick={() => {
                 window.location.reload();
               }}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+ className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <CheckCircle2 size={15} />
               <span>{language === 'bn' ? 'অনুমোদন হয়ে থাকলে প্রবেশ করুন (Refresh)' : 'Check Approval Status'}</span>

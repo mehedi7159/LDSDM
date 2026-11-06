@@ -173,7 +173,7 @@ export const DuesPrintModal: React.FC<DuesPrintModalProps> = ({
               onClick={handlePrint}
               size="sm"
               variant="primary"
-              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold"
             >
               <Printer className="w-3.5 h-3.5 mr-1.5" />
               <span>{isBn ? 'প্রিন্ট শিট' : 'Print Sheet'}</span>

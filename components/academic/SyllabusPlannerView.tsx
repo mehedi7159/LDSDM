@@ -18,12 +18,10 @@ import {
   Printer, 
   Search, 
   Filter, 
-  BookOpen, 
   Download,
   Calendar,
   X,
-  Sparkles,
-  BarChart3
+  Sparkles
 } from 'lucide-react';
 
 export const SyllabusPlannerView: React.FC = () => {
@@ -230,7 +228,7 @@ export const SyllabusPlannerView: React.FC = () => {
 
           <Button
             onClick={handleOpenAdd}
-            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5 shadow-xs"
+            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5"
           >
             <Plus size={15} />
             <span>{isBn ? 'নতুন অধ্যায় যুক্ত করুন' : 'Add Chapter'}</span>
@@ -240,40 +238,28 @@ export const SyllabusPlannerView: React.FC = () => {
 
       {/* KPI Overview Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-400">
-            <BookOpen size={20} />
-          </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'মোট অধ্যায়/টপিক' : 'Total Topics'}</div>
-            <div className="text-lg font-black text-slate-800 dark:text-slate-100">{formatNumber(stats.totalChapters, 'bn')} টি</div>
+            <div className="text-xl font-black text-slate-800 dark:text-slate-100">{formatNumber(stats.totalChapters, 'bn')} টি</div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
-            <CheckCircle2 size={20} />
-          </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'সম্পন্ন অধ্যায়' : 'Completed'}</div>
-            <div className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatNumber(stats.completedChapters, 'bn')} টি</div>
+            <div className="text-xl font-black text-emerald-700 dark:text-emerald-400">{formatNumber(stats.completedChapters, 'bn')} টি</div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-700 dark:text-amber-400">
-            <Clock size={20} />
-          </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'চলমান অধ্যায়' : 'In Progress'}</div>
-            <div className="text-lg font-black text-amber-700 dark:text-amber-400">{formatNumber(stats.inProgressChapters, 'bn')} টি</div>
+            <div className="text-xl font-black text-amber-700 dark:text-amber-400">{formatNumber(stats.inProgressChapters, 'bn')} টি</div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-700 dark:text-indigo-400">
-            <BarChart3 size={20} />
-          </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
           <div className="flex-1">
             <div className="text-xs text-slate-500 dark:text-slate-400 flex justify-between">
               <span>{isBn ? 'সামগ্রিক অগ্রগতি' : 'Progress'}</span>
@@ -281,7 +267,7 @@ export const SyllabusPlannerView: React.FC = () => {
             </div>
             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-1.5 overflow-hidden">
               <div 
-                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                className="bg-teal-500 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${stats.completionRate}%` }}
               ></div>
             </div>
@@ -297,7 +283,7 @@ export const SyllabusPlannerView: React.FC = () => {
             <select
               value={selectedClass}
               onChange={e => setSelectedClass(e.target.value)}
-              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100"
             >
               {classes.map(c => (
                 <option key={c.id} value={c.name}>{c.name}</option>
@@ -310,7 +296,7 @@ export const SyllabusPlannerView: React.FC = () => {
             <select
               value={selectedSubjectId}
               onChange={e => setSelectedSubjectId(e.target.value)}
-              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs max-w-[200px]"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 max-w-[200px]"
             >
               <option value="ALL">{isBn ? 'সকল বিষয়' : 'All Subjects'}</option>
               {subjects
@@ -326,7 +312,7 @@ export const SyllabusPlannerView: React.FC = () => {
             <select
               value={selectedTerm}
               onChange={e => setSelectedTerm(e.target.value)}
-              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100"
             >
               <option value="ALL">{isBn ? 'সকল টার্ম' : 'All Terms'}</option>
               <option value="১ম সাময়িক">১ম সাময়িক</option>
@@ -343,7 +329,7 @@ export const SyllabusPlannerView: React.FC = () => {
             placeholder={isBn ? 'অধ্যায় বা টপিক খুঁজুন...' : 'Search topic...'}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full text-xs pl-8 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 shadow-2xs"
+            className="w-full text-xs pl-8 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
           />
         </div>
       </div>
@@ -371,7 +357,7 @@ export const SyllabusPlannerView: React.FC = () => {
             return (
               <div 
                 key={item.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4.5 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4.5 hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
               >
                 <div className="flex-1 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">

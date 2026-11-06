@@ -80,7 +80,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group ${
+      className={`bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 transition-all duration-200 flex flex-col justify-between group ${
         onClick ? 'cursor-pointer active:scale-[0.99]' : ''
       } ${className}`}
     >
@@ -89,7 +89,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal block">
             {label}
           </span>
-          <div className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-baseline gap-1">
+          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white flex items-baseline gap-1">
             {isNumeric ? (
               <CountUpNumber target={value as number} prefix={prefix} suffix={suffix} />
             ) : (
@@ -98,11 +98,6 @@ export const StatCard: React.FC<StatCardProps> = ({
           </div>
         </div>
 
-        {Icon && (
-          <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/80 flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors shrink-0">
-            <Icon size={20} strokeWidth={1.75} />
-          </div>
-        )}
       </div>
 
       {(trend || subtitle || badge) && (

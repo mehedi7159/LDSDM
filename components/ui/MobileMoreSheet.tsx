@@ -222,7 +222,7 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
                   onClick={() => setAccentTheme(theme.id)}
                   className={`min-h-[44px] px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
                     accentTheme === theme.id
-                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                   }`}
                 >

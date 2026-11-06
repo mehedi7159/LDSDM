@@ -734,7 +734,7 @@ const AppContent = () => {
   if (!isAuthReady && !bypassAuthLoading) {
     return (
       <div className={`min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4 ${language === 'bn' ? 'font-bangla' : ''}`}>
-        <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/30 shadow-lg">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/30">
           <Loader2 className="animate-spin text-emerald-400" size={28} />
         </div>
         <p className="text-sm font-semibold text-slate-200 text-center">
@@ -847,7 +847,7 @@ const AppContent = () => {
                   <button
                     type="button"
                     onClick={() => logoutAdmin()}
-                    className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-5 py-3 text-sm font-bold text-white shadow-sm hover:opacity-90 active:scale-[0.99]"
+                    className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-5 py-3 text-sm font-bold text-white hover:opacity-90 active:scale-[0.99]"
                   >
                     <LogOut size={17} />
                     {language === 'bn' ? 'লগআউট' : 'Log out'}

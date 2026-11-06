@@ -462,10 +462,10 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       
       {/* 1. Header & Mode Switcher */}
       {!hideTopSwitcher && (
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-teal-700 to-emerald-800 text-white rounded-2xl shadow-xs">
+              <div className="p-2.5 bg-teal-600 text-white rounded-2xl">
                 <Calendar size={22} />
               </div>
               <div>
@@ -481,7 +481,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <button
               onClick={() => setActiveMode('students')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'students' ? 'bg-white text-teal-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'students' ? 'bg-white text-teal-800' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Users size={15} />
@@ -490,7 +490,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <button
               onClick={() => setActiveMode('staff')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'staff' ? 'bg-white text-teal-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'staff' ? 'bg-white text-teal-800' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Briefcase size={15} />
@@ -499,7 +499,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <button
               onClick={() => setActiveMode('absentees')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'absentees' ? 'bg-white text-rose-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'absentees' ? 'bg-white text-rose-800' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <UserX size={15} />
@@ -513,7 +513,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <button
               onClick={() => setActiveMode('sync_exam')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'sync_exam' ? 'bg-white text-indigo-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'sync_exam' ? 'bg-white text-indigo-800' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Sparkles size={15} />
@@ -525,35 +525,35 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
       {/* 2. Top Summary Metrics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200">
           <span className="text-[11px] font-bold text-slate-500 uppercase">{activeMode === 'staff' ? (isBn ? 'মোট স্টাফ' : 'Total staff') : (isBn ? 'মোট শিক্ষার্থী' : 'Total')}</span>
           <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(stripSummary.total, language)}</p>
           <span className="text-[10px] text-teal-700 font-semibold">{activeMode === 'staff' ? (isBn ? 'শিক্ষক ও কর্মী' : 'Teachers & staff') : selectedClass}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 shadow-2xs bg-emerald-50/20">
+        <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/20">
           <span className="text-[11px] font-bold text-emerald-700 uppercase">{isBn ? 'উপস্থিত' : 'Present'}</span>
           <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.present, language) : '—'}</p>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-rose-200 shadow-2xs bg-rose-50/20">
+        <div className="bg-white p-3.5 rounded-2xl border border-rose-200 bg-rose-50/20">
           <span className="text-[11px] font-bold text-rose-700 uppercase">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
           <p className="text-2xl font-black text-rose-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.absent, language) : '—'}</p>
           <span className="text-[10px] text-rose-700 font-semibold">{isBn ? 'অনুমতি ছাড়া' : 'Unexcused'}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-amber-200 shadow-2xs bg-amber-50/20">
+        <div className="bg-white p-3.5 rounded-2xl border border-amber-200 bg-amber-50/20">
           <span className="text-[11px] font-bold text-amber-700 uppercase">{isBn ? 'বিলম্বিত' : 'Late'}</span>
           <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.late, language) : '—'}</p>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-indigo-200 shadow-2xs bg-indigo-50/20">
+        <div className="bg-white p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/20">
           <span className="text-[11px] font-bold text-indigo-700 uppercase">{isBn ? 'ছুটি / মার্জিত' : 'Leave'}</span>
           <p className="text-2xl font-black text-indigo-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.leave, language) : '—'}</p>
           <span className="text-[10px] text-indigo-700 font-semibold">{isBn ? 'দরখাস্ত গৃহীত' : 'Approved Leave'}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-300 shadow-2xs bg-slate-50/40">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-300 bg-slate-50/40">
           <span className="text-[11px] font-bold text-slate-600 uppercase">{isBn ? 'চিহ্নিত হয়নি' : 'Unmarked'}</span>
           <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(stripSummary.pending, language)}</p>
           <span className="text-[10px] text-slate-500 font-semibold">{stripSummary.recorded === 0 ? (isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet') : (isBn ? 'এখনো চিহ্নিত হয়নি' : 'Not marked yet')}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-teal-200 shadow-2xs bg-teal-50/30">
+        <div className="bg-white p-3.5 rounded-2xl border border-teal-200 bg-teal-50/30">
           <span className="text-[11px] font-bold text-teal-700 uppercase">{isBn ? 'উপস্থিতির হার' : 'Rate'}</span>
           {stripSummary.percentage !== null ? (
             <>
@@ -567,7 +567,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       </div>
 
       {/* 3. Controls Bar: Date, Class, Quick Bulk Actions */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-1 items-center gap-3 w-full">
           {/* Date Picker */}
           <div className="w-44 shrink-0">
@@ -632,7 +632,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               <Button
                 onClick={handleSaveStudentAttendance}
                 disabled={saveStatus === 'saving'}
-                className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2 shadow-xs"
+                className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2"
               >
                 <Save size={16} />
                 <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত হয়েছে!' : 'Saved!') : saveStatus === 'error' ? (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন' : 'Save failed — try again') : (isBn ? 'হাজিরা সংরক্ষণ' : 'Save')}</span>
@@ -644,7 +644,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <Button
               onClick={handleSaveStaffAttendance}
               disabled={saveStatus === 'saving'}
-              className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2 shadow-xs"
+              className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2"
             >
               <Save size={16} />
               <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত!' : 'Saved!') : saveStatus === 'error' ? (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন' : 'Save failed — try again') : (isBn ? 'স্টাফ হাজিরা সংরক্ষণ' : 'Save Staff')}</span>
@@ -664,7 +664,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
       {/* 4. MODE 1: Student Daily Attendance List */}
       {activeMode === 'students' && (
-        <div className="mobile-responsive-table bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
           <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users size={17} className="text-teal-700" />
@@ -672,15 +672,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 {selectedClass} • {formatSafeDate(selectedDate, isBn)} ({formatNumber(filteredStudents.length, language)} {isBn ? 'জন শিক্ষার্থী' : 'students'})
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all print:hidden"
-              title={isBn ? 'হাজিরা তালিকা প্রিন্ট করুন' : 'Print attendance list'}
-            >
-              <Printer size={13} />
-              <span>{isBn ? 'প্রিন্ট' : 'Print'}</span>
-            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -724,7 +715,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               onClick={() => handleSetStudentStatus(student.id, 'PRESENT')}
                               className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
                                 currentStatus === 'PRESENT'
-                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  ? 'bg-emerald-600 text-white'
                                   : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
                               }`}
                             >
@@ -737,7 +728,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               onClick={() => handleSetStudentStatus(student.id, 'ABSENT')}
                               className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
                                 currentStatus === 'ABSENT'
-                                  ? 'bg-rose-600 text-white shadow-xs'
+                                  ? 'bg-rose-600 text-white'
                                   : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
                               }`}
                             >
@@ -750,7 +741,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               onClick={() => handleSetStudentStatus(student.id, 'LATE')}
                               className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
                                 currentStatus === 'LATE'
-                                  ? 'bg-amber-500 text-white shadow-xs'
+                                  ? 'bg-amber-500 text-white'
                                   : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
                               }`}
                               title={isBn ? 'বিলম্বিত' : 'Late'}
@@ -764,7 +755,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               onClick={() => handleSetStudentStatus(student.id, 'LEAVE')}
                               className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
                                 currentStatus === 'LEAVE'
-                                  ? 'bg-indigo-600 text-white shadow-xs'
+                                  ? 'bg-indigo-600 text-white'
                                   : 'bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'
                               }`}
                               title={isBn ? 'ছুটি / মার্জিত' : 'Leave'}
@@ -827,7 +818,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
       {/* 5. MODE 2: Staff / Teacher Attendance */}
       {activeMode === 'staff' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
           <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Briefcase size={17} className="text-teal-700" />
@@ -948,7 +939,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
       {/* 6. MODE 3: Absentees & SMS Notification */}
       {activeMode === 'absentees' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs p-6 space-y-6">
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
             <div>
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -961,7 +952,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             </div>
             <Button 
               onClick={() => setIsSmsModalOpen(true)}
-              className="bg-rose-700 hover:bg-rose-800 text-white font-bold flex items-center gap-2 shadow-xs cursor-pointer"
+              className="bg-rose-700 hover:bg-rose-800 text-white font-bold flex items-center gap-2 cursor-pointer"
             >
               <Send size={15} />
               <span>{isBn ? 'সকল অভিভাবককে SMS পাঠান' : 'Send Bulk SMS'}</span>
@@ -1038,7 +1029,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       {/* 7. MODE 4: Sync to Exam Marksheet & Remarks Fine-Tuning */}
       {activeMode === 'sync_exam' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
             <div className="border-b border-slate-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -1054,12 +1045,12 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
               <div className="flex items-center gap-2">
                 {remarksSaveStatus === 'saving' ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-2xs">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
                     <Loader2 size={13} className="animate-spin text-amber-600" />
                     <span>{isBn ? 'সংরক্ষিত হচ্ছে...' : 'Auto-saving...'}</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <CheckCircle2 size={14} className="text-emerald-600" />
                     <span>{isBn ? 'অটো-সেভ সক্রিয়' : 'Auto-saved'}</span>
                   </span>
@@ -1076,7 +1067,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 text-slate-800 shadow-2xs"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 text-slate-800"
                 >
                   {exams.map(e => (
                     <option key={e.id} value={e.id}>{e.name} ({e.academicYear})</option>
@@ -1091,7 +1082,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 text-slate-800 shadow-2xs"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 text-slate-800"
                 >
                   {classes.map(c => (
                     <option key={c.id} value={c.name}>{c.name}</option>
@@ -1102,7 +1093,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               <div className="flex items-end">
                 <Button
                   onClick={handleSyncToExam}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-teal-700 hover:from-indigo-700 hover:to-teal-800 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm text-xs cursor-pointer"
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs cursor-pointer"
                 >
                   <Sparkles size={16} />
                   <span>{isBn ? 'দৈনিক হাজিরা থেকে অটো সিঙ্ক' : 'Auto-Sync from Daily'}</span>
@@ -1119,7 +1110,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           </div>
 
           {/* Detailed Exam Attendance & Remarks Editor Table */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
             <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -1337,7 +1328,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 return (
                   <a
                     href={`sms:${phones}?body=${encodeURIComponent(defaultMsg)}`}
-                    className="w-full sm:w-1/2 bg-rose-700 hover:bg-rose-800 text-white font-bold py-2.5 text-xs flex items-center justify-center gap-1.5 rounded-xl shadow-xs transition cursor-pointer text-center"
+                    className="w-full sm:w-1/2 bg-rose-700 hover:bg-rose-800 text-white font-bold py-2.5 text-xs flex items-center justify-center gap-1.5 rounded-xl transition cursor-pointer text-center"
                   >
                     <Send size={14} />
                     <span>{isBn ? 'SMS অ্যাপে খুলুন' : 'Open in SMS App'}</span>

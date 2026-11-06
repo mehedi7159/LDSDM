@@ -83,7 +83,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         onClick={e => e.stopPropagation()}
       >
         {/* Header Profile Banner */}
-        <div className="relative bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 text-white p-6 sm:p-8">
+        <div className="relative bg-emerald-800 text-white p-6 sm:p-8">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
@@ -94,7 +94,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
             {/* Avatar or Photo */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center text-3xl font-bold shadow-inner overflow-hidden flex-shrink-0">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center text-3xl font-bold overflow-hidden flex-shrink-0">
               {student.photoUrl ? (
                 <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
               ) : (
@@ -335,7 +335,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => { onViewFullProfile(student.studentId || student.id); onClose(); }}
-                className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center gap-1.5"
+                className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-medium transition-colors flex items-center gap-1.5"
               >
                 <User className="w-4 h-4" />
                 {isBn ? 'বিস্তারিত প্রোফাইল' : 'Full Profile'}
@@ -343,7 +343,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             )}
             <button
               onClick={onClose}
-              className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-sm"
+              className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors"
             >
               {isBn ? 'বন্ধ করুন' : 'Close'}
             </button>

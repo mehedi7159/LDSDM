@@ -218,7 +218,7 @@ export const ClassSectionSetupView: React.FC = () => {
               setClassForm({ name: '', order: classes.length + 1 });
               setIsClassModalOpen(true);
             }}
-            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5 shadow-xs"
+            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5"
           >
             <Plus size={15} />
             <span>{isBn ? 'নতুন শ্রেণি যুক্ত করুন' : 'Add Class'}</span>
@@ -229,7 +229,7 @@ export const ClassSectionSetupView: React.FC = () => {
       {/* Main Grid: Left Class Tabs, Right Sections Configuration */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column: Classes List */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-3">
           <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
             <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider flex items-center gap-1.5">
               <GraduationCap size={15} className="text-teal-700 dark:text-teal-400" />
@@ -251,7 +251,7 @@ export const ClassSectionSetupView: React.FC = () => {
                   onClick={() => setSelectedClassId(c.id)}
                   className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
                     isSelected
-                      ? 'bg-teal-700 text-white border-teal-800 shadow-xs'
+                      ? 'bg-teal-700 text-white border-teal-800'
                       : 'bg-slate-50/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100'
                   }`}
                 >
@@ -284,7 +284,7 @@ export const ClassSectionSetupView: React.FC = () => {
 
         {/* Right Column: Sections & Class Teachers of Selected Class */}
         <div className="md:col-span-2 space-y-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="text-base font-black text-slate-800 dark:text-slate-100">

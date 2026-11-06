@@ -98,7 +98,7 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Main Form (8 Cols) */}
-      <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+      <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 flex items-center justify-center">
@@ -268,7 +268,7 @@ export const DevelopmentExpenseEntry: React.FC<DevelopmentExpenseEntryProps> = (
 
       {/* Right Column (4 Cols): Info Box */}
       <div className="lg:col-span-4 space-y-4">
-        <div className="bg-gradient-to-br from-amber-700 to-amber-900 text-white rounded-2xl p-5 shadow-sm">
+        <div className="bg-amber-800 text-white rounded-2xl p-5">
           <h3 className="text-sm font-bold text-amber-100 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-amber-300" />
             {isBn ? 'উন্নয়ন ও নির্মাণ তহবিল' : 'Development Fund Tracking'}

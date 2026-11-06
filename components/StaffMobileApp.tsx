@@ -82,11 +82,11 @@ interface StaffMobileAppProps {
   renderModuleContent?: (moduleKey: string) => React.ReactNode;
 }
 
-const cardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-[24px] shadow-[0_2px_12px_rgba(30,36,51,0.05)]';
+const cardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-[24px]';
 const softBg = 'bg-[#f4f6fb] dark:bg-white/5';
 // ---- Attendance page (Tutor pattern) helpers ----
 // Tutor card shell: rounded-2xl white card (LDSDM's cardCls is 24px).
-const attCardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl shadow-sm';
+const attCardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl';
 // Tutor avatar tints (pastel bg + dark text, hashed by id).
 const ATT_AVATAR_TINTS = [
   { bg: '#dcfce7', color: '#15803d' },
@@ -2100,7 +2100,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // -------------------------------------------------------------
   const brandCss = (
     <style>{`
-      .brand-grad { background-image: linear-gradient(135deg, var(--color-brand), var(--color-brand-hover)) !important; }
+      .brand-grad { background-color: var(--color-brand) !important; }
       .brand-soft { background-color: var(--color-brand-light) !important; color: var(--color-brand) !important; }
       .brand-text { color: var(--color-brand) !important; }
       .brand-bg { background-color: var(--color-brand) !important; }
@@ -2266,7 +2266,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           onClick={() => setSelectedClass(clsName)}
           className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
             selectedClass === clsName
-              ? 'brand-grad text-white shadow-md shadow-violet-500/25'
+              ? 'brand-grad text-white'
               : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
           }`}
         >
@@ -2297,7 +2297,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </span>
             <span className="text-[10px] text-[#8a93a8]">{schoolProfile.nameBn || schoolProfile.name}</span>
           </div>
-          <div className="w-9 h-9 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/25">
+          <div className="w-9 h-9 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm">
             {initialLetter}
           </div>
         </header>
@@ -2344,14 +2344,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 <button
                   type="button"
                   onClick={() => setAttTab('rollcall')}
-                  className={`flex-1 h-10 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer ${attTab === 'rollcall' ? 'bg-white dark:bg-[#161c2e] brand-text shadow-[0_1px_3px_rgba(0,0,0,0.08)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                  className={`flex-1 h-10 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer ${attTab === 'rollcall' ? 'bg-white dark:bg-[#161c2e] brand-text' : 'text-[#5b6478] dark:text-slate-400'}`}
                 >
                   <Users size={15} /> {isEn ? 'Roll call' : 'রোল কল'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setAttTab('sheet')}
-                  className={`flex-1 h-10 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer ${attTab === 'sheet' ? 'bg-white dark:bg-[#161c2e] brand-text shadow-[0_1px_3px_rgba(0,0,0,0.08)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                  className={`flex-1 h-10 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 cursor-pointer ${attTab === 'sheet' ? 'bg-white dark:bg-[#161c2e] brand-text' : 'text-[#5b6478] dark:text-slate-400'}`}
                 >
                   <CalendarDays size={15} /> {isEn ? 'Monthly sheet' : 'মাসিক শিট'}
                 </button>
@@ -2408,7 +2408,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </div>
 
                   {attendanceDayOff ? (
-                    <div className="rounded-2xl p-5 shadow-sm space-y-3 bg-[#dbeafe] dark:bg-blue-500/10 border border-[#e8ecf4] dark:border-white/5">
+                    <div className="rounded-2xl p-5 space-y-3 bg-[#dbeafe] dark:bg-blue-500/10 border border-[#e8ecf4] dark:border-white/5">
                       <div className="flex items-center gap-2.5">
                         <CalendarDays size={18} className="shrink-0 text-[#3b82f6] dark:text-blue-300" />
                         <p className="font-bold text-[15px]">
@@ -2493,7 +2493,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                               </button>
                             );
                             return (
-                              <div key={st.id} className={`${attCardCls} p-4 shadow-sm`}>
+                              <div key={st.id} className={`${attCardCls} p-4`}>
                                 <div className="flex items-center gap-3">
                                   <div
                                     className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-[15px] shrink-0"
@@ -2539,7 +2539,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         <div className="sticky bottom-[84px] z-30 pt-1">
                           <button
                             onClick={handleSaveAttendance}
-                            className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                            className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
                           >
                             <Save size={17} />
                             <span>{isEn ? 'Save attendance' : 'হাজিরা সংরক্ষণ করুন'}</span>
@@ -2599,7 +2599,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           key={opt.key}
                           type="button"
                           onClick={() => setSheetView(opt.key)}
-                          className={`flex-1 text-[12px] px-2.5 py-1.5 rounded-full transition-colors cursor-pointer ${active ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-white font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'bg-transparent text-[#8a93a8] dark:text-slate-500 font-medium'}`}
+                          className={`flex-1 text-[12px] px-2.5 py-1.5 rounded-full transition-colors cursor-pointer ${active ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-white font-semibold' : 'bg-transparent text-[#8a93a8] dark:text-slate-500 font-medium'}`}
                         >
                           {opt.label}
                         </button>
@@ -2608,7 +2608,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </div>
 
                   {/* Sheet card — Tutor header + views */}
-                  <div className="rounded-2xl shadow-sm overflow-hidden bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5">
+                  <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5">
                     <div className="p-5 text-center border-b border-[#e8ecf4] dark:border-white/5">
                       <p className="text-[12px] font-semibold uppercase tracking-wide brand-text">
                         {isEn ? 'Monthly attendance sheet' : 'মাসিক হাজিরা শিট'}
@@ -2626,23 +2626,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         {selectedClass}-{isEn ? ' no students found.' : 'এ কোনো শিক্ষার্থী পাওয়া যায়নি।'}
                       </p>
                     ) : sheetView === 'grid' ? (
-                      <div className="mobile-responsive-table space-y-2">
-                        <div className="flex items-center justify-between px-3 pt-2 print:hidden">
-                          <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400">
-                            {isEn ? 'Monthly attendance grid' : 'মাসিক হাজিরা গ্রিড টেবিল'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => window.print()}
-                            className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
-                            title={isEn ? 'Print table' : 'টেবিল প্রিন্ট করুন'}
-                          >
-                            <Printer size={13} />
-                            <span>{isEn ? 'Print' : 'প্রিন্ট'}</span>
-                          </button>
-                        </div>
-                        <div className="overflow-auto border-t border-[#e8ecf4] dark:border-white/5" style={{ maxHeight: 'min(70vh, 560px)', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
-                          <table className="w-full text-[12px] border-collapse">
+                      <div className="overflow-auto" style={{ maxHeight: 'min(70vh, 560px)', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+                        <table className="w-full text-[12px] border-collapse">
                           <thead>
                             <tr>
                               <th className="px-3 py-2.5 text-left font-bold sticky left-0 top-0 z-30 min-w-[140px] bg-[#f4f6fb] dark:bg-[#161c2e]">
@@ -2717,8 +2702,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  ) : (
+                    ) : (
                       <div className="space-y-3 pb-3">
                         <div className="grid grid-cols-7 gap-1 px-3.5 pt-3">
                           {[6, 0, 1, 2, 3, 4, 5].map(i => (
@@ -2735,7 +2719,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           const displayName = st.nameBn || st.name || '';
                           const leadingBlanks = (new Date(Number(sheetMonth.slice(0, 4)), Number(sheetMonth.slice(5, 7)) - 1, 1).getDay() + 1) % 7;
                           return (
-                            <div key={st.id} className="rounded-2xl p-3.5 shadow-sm bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 mx-3">
+                            <div key={st.id} className="rounded-2xl p-3.5 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 mx-3">
                               <div className="flex items-center gap-3">
                                 <span className="w-10 h-10 rounded-xl flex items-center justify-center text-[15px] font-bold shrink-0 brand-soft">
                                   {displayName.trim().charAt(0).toUpperCase()}
@@ -2996,7 +2980,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 </div>
               </div>
 
-              <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25 shadow-[0_2px_12px_rgba(30,36,51,0.05)]">
+              <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25">
                 <span className="text-[11px] font-bold text-[#dc2626] dark:text-rose-300 block">মোট বকেয়া (সব মাস মিলিয়ে)</span>
                 <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn((classDuesSummary.totalDue + teacherAging.totalAged).toLocaleString())}</span>
                 <p className="text-[11px] text-[#dc2626]/80 dark:text-rose-300/80 font-medium">
@@ -3050,7 +3034,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       onClick={() => setDuesFilterMode(mode)}
                       className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                         duesFilterMode === mode
-                          ? 'brand-grad text-white shadow-md shadow-violet-500/25'
+                          ? 'brand-grad text-white'
                           : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
                       }`}
                     >
@@ -3086,7 +3070,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div>
@@ -3129,12 +3113,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                               </a>
                             )}
                             {hasDue && wa && (
-                              <a href={wa} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-xl bg-[#10b981] text-white text-[11px] font-bold flex items-center gap-1 shadow-md shadow-emerald-500/25">
+                              <a href={wa} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-xl bg-[#10b981] text-white text-[11px] font-bold flex items-center gap-1">
                                 <MessageCircle size={11} /> WhatsApp
                               </a>
                             )}
                             {agedWa && (
-                              <a href={agedWa} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-xl bg-[#f59e0b] text-white text-[11px] font-bold flex items-center gap-1 shadow-md shadow-amber-500/25">
+                              <a href={agedWa} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-xl bg-[#f59e0b] text-white text-[11px] font-bold flex items-center gap-1">
                                 <MessageCircle size={11} /> পুরনো WhatsApp
                               </a>
                             )}
@@ -3253,7 +3237,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   return (
                     <div key={st.id} className={`${cardCls} p-3.5 flex items-center justify-between gap-3`}>
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                        <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                           {(st.nameBn || st.name || 'শ').charAt(0)}
                         </span>
                         <div className="overflow-hidden">
@@ -3296,7 +3280,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 <div className="sticky bottom-[84px] z-30 pt-1">
                   <button
                     onClick={handleSaveMarks}
-                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <Save size={17} />
                     <span>নম্বর সংরক্ষণ করুন</span>
@@ -3411,7 +3395,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   return (
                     <div key={st.id} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shadow-md shrink-0">
+                        <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shrink-0">
                           {(st.nameBn || st.name || 'শ').charAt(0)}
                         </span>
                         <div className="min-w-0">
@@ -3479,7 +3463,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         <span>{toBn(classResultReport.passRate)}%</span>
                       </div>
                       <div className="h-2.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
-                        <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${classResultReport.passRate}%` }} />
+                        <div className="h-full rounded-full bg-teal-500" style={{ width: `${classResultReport.passRate}%` }} />
                       </div>
                     </div>
                   </div>
@@ -3489,7 +3473,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={r.student.id} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="w-7 text-center text-sm font-black text-[#8a93a8] shrink-0">{toBn(idx + 1)}</span>
-                          <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shadow-md shrink-0">
+                          <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shrink-0">
                             {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                           </span>
                           <div className="min-w-0">
@@ -3583,7 +3567,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         onClick={() => setRoutineDay(d.en)}
                         className={`px-3 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                           isSelected
-                            ? 'brand-grad text-white shadow-md shadow-violet-500/25'
+                            ? 'brand-grad text-white'
                             : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
                         }`}
                       >
@@ -3722,7 +3706,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </div>
                   <button
                     onClick={() => { setLastReceipt(null); setFeeStudentId(null); setFeeAmount(''); setFeeSearchQuery(''); }}
-                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer"
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <Wallet size={17} />
                     <span>{isEn ? 'Collect another fee' : 'আরেকটি ফি আদায় করুন'}</span>
@@ -3739,7 +3723,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <ArrowLeft size={14} /> {isEn ? 'Back to student list' : 'তালিকায় ফিরুন'}
                     </button>
                     <div className="flex items-center gap-3">
-                      <span className="w-12 h-12 rounded-full brand-grad text-white font-bold flex items-center justify-center text-base shadow-md shadow-violet-500/20 shrink-0">
+                      <span className="w-12 h-12 rounded-full brand-grad text-white font-bold flex items-center justify-center text-base shrink-0">
                         {(selectedFeeProfile.student.nameBn || selectedFeeProfile.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="min-w-0">
@@ -3799,7 +3783,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             onClick={() => setFeeMethod(m.id)}
                             className={`px-3.5 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                               feeMethod === m.id
-                                ? 'brand-grad text-white shadow-md shadow-violet-500/25'
+                                ? 'brand-grad text-white'
                                 : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
                             }`}
                           >
@@ -3838,7 +3822,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <button
                         onClick={handleCollectFee}
                         disabled={!feeAmount || Number(feeAmount) <= 0}
-                        className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-violet-500/30 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Receipt size={17} />
                         <span>{isEn ? 'Collect fee & save receipt' : 'ফি গ্রহণ করে রসিদ সংরক্ষণ করুন'}</span>
@@ -3858,7 +3842,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     </div>
                   </div>
 
-                  <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25 shadow-[0_2px_12px_rgba(30,36,51,0.05)]">
+                  <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25">
                     <span className="text-[11px] font-bold text-[#dc2626] dark:text-rose-300 block">{isEn ? 'TOTAL DUE (all months)' : 'মোট বকেয়া (সব মাস মিলিয়ে)'}</span>
                     <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn((allDuesSummary.totalDue + cashierAging.totalAged).toLocaleString())}</span>
                     <p className="text-[11px] text-[#dc2626]/80 dark:text-rose-300/80 font-medium">
@@ -3914,7 +3898,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             onClick={() => handleSelectFeeStudent(p)}
                             className={`w-full text-left ${cardCls} p-4 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all`}
                           >
-                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div className="flex-1 min-w-0">
@@ -3976,7 +3960,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <button
                       type="button"
                       onClick={() => handleOpenModule('student_admission')}
-                      className="flex-1 py-3 rounded-2xl brand-grad text-white text-xs font-bold shadow-md shadow-violet-500/25 active:scale-[0.98] transition-all cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl brand-grad text-white text-xs font-bold active:scale-[0.98] transition-all cursor-pointer"
                     >
                       + {isEn ? 'New student' : 'নতুন শিক্ষার্থী'}
                     </button>
@@ -4006,7 +3990,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <button
                     type="button"
                     onClick={() => setStudentsClass('all')}
-                    className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === 'all' ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                    className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === 'all' ? 'brand-grad text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                   >
                     {isEn ? 'All classes' : 'সব শ্রেণি'}
                   </button>
@@ -4015,7 +3999,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       key={cn}
                       type="button"
                       onClick={() => setStudentsClass(cn)}
-                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === cn ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === cn ? 'brand-grad text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                     >
                       {cn}
                     </button>
@@ -4031,7 +4015,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       key={mode}
                       type="button"
                       onClick={() => setStudentsStatus(mode)}
-                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsStatus === mode ? 'brand-grad text-white shadow-md shadow-violet-500/25' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsStatus === mode ? 'brand-grad text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                     >
                       {label}
                     </button>
@@ -4054,7 +4038,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-3 min-w-0">
-                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shadow-violet-500/20 shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div className="min-w-0">
@@ -4161,7 +4145,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         <main className="p-4 space-y-4">
           <ServerDataGate dataNameBn="প্রোফাইল তথ্য" dataNameEn="Profile data">
           <div className={`${cardCls} p-5 flex flex-col items-center text-center space-y-3`}>
-            <div className="w-20 h-20 rounded-[26px] brand-grad text-white font-black flex items-center justify-center text-3xl shadow-xl shadow-violet-500/30">
+            <div className="w-20 h-20 rounded-[26px] brand-grad text-white font-black flex items-center justify-center text-3xl">
               {initialLetter}
             </div>
             <div>
@@ -4307,13 +4291,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setDarkMode(false)}
-                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${!darkMode ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${!darkMode ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   <Sun size={15} /> {isEn ? 'Light' : 'লাইট'}
                 </button>
                 <button
                   onClick={() => setDarkMode(true)}
-                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${darkMode ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${darkMode ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   <Moon size={15} /> {isEn ? 'Dark' : 'ডার্ক'}
                 </button>
@@ -4349,13 +4333,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setLanguage('bn')}
-                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${!isEn ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${!isEn ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   বাংলা
                 </button>
                 <button
                   onClick={() => setLanguage('en')}
-                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${isEn ? 'brand-grad text-white shadow-lg' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${isEn ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   English
                 </button>
@@ -4548,7 +4532,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] text-[#1e2433] dark:text-slate-100 flex flex-col pb-24">
       {/* Top bar — sticky with soft blur */}
       <header className="sticky top-0 z-40 bg-[#f4f6fb]/85 dark:bg-[#0e1220]/85 backdrop-blur-xl px-4 pt-4 pb-3 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-[16px] brand-grad text-white font-black flex items-center justify-center text-lg shadow-lg shrink-0">
+        <div className="w-12 h-12 rounded-[16px] brand-grad text-white font-black flex items-center justify-center text-lg shrink-0">
           {initialLetter}
         </div>
         <div className="flex-1 min-w-0">
@@ -4604,14 +4588,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#f4f6fb] dark:bg-white/5">
                 <button
                   onClick={() => setDarkMode(false)}
-                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${!darkMode ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.12)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${!darkMode ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-slate-100' : 'text-[#5b6478] dark:text-slate-400'}`}
                 >
                   <Sun size={16} />
                   {isEn ? 'Light' : 'লাইট'}
                 </button>
                 <button
                   onClick={() => setDarkMode(true)}
-                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${darkMode ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.12)]' : 'text-[#5b6478] dark:text-slate-400'}`}
+                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${darkMode ? 'bg-white dark:bg-[#161c2e] text-[#1e2433] dark:text-slate-100' : 'text-[#5b6478] dark:text-slate-400'}`}
                 >
                   <Moon size={16} />
                   {isEn ? 'Dark' : 'ডার্ক'}
@@ -4660,7 +4644,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         <ServerDataGate dataNameBn="ড্যাশবোর্ড তথ্য" dataNameEn="Dashboard data">
         {/* HERO — gradient greeting + quick actions inside (Tutor App pattern:
             greeting, "Today at a glance", QUICK ACTIONS row) */}
-        <section className="relative overflow-hidden rounded-3xl brand-grad text-white p-5 shadow-xl">
+        <section className="relative overflow-hidden rounded-3xl brand-grad text-white p-5">
           <div className="absolute w-40 h-40 -top-10 -right-10 rounded-full bg-white/[0.14] pointer-events-none" />
           <div className="absolute w-24 h-24 bottom-2 right-32 rounded-full bg-white/[0.10] pointer-events-none" />
           <div className="relative">
@@ -4697,7 +4681,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       key={h}
                       onClick={() => { setHomeOverride(h); goHome(); }}
                       className={`flex-1 px-3 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                        isActive ? 'bg-white text-[#1e2433] shadow-md' : 'text-white/85 active:bg-white/[0.14]'
+                        isActive ? 'bg-white text-[#1e2433]' : 'text-white/85 active:bg-white/[0.14]'
                       }`}
                     >
                       {label}
@@ -4742,10 +4726,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         <section className="grid grid-cols-3 gap-3">
           {statsRow.map((s, i) => (
             <div key={i} className={`${cardCls} p-4`}>
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.cls}`}>
-                <s.Icon size={19} />
-              </span>
-              <p className="text-[16px] font-black leading-tight mt-3 break-words">{s.value}</p>
+              <p className="text-xl font-black leading-tight break-words">{s.value}</p>
               <p className="text-[11px] font-medium text-[#5b6478] dark:text-slate-400 mt-0.5 leading-snug">{s.label}</p>
             </div>
           ))}
@@ -4824,14 +4805,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               </p>
             </div>
             <div className="h-2.5 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981] transition-all" style={{ width: `${attendanceTakenPct}%` }} />
+              <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${attendanceTakenPct}%` }} />
             </div>
             <p className="text-[11px] text-[#5b6478] dark:text-slate-400 font-medium">
               {isEn ? 'Present' : 'উপস্থিত'} {toBn(attendanceStats.present)} • {isEn ? 'Absent' : 'অনুপস্থিত'} {toBn(attendanceStats.absent)} • {isEn ? 'Late' : 'দেরি'} {toBn(attendanceStats.late)} • {isEn ? 'Leave' : 'ছুটি'} {toBn(attendanceStats.leave)}
             </p>
             <button
               onClick={() => handleOpenModule('teacher_attendance')}
-              className="w-full py-3.5 rounded-2xl brand-grad text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all cursor-pointer"
+              className="w-full py-3.5 rounded-2xl brand-grad text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
             >
               <CheckSquare size={16} />
               <span>{attendanceStats.takenCount >= attendanceStats.total && attendanceStats.total > 0 ? (isEn ? 'Attendance done — review' : 'হাজিরা সম্পন্ন ✓ — আবার দেখুন') : (isEn ? 'Take attendance' : 'হাজিরা নিতে যান')}</span>
@@ -4912,7 +4893,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <span className="text-sm font-black text-[#059669] dark:text-emerald-300">{toBn(monthlyAttendance.rate)}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${monthlyAttendance.rate}%` }} />
+                  <div className="h-full rounded-full bg-teal-500" style={{ width: `${monthlyAttendance.rate}%` }} />
                 </div>
                 <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
                   {isEn ? 'School days' : 'কর্মদিবস'} {toBn(monthlyAttendance.schoolDays)} {isEn ? 'days' : 'দিন'}
@@ -4952,7 +4933,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <span className="text-sm font-black text-[#d97706] dark:text-amber-300">৳{toBn(classFeeReport.paid.toLocaleString())}</span>
                 </div>
                 <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]" style={{ width: `${classFeeReport.pct}%` }} />
+                  <div className="h-full rounded-full bg-amber-500" style={{ width: `${classFeeReport.pct}%` }} />
                 </div>
                 <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
                   {isEn ? 'Expected' : 'ধার্য'} ৳{toBn(classFeeReport.expected.toLocaleString())} — {toBn(classFeeReport.pct)}% {isEn ? 'collected' : 'আদায় হয়েছে'}
@@ -4978,7 +4959,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <span className="text-[#059669] dark:text-emerald-300 font-black">+ ৳{toBn(cashierFigures.todayIncome.toLocaleString())}</span>
                 </div>
                 <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${Math.round((cashierFigures.todayIncome / cashierBarMax) * 100)}%` }} />
+                  <div className="h-full rounded-full bg-teal-500" style={{ width: `${Math.round((cashierFigures.todayIncome / cashierBarMax) * 100)}%` }} />
                 </div>
               </div>
               <div>
@@ -4987,7 +4968,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <span className="text-[#dc2626] dark:text-rose-300 font-black">− ৳{toBn(todayExpense.toLocaleString())}</span>
                 </div>
                 <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#fb7185] to-[#ef4444]" style={{ width: `${Math.round((todayExpense / cashierBarMax) * 100)}%` }} />
+                  <div className="h-full rounded-full bg-rose-500" style={{ width: `${Math.round((todayExpense / cashierBarMax) * 100)}%` }} />
                 </div>
               </div>
               <div className="flex items-center justify-between pt-1 border-t border-dashed border-[#e8ecf4] dark:border-white/10">
@@ -5037,7 +5018,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <div className="space-y-2.5">
               {topDueProfiles.map(p => (
                 <div key={p.student.id} className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                  <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                     {(p.student.nameBn || p.student.name || 'শ').charAt(0)}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -5125,7 +5106,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
                   return (
                     <div key={r.student.id} className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                         {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -5187,7 +5168,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <span className="text-[#059669] dark:text-emerald-300 font-black">{toBn(c.rate)}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${c.rate}%` }} />
+                    <div className="h-full rounded-full bg-teal-500" style={{ width: `${c.rate}%` }} />
                   </div>
                   <p className="text-[11px] text-[#8a93a8] mt-1">{isEn ? 'School days' : 'কর্মদিবস'} {toBn(c.days)} {isEn ? 'days' : 'দিন'}</p>
                 </button>
@@ -5222,7 +5203,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <span className="text-[#059669] dark:text-emerald-300 font-black">৳{toBn(m.collected.toLocaleString())}</span>
                   </div>
                   <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#34d399] to-[#10b981]" style={{ width: `${Math.round((m.collected / monthlyCollectionTrend.max) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-teal-500" style={{ width: `${Math.round((m.collected / monthlyCollectionTrend.max) * 100)}%` }} />
                   </div>
                 </div>
               ))}
@@ -5278,7 +5259,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
                   return (
                     <div key={r.student.id} className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                         {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -5595,7 +5576,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
                   return (
                     <div key={r.student.id} className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
                         {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="flex-1 min-w-0">

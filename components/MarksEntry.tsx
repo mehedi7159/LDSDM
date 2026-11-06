@@ -5,7 +5,7 @@ import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
 import { MARKS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
-import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle, Printer } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle } from 'lucide-react';
 import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
@@ -436,7 +436,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           <button
             onClick={flushPendingSave}
             disabled={isEntryDisabled}
-            className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+            className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
           >
             <Save size={14} />
             {language === 'bn' ? 'সেভ করুন' : 'Save'}
@@ -475,7 +475,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       )}
 
       {/* Control Filters */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-center w-full sm:w-auto">
           {/* Exam Selector */}
           <div className="flex flex-col gap-1 w-full">
@@ -530,7 +530,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
       {/* Marks Table or Friendly Empty State */}
       {filteredSubjects.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80">
           <EmptyState
             icon={BookOpen}
             title={language === 'bn' ? `${selectedClass} শ্রেণীতে কোনো বিষয় যোগ করা হয়নি` : `No subjects found in ${selectedClass}`}
@@ -549,21 +549,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           />
         </div>
       ) : (
-        <div className="mobile-responsive-table bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
-          <div className="p-3 bg-gray-50/80 dark:bg-slate-800/50 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between print:hidden">
-            <span className="text-xs font-bold text-gray-700 dark:text-slate-300">
-              {selectedClass} • {currentSubject?.nameBn || currentSubject?.name}{exams.find(e => e.id === selectedExamId)?.name ? ` • ${exams.find(e => e.id === selectedExamId)?.name}` : ''}
-            </span>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-              title={language === 'bn' ? 'নম্বর তালিকা প্রিন্ট করুন' : 'Print marks table'}
-            >
-              <Printer size={13} />
-              <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
-            </button>
-          </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50/80 border-b border-gray-200 dark:border-slate-700">

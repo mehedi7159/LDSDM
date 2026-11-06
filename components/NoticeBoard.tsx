@@ -270,18 +270,16 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
       {currentAlertNotice && (
         <div 
           onClick={() => setSelectedNoticeForModal(currentAlertNotice)}
-          className={`relative rounded-2xl p-3 sm:p-3.5 border shadow-md transition-all cursor-pointer group overflow-hidden ${
+ className={`relative rounded-2xl p-3 sm:p-3.5 border transition-all cursor-pointer group overflow-hidden ${
             currentAlertNotice.category === 'cancellation'
-              ? 'bg-gradient-to-r from-rose-950 via-rose-900 to-red-950 text-white border-rose-600/80 shadow-rose-950/30'
+ ? 'bg-rose-900 text-white border-rose-600/80'
               : currentAlertNotice.priority === 'urgent'
-              ? 'bg-gradient-to-r from-red-950 via-red-900 to-slate-950 text-white border-red-600/80 shadow-red-950/30'
+ ? 'bg-red-900 text-white border-red-600/80'
               : currentAlertNotice.category === 'exam'
-              ? 'bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-950 text-white border-indigo-500/80 shadow-indigo-950/30'
-              : 'bg-gradient-to-r from-amber-950 via-amber-900 to-slate-950 text-white border-amber-500/80 shadow-amber-950/30'
+ ? 'bg-indigo-900 text-white border-indigo-500/80'
+ : 'bg-amber-800 text-white border-amber-500/80'
           }`}
         >
-          {/* Subtle Ambient Pulse Light */}
-          <div className="absolute top-0 right-0 w-64 h-full bg-white/5 blur-2xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             
@@ -290,12 +288,12 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
               {/* Alert Pulsing Icon */}
               <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center font-bold ${
                 currentAlertNotice.category === 'cancellation'
-                  ? 'bg-rose-500 text-white animate-pulse shadow-md shadow-rose-500/40'
+ ? 'bg-rose-500 text-white animate-pulse'
                   : currentAlertNotice.priority === 'urgent'
-                  ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/40'
+ ? 'bg-red-500 text-white animate-pulse'
                   : currentAlertNotice.category === 'exam'
-                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/40'
-                  : 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/40'
+ ? 'bg-indigo-500 text-white'
+ : 'bg-amber-500 text-slate-950'
               }`}>
                 {currentAlertNotice.category === 'cancellation' ? <AlertTriangle size={18} /> :
                  currentAlertNotice.category === 'exam' ? <BookOpen size={18} /> :
@@ -391,10 +389,10 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
       {/* 2. CONTINUOUS NOTIFICATION MARQUEE TICKER                      */}
       {/* ============================================================== */}
       {marqueeNotices.length > 0 && (
-        <div className="bg-slate-900 text-slate-200 rounded-2xl border border-slate-800 shadow-sm overflow-hidden flex items-stretch">
+ <div className="bg-slate-900 text-slate-200 rounded-2xl border border-slate-800 overflow-hidden flex items-stretch">
           
           {/* Ticker Lead-in Label */}
-          <div className="bg-indigo-600 text-white px-3 sm:px-4 py-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider shrink-0 z-10 shadow-md">
+ <div className="bg-indigo-600 text-white px-3 sm:px-4 py-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider shrink-0 z-10">
             <Radio size={14} className="animate-pulse text-amber-300" />
             <span className="hidden sm:inline">{isBn ? 'জরুরি সংবাদ ও নোটিশ' : 'Live Updates'}</span>
             <span className="sm:hidden">{isBn ? 'সংবাদ' : 'Live'}</span>
@@ -462,7 +460,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
             {canManage && (
               <button
                 onClick={() => setIsQuickPostOpen(true)}
-                className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold transition cursor-pointer flex items-center gap-1 shadow-xs ml-1"
+ className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ml-1"
                 title={isBn ? 'নতুন জরুরি নোটিশ পোস্ট করুন' : 'Post Urgent Update'}
               >
                 <Plus size={12} />
@@ -492,7 +490,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
             
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-amber-400">
                   <Megaphone size={18} />
@@ -552,7 +550,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
               </div>
 
               {/* Content Description */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line font-bangla shadow-inner">
+ <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line font-bangla">
                 {selectedNoticeForModal.content}
               </div>
 
@@ -605,7 +603,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
             
-            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-red-900 to-indigo-950 text-white flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 bg-red-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertCircle size={20} className="text-amber-400 animate-pulse" />
                 <div>
@@ -738,7 +736,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 transition cursor-pointer"
+ className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer"
                 >
                   {isBn ? 'তাৎক্ষণিক প্রকাশ করুন' : 'Publish Immediately'}
                 </button>
@@ -1038,9 +1036,9 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
       )}
 
       {/* 2. NOTICE BOARD HEADER & ACTION BAR */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
+ <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white flex items-center justify-center font-bold shadow-lg shadow-indigo-600/30 shrink-0">
+ <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
             <Megaphone size={26} />
           </div>
           <div>
@@ -1069,7 +1067,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
           {canManage && (
             <button
               onClick={() => openCompose()}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/20 transition flex items-center gap-2 cursor-pointer"
+ className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
             >
               <Plus size={16} />
               <span>{isBn ? 'নতুন নোটিশ পোস্ট করুন' : 'Post Notice'}</span>
@@ -1080,49 +1078,37 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
 
       {/* 3. QUICK STATS SUMMARY TILES */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{isBn ? 'মোট নোটিশ' : 'Total Notices'}</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">{notices.length}</div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-            <Megaphone size={18} />
+            <div className="text-3xl font-black text-slate-900 mt-1">{notices.length}</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-red-600 uppercase tracking-wider">{isBn ? 'জরুরি আপডেট' : 'Urgent Alerts'}</div>
-            <div className="text-2xl font-black text-red-600 mt-1">{urgentCount}</div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-bold border border-red-200">
-            <AlertCircle size={18} />
+            <div className="text-4xl font-black text-red-600 mt-1">{urgentCount}</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">{isBn ? 'ক্লাস বাতিল' : 'Cancellations'}</div>
-            <div className="text-2xl font-black text-rose-600 mt-1">{cancellationCount}</div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold border border-rose-200">
-            <AlertTriangle size={18} />
+            <div className="text-3xl font-black text-rose-600 mt-1">{cancellationCount}</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">{isBn ? 'পরীক্ষার নোটিশ' : 'Exam Notices'}</div>
-            <div className="text-2xl font-black text-indigo-600 mt-1">{examCount}</div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold border border-indigo-200">
-            <BookOpen size={18} />
+            <div className="text-3xl font-black text-indigo-600 mt-1">{examCount}</div>
           </div>
         </div>
       </div>
 
       {/* 4. FILTER TABS & SEARCH BAR */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+ <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
         
         {/* Category Pills */}
         <div className="flex flex-wrap items-center gap-1.5 pb-1">
@@ -1130,7 +1116,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             onClick={() => setActiveCategoryFilter('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
               activeCategoryFilter === 'all'
-                ? 'bg-slate-900 text-white shadow-xs'
+ ? 'bg-slate-900 text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -1141,7 +1127,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             onClick={() => setActiveCategoryFilter('urgent')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
               activeCategoryFilter === 'urgent'
-                ? 'bg-red-600 text-white shadow-xs'
+ ? 'bg-red-600 text-white'
                 : 'bg-red-50 text-red-700 hover:bg-red-100'
             }`}
           >
@@ -1152,7 +1138,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             onClick={() => setActiveCategoryFilter('cancellation')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
               activeCategoryFilter === 'cancellation'
-                ? 'bg-rose-600 text-white shadow-xs'
+ ? 'bg-rose-600 text-white'
                 : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
             }`}
           >
@@ -1163,7 +1149,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             onClick={() => setActiveCategoryFilter('exam')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
               activeCategoryFilter === 'exam'
-                ? 'bg-indigo-600 text-white shadow-xs'
+ ? 'bg-indigo-600 text-white'
                 : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
             }`}
           >
@@ -1174,7 +1160,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             onClick={() => setActiveCategoryFilter('holiday')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
               activeCategoryFilter === 'holiday'
-                ? 'bg-purple-600 text-white shadow-xs'
+ ? 'bg-purple-600 text-white'
                 : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
             }`}
           >
@@ -1217,7 +1203,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
               <div
                 key={notice.id}
                 onClick={() => setSelectedNoticeForModal(notice)}
-                className={`rounded-3xl border p-5 transition-all cursor-pointer flex flex-col justify-between hover:shadow-lg group relative ${
+ className={`rounded-3xl border p-5 transition-all cursor-pointer flex flex-col justify-between group relative ${
                   notice.category === 'cancellation'
                     ? 'bg-rose-50/40 border-rose-200 hover:border-rose-400'
                     : isUrgent
@@ -1332,7 +1318,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200">
             
-            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
                   <Megaphone size={18} />
@@ -1534,7 +1520,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
 
                 <Button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-bold shadow-md shadow-indigo-600/20"
+ className="px-5 py-2.5 text-xs font-bold"
                 >
                   {editingNotice 
                     ? (isBn ? 'আপডেট সংরক্ষণ করুন' : 'Update Notice')

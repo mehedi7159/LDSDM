@@ -15,8 +15,8 @@ export const AccessRestrictedView: React.FC<AccessRestrictedViewProps> = ({ modu
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200/90 shadow-sm text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+ <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200/90 text-center space-y-6">
+ <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto">
           <ShieldAlert size={32} />
         </div>
 
@@ -48,7 +48,7 @@ export const AccessRestrictedView: React.FC<AccessRestrictedViewProps> = ({ modu
         <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
           <button
             onClick={() => setShowModal(true)}
-            className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors"
+ className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors"
           >
             <Lock size={14} />
             <span>{language === 'bn' ? 'এডমিন মোডে লগইন করুন' : 'Login as Admin'}</span>

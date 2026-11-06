@@ -12,12 +12,10 @@ import {
   Megaphone, 
   Award, 
   AlertCircle, 
-  CheckCircle2, 
   XCircle, 
   ChevronRight, 
   Sparkles, 
   FileSpreadsheet, 
-  CreditCard, 
   Layers, 
   ArrowUpRight, 
   ArrowDownRight, 
@@ -475,26 +473,22 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 2. আজকের উপস্থিতি (Today's Attendance) */}
         <div 
           onClick={() => onNavigate('attendance')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'আজকের উপস্থিতি' : "Today's Attendance"}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <UserCheck size={20} />
-              </div>
             </div>
 
             {attendanceMetrics.isRecorded ? (
               <>
                 <div className="flex items-baseline gap-2">
-                  <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
+                  <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
                     <CountUpNumber target={Math.round(Number(attendanceMetrics.rate) || 0)} suffix="%" />
                   </h3>
                   <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                    <CheckCircle2 size={13} />
                     <span>{isBn ? 'সন্তোষজনক' : 'Good'}</span>
                   </span>
                 </div>
@@ -549,21 +543,18 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 3. আজকের আয়–ব্যয় (Today's Income & Expense) */}
         <div 
           onClick={() => onNavigate('finance')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'আজকের আয়–ব্যয় ও ক্যাশ' : "Today's Cash Flow"}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Wallet size={20} />
-              </div>
             </div>
 
             <div className="flex items-baseline gap-1.5">
               <span className="text-sm font-bold text-slate-400">৳</span>
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
+              <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
                 <CountUpNumber target={todayCashFlow.todayIncome} />
               </h3>
             </div>
@@ -601,20 +592,17 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 4. শিক্ষার্থী ও কর্মচারীর সংখ্যা (Students & Staff Count) */}
         <div 
           onClick={() => onNavigate('students')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-[var(--color-brand-ring)] transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-[var(--color-brand-ring)] transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'শিক্ষার্থী ও জনবল' : 'Students & Faculty'}
               </span>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
-                <Users size={20} />
-              </div>
             </div>
 
             <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
+              <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
                 <CountUpNumber target={studentMetrics.active} />
               </h3>
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -647,21 +635,18 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         {/* 5. বকেয়া বেতন ও ফি (Due Fees & Receivables) */}
         <div 
           onClick={() => onNavigate('finance_reports')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] hover:shadow-card hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
+          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200 cursor-pointer group flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'বকেয়া বেতন ও ফি' : 'Fee Dues & Collection'}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <CreditCard size={20} />
-              </div>
             </div>
 
             <div className="flex items-baseline gap-1.5">
               <span className="text-sm font-bold text-slate-400">৳</span>
-              <h3 className="text-3xl font-black text-amber-600 dark:text-amber-400 tracking-tight tabular-nums font-mono">
+              <h3 className="text-4xl font-black text-amber-600 dark:text-amber-400 tracking-tight tabular-nums font-mono">
                 <CountUpNumber target={feeDuesMetrics.dues} />
               </h3>
             </div>

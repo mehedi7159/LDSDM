@@ -220,7 +220,7 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
             <>
               <button
                 onClick={() => setConfirmRestoreAllOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+ className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
               >
                 <RotateCcw size={13} />
                 <span>সকল ডেটা ফিরিয়ে আনুন</span>

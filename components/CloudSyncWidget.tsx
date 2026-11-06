@@ -69,8 +69,6 @@ export const CloudSyncWidget: React.FC = () => {
     pendingPayloads,
     pendingSyncCount,
     retryPendingCloudConfirms,
-    isRetryingConfirms,
-    lastRetryError,
     discardPendingPayload
   } = useApp();
   
@@ -313,7 +311,7 @@ export const CloudSyncWidget: React.FC = () => {
     <div className="space-y-6">
       {/* Real-time sync notification toast */}
       {syncNotification && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-in fade-in duration-150">
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-150">
           <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
           <span className="leading-relaxed">{syncNotification}</span>
         </div>
@@ -327,7 +325,7 @@ export const CloudSyncWidget: React.FC = () => {
           on app start, foreground, online, and login. Discard is
           explicit only — it drops the queued payload on purpose. */}
       {pendingSyncCount > 0 && (
-        <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-2xl shadow-sm space-y-3">
+ <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-2xl space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
               {language === 'bn'
@@ -336,25 +334,10 @@ export const CloudSyncWidget: React.FC = () => {
             </span>
             <button
               type="button"
-              disabled={isRetryingConfirms}
-              onClick={async () => {
-                const res = await retryPendingCloudConfirms({ isManual: true });
-                if (res.success) {
-                  setSyncNotification(language === 'bn' ? 'অপেক্ষমাণ তথ্য সফলভাবে ক্লাউডে সিঙ্ক হয়েছে!' : 'Pending records synced successfully to cloud!');
-                  setTimeout(() => setSyncNotification(null), 3500);
-                } else if (res.error && res.error !== 'in_flight') {
-                  setSyncNotification(language === 'bn' ? `সিঙ্ক ব্যর্থ হয়েছে: ${res.error}` : `Sync failed: ${res.error}`);
-                  setTimeout(() => setSyncNotification(null), 4000);
-                }
-              }}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer shrink-0 flex items-center gap-1.5 transition-all shadow-2xs"
+              onClick={() => retryPendingCloudConfirms()}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer shrink-0"
             >
-              <RefreshCw size={12} className={isRetryingConfirms ? 'animate-spin' : ''} />
-              <span>
-                {isRetryingConfirms
-                  ? (language === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...')
-                  : (language === 'bn' ? 'আবার চেষ্টা করুন' : 'Retry now')}
-              </span>
+              {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Retry now'}
             </button>
           </div>
           <div className="space-y-1.5">
@@ -370,7 +353,7 @@ export const CloudSyncWidget: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => discardPendingPayload(item.id)}
-                  className="text-amber-700 dark:text-amber-300 hover:text-rose-700 underline shrink-0 cursor-pointer"
+                  className="text-amber-700 dark:text-amber-300 hover:text-rose-700 underline shrink-0"
                   title={language === 'bn' ? 'এই অপেক্ষমাণ তথ্য ইচ্ছাকৃতভাবে বাদ দিন' : 'Deliberately discard this queued payload'}
                 >
                   {language === 'bn' ? 'বাদ দিন' : 'Discard'}
@@ -378,27 +361,11 @@ export const CloudSyncWidget: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {/* Last retry error alert with exact failure reason & timestamp */}
-          {lastRetryError && (
-            <div className="p-2.5 rounded-xl bg-rose-100/90 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 text-[11px] text-rose-800 dark:text-rose-200 flex items-start gap-2 animate-in fade-in duration-150">
-              <AlertCircle size={14} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-              <div className="space-y-0.5 min-w-0 flex-1">
-                <p className="font-semibold break-words">
-                  {language === 'bn' ? 'সিঙ্ক ব্যর্থতা কারণ:' : 'Sync failure reason:'} {lastRetryError.message}
-                </p>
-                <p className="text-[10px] text-rose-600 dark:text-rose-300 font-mono">
-                  {lastRetryError.field ? `${language === 'bn' ? 'ক্ষেত্র' : 'Field'}: ${lastRetryError.field} • ` : ''}
-                  {language === 'bn' ? 'সময়' : 'Time'}: {lastRetryError.timestamp}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* Gmail Account & Automatic Cloud Guarantee Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-6 shadow-md border border-blue-800/40 relative overflow-hidden">
+ <div className="bg-slate-900 text-white rounded-3xl p-6 border border-blue-800/40 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Database size={160} />
         </div>
@@ -433,7 +400,7 @@ export const CloudSyncWidget: React.FC = () => {
                 <button
                   onClick={handleGoogleAuth}
                   disabled={isGoogleLoggingIn}
-                  className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+ className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -450,7 +417,7 @@ export const CloudSyncWidget: React.FC = () => {
           <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 shrink-0">
             <button
               onClick={() => setShowSnapshotModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all"
+ className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <Camera size={15} />
               <span>{language === 'bn' ? 'নতুন ক্লাউড স্ন্যাপশট ব্যাকআপ' : 'Save Cloud Snapshot'}</span>
@@ -469,10 +436,10 @@ export const CloudSyncWidget: React.FC = () => {
       </div>
 
       {/* Main Cloud Infrastructure Status Card */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-slate-50/80 via-white to-blue-50/30">
+ <div className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 bg-slate-50">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+ <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center">
               <Database size={22} />
             </div>
             <div>
@@ -490,7 +457,7 @@ export const CloudSyncWidget: React.FC = () => {
 
           <div className="flex items-center gap-2.5">
             {cloudStatus === 'connected' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+ <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 {language === 'bn' ? 'ক্লাউড কানেক্টেড' : 'Cloud Connected'}
               </span>
@@ -566,7 +533,7 @@ export const CloudSyncWidget: React.FC = () => {
               <button
                 onClick={handleManualPush}
                 disabled={isSyncingAction}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+ className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 <RefreshCw size={14} className={isSyncingAction ? 'animate-spin' : ''} />
                 <span>{language === 'bn' ? 'এখনই ক্লাউডে সেভ করুন (Push & Backup)' : 'Force Push & Backup'}</span>
@@ -594,10 +561,10 @@ export const CloudSyncWidget: React.FC = () => {
       </div>
 
       {/* Cloud Snapshot Backup History Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 space-y-4">
+ <div className="bg-white rounded-3xl border border-slate-200/80 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
+ <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <History size={20} />
             </div>
             <div>
@@ -709,7 +676,7 @@ export const CloudSyncWidget: React.FC = () => {
       </div>
 
       {/* Security & Access Protection Card */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+ <div className="bg-white rounded-3xl border border-slate-200/80 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isAdmin ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -739,7 +706,7 @@ export const CloudSyncWidget: React.FC = () => {
             ) : (
               <button
                 onClick={() => setShowAdminAuthModal(true)}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2 shadow-xs cursor-pointer"
+ className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer"
               >
                 <Unlock size={14} />
                 <span>{language === 'bn' ? 'এডমিন আনলক করুন' : 'Unlock Admin Mode'}</span>
@@ -750,7 +717,7 @@ export const CloudSyncWidget: React.FC = () => {
       </div>
 
       {/* Vercel & GitHub Deployment Sync Helper Card */}
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-5 space-y-4 shadow-sm">
+ <div className="bg-slate-900 text-white rounded-3xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Globe className="text-blue-400" size={20} />
@@ -784,7 +751,7 @@ export const CloudSyncWidget: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
+ <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                 <Camera size={20} />
               </div>
               <div>
@@ -826,7 +793,7 @@ export const CloudSyncWidget: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSyncingAction}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-xs disabled:opacity-50"
+ className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
                   {isSyncingAction ? (language === 'bn' ? 'সেভ হচ্ছে...' : 'Saving...') : (language === 'bn' ? 'সেভ করুন' : 'Save')}
                 </button>

@@ -203,7 +203,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
+ <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
         <div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight">
             {language === 'bn' ? 'শ্রেণিভিত্তিক বাল্ক ইমেইল ব্রডকাস্ট' : 'Class-based Bulk Email Dispatcher'}
@@ -234,7 +234,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
       {/* Main 2-Column Split: Form (Left) vs Recipient Selector (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Email Composer (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+ <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Mail size={16} className="text-indigo-600" />
@@ -336,7 +336,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
                 type="button"
                 onClick={handleSimulatedDispatch}
                 disabled={isSending || selectedEmails.length === 0 || !emailSubject.trim() || !emailContent.trim()}
-                className="px-5 py-2 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
+ className="px-5 py-2 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5"
               >
                 <Send size={14} />
                 <span>
@@ -352,7 +352,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
         {/* Right Column: Audience & Recipient List (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           {/* Class Filter & Metrics Card */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
+ <div className="bg-white rounded-3xl p-5 border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
                 {language === 'bn' ? 'প্রাপক নির্বাচন (Target Audience)' : 'Target Audience'}
@@ -393,7 +393,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
           </div>
 
           {/* Student Recipient List Table */}
-          <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs space-y-3">
+ <div className="bg-white rounded-3xl p-4 border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100">
               <button
                 type="button"
@@ -483,7 +483,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
 
       {/* Recent Email Broadcast Dispatch History */}
       {emailLogs.length > 0 && (
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
+ <div className="bg-white rounded-3xl p-5 border border-slate-200/80 space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <History size={15} className="text-indigo-600" />

@@ -61,21 +61,21 @@ export const ClassSectionMatrixView: React.FC<ClassSectionMatrixViewProps> = ({
       
       {/* Top Summary Banner */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{isBn ? 'মোট শ্রেণি / জামাত' : 'Total Classes'}</p>
           <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{formatNumber(classes.length, language)}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-2xs bg-teal-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-teal-200 dark:border-teal-800 bg-teal-50/30">
           <p className="text-xs font-bold text-teal-700 dark:text-teal-400 uppercase">{isBn ? 'মোট শিক্ষার্থী' : 'Total Students'}</p>
-          <p className="text-2xl font-black text-teal-900 dark:text-teal-200 mt-1">{formatNumber(totalCurrentStudents, language)}</p>
+          <p className="text-3xl font-black text-teal-900 dark:text-teal-200 mt-1">{formatNumber(totalCurrentStudents, language)}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30">
           <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">{isBn ? 'গড় শিক্ষার্থী প্রতি শ্রেণি' : 'Average / Class'}</p>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1">
             {formatNumber(classes.length > 0 ? Math.round(totalCurrentStudents / classes.length) : 0, language)}
           </p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-2xs bg-indigo-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/30">
           <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase">{isBn ? 'সর্বোচ্চ শিক্ষার্থী শ্রেণি' : 'Largest Class'}</p>
           <p className="text-lg font-black text-indigo-900 dark:text-indigo-200 mt-1 truncate">
             {(() => {
@@ -92,7 +92,7 @@ export const ClassSectionMatrixView: React.FC<ClassSectionMatrixViewProps> = ({
         {classBreakdowns.map(({ cls, total, activeCount, inactiveCount, maleCount, femaleCount }) => (
           <div 
             key={cls.id}
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all p-5 flex flex-col justify-between"
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 transition-all p-5 flex flex-col justify-between"
           >
             <div>
               <div className="flex items-start justify-between gap-3 mb-3">

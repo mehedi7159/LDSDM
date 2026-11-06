@@ -18,16 +18,12 @@ import {
   Sparkles, 
   Clock, 
   Users, 
-  BookOpen, 
-  Award, 
-  Wallet, 
   HardDrive, 
   Server, 
   Eye, 
   Edit2, 
   Trash2, 
   Image as ImageIcon, 
-  Layers, 
   Lock, 
   ExternalLink, 
   ChevronRight, 
@@ -323,10 +319,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       {/* ========================================================================= */}
       {/* TOP HERO BANNER & INSTITUTIONAL CONTROL BAR                               */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-7 text-white shadow-xl border border-indigo-900/60 relative overflow-hidden print:hidden">
-        {/* Subtle decorative glow */}
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-10 w-60 h-60 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+ <div className="bg-slate-900 rounded-3xl p-6 sm:p-7 text-white border border-indigo-900/60 relative overflow-hidden print:hidden">
 
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="space-y-2">
@@ -337,7 +330,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                 <img 
                   src={schoolProfile.logoUrl} 
                   alt="Logo" 
-                  className="w-8 h-8 rounded-full object-cover border border-white/30 shadow-xs"
+ className="w-8 h-8 rounded-full object-cover border border-white/30"
                 />
               )}
             </h1>
@@ -348,7 +341,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={handleQuickBackup}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-md shadow-indigo-900/30 cursor-pointer active:scale-95"
+ className="px-4 py-2.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer active:scale-95"
             >
               <Download size={14} />
               <span>{isBn ? 'দ্রুত ব্যাকআপ (JSON)' : 'Quick Backup'}</span>
@@ -364,7 +357,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
 
             <button
               onClick={handlePrintInstitutionalReport}
-              className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 text-xs font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer active:scale-95"
+ className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
               <Printer size={14} />
               <span>{isBn ? 'প্রিন্ট' : 'Print'}</span>
@@ -382,9 +375,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'প্রকাশিত নোটিশ' : 'Notices'}</span>
-              <Megaphone size={14} className="text-amber-400" />
             </div>
-            <div className="text-xl font-black text-white mt-1">
+            <div className="text-2xl font-black text-white mt-1">
               {formatNumber(noticeStats.total, language)}
               <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1.5">
                 ({formatNumber(noticeStats.pinned, language)} {isBn ? 'পিন্ড' : 'pinned'})
@@ -399,9 +391,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'প্রোফাইল পূর্ণতা' : 'Profile'}</span>
-              <Building2 size={14} className="text-emerald-400" />
             </div>
-            <div className="text-xl font-black text-emerald-400 mt-1 flex items-center gap-1.5">
+            <div className="text-2xl font-black text-emerald-400 mt-1 flex items-center gap-1.5">
               <span>{formatNumber(profileCompleteness, language)}%</span>
               <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
                 {profileCompleteness >= 80 ? (isBn ? 'পরিপূর্ণ' : 'Ready') : (isBn ? 'অসম্পূর্ণ' : 'Pending')}
@@ -416,9 +407,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'ডাটা ব্যাকআপ' : 'Vault'}</span>
-              <Database size={14} className="text-blue-400" />
             </div>
-            <div className="text-xl font-black text-white mt-1 flex items-center gap-1.5">
+            <div className="text-2xl font-black text-white mt-1 flex items-center gap-1.5">
               <span>{storageStats.usedFormatted}</span>
               <span className="text-[10px] text-blue-300 font-bold">
                 ({storageStats.quotaPercent}% {isBn ? 'কোটা' : 'quota'})
@@ -433,9 +423,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'সিকিউরিটি' : 'Security'}</span>
-              <ShieldCheck size={14} className="text-purple-400" />
             </div>
-            <div className="text-xl font-black text-purple-300 mt-1 flex items-center gap-1">
+            <div className="text-2xl font-black text-purple-300 mt-1 flex items-center gap-1">
               <span>{isSuperAdmin ? 'Tier-1 Root' : isAdmin ? 'Admin' : 'Restricted'}</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200 font-bold">
                 RBAC
@@ -449,7 +438,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       {/* ========================================================================= */}
       {/* UNIFIED SUB-TABS NAVIGATION BAR                                           */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
+ <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 print:hidden">
         <div className="flex flex-wrap items-center gap-1.5">
           {subTabs.map((tab) => {
             const Icon = tab.icon;
@@ -460,7 +449,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-black'
+ ? 'bg-indigo-600 text-white font-black'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
@@ -497,7 +486,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
         <ServerDataGate dataNameBn="রিপোর্ট তথ্য" dataNameEn="Report data">
         <div className="space-y-6">
           {/* Sub-view toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 print:hidden">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {isBn ? 'ভিউ নির্বাচন:' : 'View Mode:'}
@@ -507,7 +496,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   onClick={() => setReportSubView('executive')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     reportSubView === 'executive'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs'
+ ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
@@ -517,7 +506,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   onClick={() => setReportSubView('governance')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     reportSubView === 'governance'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs'
+ ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
@@ -560,7 +549,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
         <form onSubmit={handleSaveProfile} className="space-y-6">
           
           {/* Header & Success state */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+ <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Building2 size={22} className="text-indigo-600 dark:text-indigo-400" />
@@ -577,7 +566,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               )}
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-600/20 cursor-pointer active:scale-95 transition-all"
+ className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
                 <Check size={16} />
                 <span>{isBn ? 'প্রোফাইল সেভ করুন' : 'Save Profile'}</span>
@@ -586,7 +575,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           </div>
 
           {/* Form Fields Card */}
-          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
+ <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-6">
             
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
@@ -776,7 +765,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           {/* Font Settings (Phase 3) — UI font + print fonts, live previews.
               Saved with the profile via the same Save button above; values
               sync through main_store like every other profile field. */}
-          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6">
+ <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-6">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Type size={16} className="text-indigo-600 dark:text-indigo-400" />
@@ -874,7 +863,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       {activeTab === 'branding' && (
         <ServerDataGate dataNameBn="ব্র্যান্ডিং তথ্য" dataNameEn="Branding data">
         <form onSubmit={handleSaveProfile} className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+ <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Sliders size={22} className="text-indigo-600 dark:text-indigo-400" />
@@ -884,7 +873,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
 
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-600/20 cursor-pointer transition-all active:scale-95"
+ className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 cursor-pointer transition-all active:scale-95"
             >
               <Check size={16} />
               <span>{isBn ? 'পরিবর্তন সেভ করুন' : 'Save Changes'}</span>
@@ -894,7 +883,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Logo Upload Box */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4 text-center">
+ <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 space-y-4 text-center">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'মাদ্রাসার প্রাতিষ্ঠানিক লোগো' : 'Madrasah Official Logo'}
               </h3>
@@ -937,7 +926,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
             </div>
 
             {/* Signature Upload Box */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4 text-center">
+ <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 space-y-4 text-center">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্টের অফিসিয়াল স্বাক্ষর' : 'Principal / Superintendent Signature'}
               </h3>
@@ -980,7 +969,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
             </div>
 
             {/* Watermark Upload Box */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4 text-center">
+ <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 space-y-4 text-center">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'ডকুমেন্ট ওয়াটারমার্ক সিল' : 'Document Watermark'}
               </h3>
@@ -1025,7 +1014,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           </div>
 
           {/* Template & Print Toggles */}
-          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
+ <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-6">
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3">
               {isBn ? 'প্রিন্ট ও ফলাফল কার্ড ডিসপ্লে সেটিংস' : 'Print & Result Card Display Preferences'}
             </h3>
@@ -1127,7 +1116,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
         <ServerDataGate dataNameBn="ডায়াগনস্টিকস তথ্য" dataNameEn="Diagnostics data">
         <div className="space-y-6">
           
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+ <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Activity size={22} className="text-indigo-600 dark:text-indigo-400" />
@@ -1158,82 +1147,74 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           {/* Record Count Matrix */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'শিক্ষার্থী' : 'Students'}</span>
-                <Users size={16} className="text-indigo-600 dark:text-indigo-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(students.length, language)}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'শিক্ষক ও স্টাফ' : 'Teachers'}</span>
-                <Users size={16} className="text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(teachers.length, language)}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'শ্রেণি / জামাত' : 'Classes'}</span>
-                <Layers size={16} className="text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(classes.length, language)}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'পাঠ্য বিষয়' : 'Subjects'}</span>
-                <BookOpen size={16} className="text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(subjects.length, language)}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'পরীক্ষা ও টার্ম' : 'Exams'}</span>
-                <Award size={16} className="text-amber-600 dark:text-amber-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(exams.length, language)}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'পরীক্ষার নম্বর রেকর্ড' : 'Marks Records'}</span>
-                <Edit2 size={16} className="text-rose-600 dark:text-rose-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(marks.length, language)}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'আর্থিক লেনদেন' : 'Transactions'}</span>
-                <Wallet size={16} className="text-teal-600 dark:text-teal-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(transactions.length, language)}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase">{isBn ? 'ট্র্যাশ বিন' : 'Trash Bin'}</span>
-                <Trash2 size={16} className="text-slate-500 dark:text-slate-400" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(trashBin.length, language)}
               </div>
             </div>
@@ -1241,7 +1222,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           </div>
 
           {/* Storage & Cloud Sync Card */}
-          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
+ <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-6">
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
               <HardDrive size={18} className="text-indigo-600 dark:text-indigo-400" />
               <span>{isBn ? 'ব্রাউজার লোকাল স্টোরেজ কোটা ও মেমরি' : 'Browser Storage Quota & Health'}</span>

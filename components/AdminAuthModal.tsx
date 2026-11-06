@@ -193,8 +193,6 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-        {/* Decorative subtle gradient */}
-        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500" />
         
         <button
           onClick={onClose}
@@ -204,7 +202,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
         </button>
 
         <div className="flex items-center gap-3.5 mb-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shadow-xs shrink-0">
+ <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
             <ShieldCheck size={26} />
           </div>
           <div>
@@ -346,7 +344,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
                       if (onSuccess) onSuccess();
                       onClose();
                     }}
-                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+ className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                   >
                     <span>{language === 'bn' ? 'এডমিন প্যানেলে প্রবেশ করুন' : 'Continue to Admin Panel'}</span>
                     <ArrowRight size={14} />
@@ -372,7 +370,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
                         type="button"
                         onClick={() => handleBootstrapOwner()}
                         disabled={isBootstrapping}
-                        className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors disabled:opacity-60 cursor-pointer"
+ className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 cursor-pointer"
                       >
                         <Zap size={13} className={isBootstrapping ? 'animate-spin' : ''} />
                         <span>
@@ -421,7 +419,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
                       type="button"
                       onClick={handleRefreshClaims}
                       disabled={isRefreshing}
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors disabled:opacity-60 cursor-pointer"
+ className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 cursor-pointer"
                     >
                       <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
                       <span>{language === 'bn' ? 'ক্লেইমস রিফ্রেশ করুন' : 'Refresh Claims'}</span>
@@ -444,7 +442,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
               type="button"
               onClick={handleGoogleAuth}
               disabled={isProcessing}
-              className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:bg-black text-white text-xs font-bold flex items-center justify-center gap-3 shadow-md shadow-slate-900/10 transition-all disabled:opacity-60 cursor-pointer"
+ className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:bg-black text-white text-xs font-bold flex items-center justify-center gap-3 transition-all disabled:opacity-60 cursor-pointer"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

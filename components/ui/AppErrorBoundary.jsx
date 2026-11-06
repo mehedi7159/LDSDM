@@ -73,7 +73,7 @@ export class AppErrorBoundary extends Component {
     if (!this.state.hasError) return this.props.children;
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md w-full p-6 text-center space-y-4">
+        <div className="bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
             <AlertTriangle size={28} />
           </div>

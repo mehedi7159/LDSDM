@@ -162,7 +162,7 @@ export const LedgerStatementModal: React.FC<LedgerStatementModalProps> = ({
               onClick={handlePrint}
               size="sm"
               variant="primary"
-              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold"
             >
               <Printer className="w-3.5 h-3.5 mr-1.5" />
               <span>{isBn ? 'স্টেটমেন্ট প্রিন্ট' : 'Print Statement'}</span>

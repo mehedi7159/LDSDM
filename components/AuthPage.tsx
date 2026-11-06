@@ -222,7 +222,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white relative">
       
       {/* Subtle Top Ambient Lighting */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-indigo-500/10 dark:bg-indigo-600/10 blur-3xl pointer-events-none" />
 
       {/* Top Header */}
       <header className="relative z-10 border-b border-slate-200 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/70 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
@@ -231,13 +230,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
           className="flex items-center gap-3 cursor-pointer group"
         >
           {schoolProfile.logoUrl ? (
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+ <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
               <img src={schoolProfile.logoUrl} alt="School Logo" className="w-full h-full object-contain p-0.5" referrerPolicy="no-referrer" />
             </div>
           ) : (
             <div
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-md group-hover:scale-105 transition-transform shrink-0"
-              style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-white group-hover:scale-105 transition-transform shrink-0"
+              style={{ backgroundColor: 'var(--color-brand)' }}
             >
               <Building2 size={20} />
             </div>
@@ -257,7 +256,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
           <button
             onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-sm transition"
+ className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
           >
             {language === 'bn' ? 'English' : 'বাংলা'}
           </button>
@@ -276,7 +275,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
             {/* Header Text */}
             <div className="text-center space-y-2.5 max-w-2xl mx-auto">
               <div
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium shadow-sm"
+ className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium"
                 style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
               >
                 <Sparkles size={13} className="text-amber-500" />
@@ -294,10 +293,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {/* OPTION 1: RESULT SEARCH */}
               <div 
                 onClick={() => setCurrentView('results')}
-                className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-emerald-950/40 cursor-pointer flex flex-col justify-between"
+ className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 cursor-pointer flex flex-col justify-between"
               >
                 <div className="space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+ <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Award size={28} />
                   </div>
 
@@ -324,10 +323,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {/* OPTION 2: ACCOUNT LOGIN */}
               <div 
                 onClick={() => { setCurrentView('login'); setErrorMessage(''); }}
-                className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-indigo-950/40 cursor-pointer flex flex-col justify-between"
+ className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 cursor-pointer flex flex-col justify-between"
               >
                 <div className="space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+ <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <LogIn size={28} />
                   </div>
 
@@ -369,7 +368,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
         {(currentView === 'login') && (
           <div className="w-full max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300">
             
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/80">
+ <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8">
               
               {/* Back to Gateway Button */}
               <button
@@ -383,7 +382,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {/* Title & Brand */}
               <div className="text-center space-y-1 mb-6">
                 <div
-                  className="w-12 h-12 rounded-2xl border flex items-center justify-center mx-auto mb-2 shadow-sm"
+ className="w-12 h-12 rounded-2xl border flex items-center justify-center mx-auto mb-2"
                   style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
                 >
                   <Lock size={22} />
@@ -463,8 +462,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110 active:scale-98"
-                    style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110 active:scale-98"
+                    style={{ backgroundColor: 'var(--color-brand)' }}
                   >
                     {isSubmitting ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -482,7 +481,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                       type="button"
                       onClick={handleGoogleLogin}
                       disabled={isSubmitting}
-                      className="w-full py-2.5 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold shadow-sm flex items-center justify-center gap-2.5 transition"
+ className="w-full py-2.5 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-2.5 transition"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -542,8 +541,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
               <button
                 onClick={() => { setCurrentView('login'); setErrorMessage(''); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-white rounded-xl text-xs font-semibold transition shadow-sm hover:brightness-110"
-                style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="flex items-center gap-1.5 px-3 py-1.5 text-white rounded-xl text-xs font-semibold transition hover:brightness-110"
+                style={{ backgroundColor: 'var(--color-brand)' }}
               >
                 <LogIn size={13} />
                 <span>অ্যাকাউন্ট লগইন</span>
@@ -551,9 +550,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
             </div>
 
             {/* Search Box Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+ <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
+ <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <Award size={20} />
                 </div>
                 <div>
@@ -590,7 +589,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 <div className="sm:col-span-2 flex items-end">
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center gap-1.5 transition cursor-pointer"
+ className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <Search size={14} />
                     <span>খুঁজুন</span>
@@ -601,7 +600,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
 
             {/* Results Display */}
             {hasSearched && !studentResultData && (
-              <div className="bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 text-center space-y-2 shadow-sm">
+ <div className="bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 text-center space-y-2">
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-500 dark:text-rose-400 flex items-center justify-center mx-auto">
                   <AlertCircle size={24} />
                 </div>
@@ -611,7 +610,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
             )}
 
             {studentResultData && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl shadow-slate-200/60 dark:shadow-black/40">
+ <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
                 
                 {/* Result Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-100 dark:border-slate-800 gap-4">
@@ -706,7 +705,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+ className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition"
                   >
                     <Printer size={14} />
                     <span>প্রিন্ট মার্কশিট</span>
@@ -757,8 +756,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 <button
                   type="submit"
                   disabled={resetLoading}
-                  className="px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer shadow-sm hover:brightness-110 transition"
-                  style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer hover:brightness-110 transition"
+                  style={{ backgroundColor: 'var(--color-brand)' }}
                 >
                   {resetLoading ? 'পাঠানো হচ্ছে...' : 'রিসেট লিংক পাঠান'}
                 </button>

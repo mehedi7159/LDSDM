@@ -79,7 +79,7 @@ const FeeClassCard = React.memo(function FeeClassCard({
   className, classLabel, draft, types, dirty, saving, isBn, onDraftChange, onSave,
 }: FeeClassCardProps) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -284,7 +284,7 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
   return (
     <div className="space-y-5">
       {/* ============ Fee types (data) ============ */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-4">
         <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center">
             <Settings className="w-5 h-5" />
@@ -320,7 +320,7 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
                   className="shrink-0 w-11 h-6 rounded-full bg-emerald-500 relative transition-colors disabled:opacity-50"
                   aria-label={isBn ? `${t.labelBn} বন্ধ করুন` : `Turn off ${t.labelEn}`}
                 >
-                  <span className="absolute right-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow" />
+                  <span className="absolute right-0.5 top-0.5 w-5 h-5 rounded-full bg-white" />
                 </button>
               </div>
             );
@@ -358,7 +358,7 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
                   className="shrink-0 w-11 h-6 rounded-full bg-slate-300 dark:bg-slate-700 relative transition-colors disabled:opacity-50"
                   aria-label={isBn ? `${t.labelBn} চালু করুন` : `Turn on ${t.labelEn}`}
                 >
-                  <span className="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow" />
+                  <span className="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white" />
                 </button>
               </div>
             );
@@ -413,7 +413,7 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
       </div>
 
       {/* ============ Per-class amounts (enabled types only) ============ */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center">

@@ -1,13 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  Users, 
   GraduationCap, 
   Calendar, 
-  Wallet, 
   Award, 
-  TrendingUp, 
-  TrendingDown, 
   CheckCircle2, 
   XCircle, 
   Megaphone, 
@@ -250,7 +246,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
 
             <button
               onClick={() => onNavigate('academic_reports')}
-              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-100 text-indigo-950 font-black text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-100 text-indigo-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <BarChart3 size={15} className="text-indigo-600" />
               <span>{language === 'bn' ? 'গ্রাফিক্যাল রিপোর্ট' : 'Deep Analytics'}</span>
@@ -263,23 +259,19 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
         {/* CARD 1: Student Census */}
         <div 
           onClick={() => onNavigate('students')}
-          className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-5 rounded-3xl border border-slate-200/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 {language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Users size={20} />
-              </div>
             </div>
             <div className="mt-2">
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+              <h3 className="text-4xl font-black text-slate-900 tracking-tight">
                 {toBanglaDigits(studentStats.active)}
               </h3>
               <p className="text-[11px] text-emerald-700 font-bold mt-0.5 flex items-center gap-1">
-                <CheckCircle2 size={12} />
                 <span>{language === 'bn' ? `${toBanglaDigits(studentStats.active)} জন নিয়মিত তালিবুল ইলম` : `${studentStats.active} Active Students`}</span>
               </p>
             </div>
@@ -293,19 +285,16 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
         {/* CARD 2: Attendance Pulse */}
         <div 
           onClick={() => onNavigate('attendance')}
-          className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-5 rounded-3xl border border-slate-200/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 {language === 'bn' ? 'হাজিরার গড় হার' : 'Attendance Rate'}
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <CheckCircle2 size={20} />
-              </div>
             </div>
             <div className="mt-2">
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight flex items-baseline gap-1">
+              <h3 className="text-4xl font-black text-slate-900 tracking-tight flex items-baseline gap-1">
                 <span>{attendanceStats.rate !== null ? `${toBanglaDigits(attendanceStats.rate)}%` : '—'}</span>
               </h3>
             </div>
@@ -319,23 +308,19 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
         {/* CARD 3: Academic Pass Rate & Exam Health */}
         <div 
           onClick={() => onNavigate('web_results')}
-          className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-5 rounded-3xl border border-slate-200/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 {language === 'bn' ? 'পরীক্ষায় পাসের হার' : 'Exam Pass Rate'}
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Award size={20} />
-              </div>
             </div>
             <div className="mt-2">
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight flex items-baseline gap-1">
+              <h3 className="text-4xl font-black text-slate-900 tracking-tight flex items-baseline gap-1">
                 <span>{toBanglaDigits(academicStats.passRate)}%</span>
               </h3>
               <p className="text-[11px] text-amber-700 font-bold mt-0.5 flex items-center gap-1">
-                <Trophy size={12} />
                 <span>{language === 'bn' ? `গড় জিপিএ: ${toBanglaDigits(academicStats.avgGpa)}` : `Avg GPA: ${academicStats.avgGpa}`}</span>
               </p>
             </div>
@@ -349,23 +334,19 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
         {/* CARD 4: Financial Health */}
         <div 
           onClick={() => onNavigate('finance')}
-          className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-5 rounded-3xl border border-slate-200/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 {language === 'bn' ? 'তহবিল ও স্থিতি (Net)' : 'Financial Balance'}
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Wallet size={20} />
-              </div>
             </div>
             <div className="mt-2">
-              <h3 className={`text-3xl font-black tracking-tight ${financeStats.balance >= 0 ? 'text-indigo-900' : 'text-rose-600'}`}>
+              <h3 className={`text-4xl font-black tracking-tight ${financeStats.balance >= 0 ? 'text-indigo-900' : 'text-rose-600'}`}>
                 ৳ {toBanglaDigits(financeStats.balance.toLocaleString())}
               </h3>
               <p className="text-[11px] text-purple-700 font-bold mt-0.5 flex items-center gap-1">
-                <TrendingUp size={12} />
                 <span>{language === 'bn' ? `মোট আদায়: ৳ ${toBanglaDigits(financeStats.income.toLocaleString())}` : `Total Inflow: ৳ ${financeStats.income}`}</span>
               </p>
             </div>
@@ -378,7 +359,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
       </div>
 
       {/* 3. High-Impact Instant Action Launchpad (৬টি দ্রুত কার্যক্রম) */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-3">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-indigo-600" />
@@ -394,7 +375,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             onClick={() => onNavigate('students')}
             className="p-3.5 rounded-2xl bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-900 border border-emerald-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <UserPlus size={16} />
             </div>
             <div>
@@ -407,7 +388,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             onClick={() => onNavigate('marks')}
             className="p-3.5 rounded-2xl bg-blue-50/70 hover:bg-blue-100/80 text-blue-900 border border-blue-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <PenTool size={16} />
             </div>
             <div>
@@ -420,7 +401,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             onClick={() => onNavigate('attendance')}
             className="p-3.5 rounded-2xl bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-900 border border-indigo-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <CheckCircle2 size={16} />
             </div>
             <div>
@@ -433,7 +414,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             onClick={() => onNavigate('finance')}
             className="p-3.5 rounded-2xl bg-purple-50/70 hover:bg-purple-100/80 text-purple-900 border border-purple-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Receipt size={16} />
             </div>
             <div>
@@ -446,7 +427,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             onClick={() => onNavigate('notices')}
             className="p-3.5 rounded-2xl bg-amber-50/70 hover:bg-amber-100/80 text-amber-900 border border-amber-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Megaphone size={16} />
             </div>
             <div>
@@ -459,7 +440,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
             onClick={() => onNavigate('web_results')}
             className="p-3.5 rounded-2xl bg-teal-50/70 hover:bg-teal-100/80 text-teal-900 border border-teal-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Award size={16} />
             </div>
             <div>
@@ -475,7 +456,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
       {/* 5. Middle Split: Class Strength vs Top Achievers */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Class Census & Student Distribution */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
@@ -519,7 +500,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
         </div>
 
         {/* Right 1 Col: Top Merit Achievers */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">

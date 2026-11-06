@@ -162,7 +162,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'সারসংক্ষেপ', 
       labelEn: 'Overview', 
       icon: Wallet,
-      activeClass: 'bg-slate-900 text-white shadow-md',
+      activeClass: 'bg-slate-900 text-white',
       inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
       iconColor: 'text-emerald-400'
     },
@@ -171,7 +171,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'ফি আদায়', 
       labelEn: 'Fees', 
       icon: GraduationCap,
-      activeClass: 'bg-blue-600 text-white shadow-md shadow-blue-500/20',
+      activeClass: 'bg-blue-600 text-white',
       inactiveClass: 'text-blue-900 dark:text-blue-200 hover:bg-blue-50 hover:text-blue-700',
       iconColor: 'text-blue-600 dark:text-blue-400'
     },
@@ -180,7 +180,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'দান', 
       labelEn: 'Donations', 
       icon: HeartHandshake,
-      activeClass: 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20',
+      activeClass: 'bg-emerald-600 text-white',
       inactiveClass: 'text-emerald-900 dark:text-emerald-200 hover:bg-emerald-50 hover:text-emerald-700',
       iconColor: 'text-emerald-600 dark:text-emerald-400'
     },
@@ -189,7 +189,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'বেতন', 
       labelEn: 'Salary', 
       icon: CreditCard,
-      activeClass: 'bg-rose-600 text-white shadow-md shadow-rose-500/20',
+      activeClass: 'bg-rose-600 text-white',
       inactiveClass: 'text-rose-900 dark:text-rose-200 hover:bg-rose-50 hover:text-rose-700',
       iconColor: 'text-rose-600 dark:text-rose-400'
     },
@@ -198,7 +198,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'উন্নয়ন', 
       labelEn: 'Development', 
       icon: Building2,
-      activeClass: 'bg-amber-600 text-white shadow-md shadow-amber-500/20',
+      activeClass: 'bg-amber-600 text-white',
       inactiveClass: 'text-amber-950 dark:text-amber-200 hover:bg-amber-50 hover:text-amber-800',
       iconColor: 'text-amber-600 dark:text-amber-400'
     },
@@ -207,7 +207,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'ভাউচার', 
       labelEn: 'Vouchers', 
       icon: PlusCircle,
-      activeClass: 'bg-cyan-700 text-white shadow-md shadow-cyan-600/20',
+      activeClass: 'bg-cyan-700 text-white',
       inactiveClass: 'text-cyan-950 dark:text-cyan-200 hover:bg-cyan-50 hover:text-cyan-800',
       iconColor: 'text-cyan-600 dark:text-cyan-400'
     },
@@ -216,7 +216,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'ক্যাশ বুক', 
       labelEn: 'Cash Book', 
       icon: BookOpen,
-      activeClass: 'bg-violet-700 text-white shadow-md shadow-violet-600/20',
+      activeClass: 'bg-violet-700 text-white',
       inactiveClass: 'text-violet-950 dark:text-violet-200 hover:bg-violet-50 hover:text-violet-800',
       iconColor: 'text-violet-600 dark:text-violet-400'
     },
@@ -225,7 +225,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'ফি কাঠামো', 
       labelEn: 'Fee Setup', 
       icon: Settings2,
-      activeClass: 'bg-slate-700 text-white shadow-md',
+      activeClass: 'bg-slate-700 text-white',
       inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
       iconColor: 'text-slate-600 dark:text-slate-300'
     },
@@ -234,7 +234,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'রিপোর্ট', 
       labelEn: 'Reports', 
       icon: FileSpreadsheet,
-      activeClass: 'bg-emerald-700 text-white shadow-md shadow-emerald-600/20',
+      activeClass: 'bg-emerald-700 text-white',
       inactiveClass: 'text-emerald-950 dark:text-emerald-200 hover:bg-emerald-50 hover:text-emerald-800',
       iconColor: 'text-emerald-600 dark:text-emerald-400'
     },
@@ -334,7 +334,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       </PageHeader>
 
 {/* Sub-Navigation Tabs */}
-      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 gap-1">
         {navTabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -345,7 +345,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 isActive 
-                  ? 'bg-slate-900 text-white shadow-xs' 
+                  ? 'bg-slate-900 text-white'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >

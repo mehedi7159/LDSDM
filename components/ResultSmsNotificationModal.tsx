@@ -339,9 +339,9 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="p-5 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white flex items-center justify-between">
+        <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400 shadow-md">
+ <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400">
               <MessageSquare size={22} />
             </div>
             <div>
@@ -371,7 +371,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
             onClick={() => setActiveTab('compose')}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'compose'
-                ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 shadow-xs'
+ ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 '
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -384,7 +384,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'settings'
-                ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 shadow-xs'
+ ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 '
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -397,7 +397,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
             onClick={() => setActiveTab('history')}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'history'
-                ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 shadow-xs'
+ ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 '
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -456,7 +456,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
                     onClick={() => setDispatchMode('individual')}
                     className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       dispatchMode === 'individual'
-                        ? 'bg-white text-indigo-900 shadow-xs'
+ ? 'bg-white text-indigo-900 '
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -469,7 +469,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
                     onClick={() => setDispatchMode('class')}
                     className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       dispatchMode === 'class'
-                        ? 'bg-indigo-600 text-white shadow-xs'
+ ? 'bg-indigo-600 text-white '
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -568,7 +568,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
                   </div>
 
                   {/* Live Mobile SMS Preview Simulator */}
-                  <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-md border border-slate-800 space-y-2">
+ <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 space-y-2">
                     <div className="flex items-center justify-between text-[11px] text-slate-400 pb-2 border-b border-slate-800">
                       <span className="flex items-center gap-1.5 font-bold text-indigo-400">
                         <Smartphone size={14} />
@@ -584,7 +584,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
                       </button>
                     </div>
 
-                    <div className="bg-slate-800/90 rounded-xl p-3.5 border border-slate-700 font-bangla text-xs leading-relaxed text-slate-100 shadow-inner">
+ <div className="bg-slate-800/90 rounded-xl p-3.5 border border-slate-700 font-bangla text-xs leading-relaxed text-slate-100">
                       {activeStudentSmsData?.message || smsTemplate}
                     </div>
 
@@ -597,7 +597,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
 
                 {/* Right Column: Audience & Recipient List (5 cols) */}
                 <div className="lg:col-span-5 space-y-3">
-                  <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+ <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
                         {language === 'bn' ? 'অভিভাবক প্রাপক তালিকা' : 'Recipient Phone List'}
@@ -725,7 +725,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
                     type="button"
                     onClick={handleGatewayDispatch}
                     disabled={isSending || (dispatchMode === 'class' && selectedStudentIds.size === 0)}
-                    className="px-6 py-2.5 text-xs font-black bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+ className="px-6 py-2.5 text-xs font-black bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-2"
                   >
                     <Send size={15} />
                     <span>

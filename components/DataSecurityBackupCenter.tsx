@@ -7,11 +7,7 @@ import {
   Download,
   Upload,
   RefreshCw,
-  Users,
-  PenTool,
-  Wallet,
   BookOpen,
-  Calendar,
   AlertTriangle,
   RotateCcw,
   CheckCircle2,
@@ -358,14 +354,12 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
   return (
     <div className={`space-y-6 ${isModal ? 'p-4 sm:p-6' : 'max-w-6xl mx-auto'}`}>
       {/* Top Header & Reassuring Badges */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-900/40 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+ <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-indigo-900/40 relative overflow-hidden">
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
+ <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 ক্লাউড ডেটাবেস সক্রিয় ও নিরাপদ
               </span>
@@ -378,16 +372,13 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
               <ShieldCheck className="text-emerald-400 shrink-0" size={28} />
               ডাটা সুরক্ষা, ব্যাকআপ ও রিস্টোর কেন্দ্র
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              সব তথ্য এক ক্লিকে ব্যাকআপ বা রিস্টোর করুন।
-            </p>
           </div>
 
           <div className="flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
             <button
               onClick={handleCloudPush}
               disabled={isCloudSyncing}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50"
+ className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
               <RefreshCw size={14} className={isCloudSyncing ? 'animate-spin' : ''} />
               <span>{isCloudSyncing ? 'সিঙ্ক হচ্ছে...' : 'এখনই ক্লাউডে সিঙ্ক করুন'}</span>
@@ -407,9 +398,8 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
           <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
             <div className="flex items-center justify-between text-indigo-300 text-xs font-semibold mb-1">
               <span>মোট শিক্ষার্থী</span>
-              <Users size={16} />
             </div>
-            <div className="text-xl font-black text-white">
+            <div className="text-3xl font-black text-white">
               {formatNumber(students.length, language)}
               <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">জন</span>
             </div>
@@ -418,9 +408,8 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
           <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
             <div className="flex items-center justify-between text-teal-300 text-xs font-semibold mb-1">
               <span>পরীক্ষা ও টার্ম</span>
-              <Calendar size={16} />
             </div>
-            <div className="text-xl font-black text-white">
+            <div className="text-2xl font-black text-white">
               {formatNumber(exams.length, language)}
               <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
             </div>
@@ -429,9 +418,8 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
           <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
             <div className="flex items-center justify-between text-amber-300 text-xs font-semibold mb-1">
               <span>নম্বর এন্ট্রি</span>
-              <PenTool size={16} />
             </div>
-            <div className="text-xl font-black text-white">
+            <div className="text-2xl font-black text-white">
               {formatNumber(marks.length, language)}
               <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
             </div>
@@ -440,9 +428,8 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
           <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
             <div className="flex items-center justify-between text-rose-300 text-xs font-semibold mb-1">
               <span>আর্থিক ভাউচার</span>
-              <Wallet size={16} />
             </div>
-            <div className="text-xl font-black text-white">
+            <div className="text-2xl font-black text-white">
               {formatNumber(transactions.length, language)}
               <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
             </div>
@@ -486,7 +473,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
 
       {/* Google Login Status Banner for Cloud Database Sync */}
       {!authUser ? (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 dark:border-amber-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+ <div className="bg-amber-50 border border-amber-200/90 dark:border-amber-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
               <Cloud size={22} />
@@ -502,14 +489,14 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
           </div>
           <button
             onClick={() => loginWithGoogle()}
-            className="shrink-0 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+ className="shrink-0 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <Cloud size={15} />
             <span>Google দিয়ে লগইন করুন</span>
           </button>
         </div>
       ) : (
-        <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200 shadow-xs">
+ <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200">
           <div className="flex items-center gap-2.5">
             <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>
@@ -522,7 +509,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
       {/* 4 Core Essential Action Modules */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Module 1: Download Full Backup */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 transition-all flex flex-col justify-between">
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
               <Download size={24} />
@@ -548,7 +535,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             </div>
             <button
               onClick={handleDownloadBackup}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+ className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <Download size={14} />
               <span>ব্যাকআপ ফাইল নামান</span>
@@ -557,7 +544,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         </div>
 
         {/* Module 2: Restore Real Data */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 transition-all flex flex-col justify-between">
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
               <Upload size={24} />
@@ -603,7 +590,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                 <button
                   onClick={openFilePreview}
                   disabled={isRestoring || isPreviewLoading}
-                  className="w-full mt-2 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+ className="w-full mt-2 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Upload size={14} />
                   <span>{isPreviewLoading ? 'প্রিভিউ তৈরি হচ্ছে...' : isRestoring ? 'রিস্টোর হচ্ছে...' : 'এই ব্যাকআপটি রিস্টোর করুন'}</span>
@@ -618,7 +605,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         </div>
 
         {/* Module 3: Cloud Database Sync & Pull */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 transition-all flex flex-col justify-between">
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold">
               <Cloud size={24} />
@@ -663,7 +650,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             <button
               onClick={handleCloudPush}
               disabled={isCloudSyncing}
-              className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+ className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Cloud size={14} />
               <span>{isCloudSyncing ? 'সিঙ্ক হচ্ছে...' : 'ক্লাউডে সেভ করুন'}</span>
@@ -672,7 +659,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         </div>
 
         {/* Module 4: Smart Recycle Bin & Accidental Deletion Protection */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-emerald-200/90 dark:border-emerald-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-emerald-200/90 dark:border-emerald-800 transition-all flex flex-col justify-between">
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold">
               <RotateCcw size={24} />
@@ -712,7 +699,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             </span>
             <button
               onClick={() => setIsRecycleBinOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+ className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <RotateCcw size={14} />
               <span>রিসাইকেল বিন দেখুন ({trashBin.length})</span>
@@ -722,7 +709,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
       </div>
 
       {/* Clean Snapshots & Auto-Checkpoints History */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">

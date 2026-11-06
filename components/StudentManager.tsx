@@ -699,7 +699,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     return (
       <div
         className={variant === 'tile'
-          ? `rounded-2xl border border-gray-100 dark:border-slate-800 shadow-2xs p-4 transition-colors ${student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white dark:bg-slate-900'}`
+          ? `rounded-2xl border border-gray-100 dark:border-slate-800 p-4 transition-colors ${student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white dark:bg-slate-900'}`
           : `p-3.5 transition-colors ${student.isFormer || student.status === 'Former' ? 'bg-slate-50/50' : 'bg-white dark:bg-slate-900'}`}
       >
         <div className="flex items-start justify-between gap-2.5">
@@ -708,10 +708,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               <img 
                 src={student.photoUrl} 
                 alt={student.name} 
-                className="w-11 h-11 rounded-full object-cover border border-gray-200 dark:border-slate-700 shadow-2xs shrink-0" 
+                className="w-11 h-11 rounded-full object-cover border border-gray-200 dark:border-slate-700 shrink-0"
               />
             ) : (
-              <div className="w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-sm uppercase shadow-2xs shrink-0">
+              <div className="w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-sm uppercase shrink-0">
                 {displayName.charAt(0)}
               </div>
             )}
@@ -863,7 +863,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           {canCreate && (
             <Button 
               onClick={openAddModal}
-              className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2 shadow-xs"
+              className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2"
             >
               <UserPlus size={16} />
               <span>{language === 'bn' ? 'নতুন ভর্তি' : 'New Admission'}</span>
@@ -872,7 +872,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           {canPromote && (
             <Button
               onClick={() => setIsPromotionModalOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 shadow-xs"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2"
             >
               <GraduationCap size={16} />
               <span>{language === 'bn' ? 'শ্রেণি প্রমোশন' : 'Promotion'}</span>
@@ -901,68 +901,63 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
         <div 
           onClick={() => { setSubTab('list'); setActiveTab('all'); }}
-          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-teal-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-teal-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</span>
-            <Users size={16} className="text-teal-600 dark:text-teal-400" />
           </div>
-          <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 font-bangla">{formatNumber(allCurrentStudentsList.length, language)}</p>
+          <p className="text-3xl font-black text-slate-800 dark:text-slate-100 mt-1 font-bangla">{formatNumber(allCurrentStudentsList.length, language)}</p>
         </div>
 
         <div 
           onClick={() => { setSubTab('list'); setActiveTab('active'); }}
-          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/20 hover:border-emerald-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/20 hover:border-emerald-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">{language === 'bn' ? 'সক্রিয় শিক্ষার্থী' : 'Active Students'}</span>
-            <UserCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1 font-bangla">{formatNumber(activeStudentsList.length, language)}</p>
         </div>
 
         <div 
           onClick={() => { setSubTab('list'); setActiveTab('inactive'); }}
-          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-2xs bg-amber-50/20 hover:border-amber-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/20 hover:border-amber-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase">{language === 'bn' ? 'অনিয়মিত শিক্ষার্থী' : 'Inactive'}</span>
-            <UserX size={16} className="text-amber-600 dark:text-amber-400" />
           </div>
           <p className="text-2xl font-black text-amber-900 dark:text-amber-200 mt-1 font-bangla">{formatNumber(inactiveStudentsList.length, language)}</p>
         </div>
 
         <div 
           onClick={() => { setSubTab('former'); setActiveTab('former'); }}
-          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs bg-slate-50/50 hover:border-slate-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 hover:border-slate-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">{language === 'bn' ? 'সাবেক শিক্ষার্থী' : 'Former Students'}</span>
-            <UserMinus size={16} className="text-slate-600 dark:text-slate-300" />
           </div>
           <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 font-bangla">{formatNumber(formerStudentsList.length, language)}</p>
         </div>
 
         <div 
           onClick={() => setSubTab('classes')}
-          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-2xs bg-indigo-50/20 hover:border-indigo-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/20 hover:border-indigo-400 transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">{language === 'bn' ? 'শ্রেণি / জামাত' : 'Classes'}</span>
-            <Layers size={16} className="text-indigo-600 dark:text-indigo-400" />
           </div>
           <p className="text-2xl font-black text-indigo-900 dark:text-indigo-200 mt-1 font-bangla">{formatNumber(classes.length, language)}</p>
         </div>
       </div>
 
       {/* 3. Sub-Navigation Tabs matching Step 2 blueprint */}
-      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 shadow-2xs gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl p-1.5 gap-1">
         <button
           type="button"
           onClick={() => setSubTab('list')}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'list'
-              ? 'bg-teal-700 text-white shadow-xs'
+              ? 'bg-teal-700 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -975,7 +970,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => { setSubTab('admission'); openAddModal(); }}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'admission'
-              ? 'bg-teal-700 text-white shadow-xs'
+              ? 'bg-teal-700 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -988,7 +983,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setSubTab('applications')}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'applications'
-              ? 'bg-teal-700 text-white shadow-xs'
+              ? 'bg-teal-700 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -1001,7 +996,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setSubTab('classes')}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'classes'
-              ? 'bg-teal-700 text-white shadow-xs'
+              ? 'bg-teal-700 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -1014,7 +1009,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setSubTab('guardians')}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'guardians'
-              ? 'bg-teal-700 text-white shadow-xs'
+              ? 'bg-teal-700 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -1036,7 +1031,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setSubTab('tc')}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'tc'
-              ? 'bg-teal-700 text-white shadow-xs'
+              ? 'bg-teal-700 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -1049,7 +1044,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => { setSubTab('former'); setActiveTab('former'); }}
           className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
             subTab === 'former'
-              ? 'bg-teal-700 text-white shadow-xs'
+              ? 'bg-teal-700 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -1076,7 +1071,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
       {subTab === 'tc' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -1128,7 +1123,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           </div>
 
           {/* Former / TC Issued Students registry */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs p-5 space-y-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <UserMinus size={17} className="text-slate-600 dark:text-slate-300" />
               <span>{language === 'bn' ? 'পূর্বে ছাড়পত্র প্রাপ্ত ও সাবেক শিক্ষার্থীর তালিকা' : 'Alumni & TC Records'}</span>
@@ -1177,7 +1172,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {(subTab === 'list' || subTab === 'former' || subTab === 'admission') && (
         <>
           {/* Tabs: All Enrolled vs Active vs Inactive vs Former Students */}
-          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-t-xl px-2 shadow-xs overflow-x-auto">
+          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-t-xl px-2 overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('all')}
@@ -1273,7 +1268,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       )}
 
       {/* Search & Class Filter */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-center">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500" size={17} />
           <input
@@ -1302,7 +1297,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           <button
             type="button"
             onClick={() => setIsPromotionModalOpen(true)}
-            className="shrink-0 px-3.5 py-2.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+            className="shrink-0 px-3.5 py-2.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors"
             title={language === 'bn' ? `${filterClass} এর সকল শিক্ষার্থীকে পরবর্তী শ্রেণিতে উত্তীর্ণ করুন` : `Promote ${filterClass} students`}
           >
             <GraduationCap size={15} />
@@ -1344,7 +1339,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       </div>
 
       {/* Student List Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
         {/* Desktop Table View */}
         <div className={listView === 'table' ? 'block overflow-x-auto' : 'hidden'}>
           <table className="w-full text-left text-xs border-collapse">

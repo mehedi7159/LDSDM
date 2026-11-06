@@ -39,14 +39,11 @@ const SectionHead: React.FC<{ icon: React.ElementType; title: string; right?: st
 const StatCard: React.FC<{
   icon: React.ElementType; iconCls: string; label: string; value: string; sub?: string;
 }> = ({ icon: Icon, iconCls, label, value, sub }) => (
-  <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-    <div className="flex items-center gap-2 mb-2">
-      <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconCls}`}>
-        <Icon size={16} />
-      </span>
+  <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800">
+    <div className="mb-2">
       <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{label}</span>
     </div>
-    <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{value}</div>
+    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">{value}</div>
     {sub && <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">{sub}</div>}
   </div>
 );
@@ -372,7 +369,7 @@ export const MadrasaReports: React.FC = () => {
           right={alerts.total > 0 ? (isBn ? `${num(alerts.total)}টি` : `${alerts.total}`) : undefined}
         />
         {alerts.total === 0 ? (
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
             <span className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
               <ShieldCheck size={18} />
             </span>
@@ -384,7 +381,7 @@ export const MadrasaReports: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {alerts.lowAttendance.length > 0 ? (
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-amber-200 dark:border-amber-900/60 shadow-2xs flex flex-col">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-amber-200 dark:border-amber-900/60 flex flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">
                     <CalendarX2 size={17} />
@@ -409,7 +406,7 @@ export const MadrasaReports: React.FC = () => {
                 <button onClick={() => setActiveTab('attendance')} className="mt-auto w-full py-2 rounded-2xl bg-amber-600 text-white text-xs font-bold">{isBn ? 'হাজিরা দেখুন' : 'View attendance'}</button>
               </div>
             ) : (
-              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs flex-col">
+              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
                     <ShieldCheck size={17} />
@@ -424,7 +421,7 @@ export const MadrasaReports: React.FC = () => {
               </div>
             )}
             {alerts.longDues.length > 0 ? (
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-rose-200 dark:border-rose-900/60 shadow-2xs flex flex-col">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-rose-200 dark:border-rose-900/60 flex flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0">
                     <Banknote size={17} />
@@ -449,7 +446,7 @@ export const MadrasaReports: React.FC = () => {
                 <button onClick={() => setActiveTab('finance')} className="mt-auto w-full py-2 rounded-2xl bg-rose-600 text-white text-xs font-bold">{isBn ? 'বকেয়া দেখুন' : 'View dues'}</button>
               </div>
             ) : (
-              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs flex-col">
+              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
                     <ShieldCheck size={17} />
@@ -464,7 +461,7 @@ export const MadrasaReports: React.FC = () => {
               </div>
             )}
             {alerts.longAbsent.length > 0 ? (
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-violet-200 dark:border-violet-900/60 shadow-2xs flex flex-col">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-violet-200 dark:border-violet-900/60 flex flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
                     <UserX size={17} />
@@ -489,7 +486,7 @@ export const MadrasaReports: React.FC = () => {
                 <button onClick={() => setActiveTab('students')} className="mt-auto w-full py-2 rounded-2xl bg-violet-600 text-white text-xs font-bold">{isBn ? 'শিক্ষার্থী দেখুন' : 'View students'}</button>
               </div>
             ) : (
-              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs flex-col">
+              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
                     <ShieldCheck size={17} />
@@ -548,7 +545,7 @@ export const MadrasaReports: React.FC = () => {
         </div>
 
         {/* Last 7 days collection */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs mt-3">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 mt-3">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-300" />
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'গত ৭ দিনের আদায়' : 'Collection — Last 7 Days'}</h4>
@@ -577,15 +574,12 @@ export const MadrasaReports: React.FC = () => {
         <SectionHead icon={ClipboardList} title={isBn ? 'এই মাসের প্রতিবেদন' : "This Month's Report"} right={monthLabel} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Fee collection progress */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
-                <Wallet size={16} />
-              </span>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
+            <div className="mb-3">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{isBn ? 'ফি আদায়ের অগ্রগতি' : 'Fee Collection'}</span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">{num(collectionPct)}%</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-white">{num(collectionPct)}%</span>
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 {money(duesSummary.totalPaid)} / {money(duesSummary.totalExpected)}
               </span>
@@ -604,11 +598,8 @@ export const MadrasaReports: React.FC = () => {
           </div>
 
           {/* Income vs expense */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center">
-                <Scale size={16} />
-              </span>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
+            <div className="mb-3">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{isBn ? 'মাসের আয়–ব্যয়' : 'Monthly Income – Expense'}</span>
             </div>
             <div className="space-y-2.5 text-xs">
@@ -644,15 +635,12 @@ export const MadrasaReports: React.FC = () => {
           </div>
 
           {/* Attendance + admissions */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-300 flex items-center justify-center">
-                  <CalendarCheck2 size={16} />
-                </span>
+              <div className="mb-1.5">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{isBn ? 'মাসের গড় উপস্থিতি' : 'Monthly Avg. Attendance'}</span>
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {monthAtt.days > 0 ? `${num(monthAtt.avg)}%` : '—'}
               </div>
               <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -662,13 +650,10 @@ export const MadrasaReports: React.FC = () => {
               </div>
             </div>
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300 flex items-center justify-center">
-                  <Users size={16} />
-                </span>
+              <div className="mb-1.5">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{isBn ? 'এই মাসে নতুন ভর্তি' : 'New Admissions This Month'}</span>
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">{num(newAdmissions)} {isBn ? 'জন' : ''}</div>
+              <div className="text-3xl font-black text-slate-900 dark:text-white">{num(newAdmissions)} {isBn ? 'জন' : ''}</div>
               <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 {isBn ? `মোট শিক্ষার্থী ${num(activeStudents.length)} জন` : `${num(activeStudents.length)} students in total`}
               </div>
@@ -681,7 +666,7 @@ export const MadrasaReports: React.FC = () => {
       <section>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Students by class */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2 mb-4">
               <Users size={16} className="text-indigo-600 dark:text-indigo-300" />
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'ক্লাসভিত্তিক শিক্ষার্থী' : 'Students by Class'}</h4>
@@ -703,7 +688,7 @@ export const MadrasaReports: React.FC = () => {
           </div>
 
           {/* Top dues */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2 mb-4">
               <Wallet size={16} className="text-rose-500" />
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'সর্বোচ্চ বকেয়া' : 'Highest Dues'}</h4>
@@ -741,7 +726,7 @@ export const MadrasaReports: React.FC = () => {
           </div>
 
           {/* Latest exam */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2 mb-4">
               <GraduationCap size={16} className="text-violet-600 dark:text-violet-300" />
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'সাম্প্রতিক পরীক্ষার ফলাফল' : 'Latest Exam Result'}</h4>
@@ -787,7 +772,7 @@ export const MadrasaReports: React.FC = () => {
         <SectionHead icon={BarChart3} title={isBn ? 'ক্লাসভিত্তিক তুলনা' : 'Class Comparisons'} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Attendance by class — this month */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4">{isBn ? 'হাজিরা — এই মাসে' : 'Attendance — This Month'}</h4>
             <div className="space-y-2.5">
               {classAttendanceMonth.map(c => (
@@ -808,7 +793,7 @@ export const MadrasaReports: React.FC = () => {
           </div>
 
           {/* Results by class — latest exam */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4">{isBn ? 'ফলাফল — সাম্প্রতিক পরীক্ষা' : 'Results — Latest Exam'}</h4>
             <div className="space-y-2.5">
               {classResults.map(c => (
@@ -829,7 +814,7 @@ export const MadrasaReports: React.FC = () => {
           </div>
 
           {/* Dues by class */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4">{isBn ? 'বকেয়া — ক্লাসভিত্তিক' : 'Dues — By Class'}</h4>
             <div className="space-y-2.5">
               {classDues.map(c => (

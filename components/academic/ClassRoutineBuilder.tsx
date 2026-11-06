@@ -236,7 +236,7 @@ export const ClassRoutineBuilder: React.FC = () => {
               onClick={() => setViewMode('by_class')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'by_class'
-                  ? 'bg-white dark:bg-slate-900 text-teal-900 dark:text-teal-200 shadow-2xs'
+                  ? 'bg-white dark:bg-slate-900 text-teal-900 dark:text-teal-200'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
@@ -250,7 +250,7 @@ export const ClassRoutineBuilder: React.FC = () => {
               onClick={() => setViewMode('by_teacher')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'by_teacher'
-                  ? 'bg-white dark:bg-slate-900 text-teal-900 dark:text-teal-200 shadow-2xs'
+                  ? 'bg-white dark:bg-slate-900 text-teal-900 dark:text-teal-200'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
@@ -272,7 +272,7 @@ export const ClassRoutineBuilder: React.FC = () => {
 
           <Button
             onClick={handlePrint}
-            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5 shadow-xs"
+            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5"
           >
             <Printer size={14} />
             <span>{isBn ? 'প্রিন্ট রুটিন' : 'Print Routine'}</span>
@@ -289,7 +289,7 @@ export const ClassRoutineBuilder: React.FC = () => {
               <select
                 value={selectedClass}
                 onChange={e => setSelectedClass(e.target.value)}
-                className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-teal-500"
+                className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
               >
                 {classes.map(c => (
                   <option key={c.id} value={c.name}>{c.name}</option>
@@ -302,7 +302,7 @@ export const ClassRoutineBuilder: React.FC = () => {
               <select
                 value={selectedSection}
                 onChange={e => setSelectedSection(e.target.value)}
-                className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-teal-500"
+                className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
               >
                 <option value="ALL">{isBn ? 'সকল শাখা' : 'All Sections'}</option>
                 <option value="ক">শাখা ক</option>
@@ -319,7 +319,7 @@ export const ClassRoutineBuilder: React.FC = () => {
             <select
               value={selectedTeacherId}
               onChange={e => setSelectedTeacherId(e.target.value)}
-              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-teal-500 min-w-[200px]"
+              className="text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 min-w-[200px]"
             >
               {teachers.map(t => (
                 <option key={t.id} value={t.id}>{t.nameBn || t.name} ({t.designation || 'শিক্ষক'})</option>
@@ -339,7 +339,7 @@ export const ClassRoutineBuilder: React.FC = () => {
       </div>
 
       {/* Interactive Timetable Grid (Printable Area) */}
-      <div ref={printRef} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden print:border-none print:shadow-none">
+      <div ref={printRef} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden print:border-none print:shadow-none">
         {/* Printable Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 print:bg-white flex justify-between items-center">
           <div>
@@ -391,7 +391,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                     return (
                       <td key={period.number} className="py-2 px-2.5 border-r border-slate-200 dark:border-slate-800 align-top h-24">
                         {match ? (
-                          <div className="bg-teal-50/80 border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 h-full flex flex-col justify-between group hover:border-teal-400 transition-all shadow-2xs">
+                          <div className="bg-teal-50/80 border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 h-full flex flex-col justify-between group hover:border-teal-400 transition-all">
                             <div>
                               <div className="font-bold text-teal-950 dark:text-teal-200 text-xs flex items-center justify-between">
                                 <span className="truncate" title={match.subjectName}>

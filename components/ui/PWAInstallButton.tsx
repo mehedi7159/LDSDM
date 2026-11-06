@@ -36,7 +36,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         <button
           onClick={handleInstallClick}
           disabled={isInstalling}
-          className={`flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 text-xs sm:text-sm transition-all active:scale-95 ${className}`}
+          className={`flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all active:scale-95 ${className}`}
         >
           <Download size={16} className="animate-bounce" />
           <span>{isInstalling ? 'ইনস্টল হচ্ছে...' : 'অ্যাপ ইনস্টল করুন (Install App)'}</span>
@@ -49,7 +49,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         onClick={handleInstallClick}
         disabled={isInstalling}
         title="স্মার্টফোন বা পিসিতে অ্যাপ হিসেবে ইনস্টল করুন"
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 transition shadow-sm ${className}`}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 transition ${className}`}
       >
         <Download size={14} className="text-emerald-600" />
         <span className="hidden sm:inline">অ্যাপ ইনস্টল</span>

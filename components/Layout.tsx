@@ -431,7 +431,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             <button
               type="button"
               onClick={() => handleTabClick(homeTab)}
-              className={`flex items-center gap-2.5 rounded-2xl text-white shadow-md hover:scale-[1.02] active:scale-95 transition-all cursor-pointer ${
+ className={`flex items-center gap-2.5 rounded-2xl text-white hover:scale-[1.02] active:scale-95 transition-all cursor-pointer ${
                 isRailExpanded ? 'w-full px-3 py-2.5 justify-start' : 'w-10 h-10 justify-center'
               }`}
               title={schoolProfile.nameBn || schoolProfile.name}
@@ -484,7 +484,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                     title={language === 'bn' ? menu.titleBn : menu.titleEn}
                     className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
                       isActive
-                        ? 'font-bold shadow-xs'
+ ? 'font-bold '
                         : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                     style={isActive ? { color: 'var(--color-brand, #4f46e5)', backgroundColor: 'var(--color-brand-light)' } : undefined}
@@ -521,7 +521,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                       onClick={(e) => { e.stopPropagation(); if (flyoutOpen) closeFlyout(); else openFlyout(); }}
                       aria-expanded={flyoutOpen}
                       title={language === 'bn' ? 'সাবমেনু' : 'Submenu'}
-                      className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center shadow-sm border border-white dark:border-slate-900 cursor-pointer"
+ className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center border border-white dark:border-slate-900 cursor-pointer"
                       style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
                     >
                       <ChevronDown size={11} />
@@ -545,7 +545,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                     onClick={() => handleTabClick(menu.targetTab)}
                     className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       isActive
-                        ? 'text-white font-bold shadow-sm'
+ ? 'text-white font-bold'
                         : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                     style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
@@ -582,7 +582,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                     onMouseLeave={handleStudentsRowMouseLeave}
                   >
                     <div
-                      className={`w-full rounded-xl flex items-stretch transition-all ${isActive ? 'text-white font-bold shadow-sm' : ''}`}
+ className={`w-full rounded-xl flex items-stretch transition-all ${isActive ? 'text-white font-bold' : ''}`}
                       style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
                     >
                       <button
@@ -627,7 +627,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                       <button
                         type="button"
                         onClick={() => handleTabClick('student_profile')}
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 text-left cursor-pointer transition-all ${isProfileActive ? 'text-white font-bold shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+ className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 text-left cursor-pointer transition-all ${isProfileActive ? 'text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                         style={isProfileActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
                       >
                         <div

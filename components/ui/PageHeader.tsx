@@ -4,7 +4,7 @@ import { LucideIcon } from 'lucide-react';
 /**
  * PageHeader — the standard page/section hero header (see DESIGN_NOTES in
  * components/ui/index.ts). Two tones:
- *  - 'brand': gradient hero driven by the accent-theme CSS variables
+ *  - 'brand': flat hero driven by the accent-theme CSS variables
  *    (--color-brand / --color-brand-hover from ThemeContext), white text,
  *    glass-style controls. Use for a screen's main greeting header.
  *  - 'plain': standard white/dark card header with a brand-soft icon chip.
@@ -35,12 +35,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   if (tone === 'brand') {
     return (
       <div
-        className={`rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden border border-white/10 ${className}`}
-        style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+        className={`rounded-3xl p-6 sm:p-7 text-white relative overflow-hidden border border-white/10 ${className}`}
+        style={{ backgroundColor: 'var(--color-brand)' }}
       >
-        {/* Decorative glows */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-black/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2 min-w-0">
@@ -51,7 +48,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             )}
             <div className="flex items-center gap-3 pt-0.5">
               {Icon && (
-                <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white shadow-md shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white shrink-0">
                   <Icon className="w-6 h-6" />
                 </div>
               )}
@@ -81,7 +78,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   }
 
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm ${className}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 ${className}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1.5 min-w-0">
           {eyebrow && (
@@ -99,7 +96,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           <div className="flex items-center gap-3">
             {Icon && (
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0"
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                 style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}
               >
                 <Icon className="h-5 w-5" />

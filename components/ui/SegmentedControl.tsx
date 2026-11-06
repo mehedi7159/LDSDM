@@ -36,7 +36,7 @@ export const SegmentedControl: React.FC<{
             onClick={() => onChange(opt.id)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
               active
-                ? 'bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 shadow-xs'
+                ? 'bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >

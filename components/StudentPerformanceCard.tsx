@@ -6,7 +6,6 @@ import {
   TrendingDown, 
   Minus, 
   Search, 
-  Award, 
   AlertTriangle, 
   CheckCircle2, 
   XCircle, 
@@ -424,7 +423,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
   }, [activeExamRecords]);
 
   return (
-    <div id="student-performance-analysis-card" className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden mb-6 transition-all">
+    <div id="student-performance-analysis-card" className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden mb-6 transition-all">
       {/* Top Header & Context Banner */}
       <div className="p-5 sm:p-6 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -488,7 +487,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
             onClick={() => handleNavigateStudent('prev')}
             disabled={filteredStudents.length <= 1}
             title={language === 'bn' ? 'পূর্ববর্তী শিক্ষার্থী' : 'Previous Student'}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition shadow-2xs shrink-0"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -499,7 +498,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
               value={currentStudent?.id || ''}
               onChange={(e) => setSelectedStudentId(e.target.value)}
               aria-label={language === 'bn' ? 'শিক্ষার্থী নির্বাচন করুন' : 'Select Student'}
-              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer truncate"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer truncate"
             >
               {filteredStudents.length === 0 ? (
                 <option value="">{language === 'bn' ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No student found'}</option>
@@ -518,7 +517,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
             onClick={() => handleNavigateStudent('next')}
             disabled={filteredStudents.length <= 1}
             title={language === 'bn' ? 'পরবর্তী শিক্ষার্থী' : 'Next Student'}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition shadow-2xs shrink-0"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -527,23 +526,23 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
         {/* Selected Student Meta Badges */}
         {currentStudent && (
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold shadow-2xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold">
               <span className="text-slate-400 font-normal">{language === 'bn' ? 'রোল:' : 'Roll:'}</span>
               <span className="font-mono text-indigo-700">{toBanglaDigits(currentStudent.roll || '—')}</span>
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold shadow-2xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold">
               <span className="text-slate-400 font-normal">{language === 'bn' ? 'আইডি:' : 'ID:'}</span>
               <span className="font-mono text-slate-800">{toBanglaDigits(currentStudent.studentId || currentStudent.id || '—')}</span>
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-800 font-bold shadow-2xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-800 font-bold">
               <span className="text-indigo-400 font-normal">{language === 'bn' ? 'শ্রেণী:' : 'Class:'}</span>
               <span>{getClassNameDisplay(currentStudent.classLevel)}</span>
             </span>
 
             {currentStudent.group && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold">
                 <span>{currentStudent.group}</span>
               </span>
             )}
@@ -566,7 +565,6 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
             {/* KPI 1: Evaluated Exams */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
               <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 text-slate-400" />
                 {language === 'bn' ? 'মূল্যায়িত পরীক্ষা' : 'Exams Taken'}
               </div>
               <div className="text-xl sm:text-2xl font-black text-slate-800 font-mono">
@@ -580,10 +578,9 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
             {/* KPI 2: Overall Avg GPA */}
             <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-100/80 space-y-1">
               <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1">
-                <Award className="h-3.5 w-3.5 text-indigo-500" />
                 {language === 'bn' ? 'গড় জিপিএ (সকল পরীক্ষা)' : 'Cumulative GPA'}
               </div>
-              <div className="text-xl sm:text-2xl font-black text-indigo-700 font-mono">
+              <div className="text-2xl sm:text-3xl font-black text-indigo-700 font-mono">
                 {toBanglaDigits(overallMetrics.avgGpa.toFixed(2))}
                 <span className="text-xs font-normal text-indigo-400 ml-1">/ ৫.০০</span>
               </div>
@@ -596,8 +593,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
             {activeExamRecords.length > 0 ? (
               <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-100/80 space-y-1">
                 <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  {language === 'bn' ? 'সর্বশেষ পরীক্ষার ফলাফল' : 'Latest Exam Result'}
+                    {language === 'bn' ? 'সর্বশেষ পরীক্ষার ফলাফল' : 'Latest Exam Result'}
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-emerald-800 font-mono">
                   {toBanglaDigits(activeExamRecords[activeExamRecords.length - 1].gpa.toFixed(2))}
@@ -684,7 +680,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
 
             {/* Quick stats delta box */}
             {activeExamRecords.length > 1 && (
-              <div className="flex items-center gap-3 shrink-0 bg-white/80 backdrop-blur-xs p-3 rounded-xl border border-slate-200/60 shadow-2xs">
+              <div className="flex items-center gap-3 shrink-0 bg-white/80 backdrop-blur-xs p-3 rounded-xl border border-slate-200/60">
                 <div className="text-right">
                   <div className="text-[10px] uppercase font-bold text-slate-400">{language === 'bn' ? 'জিপিএ পরিবর্তন' : 'GPA Delta'}</div>
                   <div className={`text-sm font-black font-mono ${trajectoryAnalysis.deltaGpa >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
@@ -704,7 +700,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
 
           {/* Row 3: Visual Trajectory Trend Chart (Chronological Across All Exams) */}
           {activeExamRecords.length > 0 && (
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs space-y-3">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div className="space-y-0.5">
                   <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
@@ -814,7 +810,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                 ) : (
                   <div className="space-y-2.5">
                     {subjectPerformanceAnalysis.strongSubjects.map(item => (
-                      <div key={item.subject.id} className="p-3 bg-white rounded-xl border border-emerald-100 shadow-2xs space-y-1.5">
+                      <div key={item.subject.id} className="p-3 bg-white rounded-xl border border-emerald-100 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -869,7 +865,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                 ) : (
                   <div className="space-y-2.5">
                     {subjectPerformanceAnalysis.weakSubjects.map(item => (
-                      <div key={item.subject.id} className="p-3 bg-white rounded-xl border border-rose-100 shadow-2xs space-y-1.5">
+                      <div key={item.subject.id} className="p-3 bg-white rounded-xl border border-rose-100 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-rose-500" />

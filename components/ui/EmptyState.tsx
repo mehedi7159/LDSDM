@@ -28,14 +28,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`p-8 sm:p-12 text-center rounded-3xl border border-dashed border-slate-200 bg-gradient-to-b from-slate-50/60 to-white flex flex-col items-center justify-center max-w-lg mx-auto ${className}`}>
+    <div className={`p-8 sm:p-12 text-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 flex flex-col items-center justify-center max-w-lg mx-auto ${className}`}>
       {/* Icon with soft animated glow */}
       <div className="relative mb-4">
-        <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
           <Icon size={32} className="text-indigo-600 animate-pulse" />
         </div>
         {badge && (
-          <span className="absolute -top-1.5 -right-2 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+          <span className="absolute -top-1.5 -right-2 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider">
             {badge}
           </span>
         )}
@@ -57,7 +57,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {actionLabel && onAction && (
             <Button
               onClick={onAction}
-              className="px-4 py-2 text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 text-xs font-bold flex items-center gap-2 cursor-pointer"
             >
               <ActionIcon size={15} />
               <span>{actionLabel}</span>
@@ -68,7 +68,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             <button
               type="button"
               onClick={onSecondaryAction}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-2xs"
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer"
             >
               {secondaryActionLabel}
             </button>

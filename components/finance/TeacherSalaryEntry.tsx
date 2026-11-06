@@ -156,7 +156,7 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Main Form (8 Cols) */}
-      <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+      <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-400 flex items-center justify-center">
@@ -385,7 +385,7 @@ export const TeacherSalaryEntry: React.FC<TeacherSalaryEntryProps> = ({
 
       {/* Right Column (4 Cols): Summary */}
       <div className="lg:col-span-4 space-y-4">
-        <div className="bg-gradient-to-br from-slate-900 to-rose-950 text-white rounded-2xl p-5 shadow-sm">
+        <div className="bg-slate-900 text-white rounded-2xl p-5">
           <h3 className="text-sm font-bold text-rose-200 flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-rose-400" />
             {isBn ? 'পে-রোল ও হাদিয়া ভাউচার' : 'Payroll Voucher Status'}

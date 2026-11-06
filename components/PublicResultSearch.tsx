@@ -91,7 +91,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
               </button>
             )}
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+ <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
                 দা
               </div>
               <div>
@@ -107,7 +107,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
             {onGoToLogin && (
               <button
                 onClick={onGoToLogin}
-                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+ className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>পোর্টাল লগইন</span>
               </button>
@@ -134,7 +134,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
         </div>
 
         {/* Search Box Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200/80 max-w-2xl mx-auto">
+ <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 max-w-2xl mx-auto">
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
@@ -188,7 +188,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
 
             <button
               type="submit"
-              className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
+ className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Search size={15} />
               <span>ফলাফল অনুসন্ধান করুন</span>
@@ -200,9 +200,9 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
         {hasSearched && (
           <div className="max-w-3xl mx-auto animate-in fade-in zoom-in-95 duration-200">
             {searchedStudent && studentResultData ? (
-              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-lg overflow-hidden">
+ <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden">
                 {/* Result Card Header */}
-                <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white p-6 sm:p-8">
+                <div className="bg-emerald-800 text-white p-6 sm:p-8">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-600/60 pb-5">
                     <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-200 block">
@@ -215,7 +215,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className={`px-4 py-2 rounded-2xl flex flex-col items-center justify-center border shadow-xs ${
+ <div className={`px-4 py-2 rounded-2xl flex flex-col items-center justify-center border ${
                         studentResultData.gpaSummary.isFail 
                           ? 'bg-rose-500/20 border-rose-400/40 text-white' 
                           : 'bg-emerald-500/30 border-emerald-400/50 text-white'
@@ -303,7 +303,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => window.print()}
-                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+ className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
                       >
                         <Printer size={14} />
                         <span>প্রিন্ট করুন</span>
@@ -325,7 +325,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/80 shadow-xs space-y-3">
+ <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/80 space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
                   <AlertCircle size={26} />
                 </div>

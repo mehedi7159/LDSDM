@@ -80,7 +80,7 @@ export const TransferCertificateModal: React.FC<TransferCertificateModalProps> =
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
         
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-teal-800 to-emerald-900 text-white p-5 flex items-center justify-between no-print">
+        <div className="bg-teal-800 text-white p-5 flex items-center justify-between no-print">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-white/15 rounded-2xl backdrop-blur-md">
               <FileText className="w-6 h-6 text-teal-200" />
@@ -106,7 +106,7 @@ export const TransferCertificateModal: React.FC<TransferCertificateModalProps> =
         <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
           
           {/* Form Options (Hidden in print) */}
-          <div className="no-print bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          <div className="no-print bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
             <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <Sparkles size={16} className="text-teal-600" />
               <span>{isBn ? 'ছাড়পত্রের বিবরণ ও তথ্য নির্ধারণ' : 'Certificate Parameters'}</span>
@@ -176,7 +176,7 @@ export const TransferCertificateModal: React.FC<TransferCertificateModalProps> =
           <div 
             ref={printRef}
             id="transfer-certificate-printable"
-            className="bg-white p-8 sm:p-12 rounded-2xl border-2 border-emerald-900/40 shadow-md max-w-3xl mx-auto relative overflow-hidden print:p-0 print:border-0 print:shadow-none"
+            className="bg-white p-8 sm:p-12 rounded-2xl border-2 border-emerald-900/40 max-w-3xl mx-auto relative overflow-hidden print:p-0 print:border-0 print:shadow-none"
             style={{ minHeight: '620px' }}
           >
             {/* Watermark / Background Accent */}
@@ -196,7 +196,7 @@ export const TransferCertificateModal: React.FC<TransferCertificateModalProps> =
                 <p className="text-xs text-slate-600 mt-1 font-medium">{schoolProfile.addressBn || schoolProfile.address}</p>
                 <p className="text-[11px] text-slate-500">ফোন: {schoolProfile.phone} • ইমেইল: {schoolProfile.email}</p>
                 
-                <div className="inline-block mt-4 px-6 py-1.5 bg-emerald-900 text-white rounded-full font-bold text-sm tracking-widest shadow-xs">
+                <div className="inline-block mt-4 px-6 py-1.5 bg-emerald-900 text-white rounded-full font-bold text-sm tracking-widest">
                   {isBn ? 'শিক্ষার্থী ছাড়পত্র ও প্রশংসাপত্র' : 'TRANSFER & TESTIMONIAL CERTIFICATE'}
                 </div>
               </div>

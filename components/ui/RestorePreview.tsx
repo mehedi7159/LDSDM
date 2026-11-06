@@ -129,7 +129,7 @@ export const RestorePreviewModal: React.FC<RestorePreviewModalProps> = ({
           <button
             onClick={onConfirm}
             disabled={isConfirming}
-            className={`px-5 py-2 rounded-xl text-white text-xs font-bold cursor-pointer shadow-xs disabled:opacity-50 ${
+            className={`px-5 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50 ${
               preview.isDegraded || shrinkCount > 0
                 ? 'bg-rose-600 hover:bg-rose-700'
                 : 'bg-indigo-600 hover:bg-indigo-700'

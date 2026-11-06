@@ -349,7 +349,7 @@ export const BlankMarksheetView: React.FC<BlankMarksheetViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Controls Header */}
-      <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-200/90 print:hidden space-y-4">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 print:hidden space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             {onBack && (
@@ -376,7 +376,7 @@ export const BlankMarksheetView: React.FC<BlankMarksheetViewProps> = ({
             <Button 
               onClick={handlePrint} 
               variant="secondary"
-              className="flex items-center gap-1.5 shadow-xs text-xs font-semibold py-2 px-3.5"
+              className="flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5"
             >
               <Printer size={16} />
               সরাসরি প্রিন্ট (Print All)
@@ -384,7 +384,7 @@ export const BlankMarksheetView: React.FC<BlankMarksheetViewProps> = ({
             <Button 
               onClick={handleDownloadPDF} 
               disabled={isGeneratingPdf || activeSubjectsToRender.length === 0}
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs text-xs font-semibold py-2 px-4"
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-4"
             >
               {isGeneratingPdf ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
               ১ ক্লিকে PDF ডাউনলোড
@@ -506,7 +506,7 @@ export const BlankMarksheetView: React.FC<BlankMarksheetViewProps> = ({
           subjectPages.map((pageChunk, pageIndex) => (
             <div
               key={`page-4-${pageIndex}`}
-              className="a4-sheet-page bg-white mx-auto shadow-md print:shadow-none border border-slate-300 print:border-none p-3 mb-8 print:mb-0"
+              className="a4-sheet-page bg-white mx-auto print:shadow-none border border-slate-300 print:border-none p-3 mb-8 print:mb-0"
               style={{
                 width: '100%',
                 maxWidth: '794px',
@@ -569,7 +569,7 @@ export const BlankMarksheetView: React.FC<BlankMarksheetViewProps> = ({
           subjectPages.map((pair, pageIndex) => (
             <div
               key={`page-2-${pageIndex}`}
-              className="a4-sheet-page bg-white mx-auto shadow-md print:shadow-none border border-slate-300 print:border-none p-4 mb-8 print:mb-0"
+              className="a4-sheet-page bg-white mx-auto print:shadow-none border border-slate-300 print:border-none p-4 mb-8 print:mb-0"
               style={{
                 width: '100%',
                 maxWidth: '794px', // Standard A4 width preview

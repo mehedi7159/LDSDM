@@ -15,13 +15,12 @@ export const ShimmerBlock: React.FC<{
 
 export const SkeletonStatCard: React.FC = () => {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.02)] space-y-4">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4">
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <ShimmerBlock className="h-3.5 w-24" />
           <ShimmerBlock className="h-7 w-32" />
         </div>
-        <ShimmerBlock className="h-10 w-10" rounded="rounded-xl" />
       </div>
       <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center">
         <ShimmerBlock className="h-3 w-28" />
@@ -33,7 +32,7 @@ export const SkeletonStatCard: React.FC = () => {
 
 export const SkeletonTable: React.FC<{ rows?: number }> = ({ rows = 5 }) => {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
       {/* Header */}
       <div className="p-4 bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-4">
         <ShimmerBlock className="h-4 w-36" />
@@ -72,7 +71,7 @@ export const SkeletonList: React.FC<{ items?: number }> = ({ items = 4 }) => {
       {Array.from({ length: items }).map((_, idx) => (
         <div
           key={idx}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between"
+          className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
             <ShimmerBlock className="h-10 w-10 shrink-0" rounded="rounded-xl" />

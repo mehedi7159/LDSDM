@@ -229,27 +229,27 @@ export const AdmissionApplicationManager: React.FC<{
       
       {/* KPI Stats Strip for Admission */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{isBn ? 'মোট ভর্তি আবেদন' : 'Total Applications'}</p>
           <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{formatNumber(applications.length, language)}</p>
           <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">{isBn ? 'চলতি শিক্ষাবর্ষ' : 'Current Session'}</span>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-2xs bg-amber-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/30">
           <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase">{isBn ? 'অপেক্ষমাণ আবেদন' : 'Pending'}</p>
-          <p className="text-2xl font-black text-amber-900 dark:text-amber-200 mt-1">{formatNumber(pendingCount, language)}</p>
+          <p className="text-3xl font-black text-amber-900 dark:text-amber-200 mt-1">{formatNumber(pendingCount, language)}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs bg-emerald-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30">
           <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">{isBn ? 'অনুমোদিত ও ভর্তি সম্পন্ন' : 'Enrolled / Approved'}</p>
           <p className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1">{formatNumber(approvedCount, language)}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-2xs bg-rose-50/30">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50/30">
           <p className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase">{isBn ? 'বাতিলকৃত' : 'Rejected'}</p>
           <p className="text-2xl font-black text-rose-900 dark:text-rose-200 mt-1">{formatNumber(rejectedCount, language)}</p>
         </div>
       </div>
 
       {/* Action Header & Search */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-1 items-center gap-3 w-full">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={17} />
@@ -290,7 +290,7 @@ export const AdmissionApplicationManager: React.FC<{
         <div className="flex items-center gap-2 shrink-0">
           <Button 
             onClick={() => setIsAddModalOpen(true)}
-            className="bg-teal-700 hover:bg-teal-800 text-white flex items-center gap-2 font-bold shadow-xs"
+            className="bg-teal-700 hover:bg-teal-800 text-white flex items-center gap-2 font-bold"
           >
             <Plus size={16} />
             <span>{isBn ? 'নতুন আবেদন গ্রহণ' : 'New Application'}</span>
@@ -307,7 +307,7 @@ export const AdmissionApplicationManager: React.FC<{
       </div>
 
       {/* Applications Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wider">
@@ -383,7 +383,7 @@ export const AdmissionApplicationManager: React.FC<{
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleApproveAndEnroll(app)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                             title={isBn ? 'অনুমোদন দিয়ে সরাসরি শিক্ষার্থী হিসেবে ভর্তি করুন' : 'Approve & Enroll as Active Student'}
                           >
                             <UserCheck size={13} />
@@ -413,7 +413,7 @@ export const AdmissionApplicationManager: React.FC<{
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="bg-gradient-to-r from-teal-800 to-emerald-900 text-white p-5 flex items-center justify-between">
+            <div className="bg-teal-800 text-white p-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/15 rounded-xl">
                   <Plus size={20} className="text-teal-200" />

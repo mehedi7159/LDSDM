@@ -124,8 +124,7 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-emerald-950 text-white rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-teal-500/10 via-transparent to-transparent pointer-events-none"></div>
+      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 relative overflow-hidden">
 
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
@@ -239,7 +238,7 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex flex-wrap border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-2xs gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 bg-white rounded-2xl p-1.5 gap-1">
         {tabs.map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -251,7 +250,7 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
               onClick={() => setActiveTab(t.id)}
               className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 isActive
-                  ? 'bg-teal-700 text-white shadow-xs'
+                  ? 'bg-teal-700 text-white'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >

@@ -163,7 +163,7 @@ export const VoucherPrintModal: React.FC<VoucherPrintModalProps> = ({
               onClick={handlePrint}
               size="sm"
               variant="primary"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
             >
               <Printer className="w-3.5 h-3.5 mr-1.5" />
               <span>{isBn ? 'প্রিন্ট রসিদ' : 'Print Voucher'}</span>

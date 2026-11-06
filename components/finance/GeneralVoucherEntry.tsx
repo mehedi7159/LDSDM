@@ -136,7 +136,7 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
         <div className="flex items-center gap-2.5">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${txType === 'INCOME' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-400'}`}>
@@ -156,7 +156,7 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
             onClick={() => handleTypeChange('INCOME')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               txType === 'INCOME' 
-                ? 'bg-emerald-600 text-white shadow-2xs' 
+                ? 'bg-emerald-600 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -168,7 +168,7 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
             onClick={() => handleTypeChange('EXPENSE')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               txType === 'EXPENSE' 
-                ? 'bg-rose-600 text-white shadow-2xs' 
+                ? 'bg-rose-600 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >

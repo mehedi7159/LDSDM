@@ -69,8 +69,8 @@ export const SuperAdminAuditPage: React.FC = () => {
   if (!isAuthorized) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-rose-200 shadow-sm text-center space-y-5">
-          <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+ <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-rose-200 text-center space-y-5">
+ <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
             <Lock size={32} />
           </div>
           <div className="space-y-2">
@@ -110,8 +110,7 @@ export const SuperAdminAuditPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-indigo-900/60 relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+ <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-indigo-900/60 relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
@@ -134,7 +133,7 @@ export const SuperAdminAuditPage: React.FC = () => {
             <button
               onClick={loadLogs}
               disabled={isLoading}
-              className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer disabled:opacity-50"
+ className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl transition-all cursor-pointer disabled:opacity-50"
               title="Refresh Logs"
             >
               <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
@@ -144,7 +143,7 @@ export const SuperAdminAuditPage: React.FC = () => {
       </div>
 
       {/* Control Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+ <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Search */}
         <div className="relative w-full md:w-96">
           <Search size={16} className="absolute left-3.5 top-3 text-slate-400" />
@@ -179,7 +178,7 @@ export const SuperAdminAuditPage: React.FC = () => {
       {/* Audit Log Table & Details Drawer */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main List */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+ <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Database size={16} className="text-indigo-600" />
@@ -256,7 +255,7 @@ export const SuperAdminAuditPage: React.FC = () => {
         </div>
 
         {/* Selected Log Detail Inspector */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-5 space-y-4">
+ <div className="bg-white rounded-3xl border border-slate-200/90 p-5 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <Key size={15} className="text-indigo-600" />

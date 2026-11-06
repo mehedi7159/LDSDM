@@ -57,19 +57,18 @@ export const LandingView: React.FC<LandingViewProps> = ({
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white relative overflow-x-hidden">
       
       {/* Background Subtle Ambient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-80 bg-gradient-to-b from-indigo-500/10 via-emerald-500/5 to-transparent dark:from-indigo-600/15 dark:via-emerald-600/5 blur-3xl pointer-events-none" />
 
       {/* 1. Header / Navbar */}
       <header className="relative z-10 border-b border-slate-200 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/70 backdrop-blur-md px-3 sm:px-8 py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           {schoolProfile.logoUrl ? (
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+ <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
               <img src={schoolProfile.logoUrl} alt="School Logo" className="w-full h-full object-contain p-0.5" referrerPolicy="no-referrer" />
             </div>
           ) : (
             <div
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-white shadow-md shrink-0"
-              style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-white shrink-0"
+              style={{ backgroundColor: 'var(--color-brand)' }}
             >
               <Building2 size={18} />
             </div>
@@ -88,8 +87,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
           {onStudentProfile && (
             <button
               onClick={onStudentProfile}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm flex items-center gap-1 sm:gap-1.5 transition cursor-pointer hover:brightness-110"
-              style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1 sm:gap-1.5 transition cursor-pointer hover:brightness-110"
+              style={{ backgroundColor: 'var(--color-brand)' }}
             >
               <GraduationCap size={14} />
               <span className="hidden sm:inline">{language === 'bn' ? 'শিক্ষার্থী পোর্টাল' : 'Student Portal'}</span>
@@ -101,7 +100,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
           <button
             onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-            className="px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-sm transition cursor-pointer"
+ className="px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
           >
             {language === 'bn' ? 'EN' : 'বাং'}
           </button>
@@ -121,20 +120,20 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="text-center space-y-3 max-w-2xl mx-auto">
             {/* Brand Mark */}
             {schoolProfile.logoUrl ? (
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md flex items-center justify-center overflow-hidden mx-auto">
+ <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center overflow-hidden mx-auto">
                 <img src={schoolProfile.logoUrl} alt="School Logo" className="w-full h-full object-contain p-2" referrerPolicy="no-referrer" />
               </div>
             ) : (
               <div
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center text-white shadow-lg mx-auto"
-                style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center text-white mx-auto"
+                style={{ backgroundColor: 'var(--color-brand)' }}
               >
                 <Building2 className="w-9 h-9 sm:w-11 sm:h-11" />
               </div>
             )}
 
             <div
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium shadow-sm"
+ className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium"
               style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
             >
               <Sparkles size={13} className="text-amber-500" />
@@ -165,11 +164,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onStudentProfile?.(); }}
-              className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-indigo-950/40 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
+ className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+ <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                     <GraduationCap size={28} />
                   </div>
                   <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 px-2.5 py-1 rounded-full">
@@ -206,8 +205,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onStudentProfile?.(); }}
-                  className="w-full py-3 rounded-2xl text-white font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110"
-                  style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="w-full py-3 rounded-2xl text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110"
+                  style={{ backgroundColor: 'var(--color-brand)' }}
                 >
                   <User size={16} />
                   <span>{language === 'bn' ? 'আইডি দিয়ে প্রবেশ করুন' : 'Sign In With Student ID'}</span>
@@ -222,11 +221,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onViewResults?.(); }}
-              className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-emerald-950/40 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-emerald-500"
+ className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+ <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                     <Award size={28} />
                   </div>
                   <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-full">
@@ -263,7 +262,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onViewResults?.(); }}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+ className="w-full py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Search size={16} />
                   <span>{language === 'bn' ? 'ফলাফল অনুসন্ধান' : 'Search Exam Results'}</span>
@@ -278,11 +277,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAdminLogin?.(); }}
-              className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-blue-950/40 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-blue-500"
+ className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+ <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                     <LogIn size={28} />
                   </div>
                   <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-full">
@@ -319,8 +318,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onAdminLogin?.(); }}
-                  className="w-full py-3 rounded-2xl text-white font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110"
-                  style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))' }}
+ className="w-full py-3 rounded-2xl text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110"
+                  style={{ backgroundColor: 'var(--color-brand)' }}
                 >
                   <Shield size={16} />
                   <span>{language === 'bn' ? 'অ্যাডমিন প্রবেশ' : 'Sign In to Portal'}</span>
@@ -332,7 +331,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
 
           {/* Quick Informational Notice */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 shadow-sm flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
+ <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
             <div className="flex items-center gap-2">
               <Calendar size={14} style={{ color: 'var(--color-brand)' }} />
               <span>

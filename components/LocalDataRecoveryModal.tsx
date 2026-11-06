@@ -217,7 +217,7 @@ export const LocalDataRecoveryModal: React.FC<LocalDataRecoveryModalProps> = ({ 
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-500'
                 }`}
               >
-                <div className="text-xl font-black">{item.count}</div>
+                <div className="text-2xl font-black">{item.count}</div>
                 <div className="text-[11px] font-medium truncate mt-0.5">{item.label}</div>
               </div>
             ))}
@@ -277,7 +277,7 @@ export const LocalDataRecoveryModal: React.FC<LocalDataRecoveryModalProps> = ({ 
               className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
                 isCurrentBrowserEmpty
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'
+ : 'bg-indigo-600 hover:bg-indigo-700 text-white'
               }`}
             >
               📥 Download Local JSON Backup
@@ -380,7 +380,7 @@ export const LocalDataRecoveryModal: React.FC<LocalDataRecoveryModalProps> = ({ 
               className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
                 isCurrentBrowserEmpty || !userConfirmed || isRestoring || !validation?.canRestore
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg'
+ : 'bg-emerald-600 hover:bg-emerald-700 text-white'
               }`}
             >
               {isRestoring ? 'রিস্টোর হচ্ছে...' : '🚀 Restore Validated Local Data to Cloud'}

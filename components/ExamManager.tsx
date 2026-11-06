@@ -248,7 +248,7 @@ export const ExamManager = () => {
         {/* Exam List Panel */}
         <div className="lg:col-span-2 space-y-4">
           {/* Filter Toolbar */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-2.5 text-gray-400 dark:text-slate-500" size={16} />
               <input
@@ -294,7 +294,7 @@ export const ExamManager = () => {
                 return (
                   <div 
                     key={exam.id} 
-                    className={`bg-white dark:bg-slate-900 p-5 rounded-2xl border transition-all shadow-xs ${
+                    className={`bg-white dark:bg-slate-900 p-5 rounded-2xl border transition-all ${
                       isFinalized ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/20' : 
                       isArchived ? 'border-gray-200 dark:border-slate-700 opacity-60 bg-gray-50 dark:bg-slate-800/60' : 'border-gray-100 dark:border-slate-800 hover:border-blue-200'
                     }`}
@@ -611,7 +611,7 @@ export const ExamManager = () => {
                             }}
                             className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
                               isScheduled 
-                                ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-950 dark:text-blue-200 font-bold shadow-xs' 
+                                ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-950 dark:text-blue-200 font-bold'
                                 : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-gray-300'
                             }`}
                           >

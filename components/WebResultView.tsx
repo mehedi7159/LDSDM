@@ -11,7 +11,6 @@ import {
   GraduationCap, 
   BarChart3, 
   Sparkles, 
-  TrendingUp, 
   Filter,
   Eye,
   Calendar,
@@ -246,7 +245,7 @@ export const WebResultView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 print:hidden select-none">
       {/* Top Universal Header Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
+ <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
         <div>
           <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">
             <Award size={16} className="text-amber-400" />
@@ -268,7 +267,7 @@ export const WebResultView: React.FC = () => {
       </div>
 
       {/* Primary Selection & View Mode Toolbar */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
+ <div className="bg-white p-4 rounded-3xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
         {/* Exam & Class Selectors */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -317,7 +316,7 @@ export const WebResultView: React.FC = () => {
             onClick={() => setViewMode('student')}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
               viewMode === 'student'
-                ? 'bg-white text-indigo-700 shadow-xs'
+ ? 'bg-white text-indigo-700'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -329,7 +328,7 @@ export const WebResultView: React.FC = () => {
             onClick={() => setViewMode('class')}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
               viewMode === 'class'
-                ? 'bg-white text-indigo-700 shadow-xs'
+ ? 'bg-white text-indigo-700'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -343,7 +342,7 @@ export const WebResultView: React.FC = () => {
       {viewMode === 'student' && (
         <div className="space-y-6">
           {/* Student Picker Bar */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
+ <div className="bg-white p-4 rounded-3xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
             <div className="flex-1 min-w-[260px] relative">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -381,10 +380,10 @@ export const WebResultView: React.FC = () => {
           ) : (
             <div className="space-y-6">
               {/* Student Header & Quick KPI Badges */}
-              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs">
+ <div className="bg-white rounded-3xl border border-slate-200/80 p-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white flex items-center justify-center font-black text-2xl shadow-md shadow-indigo-500/20 shrink-0">
+ <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-2xl shrink-0">
                       {activeStudentResult.student.name[0]?.toUpperCase() || 'S'}
                     </div>
                     <div>
@@ -417,14 +416,14 @@ export const WebResultView: React.FC = () => {
                         localStorage.setItem('mms_logged_in_student_id', activeStudentResult.student.studentId || activeStudentResult.student.id);
                         setActiveTab('student_profile');
                       }}
-                      className="px-3.5 py-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200/80 flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+ className="px-3.5 py-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200/80 flex items-center gap-1.5 transition cursor-pointer"
                       title={language === 'bn' ? 'শিক্ষার্থীর হাজিরা, নম্বর ও রুটিন দেখুন' : 'View attendance, marks, and exam routine'}
                     >
                       <GraduationCap size={16} />
                       <span>{language === 'bn' ? 'পূর্ণাঙ্গ প্রোফাইল ও রুটিন' : 'Full Profile & Routine'}</span>
                     </button>
 
-                    <div className="px-4 py-2 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 text-amber-900 flex items-center gap-2 shadow-xs">
+ <div className="px-4 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-2">
                       <Trophy size={20} className="text-amber-600" />
                       <div>
                         <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">{language === 'bn' ? 'শ্রেণিতে মেধা স্থান' : 'Class Rank'}</p>
@@ -442,7 +441,7 @@ export const WebResultView: React.FC = () => {
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'প্রাপ্ত জিপিএ' : 'GPA'}</span>
                     <div className="flex items-baseline gap-2 mt-2">
-                      <span className={`text-3xl font-black ${activeStudentResult.isFail ? 'text-rose-600' : 'text-indigo-600'}`}>
+                      <span className={`text-4xl font-black ${activeStudentResult.isFail ? 'text-rose-600' : 'text-indigo-600'}`}>
                         {toBanglaDigits(activeStudentResult.gpa.toFixed(2))}
                       </span>
                       <span className="text-xs text-slate-400 font-bold">/ ৫.০০</span>
@@ -468,7 +467,7 @@ export const WebResultView: React.FC = () => {
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'মোট প্রাপ্ত নম্বর' : 'Total Marks'}</span>
                     <div className="mt-2">
-                      <span className="text-2xl font-black text-slate-800">
+                      <span className="text-3xl font-black text-slate-800">
                         {toBanglaDigits(activeStudentResult.totalMarks)}
                       </span>
                     </div>
@@ -501,7 +500,7 @@ export const WebResultView: React.FC = () => {
               </div>
 
               {/* Subject Breakdown Table */}
-              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+ <div className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden">
                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
@@ -590,55 +589,43 @@ export const WebResultView: React.FC = () => {
         <div className="space-y-6">
           {/* Class Overview Statistics Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'মোট পরীক্ষার্থী' : 'Total Examinees'}</p>
-                <h3 className="text-2xl font-black text-slate-800 mt-1">{toBanglaDigits(classStats.total)}</h3>
+                <h3 className="text-3xl font-black text-slate-800 mt-1">{toBanglaDigits(classStats.total)}</h3>
                 <p className="text-[10px] text-slate-500 mt-0.5">{selectedClass} শ্রেণি</p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                <Users size={24} />
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'পাসের হার' : 'Pass Rate'}</p>
-                <h3 className="text-2xl font-black text-emerald-600 mt-1">{toBanglaDigits(classStats.passRate)}%</h3>
+                <h3 className="text-4xl font-black text-emerald-600 mt-1">{toBanglaDigits(classStats.passRate)}%</h3>
                 <p className="text-[10px] text-emerald-600/80 mt-0.5">
                   {toBanglaDigits(classStats.passed)} {language === 'bn' ? 'জন উত্তীর্ণ' : 'passed'}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                <TrendingUp size={24} />
-              </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'জিপিএ ৫.০০ (A+)' : 'GPA 5.00'}</p>
-                <h3 className="text-2xl font-black text-amber-600 mt-1">{toBanglaDigits(classStats.gpa5Count)}</h3>
+                <h3 className="text-3xl font-black text-amber-600 mt-1">{toBanglaDigits(classStats.gpa5Count)}</h3>
                 <p className="text-[10px] text-amber-600/80 mt-0.5">{language === 'bn' ? 'সর্বোচ্চ গ্রেড প্রাপ্ত' : 'Top scorers'}</p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                <Trophy size={24} />
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+ <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{language === 'bn' ? 'অনুত্তীর্ণ শিক্ষার্থী' : 'Failed'}</p>
-                <h3 className="text-2xl font-black text-rose-600 mt-1">{toBanglaDigits(classStats.failed)}</h3>
+                <h3 className="text-3xl font-black text-rose-600 mt-1">{toBanglaDigits(classStats.failed)}</h3>
                 <p className="text-[10px] text-rose-600/80 mt-0.5">{language === 'bn' ? 'পুনঃপরীক্ষার প্রয়োজন' : 'Requires improvement'}</p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-                <XCircle size={24} />
               </div>
             </div>
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
+ <div className="bg-white p-4 rounded-3xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
             <div className="flex-1 min-w-[220px] relative">
               <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -687,7 +674,7 @@ export const WebResultView: React.FC = () => {
           </div>
 
           {/* Class Merit Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+ <div className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -715,15 +702,15 @@ export const WebResultView: React.FC = () => {
                       <tr key={item.student.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3 px-4 text-center">
                           {item.rank === 1 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-black text-xs shadow-xs border border-amber-300">
+ <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-black text-xs border border-amber-300">
                               🥇 1
                             </span>
                           ) : item.rank === 2 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-800 font-black text-xs shadow-xs border border-slate-300">
+ <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-800 font-black text-xs border border-slate-300">
                               🥈 2
                             </span>
                           ) : item.rank === 3 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-50 text-amber-900 font-black text-xs shadow-xs border border-amber-200">
+ <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-50 text-amber-900 font-black text-xs border border-amber-200">
                               🥉 3
                             </span>
                           ) : (

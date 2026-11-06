@@ -227,7 +227,7 @@ export const AcademicCalendarView: React.FC = () => {
 
           <Button
             onClick={handleOpenAdd}
-            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5 shadow-xs"
+            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5"
           >
             <Plus size={15} />
             <span>{isBn ? 'নতুন ইভেন্ট / ছুটি যুক্ত করুন' : 'Add Event'}</span>
@@ -238,7 +238,7 @@ export const AcademicCalendarView: React.FC = () => {
       {/* Overview Cards & Next Upcoming Alert */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Next Event Banner */}
-        <div className="md:col-span-2 bg-gradient-to-r from-teal-800 to-emerald-800 text-white p-4.5 rounded-2xl shadow-xs flex items-center justify-between">
+        <div className="md:col-span-2 bg-teal-800 text-white p-4.5 rounded-2xl flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5 text-teal-200 text-xs font-bold uppercase tracking-wider mb-1">
               <Sparkles size={14} />
@@ -257,38 +257,29 @@ export const AcademicCalendarView: React.FC = () => {
               <div className="text-xs text-teal-100">{isBn ? 'কোনো আসন্ন ইভেন্ট নেই' : 'No upcoming events'}</div>
             )}
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl shrink-0">
-            🕌
-          </div>
         </div>
 
         {/* Holiday Stats */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-700 dark:text-rose-400">
-            <PartyPopper size={20} />
-          </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'মোট সাধারণ ছুটি' : 'Holidays'}</div>
-            <div className="text-lg font-black text-slate-800 dark:text-slate-100">{formatNumber(stats.totalHolidayDays, 'bn')} দিন</div>
+            <div className="text-xl font-black text-slate-800 dark:text-slate-100">{formatNumber(stats.totalHolidayDays, 'bn')} দিন</div>
             <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{formatNumber(stats.holidayCount, 'bn')} টি উপলক্ষ</div>
           </div>
         </div>
 
         {/* Exams Stats */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-purple-700 dark:text-purple-400">
-            <BookOpen size={20} />
-          </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'নির্ধারিত পরীক্ষা টার্ম' : 'Exam Terms'}</div>
-            <div className="text-lg font-black text-purple-800 dark:text-purple-300">{formatNumber(stats.examEvents, 'bn')} টি</div>
+            <div className="text-xl font-black text-purple-800 dark:text-purple-300">{formatNumber(stats.examEvents, 'bn')} টি</div>
             <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{isBn ? '১ম, ২য় ও বার্ষিক' : 'Term exams'}</div>
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-1.5 shadow-2xs gap-1">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-1.5 gap-1">
         {[
           { id: 'ALL', label: isBn ? 'সকল' : 'All' },
           { id: 'HOLIDAY_ALL', label: isBn ? 'ছুটি' : 'Holidays' },
@@ -302,7 +293,7 @@ export const AcademicCalendarView: React.FC = () => {
             onClick={() => setFilterType(tab.id)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               filterType === tab.id
-                ? 'bg-teal-700 text-white shadow-2xs'
+                ? 'bg-teal-700 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -316,7 +307,7 @@ export const AcademicCalendarView: React.FC = () => {
         {events.map((event, idx) => (
           <div
             key={event.id}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-slate-300 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
           >
             <div className="flex items-start gap-3.5">
               <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shrink-0">

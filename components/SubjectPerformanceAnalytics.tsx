@@ -448,7 +448,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
 
   if (totalEvaluationsCount === 0) {
     return (
-      <div className="bg-white rounded-2xl p-8 border border-slate-100/90 shadow-sm text-center py-12 space-y-3">
+      <div className="bg-white rounded-2xl p-8 border border-slate-100/90 text-center py-12 space-y-3">
         <div className="mx-auto h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
           <BarChart3 size={24} />
         </div>
@@ -471,7 +471,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 border border-slate-100/90 shadow-sm space-y-6">
+    <div className="bg-white rounded-2xl p-6 border border-slate-100/90 space-y-6">
       
       {/* Header & Controls */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-5 border-b border-slate-100">
@@ -496,7 +496,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setExamScope('current')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 examScope === 'current' 
-                  ? 'bg-white text-indigo-600 shadow-xs' 
+                  ? 'bg-white text-indigo-600'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -506,7 +506,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setExamScope('all')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 examScope === 'all' 
-                  ? 'bg-white text-indigo-600 shadow-xs' 
+                  ? 'bg-white text-indigo-600'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -520,7 +520,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setViewMode('aggregated')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 viewMode === 'aggregated' 
-                  ? 'bg-white text-indigo-600 shadow-xs' 
+                  ? 'bg-white text-indigo-600'
                   : 'hover:text-slate-900'
               }`}
               title={language === 'bn' ? 'বিভিন্ন শ্রেণীর একই বিষয় একসাথে মিলিয়ে বিশ্লেষণ' : 'Group same subjects across classes'}
@@ -531,7 +531,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setViewMode('byClass')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 viewMode === 'byClass' 
-                  ? 'bg-white text-indigo-600 shadow-xs' 
+                  ? 'bg-white text-indigo-600'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -553,7 +553,6 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
         </div>
         <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl">
           <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block flex items-center gap-1">
-            <CheckCircle2 size={13} />
             {language === 'bn' ? 'ধারাবাহিক শীর্ষ বিষয়' : 'Consistently Strong'}
           </span>
           <span className="text-xl font-black font-mono text-emerald-800 mt-0.5 block">
@@ -562,10 +561,9 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
         </div>
         <div className="p-3.5 bg-rose-50/60 border border-rose-100 rounded-xl">
           <span className="text-xs font-bold text-rose-700 uppercase tracking-wider block flex items-center gap-1">
-            <AlertTriangle size={13} />
             {language === 'bn' ? 'অধিক দুর্বলতাযুক্ত বিষয়' : 'Needs Attention'}
           </span>
-          <span className="text-xl font-black font-mono text-rose-800 mt-0.5 block">
+          <span className="text-2xl font-black font-mono text-rose-800 mt-0.5 block">
             {toBanglaDigits((aggregatedSubjects || []).filter(s => s && s.status === 'NEEDS_ATTENTION').length)}
           </span>
         </div>
@@ -583,10 +581,10 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Spotlight 1: Repeated High Performers */}
-        <div className="bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border-2 border-emerald-200/80 rounded-2xl p-5 space-y-4 shadow-xs">
+        <div className="bg-emerald-50/40 border-2 border-emerald-200/80 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
+              <div className="p-2 bg-emerald-600 text-white rounded-xl">
                 <Award size={20} />
               </div>
               <div>
@@ -609,7 +607,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               topPerformingSubjects.map((sub, idx) => (
                 <div 
                   key={sub.canonicalKey}
-                  className="bg-white p-3.5 rounded-xl border border-emerald-100/90 shadow-2xs hover:shadow-xs transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="bg-white p-3.5 rounded-xl border border-emerald-100/90 transition- flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -662,10 +660,10 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
         </div>
 
         {/* Spotlight 2: Repeated Low Performers */}
-        <div className="bg-gradient-to-br from-rose-50/40 via-white to-rose-50/20 border-2 border-rose-200/80 rounded-2xl p-5 space-y-4 shadow-xs">
+        <div className="bg-rose-50/40 border-2 border-rose-200/80 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-rose-100 pb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-rose-600 text-white rounded-xl shadow-xs">
+              <div className="p-2 bg-rose-600 text-white rounded-xl">
                 <AlertTriangle size={20} />
               </div>
               <div>
@@ -688,7 +686,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               weakestSubjects.map((sub, idx) => (
                 <div 
                   key={sub.canonicalKey}
-                  className="bg-white p-3.5 rounded-xl border border-rose-100/90 shadow-2xs hover:shadow-xs transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="bg-white p-3.5 rounded-xl border border-rose-100/90 transition- flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -869,7 +867,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setFilterCategory('all')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 filterCategory === 'all' 
-                  ? 'bg-white text-slate-800 shadow-xs' 
+                  ? 'bg-white text-slate-800'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -879,7 +877,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setFilterCategory('strong')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 filterCategory === 'strong' 
-                  ? 'bg-emerald-600 text-white shadow-xs' 
+                  ? 'bg-emerald-600 text-white'
                   : 'text-slate-600 hover:text-emerald-700'
               }`}
             >
@@ -889,7 +887,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setFilterCategory('weak')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 filterCategory === 'weak' 
-                  ? 'bg-rose-600 text-white shadow-xs' 
+                  ? 'bg-rose-600 text-white'
                   : 'text-slate-600 hover:text-rose-700'
               }`}
             >
@@ -1002,7 +1000,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                       {isExpanded && sub.classBreakdown.length > 1 && (
                         <tr className="bg-slate-50/90 border-y border-slate-200/60">
                           <td colSpan={9} className="p-3 pl-8">
-                            <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs space-y-2">
+                            <div className="bg-white rounded-xl p-3 border border-slate-200/80 space-y-2">
                               <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <Layers size={14} className="text-indigo-600" />
                                 {language === 'bn' 

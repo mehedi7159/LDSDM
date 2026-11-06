@@ -6,7 +6,7 @@ import { RecycleBinPanel } from './RecycleBinPanel';
 // More sheet), admin-only like the backup hub.
 export const RecycleBinPage: React.FC = () => {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800">
       <RecycleBinPanel />
     </div>
   );

@@ -194,7 +194,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
       className="shrink-0 w-12 h-7 rounded-full flex items-center transition-colors"
       style={{ backgroundColor: on ? 'var(--color-brand)' : '#cbd5e1', justifyContent: on ? 'flex-end' : 'flex-start' }}
     >
-      <span className="w-5 h-5 bg-white rounded-full shadow mx-1 transition-transform" />
+ <span className="w-5 h-5 bg-white rounded-full mx-1 transition-transform" />
     </button>
   );
 }
@@ -302,7 +302,7 @@ export const SettingsPage: React.FC = () => {
       <h1 className="text-xl font-black text-slate-900 mb-4">{s.title}</h1>
 
       {/* Language */}
-      <section className="bg-white shadow-sm border border-slate-100 p-4 mb-3" style={cardStyle}>
+ <section className="bg-white border border-slate-100 p-4 mb-3" style={cardStyle}>
         <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
           <Globe size={17} style={{ color: 'var(--color-brand)' }} />
           {s.langSection}
@@ -329,7 +329,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Appearance */}
-      <section className="bg-white shadow-sm border border-slate-100 p-4 mb-3" style={cardStyle}>
+ <section className="bg-white border border-slate-100 p-4 mb-3" style={cardStyle}>
         <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
           <Palette size={17} style={{ color: 'var(--color-brand)' }} />
           {s.appearanceSection}
@@ -374,7 +374,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Notifications (stored preferences only) */}
-      <section className="bg-white shadow-sm border border-slate-100 p-4 mb-3" style={cardStyle}>
+ <section className="bg-white border border-slate-100 p-4 mb-3" style={cardStyle}>
         <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1.5">
           <Bell size={17} style={{ color: 'var(--color-brand)' }} />
           {s.notifSection}

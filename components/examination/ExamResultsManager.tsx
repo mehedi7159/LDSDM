@@ -289,10 +289,8 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner Header: Step 6 • Exams & Results Suite */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-violet-950 text-white rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden print:hidden">
+      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 relative overflow-hidden print:hidden">
         {/* Ambient Glow */}
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
-        <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-violet-500/10 blur-2xl pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
@@ -374,7 +372,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       </div>
 
       {/* Sub-Tabs Navigation Bar */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs print:hidden">
+      <div className="bg-white p-2 rounded-2xl border border-slate-200 print:hidden">
         <div className="flex flex-wrap items-center gap-1.5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -386,7 +384,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   isActive
-                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-xs'
+                    ? 'bg-teal-600 text-white'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
@@ -447,7 +445,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
         {activeTab === 'tabulation' && (
           <div className="space-y-4">
             {/* Tabulation Top Control Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl shadow-xs border border-slate-200/80 print:hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 print:hidden">
               <div className="flex flex-wrap items-center gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">{isBn ? 'পরীক্ষা নির্বাচন:' : 'Select Exam:'}</label>
@@ -477,7 +475,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Printer size={15} />
                   <span>{isBn ? 'ট্যাবুলেশন শিট প্রিন্ট' : 'Print Tabulation'}</span>
@@ -512,7 +510,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
         {activeTab === 'sms' && (
           <div className="space-y-5">
             {/* SMS Hub Control Bar */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 space-y-4">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
@@ -534,7 +532,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsSmsModalOpen(true)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Send size={14} />
                     <span>{isBn ? 'এসএমএস মডাল খুলুন' : 'Open SMS Sender'}</span>
@@ -584,7 +582,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
             </div>
 
             {/* SMS Student Directory & Preview Table */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   {isBn ? `${smsClass} শ্রেণির শিক্ষার্থীদের ফলাফল ও এসএমএস স্ট্যাটাস` : `Student Result & SMS List for ${smsClass}`}
@@ -704,7 +702,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
         {activeTab === 'analytics' && (
           <div className="space-y-5">
             {/* Analytics Filter Strip */}
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">{isBn ? 'বিশ্লেষণ পরীক্ষা:' : 'Analysis Exam:'}</label>
@@ -735,7 +733,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
             {/* Class Pass Rate Comparison Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {analyticsData.classBreakdown.map((clsItem) => (
-                <div key={clsItem.className} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+                <div key={clsItem.className} className="bg-white p-5 rounded-3xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-base font-bold text-slate-900">{clsItem.className}</h4>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${
@@ -780,8 +778,8 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
             </div>
 
             {/* Top 10 Achievers Leaderboard */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-transparent to-transparent">
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-amber-500/10">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
                     🏆
@@ -813,7 +811,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                         <td className="py-3 px-4 font-black">
                           <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${
                             index === 0 
-                              ? 'bg-amber-500 text-white font-black shadow-xs' 
+                              ? 'bg-amber-500 text-white font-black'
                               : index === 1 
                                 ? 'bg-slate-300 text-slate-800 font-black' 
                                 : index === 2 

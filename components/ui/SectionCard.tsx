@@ -46,7 +46,7 @@ export const SectionCard: React.FC<SectionCardProps> = ({
   bodyClassName = ''
 }) => {
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm ${className}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 ${className}`}>
       {title && (
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
           <div className="flex items-center gap-2.5 min-w-0">

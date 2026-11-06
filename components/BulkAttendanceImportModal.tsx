@@ -321,9 +321,9 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="p-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white flex items-center justify-between">
+        <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400 shadow-md">
+ <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400">
               <FileSpreadsheet size={22} />
             </div>
             <div>
@@ -353,7 +353,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             onClick={() => setActiveTab('paste')}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'paste'
-                ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 shadow-xs'
+ ? 'bg-white text-indigo-700 border-t-2 border-indigo-600'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -366,7 +366,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             onClick={() => setActiveTab('upload')}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'upload'
-                ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 shadow-xs'
+ ? 'bg-white text-indigo-700 border-t-2 border-indigo-600'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -382,7 +382,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             }}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'quick_preset'
-                ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 shadow-xs'
+ ? 'bg-white text-indigo-700 border-t-2 border-indigo-600'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -686,7 +686,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             type="button"
             onClick={handleApplyImport}
             disabled={isApplying || matchedCount === 0}
-            className="px-6 py-2.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+ className="px-6 py-2.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
           >
             {isApplying ? (
               <RefreshCw size={14} className="animate-spin" />

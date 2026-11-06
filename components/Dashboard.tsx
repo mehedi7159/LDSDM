@@ -397,7 +397,7 @@ interface ActionRowProps {
 const ActionRow = memo<ActionRowProps>(({ icon: Icon, iconCls, title, detail, count, language, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[var(--color-brand-ring)] hover:shadow-sm transition-all text-left cursor-pointer"
+    className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[var(--color-brand-ring)] transition-all text-left cursor-pointer"
   >
     <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconCls}`}>
       <Icon size={18} />
@@ -973,10 +973,10 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           onClick={() => setActiveView('overview')}
-          style={activeView === 'overview' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))', borderColor: 'var(--color-brand)' } : undefined}
+          style={activeView === 'overview' ? { backgroundColor: 'var(--color-brand)', borderColor: 'var(--color-brand)' } : undefined}
           className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
             activeView === 'overview'
-              ? 'text-white shadow-lg'
+              ? 'text-white'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-[var(--color-brand-ring)]'
           }`}
         >
@@ -991,10 +991,10 @@ export const Dashboard = () => {
 
         <button
           onClick={() => setActiveView('action')}
-          style={activeView === 'action' ? { backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-hover))', borderColor: 'var(--color-brand)' } : undefined}
+          style={activeView === 'action' ? { backgroundColor: 'var(--color-brand)', borderColor: 'var(--color-brand)' } : undefined}
           className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
             activeView === 'action'
-              ? 'text-white shadow-lg'
+              ? 'text-white'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-[var(--color-brand-ring)]'
           }`}
         >
@@ -1006,7 +1006,7 @@ export const Dashboard = () => {
           </span>
           <span className="font-black text-base sm:text-lg flex-1">{language === 'bn' ? 'আজকের করণীয়' : "Today's Tasks"}</span>
           {actionData.badgeCount > 0 && (
-            <span className="rounded-full px-3 py-1 text-xs font-black bg-rose-500 text-white shadow shrink-0">
+            <span className="rounded-full px-3 py-1 text-xs font-black bg-rose-500 text-white shrink-0">
               {toBanglaDigits(actionData.badgeCount, language)}
             </span>
           )}
@@ -1028,7 +1028,7 @@ export const Dashboard = () => {
           now surfaces on the dashboard itself, with a direct door to
           HR approval. Hidden for non-admin viewers. */}
       {(isOwnerAdmin || isSuperAdmin || currentMember?.roleId === 'role_principal') && (pendingMembers.length > 0 || pendingMembersError) && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 shadow-xs space-y-3">
+        <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h4 className="font-black text-slate-900 dark:text-white text-sm">
               {language === 'bn'
@@ -1038,7 +1038,7 @@ export const Dashboard = () => {
             <button
               type="button"
               onClick={() => setActiveTab('user_roles')}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer"
             >
               {language === 'bn' ? 'HR-এ অনুমোদন করুন' : 'Review in HR'}
             </button>

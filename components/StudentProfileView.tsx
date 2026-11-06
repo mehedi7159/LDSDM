@@ -755,7 +755,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 <ArrowLeft size={18} />
               </button>
             )}
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-600/30">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold">
               <GraduationCap size={22} />
             </div>
             <div>
@@ -783,10 +783,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
         {/* Login Main Form */}
         <main className="max-w-md w-full mx-auto my-auto py-8">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-md space-y-6">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-md space-y-6">
             
             <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 mx-auto flex items-center justify-center shadow-lg shadow-indigo-950/40">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 mx-auto flex items-center justify-center">
                 <User size={28} />
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-white">
@@ -832,7 +832,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{language === 'bn' ? 'প্রোফাইলে প্রবেশ করুন' : 'View My Student Profile'}</span>
                 <ChevronRight size={16} />
@@ -871,10 +871,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             
             {/* Total Working Days */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-500 mb-2">
                 <span className="text-xs font-semibold">{language === 'bn' ? 'মোট কর্মদিবস' : 'Total Working Days'}</span>
-                <Calendar size={18} className="text-slate-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-slate-900">
                 {toBn(monthlyAttendanceData.summary.workingDays)} <span className="text-xs text-slate-500 font-normal">{language === 'bn' ? 'দিন' : 'Days'}</span>
@@ -885,10 +884,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
 
             {/* Total Present Days */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-emerald-600 mb-2">
                 <span className="text-xs font-semibold">{language === 'bn' ? 'মোট উপস্থিতি' : 'Days Present'}</span>
-                <CheckCircle2 size={18} className="text-emerald-500" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-emerald-600">
                 {toBn(monthlyAttendanceData.summary.present)} <span className="text-xs text-emerald-700 font-normal">{language === 'bn' ? 'দিন' : 'Days'}</span>
@@ -901,10 +899,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
 
             {/* Total Absent Days */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-rose-600 mb-2">
                 <span className="text-xs font-semibold">{language === 'bn' ? 'মোট অনুপস্থিতি' : 'Days Absent'}</span>
-                <XCircle size={18} className="text-rose-500" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-rose-600">
                 {toBn(monthlyAttendanceData.summary.absent)} <span className="text-xs text-rose-700 font-normal">{language === 'bn' ? 'দিন' : 'Days'}</span>
@@ -915,13 +912,12 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
 
             {/* Attendance Percentage */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80">
               <div className="flex items-center justify-between text-indigo-600 mb-2">
                 <span className="text-xs font-semibold">{language === 'bn' ? 'উপস্থিতির হার' : 'Attendance Rate'}</span>
-                <TrendingUp size={18} className="text-indigo-500" />
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl sm:text-3xl font-black text-indigo-600">
+                <span className="text-3xl sm:text-4xl font-black text-indigo-600">
                   {toBn(monthlyAttendanceData.summary.rate)}%
                 </span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
@@ -947,7 +943,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* 1.2 OFFICIAL TERM-WISE ATTENDANCE (FROM REMARKS) */}
           {studentRemarks.length > 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Award size={18} className="text-indigo-600" />
@@ -1002,7 +998,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           )}
 
           {/* 1.3 MONTHLY CALENDAR GRID & DAILY LOG */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4">
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -1110,7 +1106,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         <div className="space-y-6">
           
           {/* 2.1 EXAM SELECTOR BAR */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
             <div className="flex items-center gap-2">
               <Award size={18} className="text-indigo-600" />
               <div>
@@ -1137,7 +1133,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* 2.2 PERFORMANCE SUMMARY CARD */}
           {examResultsData && (
-            <div className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-lg border border-indigo-800/60">
+            <div className="bg-slate-900 rounded-3xl p-6 text-white border border-indigo-800/60">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 
                 <div className="space-y-2">
@@ -1210,7 +1206,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* 2.3 DETAILED SUBJECT-WISE MARKS TABLE */}
           {examResultsData && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
               <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">
@@ -1347,7 +1343,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* 2.4 CROSS-TERM PROGRESSION TRAJECTORY */}
           {examProgressionHistory.length > 1 && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp size={18} className="text-indigo-600" />
                 <div>
@@ -1388,7 +1384,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   const scheduleSection = (
         <div className="space-y-6">
           
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Clock size={18} className="text-indigo-600" />
               <div>
@@ -1403,7 +1399,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
             >
               <Printer size={14} />
               <span>{language === 'bn' ? 'রুটিন প্রিন্ট করুন' : 'Print Routine'}</span>
@@ -1433,11 +1429,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 return (
                   <div 
                     key={item.id || idx}
-                    className={`rounded-2xl border p-4 sm:p-5 transition-all shadow-xs relative overflow-hidden ${
+                    className={`rounded-2xl border p-4 sm:p-5 transition-all relative overflow-hidden ${
                       isToday 
                         ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/40' 
                         : isUpcoming 
-                        ? 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-md' 
+                        ? 'bg-white border-slate-200 hover:border-indigo-300'
                         : 'bg-slate-50 border-slate-200/80 opacity-75'
                     }`}
                   >
@@ -1521,7 +1517,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   );
   const idCardSection = (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <QrCode size={18} className="text-indigo-600" />
               <div>
@@ -1536,7 +1532,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 cursor-pointer"
             >
               <Printer size={14} />
               <span>{language === 'bn' ? 'আইডি কার্ড প্রিন্ট' : 'Print ID Card'}</span>
@@ -1545,11 +1541,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* ID Card Display Card */}
           <div className="flex justify-center p-4">
-            <div className="w-full max-w-sm bg-white rounded-3xl border-2 border-indigo-200 shadow-2xl overflow-hidden relative">
+            <div className="w-full max-w-sm bg-white rounded-3xl border-2 border-indigo-200 overflow-hidden relative">
               
               {/* Institution Header */}
               <div className="bg-indigo-800 text-white p-4 text-center space-y-1 relative">
-                <div className="w-10 h-10 rounded-full bg-white text-indigo-800 font-bold mx-auto flex items-center justify-center text-sm shadow">
+                <div className="w-10 h-10 rounded-full bg-white text-indigo-800 font-bold mx-auto flex items-center justify-center text-sm">
                   <GraduationCap size={20} />
                 </div>
                 <h4 className="text-xs font-black tracking-tight leading-tight uppercase">
@@ -1566,7 +1562,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               {/* Student Body */}
               <div className="p-5 text-center space-y-3">
                 {/* Photo */}
-                <div className="w-24 h-24 mx-auto rounded-2xl bg-slate-100 border-2 border-indigo-500/30 overflow-hidden shadow-inner flex items-center justify-center">
+                <div className="w-24 h-24 mx-auto rounded-2xl bg-slate-100 border-2 border-indigo-500/30 overflow-hidden flex items-center justify-center">
                   {currentStudent.photoUrl ? (
                     <img src={currentStudent.photoUrl} alt={currentStudent.name} className="w-full h-full object-cover" />
                   ) : (
@@ -1610,7 +1606,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
                 {/* QR Code for Verification */}
                 <div className="pt-2 flex flex-col items-center justify-center">
-                  <div className="p-2 bg-white rounded-xl border border-slate-200 shadow-xs">
+                  <div className="p-2 bg-white rounded-xl border border-slate-200">
                     <QRCodeSVG 
                       value={`${window.location.origin}/?verify=1&sid=${encodeURIComponent(currentStudent.id)}`}
                       size={70}
@@ -1638,7 +1634,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* 5.0 Fee summary cards + fee-wise breakdown (at-a-glance) */}
           {feeSummary && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
               <h3 className="text-sm font-bold text-slate-900 mb-3">
                 {language === 'bn' ? 'ফি সারাংশ' : 'Fee Summary'}
               </h3>
@@ -1739,7 +1735,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           )}
 
           {/* 5.1 Fee arrangement */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
             <div className="flex items-center gap-2 mb-3">
               <Banknote size={18} className="text-indigo-600" />
               <h3 className="text-sm font-bold text-slate-900">
@@ -1811,7 +1807,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           </div>
 
           {/* 5.2 Aged dues */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
             <h3 className="text-sm font-bold text-slate-900 mb-3">
               {language === 'bn' ? 'বকেয়া (সমাপ্ত মাসের হিসাব)' : 'Aged Dues (finished months)'}
             </h3>
@@ -1858,7 +1854,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           </div>
 
           {/* 5.3 Fee transactions */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
             <h3 className="text-sm font-bold text-slate-900 mb-3">
               {language === 'bn' ? 'ফি লেনদেন' : 'Fee Transactions'}
             </h3>
@@ -1895,7 +1891,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           </div>
 
           {/* 5.4 Exam-fee pending (derived; never enters monthly dues) */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
             <h3 className="text-sm font-bold text-slate-900 mb-3">
               {language === 'bn' ? 'পরীক্ষার ফি বাকি' : 'Exam Fee Pending'}
             </h3>
@@ -1932,10 +1928,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       <NoticeBoardAlertBanner />
 
       {/* 1. STUDENT PROFILE HEADER CARD */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/80 border border-slate-800 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden print:hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 text-white relative overflow-hidden print:hidden">
         
         {/* Ambient Top Glow */}
-        <div className="absolute top-0 right-0 w-80 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           
@@ -1947,14 +1942,14 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 <img 
                   src={currentStudent.photoUrl} 
                   alt={currentStudent.name} 
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-indigo-500/50 shadow-md"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-indigo-500/50"
                 />
               ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-indigo-600/30 border-2 border-indigo-500/40 text-indigo-300 flex items-center justify-center font-bold text-2xl sm:text-3xl shadow-inner">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-indigo-600/30 border-2 border-indigo-500/40 text-indigo-300 flex items-center justify-center font-bold text-2xl sm:text-3xl">
                   {(currentStudent.name || 'S').charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow">
+              <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
                 {language === 'bn' ? 'নিয়মিত' : 'Active'}
               </span>
             </div>
@@ -2166,7 +2161,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
       {/* 2. TAB NAVIGATION BAR (portal/guardian only — staff view stacks all sections, no tabs) */}
       {!isStaffView && (
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white p-1.5 rounded-2xl shadow-xs print:hidden gap-2">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white p-1.5 rounded-2xl print:hidden gap-2">
         <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none w-full sm:w-auto">
           
           {/* TAB 1: ATTENDANCE */}
@@ -2174,7 +2169,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             onClick={() => setActiveTab('attendance')}
             className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
               activeTab === 'attendance'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                ? 'bg-indigo-600 text-white'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -2188,7 +2183,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             onClick={() => setActiveTab('marks')}
             className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
               activeTab === 'marks'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                ? 'bg-indigo-600 text-white'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -2202,7 +2197,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             onClick={() => setActiveTab('schedule')}
             className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
               activeTab === 'schedule'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                ? 'bg-indigo-600 text-white'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -2223,7 +2218,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             onClick={() => setActiveTab('id_card')}
             className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
               activeTab === 'id_card'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                ? 'bg-indigo-600 text-white'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -2238,7 +2233,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               onClick={() => setActiveTab('fees')}
               className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 ${
                 activeTab === 'fees'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  ? 'bg-indigo-600 text-white'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -2313,7 +2308,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
       {/* STAFF-ONLY RECENT ACTIVITY (existing data only) */}
       {isStaffView && timelineItems.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
           <div className="flex items-center gap-2 mb-3">
             <History size={18} className="text-indigo-600" />
             <h3 className="text-sm font-bold text-slate-900">

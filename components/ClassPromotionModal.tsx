@@ -374,9 +374,9 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
       <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
         <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-b border-slate-800">
+          <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shadow-inner">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
                 <GraduationCap size={24} />
               </div>
               <div>
@@ -396,7 +396,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   onClick={() => setActiveView('wizard')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                     activeView === 'wizard'
-                      ? 'bg-emerald-600 text-white shadow-xs'
+                      ? 'bg-emerald-600 text-white'
                       : 'text-slate-300 hover:text-white'
                   }`}
                 >
@@ -408,7 +408,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   onClick={() => setActiveView('history')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                     activeView === 'history'
-                      ? 'bg-emerald-600 text-white shadow-xs'
+                      ? 'bg-emerald-600 text-white'
                       : 'text-slate-300 hover:text-white'
                   }`}
                 >
@@ -436,7 +436,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
           {activeView === 'wizard' && (
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/50">
               {/* Configuration Panel */}
-              <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+              <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
                     <Sliders size={18} className="text-indigo-600" />
@@ -544,7 +544,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => setRuleMode('passed_only')}
                         className={`px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           ruleMode === 'passed_only'
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            ? 'bg-emerald-600 text-white border-emerald-600'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -556,7 +556,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => setRuleMode('all')}
                         className={`px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           ruleMode === 'all'
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -568,7 +568,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => setRuleMode('min_gpa')}
                         className={`px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           ruleMode === 'min_gpa'
-                            ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                            ? 'bg-purple-600 text-white border-purple-600'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -616,7 +616,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => handleRollModeChange('merit')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           rollMode === 'merit'
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            ? 'bg-emerald-600 text-white border-emerald-600'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -629,7 +629,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => handleRollModeChange('keep_existing')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           rollMode === 'keep_existing'
-                            ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
+                            ? 'bg-slate-700 text-white border-slate-700'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -642,7 +642,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => handleRollModeChange('manual')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           rollMode === 'manual'
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            ? 'bg-blue-600 text-white border-blue-600'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -656,11 +656,11 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
 
               {/* Summary Stats Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-xs">
-                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
                   <span className="text-slate-500 block">{language === 'bn' ? 'মোট শিক্ষার্থী' : 'Total Students'}</span>
                   <span className="text-lg font-extrabold text-slate-800">{formatNumber(stats.total, language)}</span>
                 </div>
-                <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 shadow-2xs">
+                <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200">
                   <span className="text-emerald-800 font-semibold block">{language === 'bn' ? 'পরীক্ষায় উত্তীর্ণ' : 'Passed'}</span>
                   <span className="text-lg font-extrabold text-emerald-700">
                     {formatNumber(stats.passed, language)}
@@ -669,19 +669,19 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                     </span>
                   </span>
                 </div>
-                <div className="bg-rose-50/70 p-3 rounded-xl border border-rose-200 shadow-2xs">
+                <div className="bg-rose-50/70 p-3 rounded-xl border border-rose-200">
                   <span className="text-rose-800 font-semibold block">{language === 'bn' ? 'অনুত্তীর্ণ (ফেল)' : 'Failed'}</span>
                   <span className="text-lg font-extrabold text-rose-700">{formatNumber(stats.failed, language)}</span>
                 </div>
-                <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200 shadow-2xs">
+                <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200">
                   <span className="text-indigo-800 font-semibold block">{language === 'bn' ? 'উত্তীর্ণ হবে' : 'To Promote'}</span>
                   <span className="text-lg font-extrabold text-indigo-700">{formatNumber(stats.promoteCount, language)}</span>
                 </div>
-                <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200 shadow-2xs">
+                <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200">
                   <span className="text-amber-800 font-semibold block">{language === 'bn' ? 'একই শ্রেণিতে থাকবে' : 'To Retain'}</span>
                   <span className="text-lg font-extrabold text-amber-700">{formatNumber(stats.retainCount, language)}</span>
                 </div>
-                <div className="bg-purple-50/70 p-3 rounded-xl border border-purple-200 shadow-2xs">
+                <div className="bg-purple-50/70 p-3 rounded-xl border border-purple-200">
                   <span className="text-purple-800 font-semibold block">{language === 'bn' ? 'সমাপনী সম্পন্ন' : 'Graduating'}</span>
                   <span className="text-lg font-extrabold text-purple-700">{formatNumber(stats.graduateCount, language)}</span>
                 </div>
@@ -713,7 +713,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                       onClick={() => setFilterAction(f)}
                       className={`px-2.5 py-1 rounded-md text-xs font-semibold capitalize transition-all ${
                         filterAction === f
-                          ? 'bg-slate-900 text-white shadow-2xs'
+                          ? 'bg-slate-900 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
@@ -753,7 +753,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
               </div>
 
               {/* Student Promotion Interactive Table */}
-              <div className="bg-white rounded-b-xl border border-slate-200 overflow-x-auto shadow-xs">
+              <div className="bg-white rounded-b-xl border border-slate-200 overflow-x-auto">
                 {displayItems.length === 0 ? (
                   <div className="py-12 text-center text-slate-500">
                     <Users size={32} className="mx-auto mb-2 text-slate-300" />
@@ -794,7 +794,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                             <td className="py-2.5 px-3 text-center font-bold text-slate-700">
                               {perf ? (
                                 <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${
-                                  perf.meritRank === 1 ? 'bg-amber-400 text-amber-950 font-black shadow-xs' :
+                                  perf.meritRank === 1 ? 'bg-amber-400 text-amber-950 font-black' :
                                   perf.meritRank === 2 ? 'bg-slate-300 text-slate-800 font-bold' :
                                   perf.meritRank === 3 ? 'bg-amber-600 text-white font-bold' :
                                   'text-slate-600'
@@ -892,7 +892,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                                   onClick={() => setStudentAction(item.studentId, 'PROMOTE')}
                                   className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                                     isActionPromote
-                                      ? 'bg-emerald-600 text-white shadow-2xs'
+                                      ? 'bg-emerald-600 text-white'
                                       : 'text-slate-600 hover:text-slate-900'
                                   }`}
                                   title={language === 'bn' ? 'পরবর্তী শ্রেণিতে উত্তীর্ণ করুন' : 'Promote to next class'}
@@ -905,7 +905,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                                   onClick={() => setStudentAction(item.studentId, 'RETAIN')}
                                   className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                                     isActionRetain
-                                      ? 'bg-amber-600 text-white shadow-2xs'
+                                      ? 'bg-amber-600 text-white'
                                       : 'text-slate-600 hover:text-slate-900'
                                   }`}
                                   title={language === 'bn' ? 'একই শ্রেণিতে বহাল রাখুন' : 'Retain in same class'}
@@ -918,7 +918,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                                   onClick={() => setStudentAction(item.studentId, 'GRADUATE')}
                                   className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                                     isActionGraduate
-                                      ? 'bg-purple-600 text-white shadow-2xs'
+                                      ? 'bg-purple-600 text-white'
                                       : 'text-slate-600 hover:text-slate-900'
                                   }`}
                                   title={language === 'bn' ? 'সমাপনী উত্তীর্ণ (গ্র্যাজুয়েট)' : 'Graduate'}
@@ -931,7 +931,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                                   onClick={() => setStudentAction(item.studentId, 'SKIP')}
                                   className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                                     item.action === 'SKIP'
-                                      ? 'bg-slate-700 text-white shadow-2xs'
+                                      ? 'bg-slate-700 text-white'
                                       : 'text-slate-400 hover:text-slate-700'
                                   }`}
                                   title={language === 'bn' ? 'বাদ দিন' : 'Skip'}
@@ -948,7 +948,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                                   type="text"
                                   value={item.newRoll || ''}
                                   onChange={(e) => updateStudentNewRoll(item.studentId, e.target.value)}
-                                  className="w-16 mx-auto bg-white border border-emerald-300 rounded-md px-2 py-1 text-center font-bold text-emerald-900 text-xs focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                                  className="w-16 mx-auto bg-white border border-emerald-300 rounded-md px-2 py-1 text-center font-bold text-emerald-900 text-xs focus:ring-2 focus:ring-emerald-500"
                                   placeholder="Roll"
                                 />
                               ) : isActionRetain ? (
@@ -993,7 +993,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   <Button
                     onClick={() => setIsConfirmOpen(true)}
                     disabled={stats.promoteCount === 0 && stats.graduateCount === 0 && stats.retainCount === 0}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 text-sm shadow-md flex items-center gap-2"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 text-sm flex items-center gap-2"
                   >
                     <CheckCircle2 size={18} />
                     <span>
@@ -1036,7 +1036,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   {promotionHistory.map((rec) => (
                     <div 
                       key={rec.id}
-                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                      className="bg-white p-4 rounded-xl border border-slate-200 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -1138,7 +1138,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   setViewingGazette(completedRecord);
                   setCompletedRecord(null);
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-2 py-2.5 text-sm shadow-md"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-2 py-2.5 text-sm"
               >
                 <Printer size={16} />
                 <span>{language === 'bn' ? 'অফিসিয়াল উত্তরণ গেজেট প্রিন্ট করুন' : 'Print Official Promotion Gazette'}</span>

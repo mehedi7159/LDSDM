@@ -42,9 +42,6 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
               <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
                 {isBn ? 'ডিজাইন ও কালার থিম কাস্টমাইজার' : 'Design & Accent Themes'}
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {isBn ? 'আধুনিক SaaS স্টাইল (Schola / Linear / Stripe)' : 'Inspired by modern SaaS dashboards'}
-              </p>
             </div>
           </div>
 
@@ -77,7 +74,7 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
                   className="flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition"
                 >
                   <span
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full shadow-inner flex items-center justify-center shrink-0"
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0"
                     style={{
                       backgroundColor: theme.primary,
                       boxShadow: isSelected ? `0 0 0 2px #fff, 0 0 0 5px ${theme.ring}` : undefined

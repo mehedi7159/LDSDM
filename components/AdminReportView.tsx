@@ -2,12 +2,8 @@ import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  Shield, 
-  Database, 
   Activity, 
   Clock, 
-  Users, 
-  Key, 
   Lock, 
   Printer, 
   Download, 
@@ -56,7 +52,7 @@ export const AdminReportView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
+      <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-black tracking-tight">
             {language === 'bn' ? 'প্রশাসনিক রিপোর্ট ও সিস্টেম বিবরণী' : 'Administrative & System Report'}
@@ -66,7 +62,7 @@ export const AdminReportView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/20"
+            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-black flex items-center gap-2 transition-all cursor-pointer"
           >
             <Printer size={15} />
             <span>{language === 'bn' ? 'রিপোর্ট প্রিন্ট' : 'Print Report'}</span>
@@ -76,53 +72,41 @@ export const AdminReportView: React.FC = () => {
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'সিস্টেম ইউজার' : 'Registered Users'}</p>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{toBanglaDigits(membersCount)}</h3>
+            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mt-1">{toBanglaDigits(membersCount)}</h3>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{language === 'bn' ? 'নিবন্ধিত স্টাফ/শিক্ষক' : 'Members'}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-            <Users size={24} />
-          </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'নির্ধারিত রোল' : 'Active Roles'}</p>
-            <h3 className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{toBanglaDigits(rolesCount)}</h3>
+            <h3 className="text-3xl font-black text-purple-600 dark:text-purple-400 mt-1">{toBanglaDigits(rolesCount)}</h3>
             <p className="text-[10px] text-purple-600/80 dark:text-purple-400 mt-0.5">{language === 'bn' ? 'RBAC পারমিশন লেয়ার' : 'RBAC Configured'}</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-            <Key size={24} />
-          </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'ডাটাবেজ সিঙ্ক' : 'Database Sync'}</p>
-            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">100%</h3>
+            <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">100%</h3>
             <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400 mt-0.5">{language === 'bn' ? 'রিয়েলটাইম ক্লাউড ফায়ারস্টোর' : 'Firestore Realtime'}</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-            <Database size={24} />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'সিকিউরিটি লেভেল' : 'Security Level'}</p>
-            <h3 className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">Tier-1</h3>
+            <h3 className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">Tier-1</h3>
             <p className="text-[10px] text-blue-600/80 dark:text-blue-400 mt-0.5">{language === 'bn' ? 'রোল বেসড এক্সেস গার্ড' : 'RBAC Protected'}</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-            <Shield size={24} />
           </div>
         </div>
       </div>
 
       {/* Security Status Box */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6 space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-4">
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
           <Server size={18} className="text-purple-600 dark:text-purple-400" />
           <span>{language === 'bn' ? 'সিস্টেম ও সিকিউরিটি কনফিগারেশন চেকলিস্ট' : 'System Governance & Security Matrix'}</span>

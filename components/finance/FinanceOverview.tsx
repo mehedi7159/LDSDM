@@ -160,7 +160,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       />
 
       {/* Cash Flow Distribution Ratio Visualizer */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <span className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100">
             {isBn ? 'আয় ও ব্যয় অনুপাত' : 'Inflow vs Outflow Ratio'}
@@ -181,11 +181,11 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
         <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex p-0.5 border border-slate-200 dark:border-slate-800">
           <div 
             style={{ width: `${incomePercent}%` }} 
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500" 
+            className="h-full bg-teal-500 rounded-full transition-all duration-500"
           />
           <div 
             style={{ width: `${expensePercent}%` }} 
-            className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all duration-500" 
+            className="h-full bg-rose-500 rounded-full transition-all duration-500"
           />
         </div>
       </div>
@@ -205,12 +205,9 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Pillar 1: Student Fees (ছাত্রদের বেতন ও ফি) */}
-          <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-200/90 rounded-2xl p-5 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <div className="bg-blue-50/80 border border-blue-200/90 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                  <GraduationCap className="w-6 h-6" />
-                </div>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                   {isBn ? 'মূল আয় ১' : 'Income 1'}
                 </span>
@@ -223,7 +220,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               </p>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-blue-950 dark:text-blue-200 font-mono">
+                <div className="text-3xl sm:text-4xl font-black text-blue-950 dark:text-blue-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(studentFeesIncome) : studentFeesIncome.toLocaleString()}
                 </div>
                 <div className="text-xs sm:text-sm text-blue-700 dark:text-blue-400 mt-1 font-semibold">
@@ -246,12 +243,9 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
           </div>
 
           {/* Pillar 2: Dan, Sadaqa & Zakat (দান, সদকা ও যাকাত) */}
-          <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/80 border border-emerald-200/90 rounded-2xl p-5 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                  <HeartHandshake className="w-6 h-6" />
-                </div>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {isBn ? 'মূল আয় ২' : 'Income 2'}
                 </span>
@@ -264,7 +258,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               </p>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-emerald-950 dark:text-emerald-200 font-mono">
+                <div className="text-3xl sm:text-4xl font-black text-emerald-950 dark:text-emerald-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(donationsIncome) : donationsIncome.toLocaleString()}
                 </div>
                 <div className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 mt-1 font-semibold">
@@ -287,12 +281,9 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
           </div>
 
           {/* Pillar 3: Teacher Salary & Hadya (উস্তাদ ও স্টাফ বেতন) */}
-          <div className="bg-gradient-to-br from-rose-50/80 to-pink-50/80 border border-rose-200/90 rounded-2xl p-5 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <div className="bg-rose-50/80 border border-rose-200/90 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-11 h-11 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs">
-                  <CreditCard className="w-6 h-6" />
-                </div>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                   {isBn ? 'মূল ব্যয় ১' : 'Expense 1'}
                 </span>
@@ -302,7 +293,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               </h3>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-rose-950 dark:text-rose-200 font-mono">
+                <div className="text-3xl sm:text-4xl font-black text-rose-950 dark:text-rose-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(teacherSalaryExpense) : teacherSalaryExpense.toLocaleString()}
                 </div>
                 <div className="text-xs sm:text-sm text-rose-700 dark:text-rose-400 mt-1 font-semibold">
@@ -325,12 +316,9 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
           </div>
 
           {/* Pillar 4: Madrasah Development & Construction (মাদ্রাসা উন্নয়ন ও নির্মাণ) */}
-          <div className="bg-gradient-to-br from-amber-50/80 to-orange-50/80 border border-amber-200/90 rounded-2xl p-5 flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-11 h-11 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
-                  <Building2 className="w-6 h-6" />
-                </div>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                   {isBn ? 'মূল ব্যয় ২' : 'Expense 2'}
                 </span>
@@ -343,7 +331,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               </p>
               
               <div className="mt-4">
-                <div className="text-2xl sm:text-3xl font-black text-amber-950 dark:text-amber-200 font-mono">
+                <div className="text-3xl sm:text-4xl font-black text-amber-950 dark:text-amber-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(developmentExpense) : developmentExpense.toLocaleString()}
                 </div>
                 <div className="text-xs sm:text-sm text-amber-700 dark:text-amber-400 mt-1 font-semibold">
@@ -368,7 +356,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       </div>
 
       {/* Madrasah Dedicated Fund Balances */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <div>
             <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -392,7 +380,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
             const info = FUND_METAS[key];
             const data = fundBalances[key] || { income: 0, expense: 0, balance: 0 };
             return (
-              <div key={key} className={`rounded-xl border p-4.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${info.bg} ${info.border}`}>
+              <div key={key} className={`rounded-xl border p-4.5 transition-all duration-200 ${info.bg} ${info.border}`}>
                 <div className="flex items-start justify-between">
                   <span className={`text-sm font-bold ${info.color}`}>
                     {isBn ? info.nameBn : info.name}
@@ -422,7 +410,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
       </div>
 
       {/* Recent 5 Transactions */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Receipt className="w-5 h-5 text-slate-700 dark:text-slate-200" />

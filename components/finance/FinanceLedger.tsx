@@ -180,13 +180,13 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
   return (
     <div className="space-y-4">
       {/* Pillar Selection Chips */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-3.5">
         <div className="flex flex-wrap items-center gap-1.5 pb-1 text-xs">
           <button
             onClick={() => setPillarFilter('ALL')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'ALL'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200'
             }`}
           >
@@ -198,7 +198,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             onClick={() => setPillarFilter('STUDENT_FEES')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'STUDENT_FEES'
-                ? 'bg-blue-600 text-white shadow-xs'
+                ? 'bg-blue-600 text-white'
                 : 'bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 hover:bg-blue-100 border border-blue-200/60'
             }`}
           >
@@ -210,7 +210,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             onClick={() => setPillarFilter('DONATIONS')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'DONATIONS'
-                ? 'bg-emerald-600 text-white shadow-xs'
+                ? 'bg-emerald-600 text-white'
                 : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200/60'
             }`}
           >
@@ -222,7 +222,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             onClick={() => setPillarFilter('TEACHER_SALARY')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'TEACHER_SALARY'
-                ? 'bg-rose-600 text-white shadow-xs'
+                ? 'bg-rose-600 text-white'
                 : 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 hover:bg-rose-100 border border-rose-200/60'
             }`}
           >
@@ -234,7 +234,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             onClick={() => setPillarFilter('DEVELOPMENT')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'DEVELOPMENT'
-                ? 'bg-amber-600 text-white shadow-xs'
+                ? 'bg-amber-600 text-white'
                 : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 border border-amber-200/60'
             }`}
           >
@@ -246,7 +246,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
             onClick={() => setPillarFilter('OTHERS')}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               pillarFilter === 'OTHERS'
-                ? 'bg-purple-600 text-white shadow-xs'
+                ? 'bg-purple-600 text-white'
                 : 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 hover:bg-purple-100 border border-purple-200/60'
             }`}
           >
@@ -257,7 +257,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
       </div>
 
       {/* Filter Control Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
           {/* Search Box */}
           <div className="lg:col-span-4 relative">
@@ -356,7 +356,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
               onClick={() => setShowStatementModal(true)}
               size="sm"
               variant="primary"
-              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold"
             >
               <Printer className="w-3.5 h-3.5 mr-1.5" />
               <span>{isBn ? 'স্টেটমেন্ট ও পিডিএফ রিপোর্ট' : 'Statement & PDF'}</span>
@@ -399,7 +399,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
       </div>
 
       {/* Main Transactions Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">

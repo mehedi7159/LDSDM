@@ -6,12 +6,12 @@
  * these primitives instead of hand-rolled markup:
  *
  *  - PageHeader   — a screen's greeting/title header. tone='brand' is the
- *                   gradient hero (quick-action tiles live inside it);
+ *                   flat hero (quick-action tiles live inside it);
  *                   tone='plain' is the standard card header.
  *  - SectionCard  — every content block: bg-white / dark:bg-slate-900,
  *                   rounded-2xl, border slate-200/80 / dark:slate-800,
  *                   shadow-sm, p-5 sm:p-6, icon-chip + title header.
- *  - StatCard     — simple KPI tiles (icon chip, big value, soft label).
+ *  - StatCard     — simple KPI tiles (big value, soft label).
  *                   Richer bento cards may be hand-built but must reuse
  *                   the same surface recipe and CountUpNumber.
  *  - ProgressBar  — the only progress bar; semantic tones only

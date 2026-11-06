@@ -182,15 +182,14 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
       {/* ==================================================== */}
       {/* CARD 1: NET MONTHLY SURPLUS (চলতি মাসের নিট উদ্বৃত্ত) */}
       {/* ==================================================== */}
-      <div className={`rounded-2xl p-5 shadow-sm border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between ${
+      <div className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${
         isSurplusPositive 
-          ? 'bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white border-emerald-500/40' 
-          : 'bg-gradient-to-br from-rose-950 via-slate-900 to-slate-950 text-white border-rose-500/40'
+          ? 'bg-slate-900 text-white border-emerald-500/40'
+          : 'bg-slate-900 text-white border-rose-500/40'
       }`}>
         <div>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-400" />
               {isBn ? 'চলতি মাসের নিট উদ্বৃত্ত' : 'Net Monthly Surplus'}
             </span>
             <span className={`px-2.5 py-1 rounded-full text-xs font-black border uppercase tracking-wider ${
@@ -203,7 +202,7 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
           </div>
 
           <div className="my-2">
-            <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight flex items-baseline gap-1.5">
+            <div className="text-4xl sm:text-5xl font-black font-mono tracking-tight flex items-baseline gap-1.5">
               <span className={isSurplusPositive ? 'text-emerald-400' : 'text-rose-400'}>
                 {isSurplusPositive ? '+' : '-'} ৳
               </span>
@@ -234,11 +233,10 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
       {/* ==================================================== */}
       {/* CARD 2: TOTAL PENDING FEES (ছাত্রদের মোট বকেয়া ফি) */}
       {/* ==================================================== */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200/90 p-5 shadow-sm flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200/90 p-5 flex flex-col justify-between transition-all duration-200">
         <div>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               {isBn ? 'ছাত্রদের চলতি বকেয়া ফি' : 'Total Pending Fees'}
             </span>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
@@ -252,7 +250,6 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
               <span>{isBn ? formatBanglaNumber(totalPendingFees) : totalPendingFees.toLocaleString()}</span>
             </div>
             <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 font-medium flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               <span>
                 {isBn 
                   ? `${formatBanglaNumber(pendingStudentsCount)} জন ছাত্রের ফি দেওয়া বাকি` 
@@ -282,11 +279,10 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
       {/* ==================================================== */}
       {/* CARD 3: TOTAL NET CASH IN-HAND (সর্বমোট সংরক্ষিত স্থিতি) */}
       {/* ==================================================== */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 flex flex-col justify-between transition-all duration-200">
         <div>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <Wallet className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               {isBn ? 'সর্বমোট সংরক্ষিত ক্যাশ স্থিতি' : 'Total Cash Liquidity'}
             </span>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
@@ -311,11 +307,10 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
       {/* ==================================================== */}
       {/* CARD 4: STUDENT FEES & DONATIONS MOMENTUM */}
       {/* ==================================================== */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 shadow-sm flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 p-5 flex flex-col justify-between transition-all duration-200">
         <div>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               {isBn ? 'ছাত্র ফি আদায়ের অগ্রগতি' : 'Collection Momentum'}
             </span>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">

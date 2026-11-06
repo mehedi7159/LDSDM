@@ -623,8 +623,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     <div className={`p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto ${isBn ? 'font-bangla' : ''}`}>
       
       {/* 1. MASTER HEADER & SUITE HERO */}
-      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-teal-800/40 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+ <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-teal-800/40 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white flex items-center gap-3">
@@ -639,7 +638,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               <span className="text-[11px] font-semibold text-teal-200 block uppercase">
                 {isBn ? 'অভিভাবক' : 'Guardians'}
               </span>
-              <span className="text-xl font-black text-white mt-0.5 block">
+              <span className="text-3xl font-black text-white mt-0.5 block">
                 {formatNumber(students.length, language)}
               </span>
             </div>
@@ -647,7 +646,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               <span className="text-[11px] font-semibold text-teal-200 block uppercase">
                 {isBn ? 'আবাসিক' : 'Boarding'}
               </span>
-              <span className="text-xl font-black text-white mt-0.5 block">
+              <span className="text-2xl font-black text-white mt-0.5 block">
                 {formatNumber(residentialStudents.length, language)}
               </span>
             </div>
@@ -655,7 +654,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               <span className="text-[11px] font-semibold text-teal-200 block uppercase">
                 {isBn ? 'ভর্তি আবেদন' : 'Admissions'}
               </span>
-              <span className="text-xl font-black text-white mt-0.5 block">
+              <span className="text-2xl font-black text-white mt-0.5 block">
                 {formatNumber(admissions.length, language)}
               </span>
             </div>
@@ -692,7 +691,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                 }}
                 className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   isActive 
-                    ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/30' 
+ ? 'bg-teal-500 text-slate-950'
                     : 'bg-white/5 dark:bg-slate-900/5 hover:bg-white/10 dark:hover:bg-slate-900/10 text-slate-300 hover:text-white border border-white/5'
                 }`}
               >
@@ -718,7 +717,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Controls Bar */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+ <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <div className="relative flex-1 sm:w-64">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -770,7 +769,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Left Column: Student Quick Picker (4 cols) */}
-            <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-4 flex flex-col h-[560px]">
+ <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 flex flex-col h-[560px]">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   {isBn ? 'শিক্ষার্থী তালিকা' : 'Student Directory'}
@@ -789,7 +788,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       onClick={() => setSelectedStudentId(st.id)}
                       className={`w-full text-left p-3 rounded-xl transition-all flex items-center justify-between gap-3 cursor-pointer ${
                         isSelected 
-                          ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/20' 
+ ? 'bg-teal-600 text-white'
                           : 'bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-800'
                       }`}
                     >
@@ -818,13 +817,13 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             {/* Right Column: Live Guardian Portal Preview (8 cols) */}
             <div className="lg:col-span-8">
               {activeStudent ? (
-                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
                   
                   {/* Guardian Portal Header Bar */}
-                  <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-emerald-900 p-6 text-white relative">
+                  <div className="bg-teal-700 p-6 text-white relative">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-2xl bg-white/10 dark:bg-slate-900/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl font-black text-white shadow-inner">
+ <div className="w-16 h-16 rounded-2xl bg-white/10 dark:bg-slate-900/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl font-black text-white">
                           {activeStudent.nameBn ? activeStudent.nameBn.charAt(0) : activeStudent.name.charAt(0)}
                         </div>
                         <div>
@@ -855,7 +854,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                           <>
                             <a
                               href={`tel:${activeStudent.guardianPhone}`}
-                              className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+ className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50 text-xs font-bold flex items-center gap-1.5 transition-all"
                             >
                               <Phone size={13} className="text-teal-600 dark:text-teal-400" />
                               <span>{isBn ? 'সরাসরি কল' : 'Call'}</span>
@@ -976,7 +975,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded-xl border border-teal-300 dark:border-teal-700 font-mono font-black text-sm text-teal-900 dark:text-teal-200 tracking-widest shadow-xs">
+ <span className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded-xl border border-teal-300 dark:border-teal-700 font-mono font-black text-sm text-teal-900 dark:text-teal-200 tracking-widest">
                           {activeStudent.studentId ? activeStudent.studentId.slice(-4) : '7890'}
                         </span>
                         <Button
@@ -1013,7 +1012,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Action & Filter Bar */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+ <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <div className="relative flex-1 sm:w-64">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -1064,7 +1063,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           </div>
 
           {/* Applications Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'অনলাইন ও অফলাইন ভর্তি আবেদন তালিকা' : 'Admission Applications Ledger'}
@@ -1133,7 +1132,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                           {app.status !== 'admitted' && (
                             <button
                               onClick={() => handleAdmitApplicant(app)}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-xs cursor-pointer inline-flex items-center gap-1 transition-all"
+ className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg cursor-pointer inline-flex items-center gap-1 transition-all"
                             >
                               <UserCheck size={12} />
                               <span>{isBn ? 'ভর্তি নিশ্চিত করুন' : 'Admit Now'}</span>
@@ -1282,7 +1281,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Public Result Simulator Header */}
-          <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-indigo-800/40 shadow-lg">
+ <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-indigo-800/40">
             <div className="max-w-2xl space-y-3">
               <h2 className="text-xl sm:text-2xl font-black text-white">
                 {isBn ? 'পাবলিক রেজাল্ট পোর্টাল ও তাত্ক্ষণিক ভেরিফিকেশন' : 'Public Result Search & Instant Verification'}
@@ -1338,7 +1337,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               <div className="flex items-end">
                 <button
                   type="submit"
-                  className="w-full py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/20 cursor-pointer transition-all"
+ className="w-full py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                 >
                   <Search size={14} />
                   <span>{isBn ? 'ফলাফল অনুসন্ধান' : 'Search Result'}</span>
@@ -1350,12 +1349,12 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           {/* Result Search Outcome */}
           {hasSearchedQr && (
             searchedStudent ? (
-              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md p-6 space-y-6">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-6">
                 
                 {/* Header with QR Token */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800 gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-xl shadow-md">
+ <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-xl">
                       <GraduationCap size={24} />
                     </div>
                     <div>
@@ -1370,7 +1369,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
                   {/* QR Seal & Verification Hash Badge */}
                   <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div className="w-16 h-16 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-center">
+ <div className="w-16 h-16 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center">
                       <ResultVerificationQR
                         student={searchedStudent}
                         exam={exams.find(e => e.id === qrQueryExamId) || exams[0]}
@@ -1503,7 +1502,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Left 7 Cols: SMS Composer & Dispatcher */}
-            <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6 space-y-4">
+ <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
                   <MessageSquare size={16} className="text-teal-600 dark:text-teal-400" />
@@ -1602,7 +1601,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                   size="sm"
                   onClick={handleSendBroadcastSms}
                   disabled={isSendingSms || !smsText.trim()}
-                  className="bg-teal-600 hover:bg-teal-700 gap-2 text-xs rounded-xl shadow-md"
+ className="bg-teal-600 hover:bg-teal-700 gap-2 text-xs rounded-xl"
                 >
                   {isSendingSms ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
                   <span>{isBn ? 'ব্রডকাস্ট এসএমএস প্রেরণ করুন' : 'Send Broadcast SMS'}</span>
@@ -1615,7 +1614,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
             <div className="lg:col-span-5 space-y-4">
               
               {/* Gateway Settings Card */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 space-y-3">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                     <Sliders size={14} className="text-teal-600 dark:text-teal-400" />
@@ -1663,7 +1662,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               </div>
 
               {/* Recent SMS History Log */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 space-y-3">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-3">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider block pb-2 border-b border-slate-100 dark:border-slate-800">
                   {isBn ? 'সর্বশেষ প্রেরিত এসএমএস লগ' : 'Recent Dispatch History'}
                 </span>
@@ -1698,34 +1697,34 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           
           {/* Top Boarding Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'মোট আবাসিক ছাত্র' : 'Residential Students'}</span>
-              <span className="text-2xl font-black text-slate-900 dark:text-white mt-1 block">
+              <span className="text-4xl font-black text-slate-900 dark:text-white mt-1 block">
                 {formatNumber(boardingStats.totalResidential, language)} {isBn ? 'জন' : ''}
               </span>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'সকালের নাস্তা' : 'Breakfast Meals'}</span>
-              <span className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1 block">
+              <span className="text-3xl font-black text-teal-600 dark:text-teal-400 mt-1 block">
                 {formatNumber(boardingStats.morningMeals, language)}
               </span>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'দুপুরের খাবার' : 'Lunch Meals'}</span>
-              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+              <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
                 {formatNumber(boardingStats.noonMeals, language)}
               </span>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase block">{isBn ? 'রাতের খাবার' : 'Dinner Meals'}</span>
-              <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1 block">
+              <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-1 block">
                 {formatNumber(boardingStats.nightMeals, language)}
               </span>
             </div>
           </div>
 
           {/* Residential Students Mess List */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'আবাসিক ছাত্র ডরমিটরি, বেড ও দৈনিক ডাইনিং হাজিরা' : 'Residential Dormitory & Daily Dining Roster'}
@@ -1824,7 +1823,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           {/* Fund Balances Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             
-            <div className="bg-gradient-to-br from-emerald-800 to-teal-900 text-white p-5 rounded-3xl shadow-md border border-emerald-700/40">
+ <div className="bg-emerald-800 text-white p-5 rounded-3xl border border-emerald-700/40">
               <span className="text-xs font-bold text-emerald-200 uppercase tracking-wide block">
                 {isBn ? 'যাকাত ও ফিতরা তহবিল স্থিতি' : 'Zakat & Fitra Fund'}
               </span>
@@ -1836,7 +1835,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-indigo-800 to-slate-900 text-white p-5 rounded-3xl shadow-md border border-indigo-700/40">
+ <div className="bg-indigo-800 text-white p-5 rounded-3xl border border-indigo-700/40">
               <span className="text-xs font-bold text-indigo-200 uppercase tracking-wide block">
                 {isBn ? 'সাধারণ ছাত্রকল্যাণ ও উপবৃত্তি তহবিল' : 'Student Welfare & Stipend Fund'}
               </span>
@@ -1848,12 +1847,12 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide block">
                   {isBn ? 'উপবৃত্তি ও সহায়তা গ্রহণকারী শিক্ষার্থী' : 'Stipend Beneficiaries'}
                 </span>
-                <span className="text-2xl font-black text-slate-900 dark:text-white mt-1 block">
+                <span className="text-3xl font-black text-slate-900 dark:text-white mt-1 block">
                   {formatNumber(welfareBeneficiaries.length, language)} {isBn ? 'জন' : ''}
                 </span>
               </div>
@@ -1871,7 +1870,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
           </div>
 
           {/* Welfare Beneficiaries Roster */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                 {isBn ? 'এতিম ও দুঃস্থ শিক্ষার্থী অনুদান রেজিস্টার' : 'Welfare Beneficiaries Ledger'}

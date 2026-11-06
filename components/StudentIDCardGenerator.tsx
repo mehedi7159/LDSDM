@@ -71,7 +71,7 @@ export const StudentIDCardGenerator: React.FC = () => {
       {/* Control Panel (Hidden during Print) */}
       <div className="print:hidden space-y-4">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
+ <div className="bg-teal-800 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
           <div>
             <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">
               <CreditCard size={16} className="text-amber-400" />
@@ -89,7 +89,7 @@ export const StudentIDCardGenerator: React.FC = () => {
 
           <Button
             onClick={handlePrint}
-            className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 cursor-pointer"
+ className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer"
           >
             <Printer size={16} />
             <span>{language === 'bn' ? 'প্রিন্ট করুন (Print)' : 'Print Documents'}</span>
@@ -97,13 +97,13 @@ export const StudentIDCardGenerator: React.FC = () => {
         </div>
 
         {/* Toolbar Filters */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-4">
+ <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
           {/* Doc Type Selector */}
           <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl flex items-center gap-1 border border-slate-200 dark:border-slate-800">
             <button
               onClick={() => setDocType('id_card')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                docType === 'id_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+ docType === 'id_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <CreditCard size={14} />
@@ -113,7 +113,7 @@ export const StudentIDCardGenerator: React.FC = () => {
             <button
               onClick={() => setDocType('admit_card')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                docType === 'admit_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+ docType === 'admit_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Award size={14} />
@@ -123,7 +123,7 @@ export const StudentIDCardGenerator: React.FC = () => {
             <button
               onClick={() => setDocType('testimonial')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                docType === 'testimonial' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+ docType === 'testimonial' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <FileText size={14} />
@@ -210,11 +210,11 @@ export const StudentIDCardGenerator: React.FC = () => {
                 {targetStudents.map(student => (
                   <div 
                     key={student.id} 
-                    className="w-full max-w-sm mx-auto bg-white rounded-2xl border-2 border-indigo-900 shadow-md overflow-hidden flex flex-col justify-between relative print:break-inside-avoid print:shadow-none"
+ className="w-full max-w-sm mx-auto bg-white rounded-2xl border-2 border-indigo-900 overflow-hidden flex flex-col justify-between relative print:break-inside-avoid print:shadow-none"
                     style={{ minHeight: '320px' }}
                   >
                     {/* ID Card Top Header */}
-                    <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-3.5 text-center relative border-b-2 border-amber-400">
+                    <div className="bg-teal-800 text-white p-3.5 text-center relative border-b-2 border-amber-400">
                       <div className="flex items-center justify-center gap-2 mb-1">
                         {schoolProfile.logoUrl ? (
                           <img src={schoolProfile.logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-full bg-white p-0.5" />
@@ -234,7 +234,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                     {/* ID Card Body */}
                     <div className="p-4 flex gap-4 items-center">
                       {/* Avatar */}
-                      <div className="w-20 h-24 rounded-xl bg-slate-100 border-2 border-slate-300 flex flex-col items-center justify-center text-slate-400 shrink-0 overflow-hidden shadow-2xs">
+ <div className="w-20 h-24 rounded-xl bg-slate-100 border-2 border-slate-300 flex flex-col items-center justify-center text-slate-400 shrink-0 overflow-hidden">
                         <User size={36} className="text-slate-300" />
                         <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Photo</span>
                       </div>
@@ -289,7 +289,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                 {targetStudents.map(student => (
                   <div 
                     key={student.id} 
-                    className="bg-white rounded-3xl border-2 border-slate-300 p-6 shadow-sm relative print:break-inside-avoid print:border-slate-800"
+ className="bg-white rounded-3xl border-2 border-slate-300 p-6 relative print:break-inside-avoid print:border-slate-800"
                   >
                     <div className="text-center pb-4 border-b-2 border-indigo-900">
                       <h2 className="text-lg font-black text-slate-900 uppercase">{schoolProfile.name}</h2>
@@ -340,7 +340,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                 {targetStudents.map(student => (
                   <div 
                     key={student.id} 
-                    className="bg-white rounded-3xl border-8 border-double border-amber-600/40 p-8 sm:p-12 shadow-md relative print:break-inside-avoid"
+ className="bg-white rounded-3xl border-8 border-double border-amber-600/40 p-8 sm:p-12 relative print:break-inside-avoid"
                   >
                     <div className="text-center pb-6 border-b border-slate-200">
                       <h1 className="text-2xl font-black text-slate-900 tracking-tight">{schoolProfile.name}</h1>

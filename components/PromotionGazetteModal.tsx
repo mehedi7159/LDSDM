@@ -43,7 +43,7 @@ export const PromotionGazetteModal: React.FC<PromotionGazetteModalProps> = ({ re
           <div className="flex items-center gap-2">
             <Button
               onClick={handlePrint}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 px-4 py-2 text-sm shadow-sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 px-4 py-2 text-sm"
             >
               <Printer size={16} />
               <span>{language === 'bn' ? 'গেজেট প্রিন্ট করুন' : 'Print Gazette'}</span>
@@ -84,7 +84,7 @@ export const PromotionGazetteModal: React.FC<PromotionGazetteModalProps> = ({ re
               </p>
             )}
 
-            <div className="mt-4 inline-block bg-slate-900 text-white px-5 py-1.5 rounded-full text-sm font-bold tracking-wide uppercase shadow-xs">
+            <div className="mt-4 inline-block bg-slate-900 text-white px-5 py-1.5 rounded-full text-sm font-bold tracking-wide uppercase">
               {language === 'bn' ? 'বার্ষিক শ্রেণি উত্তরণ গেজেট ও মেধা তালিকা' : 'Official Class Promotion Gazette & Merit Sheet'}
             </div>
           </div>

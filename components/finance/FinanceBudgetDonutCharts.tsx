@@ -181,11 +181,11 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-5">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 space-y-5">
       {/* Header with Timeframe Toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+          <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center">
             <ChartIcon className="w-5 h-5" />
           </div>
           <div>
@@ -201,7 +201,7 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
             onClick={() => setTimeframe('THIS_MONTH')}
             className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
               timeframe === 'THIS_MONTH'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -212,7 +212,7 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
             onClick={() => setTimeframe('ALL_TIME')}
             className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
               timeframe === 'ALL_TIME'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >

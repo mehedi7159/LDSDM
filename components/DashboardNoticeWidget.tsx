@@ -109,11 +109,11 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+    <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-4">
       {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
             <Megaphone size={20} />
           </div>
           <div>
@@ -133,7 +133,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
           {canManage && (
             <button
               onClick={() => setIsComposeModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus size={14} />
               <span>{language === 'bn' ? 'নতুন নোটিশ' : 'Post Notice'}</span>
@@ -157,7 +157,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
         <button
           onClick={() => setActiveFilter('all')}
           className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeFilter === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+            activeFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
           }`}
         >
           {language === 'bn' ? 'সব নোটিশ' : 'All'}
@@ -165,7 +165,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
         <button
           onClick={() => setActiveFilter('urgent')}
           className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeFilter === 'urgent' ? 'bg-rose-600 text-white shadow-2xs' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+            activeFilter === 'urgent' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
           }`}
         >
           {language === 'bn' ? '🚨 জরুরি' : 'Urgent'}
@@ -173,7 +173,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
         <button
           onClick={() => setActiveFilter('diary')}
           className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeFilter === 'diary' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            activeFilter === 'diary' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
           }`}
         >
           {language === 'bn' ? '📖 দৈনিক ডায়েরি' : 'Daily Diary'}
@@ -181,7 +181,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
         <button
           onClick={() => setActiveFilter('holiday')}
           className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeFilter === 'holiday' ? 'bg-purple-600 text-white shadow-2xs' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+            activeFilter === 'holiday' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
           }`}
         >
           {language === 'bn' ? '📅 পরীক্ষা ও ছুটি' : 'Exam & Holidays'}
@@ -204,7 +204,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
               <div
                 key={notice.id}
                 onClick={() => setSelectedNoticeForModal(notice)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md group ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
                   isUrgent 
                     ? 'bg-rose-50/30 border-rose-200/80 hover:border-rose-400' 
                     : 'bg-slate-50/50 border-slate-200/80 hover:border-indigo-300 hover:bg-white'
@@ -264,7 +264,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Megaphone size={18} className="text-amber-400" />
                 <h3 className="text-sm font-bold tracking-tight">
@@ -333,7 +333,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
       {isComposeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-indigo-900 to-blue-900 text-white flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Plus size={18} className="text-amber-400" />
                 <h3 className="text-sm font-bold tracking-tight">
@@ -486,7 +486,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 </button>
                 <Button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold shadow-md shadow-indigo-600/20"
+                  className="px-5 py-2 text-xs font-bold"
                 >
                   {language === 'bn' ? 'বিজ্ঞপ্তি প্রকাশ করুন' : 'Publish Notice'}
                 </Button>

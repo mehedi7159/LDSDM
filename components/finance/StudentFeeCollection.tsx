@@ -672,7 +672,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         
         {/* 1. Collected Fees */}
-        <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between border border-emerald-700/60 relative overflow-hidden">
+        <div className="bg-emerald-900 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between border border-emerald-700/60 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-emerald-200 uppercase tracking-wider flex items-center gap-1.5">
               <ArrowDownLeft className="w-4 h-4 text-emerald-300" />
@@ -684,7 +684,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
           </div>
 
           <div className="my-2.5">
-            <div className="text-2xl sm:text-3xl font-black text-white flex items-baseline gap-1 font-mono">
+            <div className="text-3xl sm:text-4xl font-black text-white flex items-baseline gap-1 font-mono">
               <span className="text-emerald-300 font-sans">৳</span>
               <span>{isBn ? formatBanglaNumber(aggregateMetrics.totalCollectedFees) : aggregateMetrics.totalCollectedFees.toLocaleString()}</span>
             </div>
@@ -704,7 +704,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         </div>
 
         {/* 2. Remaining Dues */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
@@ -716,7 +716,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
           </div>
 
           <div className="my-2">
-            <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 flex items-baseline gap-1 font-mono">
+            <div className="text-3xl sm:text-4xl font-black text-rose-600 dark:text-rose-400 flex items-baseline gap-1 font-mono">
               <span className="text-slate-700 dark:text-slate-200 font-sans">৳</span>
               <span>{isBn ? formatBanglaNumber(aggregateMetrics.totalDueFees) : aggregateMetrics.totalDueFees.toLocaleString()}</span>
             </div>
@@ -738,10 +738,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         </div>
 
         {/* 3. Teacher Salary Bridge & Runway Meter */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between border border-slate-700/80 relative overflow-hidden">
+        <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between border border-slate-700/80 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Scale className="w-4 h-4 text-amber-400" />
               {isBn ? 'উস্তাদ বেতন কভারেজ' : 'Teacher Salary Bridge'}
             </span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -778,10 +777,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         </div>
 
         {/* 4. Payment Characteristics Ratio */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               {isBn ? 'পেমেন্ট প্যাটার্ন ও আচরণ' : 'Payment Behavior'}
             </span>
             <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
@@ -827,13 +825,13 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       {/* ========================================================================= */}
       {/* 🧭 SUB-NAVIGATION TABS */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-1.5 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-1.5">
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => setActiveSubTab('collect')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeSubTab === 'collect'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
@@ -845,7 +843,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             onClick={() => setActiveSubTab('dues')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeSubTab === 'dues'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
@@ -864,7 +862,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             onClick={() => setActiveSubTab('salary-bridge')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeSubTab === 'salary-bridge'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
@@ -879,7 +877,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             onClick={() => setActiveSubTab('class-breakdown')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeSubTab === 'class-breakdown'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
@@ -891,7 +889,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             onClick={() => setActiveSubTab('history')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeSubTab === 'history'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
@@ -907,7 +905,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       {activeSubTab === 'collect' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Main Form (8 Cols) */}
-          <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
@@ -925,21 +923,21 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 <button
                   type="button"
                   onClick={() => applyPreset('TUITION_ONLY')}
-                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs hover:text-emerald-700"
+                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:text-emerald-700"
                 >
                   {isBn ? 'শুধু মাসিক বেতন' : 'Tuition Only'}
                 </button>
                 <button
                   type="button"
                   onClick={() => applyPreset('TUITION_AND_FOOD')}
-                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs hover:text-emerald-700"
+                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:text-emerald-700"
                 >
                   {isBn ? 'বেতন + খাবার' : 'Tuition + Food'}
                 </button>
                 <button
                   type="button"
                   onClick={() => applyPreset('ADMISSION_ONLY')}
-                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs hover:text-emerald-700"
+                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:text-emerald-700"
                 >
                   {isBn ? 'ভর্তি ও সেশন' : 'Admission'}
                 </button>
@@ -1159,7 +1157,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   type="submit"
                   size="lg"
                   variant="primary"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md py-3"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3"
                 >
                   <Printer className="w-4 h-4 mr-2" />
                   <span>{isBn ? `ফি জমা করুন ও রসিদ তৈরি করুন (মোট: ৳${formatBanglaNumber(computedTotal.net)})` : `Collect Fee & Print Receipt (৳${computedTotal.net.toLocaleString()})`}</span>
@@ -1171,7 +1169,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
           {/* Right Summary Panel (4 Cols) */}
           <div className="lg:col-span-4 space-y-4">
             {/* Live Amount Box */}
-            <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-sm border border-slate-800 space-y-4">
+            <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
                   {isBn ? 'মোট আদায়ের হিসাব' : 'Fee Calculation'}
@@ -1205,7 +1203,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </div>
 
             {/* Quick Link to Dues */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-rose-600 dark:text-rose-400" />
@@ -1234,7 +1232,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       {/* 📌 TAB 2: STUDENT DUES & BEHAVIORAL DIRECTORY */}
       {/* ========================================================================= */}
       {activeSubTab === 'dues' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-4">
           
           {/* Header & Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
@@ -1494,7 +1492,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       {/* ========================================================================= */}
       {activeSubTab === 'salary-bridge' && (
         <div className="space-y-5">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 flex items-center justify-center">
@@ -1521,7 +1519,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </div>
 
             {/* Coverage Meter Hero Card */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white border border-slate-700 space-y-4">
+            <div className="p-5 rounded-2xl bg-slate-900 text-white border border-slate-700 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
                   {isBn ? 'চলতি মাসের বেতন সুরক্ষা ইনডেক্স' : 'Monthly Payroll Coverage Status'}
@@ -1606,7 +1604,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       {/* 📌 TAB 4: CLASS-WISE BREAKDOWN */}
       {/* ========================================================================= */}
       {activeSubTab === 'class-breakdown' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-4">
           <div className="pb-4 border-b border-slate-100 dark:border-slate-800">
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -1656,7 +1654,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       {/* 📌 TAB 5: RECENT INFLOW HISTORY */}
       {/* ========================================================================= */}
       {activeSubTab === 'history' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-4">
           <div className="pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">

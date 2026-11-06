@@ -36,28 +36,28 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         return {
           icon: <Trash2 className="text-rose-600" size={24} />,
           iconBg: 'bg-rose-100/80 text-rose-600',
-          confirmBtn: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-rose-500/20',
+          confirmBtn: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white',
           badgeBg: 'bg-rose-50 text-rose-800 border-rose-200',
         };
       case 'warning':
         return {
           icon: <AlertTriangle className="text-amber-600" size={24} />,
           iconBg: 'bg-amber-100/80 text-amber-600',
-          confirmBtn: 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white shadow-amber-500/20',
+          confirmBtn: 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white',
           badgeBg: 'bg-amber-50 text-amber-900 border-amber-200',
         };
       case 'primary':
         return {
           icon: <KeyRound className="text-indigo-600" size={24} />,
           iconBg: 'bg-indigo-100/80 text-indigo-600',
-          confirmBtn: 'bg-[#5438dc] hover:bg-[#472fc4] active:bg-[#3d27aa] text-white shadow-indigo-500/20',
+          confirmBtn: 'bg-[#5438dc] hover:bg-[#472fc4] active:bg-[#3d27aa] text-white',
           badgeBg: 'bg-indigo-50 text-indigo-900 border-indigo-200',
         };
       default:
         return {
           icon: <HelpCircle className="text-blue-600" size={24} />,
           iconBg: 'bg-blue-100/80 text-blue-600',
-          confirmBtn: 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-blue-500/20',
+          confirmBtn: 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white',
           badgeBg: 'bg-blue-50 text-blue-900 border-blue-200',
         };
     }
@@ -81,7 +81,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </button>
 
         <div className="flex items-start gap-4 mb-4">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${styles.iconBg}`}>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${styles.iconBg}`}>
             {styles.icon}
           </div>
           <div className="pr-6">
@@ -113,7 +113,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 ${styles.confirmBtn}`}
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 ${styles.confirmBtn}`}
           >
             {isLoading ? (
               <span>প্রক্রিয়াধীন...</span>
