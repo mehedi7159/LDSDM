@@ -162,7 +162,7 @@ export const RECEIPT_LOCAL_ONLY_NOTE =
 
 export const RETRY_LABEL = 'আবার চেষ্টা করুন';
 
-const CONFIRM_TIMEOUT_MS = 15000;
+const CONFIRM_TIMEOUT_MS = 40000;
 const PENDING_KEY = 'ldsdm_pending_cloud_confirms';
 
 export type PendingConfirmKind =
@@ -267,6 +267,13 @@ async function writeFieldsToCloud(
   const snap = await getDoc(ref);
   const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
   const payload: Record<string, unknown> = { updatedBy, updatedAt: new Date().toISOString() };
+  const cloudTrash = (data.trashBin as any[] | undefined) || [];
+  const cloudTrashedIds = new Set<string>();
+  cloudTrash.forEach((t) => {
+    if (t?.data?.id) cloudTrashedIds.add(String(t.data.id));
+    if (t?.id) cloudTrashedIds.add(String(t.id));
+  });
+
   for (const [field, localRecords] of Object.entries(fields)) {
     const records = localRecords || [];
     if (records.length === 0) continue;
@@ -282,7 +289,11 @@ async function writeFieldsToCloud(
         );
       }
     }
-    payload[field] = mergeRecordsByKey(existing || [], records, keyFn).map(stripUndefinedRecord);
+    // Choke point guard (A6): refuse to resurrect records that exist in trashBin
+    const unTrashedRecords = records.filter(r => !cloudTrashedIds.has(keyFn(r)));
+    const merged = mergeRecordsByKey(existing || [], unTrashedRecords, keyFn).map(stripUndefinedRecord);
+    // Ensure any previously trashed record lingering in cloud existing is also pruned
+    payload[field] = merged.filter(r => !cloudTrashedIds.has(keyFn(r)));
   }
   if (Object.keys(payload).length <= 2) return;
   await setDoc(ref, payload, { merge: true });

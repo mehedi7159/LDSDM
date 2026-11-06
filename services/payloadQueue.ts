@@ -373,3 +373,85 @@ export function mergeQueuedIntoList<T extends Record<string, any>>(
   }
   return out;
 }
+
+/**
+ * Prune pending queue entries that have already arrived in cloud data.
+ * If a record queued for upsert is already present in remote data, it has landed,
+ * so we remove it from the pending queue. This clears badges and unconfirmed flags
+ * across all tabs automatically as soon as cloud data is received.
+ */
+export function pruneQueueAgainstRemoteData(data: Record<string, any>): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const items = readPendingPayloads();
+  if (items.length === 0) return false;
+  let changed = false;
+  const next: PendingPayloadItem[] = [];
+
+  // Trashed IDs present in remote trashBin
+  const remoteTrashBin = Array.isArray(data.trashBin) ? data.trashBin : [];
+  const trashedIds = new Set<string>();
+  remoteTrashBin.forEach((t: any) => {
+    if (t?.data?.id) trashedIds.add(String(t.data.id));
+    if (t?.id) trashedIds.add(String(t.id));
+  });
+
+  for (const item of items) {
+    if (item.op === 'upsert' && item.field && data[item.field]) {
+      const remoteList = Array.isArray(data[item.field]) ? data[item.field] : [];
+      const keyFn = fieldKeyFn(item.field);
+      const remoteKeys = new Set(remoteList.map((r: any) => keyFn(r)).filter(Boolean));
+
+      if (item.hasScalar) {
+        if (JSON.stringify(data[item.field]) === JSON.stringify(item.scalarValue)) {
+          changed = true;
+          continue; // completely landed
+        }
+      } else if (item.records) {
+        // A record is resolved if it either landed in cloud OR is in trashBin (deleted)
+        const remaining = item.records.filter((r) => {
+          const k = keyFn(r);
+          if (!k) return false;
+          if (remoteKeys.has(k) || trashedIds.has(k)) {
+            changed = true;
+            return false;
+          }
+          return true;
+        });
+
+        if (remaining.length !== item.records.length) {
+          changed = true;
+          if (remaining.length > 0) {
+            next.push({ ...item, records: remaining });
+            continue;
+          } else {
+            continue; // all records in this payload landed or were trashed
+          }
+        }
+      }
+    } else if (item.op === 'delete' && item.removals) {
+      // Check if removals have already taken effect in remote data
+      let allRemovalsConfirmed = true;
+      for (const removal of item.removals) {
+        if (data[removal.field] && Array.isArray(data[removal.field])) {
+          const keyFn = fieldKeyFn(removal.field);
+          const presentIds = new Set(data[removal.field].map((r: any) => keyFn(r)));
+          const stillPresent = removal.ids.some((id) => presentIds.has(id));
+          if (stillPresent) {
+            allRemovalsConfirmed = false;
+            break;
+          }
+        }
+      }
+      if (allRemovalsConfirmed) {
+        changed = true;
+        continue;
+      }
+    }
+    next.push(item);
+  }
+
+  if (changed) {
+    writePendingPayloads(next);
+  }
+  return changed;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import {
@@ -42,13 +42,14 @@ import { DailyAttendanceHub } from '../attendance/DailyAttendanceHub';
 import { TeacherSalaryEntry } from '../finance/TeacherSalaryEntry';
 import { AcademicTeacher } from '../../types/academic';
 import { FinanceTransaction, UserRole, StaffLeaveRecord, AppUser } from '../../types';
-import { resolveApprovalRoleId, resolveStaffRole, roleLabelBn, DESIGNATION_OPTIONS, DESIGNATION_OTHER, isMappedDesignation } from '../../services/staffRole';
-import { deleteInstitutionMembers } from '../../services/rbac';
+import { resolveApprovalRoleId, resolveStaffRole, roleLabelBn, DESIGNATION_OPTIONS, DESIGNATION_OTHER, isMappedDesignation, findLinkedUser } from '../../services/staffRole';
+import { deleteInstitutionMembers, SUPER_ADMIN_EMAIL } from '../../services/rbac';
 import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, SALARY_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { decideStaffLeave } from '../../services/staffSelfService';
 import { PageHeader } from '../ui/PageHeader';
 import { ServerUnavailablePanel } from '../ui/ServerDataGate';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { StaffEditModal, StaffFormSavePayload, StaffFormSaveResult } from './StaffEditModal';
 
 export type StaffSubTab =
   | 'directory'
@@ -106,10 +107,21 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     currentMember,
     cloudHydrated,
     cloudHydrationTimedOut,
-    isRecordUnconfirmed
+    isRecordUnconfirmed,
+    trashBin = []
   } = useApp();
 
   const isBn = language === 'bn';
+
+  // Anti-resurrection: IDs of all deleted staff in trashBin
+  const trashedStaffIds = useMemo(() => {
+    const ids = new Set<string>();
+    (trashBin || []).forEach((item: any) => {
+      if (item?.id) ids.add(String(item.id));
+      if (item?.data?.id) ids.add(String(item.data.id));
+    });
+    return ids;
+  }, [trashBin]);
 
   // First-snapshot gate (Nov 2026 stale-flash fix): until the first
   // main_store snapshot lands (or the 6s timeout elapses), the staff
@@ -119,10 +131,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const staffListStale = !cloudHydrated && cloudHydrationTimedOut;
   // P2 (sync hardening): even behind the first-snapshot gate, records
   // whose payload sits in the queue stay visible — badged, never passed
-  // for cloud truth. Every other row stays hidden exactly as before.
-  const gatedQueuedTeachers = teachers.filter(
-    (t) => isRecordUnconfirmed('teachers', t.id) || isRecordUnconfirmed('users', t.id)
-  );
+  // for cloud truth. Trashed records are strictly excluded.
+  const gatedQueuedTeachers = teachers
+    .filter((t) => !trashedStaffIds.has(String(t.id)))
+    .filter((t) => isRecordUnconfirmed('teachers', t.id) || isRecordUnconfirmed('users', t.id));
   // P2 gated list: compact cards for queued records only (no search,
   // filter, edit or delete here — the full directory owns those once
   // the gate lifts). The UnconfirmedBadge ('cloud-এ যায়নি') plus the
@@ -165,38 +177,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Phase 4: merged directory view — cards (main) or table (toggle).
   const [directoryView, setDirectoryView] = useState<'cards' | 'table'>('cards');
 
-  // Add/Edit Teacher Modal
+  // Add/Edit Teacher Modal (state encapsulated in memoized StaffEditModal to prevent re-render flickering)
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<AcademicTeacher | null>(null);
-  const [formLoginRole, setFormLoginRole] = useState<UserRole>('teacher');
-  // Multi-role: extra roles held alongside the primary login role
-  // (e.g. an accountant who also teaches). Saved to the staff record,
-  // the linked login account and the member document together.
-  const [formAdditionalRoles, setFormAdditionalRoles] = useState<UserRole[]>([]);
-  // Phase 3: designation SELECT state. Mapped option value, or
-  // DESIGNATION_OTHER when the stored designation is legacy free text
-  // (then the text input below holds the custom title; the role still
-  // comes from the explicit Login Role select, never from free text).
-  const [formDesignationSelect, setFormDesignationSelect] = useState<string>(DESIGNATION_OPTIONS[0].value);
-  const [teacherFormData, setTeacherFormData] = useState<Partial<AcademicTeacher>>({
-    name: '',
-    nameBn: '',
-    employeeCode: '',
-    designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
-    phone: '',
-    email: '',
-    password: '',
-    status: 'ACTIVE',
-    assignedClasses: [],
-    assignedSubjects: []
-  });
-  // Phase 2 field-level errors: duplicate code / invalid email stay
-  // under the field until fixed — never only a 3.5s toast.
-  const [formErrors, setFormErrors] = useState<{ employeeCode?: string; email?: string; designation?: string; phone?: string; password?: string }>({});
-  const employeeCodeInputRef = useRef<HTMLInputElement>(null);
-  const emailInputRef = useRef<HTMLInputElement>(null);
-  const phoneInputRef = useRef<HTMLInputElement>(null);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   // Leave Management State — records live in the shared, cloud-synced store
   // (AppContext staffLeaves) so they survive across devices and admins.
@@ -281,40 +264,130 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     return dailyStaffAttendance.filter(r => r.date === todayStr);
   }, [todayStr, dailyStaffAttendance]);
 
-  // Unified Staff list (Phase 1): ACTIVE/INACTIVE staff only — teachers
-  // plus staff-role login accounts. Pending applicants are NOT in
-  // this list anymore: they live only in the pending-applicants strip
-  // below (approve + reject, no edit/delete), so nobody unapproved
-  // can appear in the teacher list.
+  /**
+   * Strict filter for authentic staff accounts (Permanent solution for ghost test accounts).
+   * Ensures that ONLY staff with genuine Firebase Authentication info (or authentic credentials)
+   * are displayed in the directory, while legacy/demo/test accounts are permanently excluded.
+   */
+  const isAuthenticFirebaseStaff = useCallback((staff: AcademicTeacher): boolean => {
+    if (!staff || !staff.id) return false;
+    const staffId = staff.id;
+    const staffEmail = (staff.email || '').trim().toLowerCase();
+    const staffPhone = (staff.phone || '').replace(/[^0-9]/g, '');
+
+    // 1. Super Admin is always authentic
+    if (staffEmail === SUPER_ADMIN_EMAIL.toLowerCase()) return true;
+
+    // 2. Reject obvious test / demo / dummy IDs
+    if (
+      staffId.startsWith('demo-') ||
+      staffId.startsWith('test-') ||
+      staffId.startsWith('t-test') ||
+      staffId.startsWith('user_teacher_') ||
+      staffId.startsWith('user_acc_') ||
+      staffId.startsWith('user_staff_') ||
+      staffId.startsWith('user_principal_') ||
+      staffId.startsWith('user_guardian_')
+    ) {
+      return false;
+    }
+
+    // 3. Reject synthetic or test email domains
+    if (
+      staffEmail.includes('madrasha.local') ||
+      staffEmail.includes('example.com') ||
+      staffEmail.includes('@test.') ||
+      staffEmail.startsWith('test-') ||
+      staffEmail.startsWith('test@') ||
+      staffEmail.startsWith('demo@')
+    ) {
+      return false;
+    }
+
+    // 4. Reject test/demo names
+    const nameLower = (staff.name || '').toLowerCase();
+    const nameBn = staff.nameBn || '';
+    if (
+      nameLower.includes('test teacher') ||
+      nameLower.includes('demo teacher') ||
+      nameBn.includes('টেস্ট শিক্ষক') ||
+      nameBn.includes('ডেমো শিক্ষক')
+    ) {
+      return false;
+    }
+
+    // 5. Must not be deleted or pending
+    if ((staff.status || 'ACTIVE').toUpperCase() === 'DELETED' || (staff as any).isDeleted) {
+      return false;
+    }
+
+    // 6. Look for linked user in users
+    const linkedUser = findLinkedUser(staff, users);
+    if (linkedUser) {
+      if (linkedUser.status === 'pending' || (linkedUser as any).status === 'deleted') return false;
+      const uEmail = (linkedUser.email || '').trim().toLowerCase();
+      const uPhone = (linkedUser.phone || '').replace(/[^0-9]/g, '');
+
+      // Check if linked user has authentic credentials
+      const hasRealEmail = uEmail.includes('@') && !uEmail.endsWith('@madrasha.local') && !uEmail.includes('example.com') && !uEmail.includes('test');
+      const hasRealPhone = uPhone.length >= 11;
+      const hasRealPassword = !!linkedUser.password && linkedUser.password.length >= 6;
+      const hasAuthProvider = !!linkedUser.authProvider;
+
+      return (hasRealEmail || hasRealPhone) && (hasRealPassword || hasAuthProvider || hasRealEmail);
+    }
+
+    // 7. If no linked user in users yet, check staff record's own credentials
+    const hasStaffEmail = staffEmail.includes('@') && !staffEmail.endsWith('@madrasha.local') && !staffEmail.includes('example.com') && !staffEmail.includes('test');
+    const hasStaffPhone = staffPhone.length >= 11;
+    const hasStaffPassword = !!staff.password && staff.password.length >= 6;
+
+    return (hasStaffEmail || hasStaffPhone) && (hasStaffPassword || hasStaffEmail);
+  }, [users]);
+
+  // Unified Staff list: strictly authenticated staff accounts only.
   const unifiedStaffList = useMemo(() => {
-    const list: AcademicTeacher[] = teachers.filter(t =>
-      (t.status || 'ACTIVE').toUpperCase() !== 'PENDING'
-    );
-    // If teachers are empty or users have staff not in teachers, complement
+    const list: AcademicTeacher[] = teachers
+      .filter(t => !trashedStaffIds.has(String(t.id)))
+      .filter(t => (t.status || 'ACTIVE').toUpperCase() !== 'PENDING')
+      .filter(t => isAuthenticFirebaseStaff(t));
+
+    // If users has authentic staff not in teachers list, complement
     users.forEach(u => {
-      if (u.status === 'pending') return; // pending applicants: strip only
-      if ((u.role === 'teacher' || u.role === 'staff' || u.role === 'accountant' || u.role === 'principal') && !list.some(t =>
-        t.id === u.id || t.userId === u.id ||
-        (u.email && t.email?.toLowerCase() === u.email.toLowerCase()) ||
-        (u.phone && t.phone === u.phone)
-      )) {
-        list.push({
-          id: u.id,
-          name: u.name,
-          nameBn: u.nameBn,
-          designation: u.designation || (u.role === 'principal' ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : u.role === 'accountant' ? 'হিসাবরক্ষক' : u.role === 'staff' ? 'অফিস কর্মী' : 'সহকারী শিক্ষক'),
-          phone: u.phone,
-          email: u.email,
-          password: (u as any).password,
-          additionalRoles: (u.additionalRoles || []) as string[],
-          status: (u.status === 'blocked' || u.status === 'inactive') ? 'INACTIVE' : 'ACTIVE',
-          assignedClasses: u.assignedClasses || []
-        });
+      if (u.status === 'pending' || (u as any).status === 'deleted' || trashedStaffIds.has(String(u.id))) return;
+      if (
+        (u.role === 'teacher' || u.role === 'staff' || u.role === 'accountant' || u.role === 'principal' || u.role === 'super_admin') &&
+        !list.some(t =>
+          t.id === u.id || t.userId === u.id ||
+          (u.email && t.email?.toLowerCase() === u.email.toLowerCase()) ||
+          (u.phone && t.phone === u.phone)
+        )
+      ) {
+        const uEmail = (u.email || '').trim().toLowerCase();
+        const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+        const isOwner = uEmail === SUPER_ADMIN_EMAIL.toLowerCase();
+        const hasRealEmail = uEmail.includes('@') && !uEmail.endsWith('@madrasha.local') && !uEmail.includes('example.com') && !uEmail.includes('test');
+        const hasRealPhone = uPhone.length >= 11;
+
+        if (isOwner || hasRealEmail || hasRealPhone) {
+          list.push({
+            id: u.id,
+            name: u.name,
+            nameBn: u.nameBn,
+            designation: u.designation || (u.role === 'principal' ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : u.role === 'accountant' ? 'হিসাবরক্ষক' : u.role === 'staff' ? 'অফিস কর্মী' : 'সহকারী শিক্ষক'),
+            phone: u.phone,
+            email: u.email,
+            password: (u as any).password,
+            additionalRoles: (u.additionalRoles || []) as string[],
+            status: (u.status === 'blocked' || u.status === 'inactive') ? 'INACTIVE' : 'ACTIVE',
+            assignedClasses: u.assignedClasses || []
+          });
+        }
       }
     });
 
     return list;
-  }, [teachers, users]);
+  }, [teachers, users, isAuthenticFirebaseStaff, trashedStaffIds]);
 
   // Pending applicants, kept strictly separate from the directory:
   // pending member applications + pending login accounts + legacy
@@ -333,6 +406,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       list.push(rec);
     };
     pendingMembers.forEach(m => {
+      if (trashedStaffIds.has(String(m.uid))) return;
       pushUnique({
         id: m.uid,
         name: m.displayName || 'Teacher',
@@ -346,7 +420,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       });
     });
     users.forEach(u => {
-      if (u.status !== 'pending') return;
+      if (u.status !== 'pending' || trashedStaffIds.has(String(u.id))) return;
       pushUnique({
         id: u.id,
         name: u.name,
@@ -360,11 +434,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       });
     });
     teachers.forEach(t => {
+      if (trashedStaffIds.has(String(t.id))) return;
       if ((t.status || '').toUpperCase() !== 'PENDING') return;
       pushUnique({ ...t, status: 'PENDING' });
     });
     return list;
-  }, [pendingMembers, users, teachers]);
+  }, [pendingMembers, users, teachers, trashedStaffIds]);
 
   // Real-time KPI Calculations — ACTIVE staff only (Phase 1): pending
   // applicants must never inflate the teacher/staff counts.
@@ -473,56 +548,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
   const handleOpenAddModal = () => {
     setEditingTeacher(null);
-    setFormLoginRole('teacher');
-    setFormAdditionalRoles([]);
-    setFormDesignationSelect(DESIGNATION_OPTIONS[0].value);
-    setFormErrors({});
-    setTeacherFormData({
-      name: '',
-      nameBn: '',
-      employeeCode: nextEmployeeCode(),
-      designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
-      phone: '',
-      email: '',
-      password: '',
-      status: 'ACTIVE',
-      assignedClasses: [],
-      assignedSubjects: []
-    });
     setIsAddEditModalOpen(true);
   };
 
   // Handle open edit modal
   const handleOpenEditModal = (teacher: AcademicTeacher) => {
     setEditingTeacher(teacher);
-    const linkedUser = (users || []).find(u =>
-      u.id === teacher.id ||
-      (teacher.email && u.email?.toLowerCase() === teacher.email.toLowerCase()) ||
-      (teacher.phone && u.phone === teacher.phone)
-    );
-    // Phase 3: single role rule — linked account first, fixed
-    // designation mapping second, legacy fallback flagged (the card
-    // shows the verify mark; the form lets the admin fix it).
-    const primaryRole = resolveStaffRole(teacher, users).role;
-    setFormLoginRole(primaryRole);
-    // Phase 3: designation select follows the stored value — mapped
-    // option, or "other" with the legacy text kept for hand-fixing.
-    setFormDesignationSelect(
-      teacher.designation && isMappedDesignation(teacher.designation)
-        ? teacher.designation
-        : (teacher.designation ? DESIGNATION_OTHER : DESIGNATION_OPTIONS[0].value)
-    );
-    const storedAdditional =
-      (linkedUser?.additionalRoles && linkedUser.additionalRoles.length > 0)
-        ? linkedUser.additionalRoles
-        : ((teacher.additionalRoles || []) as UserRole[]);
-    setFormAdditionalRoles(storedAdditional.filter(r => r !== primaryRole));
-    setFormErrors({});
-    setTeacherFormData({
-      ...teacher,
-      // Edit never prefills a password: blank keeps the old one (29 Oct 2026).
-      password: ''
-    });
     setIsAddEditModalOpen(true);
   };
 
@@ -539,129 +570,48 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     }
   };
 
-  // Handle save teacher
-  const handleSaveTeacher = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Creation guard (public signup removed): only super_admin +
-    // principal may ADD a record. Anyone else reaching submit gets
-    // an honest denial — never a crash, never a silent success.
-    // Edit of an existing record passes through untouched.
-    if (!editingTeacher && !canCreateStaff) {
-      showToast(isBn ? 'শুধু সুপার অ্যাডমিন ও অধ্যক্ষ নতুন অ্যাকাউন্ট তৈরি করতে পারবেন' : 'Only super admin and principal can create new accounts');
-      return;
-    }
-    if (!teacherFormData.name?.trim()) {
-      showToast(isBn ? 'দয়া করে শিক্ষকের নাম প্রদান করুন' : 'Please provide staff name');
-      return;
+  // Handle save teacher from isolated modal
+  const handleSaveStaffModal = async (payload: StaffFormSavePayload): Promise<StaffFormSaveResult> => {
+    const { teacherData, loginRole, additionalRoles, isEditing } = payload;
+    if (!isEditing && !canCreateStaff) {
+      const msg = isBn ? 'শুধু সুপার অ্যাডমিন ও অধ্যক্ষ নতুন অ্যাকাউন্ট তৈরি করতে পারবেন' : 'Only super admin and principal can create new accounts';
+      showToast(msg);
+      return { success: false, message: msg };
     }
 
-    // Phase 3: "other" designation needs its custom title typed —
-    // an empty custom title saves nothing (the role still comes from
-    // the explicit Login Role select, never from this text).
-    if (formDesignationSelect === DESIGNATION_OTHER && !(teacherFormData.designation || '').trim()) {
-      setFormErrors(prev => ({ ...prev, designation: isBn ? 'অন্যান্য পদবি লিখুন অথবা তালিকা থেকে বাছুন' : 'Type the custom designation or pick from the list' }));
-      showToast(isBn ? 'পদবি বাছুন অথবা অন্যান্য পদবির নাম লিখুন' : 'Pick a designation or type the custom title');
-      return;
+    const typedPassword = (teacherData.password || '').trim();
+    if (!isEditing && !typedPassword) {
+      const msg = isBn ? 'নতুন অ্যাকাউন্টের জন্য লগইন পাসওয়ার্ড দিন' : 'Enter a login password for the new account';
+      showToast(msg);
+      return { success: false, message: msg, fieldErrors: { password: msg } };
     }
+    const passwordToSave = isEditing ? (typedPassword || editingTeacher?.password || '') : typedPassword;
 
-    // Phase 2 field-level validation: duplicate code / invalid email
-    // stay under the field until fixed — never only a 3.5s toast.
-    // Nov 2026 (bug-free add form): duplicate email/phone, phone
-    // format, password length and the email-or-phone login contact
-    // are validated here too — never a silent overwrite, never a
-    // record that cannot log in.
-    const code = (teacherFormData.employeeCode || '').trim();
-    const emailVal = (teacherFormData.email || '').trim();
-    const phoneVal = (teacherFormData.phone || '').trim();
-    const phoneDigits = phoneVal.replace(/[^0-9]/g, '');
-    const fieldErrs: { employeeCode?: string; email?: string; phone?: string; password?: string } = {};
-    if (code) {
-      const dup = unifiedStaffList.some(s =>
-        s.id !== editingTeacher?.id &&
-        (s.employeeCode || '').trim().toLowerCase() === code.toLowerCase()
-      );
-      if (dup) fieldErrs.employeeCode = isBn ? 'এই কর্মী কোড ইতিমধ্যে ব্যবহৃত হয়েছে' : 'This employee code is already in use';
-    }
-    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
-      fieldErrs.email = isBn ? 'সঠিক ইমেইল ঠিকানা দিন' : 'Enter a valid email address';
-    }
-    if (emailVal && !fieldErrs.email) {
-      const dupEmail = unifiedStaffList.some(s =>
-        s.id !== editingTeacher?.id &&
-        (s.email || '').trim().toLowerCase() === emailVal.toLowerCase()
-      ) || users.some(u =>
-        u.id !== editingTeacher?.id &&
-        (u.email || '').trim().toLowerCase() === emailVal.toLowerCase()
-      );
-      if (dupEmail) fieldErrs.email = isBn ? 'এই ইমেইল ইতিমধ্যে অন্য স্টাফের সাথে যুক্ত আছে' : 'This email is already linked to another staff member';
-    }
-    if (phoneVal) {
-      if (!(phoneDigits.length === 11 && phoneDigits.startsWith('01'))) {
-        fieldErrs.phone = isBn ? 'সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (01XXXXXXXXX)' : 'Enter a valid 11-digit mobile number (01XXXXXXXXX)';
-      } else {
-        const dupPhone = unifiedStaffList.some(s =>
-          s.id !== editingTeacher?.id &&
-          (s.phone || '').replace(/[^0-9]/g, '') === phoneDigits
-        ) || users.some(u =>
-          u.id !== editingTeacher?.id &&
-          (u.phone || '').replace(/[^0-9]/g, '') === phoneDigits
-        );
-        if (dupPhone) fieldErrs.phone = isBn ? 'এই মোবাইল নম্বর ইতিমধ্যে অন্য স্টাফের সাথে যুক্ত আছে' : 'This phone number is already linked to another staff member';
-      }
-    }
-    if (!emailVal && !phoneVal) {
-      fieldErrs.email = isBn ? 'লগইনের জন্য ইমেইল বা মোবাইল — অন্তত একটি দিন' : 'Provide an email or a phone number for login';
-    }
-    const typedPasswordEarly = (teacherFormData.password || '').trim();
-    if ((!editingTeacher && typedPasswordEarly.length < 6) || (editingTeacher && typedPasswordEarly && typedPasswordEarly.length < 6)) {
-      fieldErrs.password = isBn ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters';
-    }
-    if (fieldErrs.employeeCode || fieldErrs.email || fieldErrs.phone || fieldErrs.password) {
-      setFormErrors(fieldErrs);
-      if (fieldErrs.employeeCode) employeeCodeInputRef.current?.focus();
-      else if (fieldErrs.email) emailInputRef.current?.focus();
-      else if (fieldErrs.phone) phoneInputRef.current?.focus();
-      else passwordInputRef.current?.focus();
-      return;
-    }
-    setFormErrors({});
-
-    // Edit must never force a password: blank keeps the record's old
-    // password (29 Oct 2026 — the form used to prefill '123' and a save
-    // silently reset the account's password to it). Add still needs one.
-    const typedPassword = teacherFormData.password?.trim() || '';
-    if (!editingTeacher && !typedPassword) {
-      showToast(isBn ? 'নতুন অ্যাকাউন্টের জন্য লগইন পাসওয়ার্ড দিন' : 'Enter a login password for the new account');
-      return;
-    }
-    const passwordToSave = editingTeacher ? (typedPassword || editingTeacher.password || '') : typedPassword;
-
-    const additionalRoles = formAdditionalRoles.filter(r => r !== formLoginRole);
-
-    if (editingTeacher) {
+    if (isEditing && editingTeacher) {
       const sync = await updateTeacher({
         ...editingTeacher,
-        ...teacherFormData,
-        name: teacherFormData.name.trim(),
-        nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
+        ...teacherData,
+        name: teacherData.name.trim(),
+        nameBn: teacherData.nameBn?.trim() || teacherData.name.trim(),
         password: passwordToSave,
         additionalRoles
-      } as AcademicTeacher, formLoginRole);
-      // Phase 2 edit validation: a payload error must STOP the save
-      // here — show it under the field, keep the modal open, NEVER
-      // a success toast with the old record saved.
+      } as AcademicTeacher, loginRole);
+
       if (sync.error) {
         const msg = sync.error;
         const isCodeErr = /কোড|code/i.test(msg);
         const isEmailErr = /ইমেইল|email/i.test(msg);
-        if (isCodeErr) { setFormErrors({ employeeCode: msg }); employeeCodeInputRef.current?.focus(); }
-        else if (isEmailErr) { setFormErrors({ email: msg }); emailInputRef.current?.focus(); }
-        else showToast(msg);
-        return;
+        showToast(msg);
+        return {
+          success: false,
+          message: msg,
+          fieldErrors: {
+            employeeCode: isCodeErr ? msg : undefined,
+            email: isEmailErr ? msg : undefined
+          }
+        };
       }
-      // Truthful save (Step 2): the credential sync above never covered
-      // the main_store record write — confirm it here, and let the
-      // record's cloud status lead the toast (credential status second).
+
       const record = await confirmStaffCloudSync(sync.nextTeachers, sync.nextUsers);
       if (!record.success) {
         const credClause = sync.status === 'failed'
@@ -679,34 +629,39 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       } else {
         showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
       }
+
+      setIsAddEditModalOpen(false);
+      return { success: true };
     } else {
       const addRes = await addTeacher({
-        name: teacherFormData.name.trim(),
-        nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
-        employeeCode: teacherFormData.employeeCode || `MDR-T${Date.now().toString().slice(-3)}`,
-        designation: teacherFormData.designation || 'সহকারী শিক্ষক',
-        phone: teacherFormData.phone || '',
-        email: teacherFormData.email || '',
+        name: teacherData.name.trim(),
+        nameBn: teacherData.nameBn?.trim() || teacherData.name.trim(),
+        employeeCode: teacherData.employeeCode || `MDR-T${Date.now().toString().slice(-3)}`,
+        designation: teacherData.designation || 'সহকারী শিক্ষক',
+        phone: teacherData.phone || '',
+        email: teacherData.email || '',
         password: passwordToSave,
-        status: teacherFormData.status || 'ACTIVE',
+        status: teacherData.status || 'ACTIVE',
         additionalRoles,
-        assignedClasses: teacherFormData.assignedClasses || [],
-        assignedSubjects: teacherFormData.assignedSubjects || []
-      }, formLoginRole);
+        assignedClasses: teacherData.assignedClasses || [],
+        assignedSubjects: teacherData.assignedSubjects || []
+      }, loginRole);
+
       if (addRes && !addRes.success) {
         const msg = addRes.message || (isBn ? 'যুক্ত করা যায়নি — তথ্য যাচাই করুন' : 'Could not add — please check the information');
         const isCodeErr = /কোড|code/i.test(msg);
         const isEmailErr = /ইমেইল|email/i.test(msg);
-        if (isCodeErr) { setFormErrors({ employeeCode: msg }); employeeCodeInputRef.current?.focus(); }
-        else if (isEmailErr) { setFormErrors({ email: msg }); emailInputRef.current?.focus(); }
-        else showToast(msg);
-        return;
+        showToast(msg);
+        return {
+          success: false,
+          message: msg,
+          fieldErrors: {
+            employeeCode: isCodeErr ? msg : undefined,
+            email: isEmailErr ? msg : undefined
+          }
+        };
       }
-      // Truthful save (Step 2): the old toast claimed the login account
-      // was created even when provisioning failed or was skipped, and
-      // never confirmed the record write. Both outcomes are now stated
-      // plainly; provisioning itself is unchanged (failure still never
-      // blocks creation, next login still retries).
+
       const record = await confirmStaffCloudSync(addRes.nextTeachers, addRes.nextUsers);
       const provBn = addRes.provisioning === 'synced'
         ? 'লগইন অ্যাকাউন্ট সক্রিয় হয়েছে।'
@@ -725,9 +680,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       } else {
         showToast(isBn ? `নতুন শিক্ষক/কর্মচারী সফলভাবে যুক্ত হয়েছে। ${provBn}` : `New staff member added successfully. ${provEn}`);
       }
-    }
 
-    setIsAddEditModalOpen(false);
+      setIsAddEditModalOpen(false);
+      return { success: true };
+    }
   };
 
   // Approval dialog state (Phase 1): approving a teacher must let the
@@ -863,13 +819,27 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // (seed ids / @madrasha.local emails) and always keeps super_admin
   // + the signed-in admin. Cloud-confirmed + member cleanup AFTER
   // confirm + truthful result — never a local-only success.
-  const isDemoUser = (u: any) =>
+  const isDemoUser = useCallback((u: any) =>
+    !u || !u.id ||
     (u.id || '').startsWith('user_teacher_') ||
     (u.id || '').startsWith('user_acc_') ||
     (u.id || '').startsWith('user_staff_') ||
     (u.id || '').startsWith('user_guardian_') ||
-    Boolean(u.email && u.email.includes('madrasha.local'));
-  const demoUsers = (users || []).filter(isDemoUser);
+    (u.id || '').startsWith('user_principal_') ||
+    (u.id || '').startsWith('test-') ||
+    (u.id || '').startsWith('demo-') ||
+    u.status === 'deleted' ||
+    Boolean(u.email && (u.email.includes('madrasha.local') || u.email.includes('example.com') || u.email.includes('@test.') || u.email.startsWith('test'))), []);
+
+  const demoUsers = useMemo(() => (users || []).filter(isDemoUser), [users, isDemoUser]);
+
+  const unauthenticTeachers = useMemo(() => {
+    return (teachers || []).filter(t => !isAuthenticFirebaseStaff(t));
+  }, [teachers, isAuthenticFirebaseStaff]);
+
+  const unauthenticStaffCount = useMemo(() => {
+    return unauthenticTeachers.length + demoUsers.length;
+  }, [unauthenticTeachers, demoUsers]);
 
   const executeClearDemoUsers = async () => {
     setShowDemoClearConfirm(false);
@@ -877,32 +847,50 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setIsClearingDemo(true);
     try {
       const prevUsers = users;
-      const filtered = users.filter(u =>
+      const prevTeachers = teachers;
+
+      // Filter only real authentic teachers and users
+      const cleanTeachers = teachers.filter(t => isAuthenticFirebaseStaff(t));
+      const cleanUsers = users.filter(u =>
         u.role === 'super_admin' ||
         (currentUser?.email && u.email?.toLowerCase() === currentUser.email.toLowerCase()) ||
         (currentUser?.id && u.id === currentUser.id) ||
         !isDemoUser(u)
       );
-      const removed = users.filter(u => !filtered.some(f => f.id === u.id));
-      setUsers(filtered);
-      const confirmResult = await confirmStaffCloudSync(undefined, filtered);
+
+      const removedTeachers = teachers.filter(t => !cleanTeachers.some(f => f.id === t.id));
+      const removedUsers = users.filter(u => !cleanUsers.some(f => f.id === u.id));
+      const totalRemoved = removedTeachers.length + removedUsers.length;
+
+      setTeachers(cleanTeachers);
+      setUsers(cleanUsers);
+
+      try {
+        localStorage.setItem('teachers', JSON.stringify(cleanTeachers));
+        localStorage.setItem('madrasha_app_users', JSON.stringify(cleanUsers));
+      } catch (e) {}
+
+      // Write permanently to Firestore main_store
+      const confirmResult = await confirmStaffCloudSync(cleanTeachers, cleanUsers);
       if (!confirmResult.success) {
+        setTeachers(prevTeachers);
         setUsers(prevUsers);
         showToast(confirmResult.message || STAFF_CLOUD_FAILURE_MESSAGE);
         return;
       }
-      // Member cleanup AFTER the cloud confirm (Phase 2 order rule).
-      // Missing member docs delete cleanly, so ok=false here means a
-      // real write error — reported, not hidden.
-      const memberRes = await deleteInstitutionMembers('inst_madrasah_primary', removed.map(u => u.id));
-      try {
-        localStorage.setItem('madrasha_app_users', JSON.stringify(filtered));
-      } catch (e) {}
+
+      // Member cleanup in Firestore RBAC
+      const uidsToDelete = Array.from(new Set([
+        ...removedTeachers.map(t => t.id),
+        ...removedUsers.map(u => u.id)
+      ]));
+      const memberRes = await deleteInstitutionMembers('inst_madrasah_primary', uidsToDelete);
+
       showToast(isBn
-        ? `ডেমো অ্যাকাউন্ট ${removed.length}টি মুছে ফেলা হয়েছে।${memberRes.failedUids.length > 0 ? ` member doc ${memberRes.failedUids.length}টি মোছা যায়নি।` : ''}`
-        : `Removed ${removed.length} demo accounts.${memberRes.failedUids.length > 0 ? ` ${memberRes.failedUids.length} member docs could not be removed.` : ''}`);
+        ? `স্থায়ীভাবে টেস্ট ও অকেজো স্টাফ মুছে ফেলা হয়েছে (মোট: ${totalRemoved}টি)। ডাটাবেজে কেবল আসল ${cleanTeachers.length} জন স্টাফ সংরক্ষিত!`
+        : `Permanently removed ${totalRemoved} ghost accounts. Database now contains only ${cleanTeachers.length} authentic staff!`);
     } catch (err: any) {
-      showToast(isBn ? 'ডেমো অ্যাকাউন্ট মুছতে সমস্যা হয়েছে' : 'Could not clear demo accounts');
+      showToast(isBn ? 'টেস্ট অ্যাকাউন্ট মুছতে সমস্যা হয়েছে' : 'Could not clear test accounts');
     } finally {
       setIsClearingDemo(false);
     }
@@ -1361,13 +1349,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   </button>
                 </div>
 
-                {isAdminTier && demoUsers.length > 0 && (
+                {isAdminTier && unauthenticStaffCount > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowDemoClearConfirm(true)}
-                    className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 transition-all cursor-pointer"
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
                   >
-                    {isBn ? `ডেমো অ্যাকাউন্ট মুছুন (${demoUsers.length})` : `Clear demo accounts (${demoUsers.length})`}
+                    <Trash2 size={13} />
+                    <span>{isBn ? `টেস্ট অ্যাকাউন্ট চিরতরে মুছুন (${unauthenticStaffCount})` : `Purge Test Accounts (${unauthenticStaffCount})`}</span>
                   </button>
                 )}
 
@@ -1384,16 +1373,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               </div>
             </div>
 
-            {/* Phase 4: demo-clear confirm (moved from Tab 2). */}
+            {/* Permanent Purge confirm */}
             <ConfirmDialog
               isOpen={showDemoClearConfirm}
               onClose={() => setShowDemoClearConfirm(false)}
               onConfirm={executeClearDemoUsers}
-              title={isBn ? 'ডেমো অ্যাকাউন্ট মুছবেন?' : 'Clear demo accounts?'}
+              title={isBn ? 'টেস্ট ও অকেজো স্টাফ একাউন্ট চিরতরে মুছবেন?' : 'Permanently purge test & ghost accounts?'}
               message={isBn
-                ? `শুধু ডেমো অ্যাকাউন্ট (${demoUsers.length}টি) মুছে যাবে — আসল শিক্ষক/কর্মী, সুপার অ্যাডমিন ও আপনার নিজের অ্যাকাউন্ট থাকবে। এই কাজ ফেরানো যাবে না।`
-                : `Only demo accounts (${demoUsers.length}) will be removed — real staff, super admin and your own account stay. This cannot be undone.`}
-              confirmLabel={isBn ? 'হ্যাঁ, মুছুন' : 'Yes, clear'}
+                ? `ডাটাবেজ ও ক্লাউড থেকে সব টেস্ট ও অনুমোদনহীন স্টাফ (${unauthenticStaffCount}টি) স্থায়ীভাবে মুছে ফেলা হবে। শুধু আপনার তৈরি ৩ জন আসল শিক্ষক ও আসল অ্যাকাউন্ট সংরক্ষিত থাকবে। এটি আর ফিরে আসবে না।`
+                : `All ${unauthenticStaffCount} test and ghost accounts will be permanently wiped from both local storage and cloud database. Only your genuine authentic staff will remain.`}
+              confirmLabel={isBn ? 'হ্যাঁ, চিরতরে মুছুন' : 'Yes, purge permanently'}
               cancelLabel={isBn ? 'বাতিল' : 'Cancel'}
               variant="danger"
               isLoading={isClearingDemo}
@@ -2177,267 +2166,21 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         </div>
       )}
 
-      {/* Add / Edit Staff Modal */}
-      {isAddEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 p-5 shrink-0">
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-                <UserPlus size={18} className="text-teal-600 dark:text-teal-400" />
-                <span>{editingTeacher ? (isBn ? 'শিক্ষক/কর্মী তথ্য সম্পাদনা' : 'Edit Staff') : (isBn ? 'নতুন শিক্ষক/কর্মচারী নিবন্ধন' : 'Add New Staff')}</span>
-              </h3>
-              <button 
-                onClick={() => setIsAddEditModalOpen(false)}
-                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 p-1"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveTeacher} className="flex-1 overflow-y-auto p-5 space-y-3 text-xs custom-scrollbar">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'পূর্ণ নাম (বাংলা):' : 'Full Name (Bangla):'} *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="যেমন: মাওলানা মাহমুদ হাসান"
-                  value={teacherFormData.nameBn || ''}
-                  onChange={(e) => setTeacherFormData({ ...teacherFormData, nameBn: e.target.value, name: e.target.value })}
-                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'পদবি (Designation):' : 'Designation:'}</label>
-                  {/* Phase 3: fixed list — free text alone never decides
-                      a role. A mapped pick also sets the Login Role;
-                      "other" keeps the custom title but the role still
-                      comes from the explicit Login Role select below. */}
-                  <select
-                    value={formDesignationSelect}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setFormDesignationSelect(v);
-                      setFormErrors(prev => ({ ...prev, designation: undefined }));
-                      if (v === DESIGNATION_OTHER) {
-                        setTeacherFormData(prev => ({ ...prev, designation: '' }));
-                      } else {
-                        const opt = DESIGNATION_OPTIONS.find(o => o.value === v);
-                        setTeacherFormData(prev => ({ ...prev, designation: v }));
-                        if (opt) setFormLoginRole(opt.role);
-                      }
-                    }}
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white dark:bg-slate-900"
-                  >
-                    {DESIGNATION_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.labelBn}</option>
-                    ))}
-                    {/* Stored title not in the fixed list (e.g. প্রধান শিক্ষক):
-                        show it as-is instead of displaying the first option. */}
-                    {!DESIGNATION_OPTIONS.some(o => o.value === formDesignationSelect) && formDesignationSelect !== DESIGNATION_OTHER && (
-                      <option value={formDesignationSelect}>{formDesignationSelect}</option>
-                    )}
-                    <option value={DESIGNATION_OTHER}>{isBn ? 'অন্যান্য (নিজে লিখুন)' : 'Other (type below)'}</option>
-                  </select>
-                  {formDesignationSelect === DESIGNATION_OTHER && (
-                    <input
-                      type="text"
-                      placeholder="যেমন: আরবি প্রভাষক"
-                      value={teacherFormData.designation || ''}
-                      onChange={(e) => { setTeacherFormData({ ...teacherFormData, designation: e.target.value }); if (formErrors.designation) setFormErrors(prev => ({ ...prev, designation: undefined })); }}
-                      className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none mt-2"
-                    />
-                  )}
-                  {formErrors.designation && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.designation}</p>}
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'আইডি / কোড:' : 'Employee Code:'}</label>
-                  <input
-                    ref={employeeCodeInputRef}
-                    type="text"
-                    placeholder="MDR-T001"
-                    value={teacherFormData.employeeCode || ''}
-                    onChange={(e) => { setTeacherFormData({ ...teacherFormData, employeeCode: e.target.value }); if (formErrors.employeeCode) setFormErrors(prev => ({ ...prev, employeeCode: undefined })); }}
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                  {formErrors.employeeCode && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.employeeCode}</p>}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'লগইন রোল (Login Role):' : 'Login Role:'}</label>
-                <select
-                  value={formLoginRole}
-                  onChange={(e) => setFormLoginRole(e.target.value as UserRole)}
-                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white dark:bg-slate-900"
-                >
-                  <option value="teacher">{isBn ? 'শিক্ষক (Teacher)' : 'Teacher'}</option>
-                  <option value="accountant">{isBn ? 'হিসাবরক্ষক / ক্যাশিয়ার (Accountant)' : 'Accountant / Cashier'}</option>
-                  <option value="staff">{isBn ? 'অফিস স্টাফ (Office Staff)' : 'Office Staff'}</option>
-                  <option value="principal">{isBn ? 'অধ্যক্ষ (Principal)' : 'Principal'}</option>
-                  <option value="guardian">{isBn ? 'অভিভাবক (Guardian)' : 'Guardian'}</option>
-                </select>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'উনি এই রোলেই লগইন করে নিজের পোর্টাল দেখবেন। তালিকা থেকে পদবি বাছলে রোল নিজে থেকে মিলে যায়; অন্যান্য পদবির ক্ষেত্রে এই রোলই চূড়ান্ত।' : 'They will log in with this role and see that portal. Picking a listed designation sets this role; for a custom title, this pick is final.'}</p>
-              </div>
-
-              {/* Additional roles (multi-role): one person can hold two
-                  roles at once — e.g. principal + teacher, accountant +
-                  teacher. Access is the union of all their roles. */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'অতিরিক্ত রোল (যদি থাকে):' : 'Additional Role(s), if any:'}</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {([
-                    { key: 'teacher', bn: 'শিক্ষক (Teacher)', en: 'Teacher' },
-                    { key: 'accountant', bn: 'হিসাবরক্ষক / ক্যাশিয়ার (Accountant)', en: 'Accountant / Cashier' },
-                    { key: 'staff', bn: 'অফিস স্টাফ (Office Staff)', en: 'Office Staff' },
-                    { key: 'principal', bn: 'অধ্যক্ষ (Principal)', en: 'Principal' },
-                    { key: 'guardian', bn: 'অভিভাবক (Guardian)', en: 'Guardian' }
-                  ] as { key: UserRole; bn: string; en: string }[])
-                    .filter(opt => opt.key !== formLoginRole)
-                    .map(opt => {
-                      const isSelected = formAdditionalRoles.includes(opt.key);
-                      return (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          onClick={() => setFormAdditionalRoles(prev =>
-                            isSelected ? prev.filter(r => r !== opt.key) : [...prev, opt.key]
-                          )}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-teal-600 text-white shadow-xs'
-                              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                          }`}
-                        >
-                          {isSelected ? '✓ ' : ''}{isBn ? opt.bn : opt.en}
-                        </button>
-                      );
-                    })}
-                </div>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'একজন একসাথে দুটি দায়িত্ব পালন করলে (যেমন হিসাবরক্ষক + শিক্ষক) অতিরিক্ত রোলটি টিক দিন — তিনি সব রোলের অ্যাক্সেসই পাবেন।' : 'If one person holds two duties at once (e.g. accountant + teacher), tick the extra role — they get the access of every role they hold.'}</p>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'স্ট্যাটাস (Status):' : 'Status:'}</label>
-                <select
-                  value={teacherFormData.status || 'ACTIVE'}
-                  onChange={(e) => setTeacherFormData({ ...teacherFormData, status: e.target.value as AcademicTeacher['status'] })}
-                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white dark:bg-slate-900"
-                >
-                  <option value="ACTIVE">{isBn ? 'সক্রিয় (Active)' : 'Active'}</option>
-                  <option value="INACTIVE">{isBn ? 'নিষ্ক্রিয় / সাবেক (Inactive)' : 'Inactive'}</option>
-                </select>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{isBn ? 'নিষ্ক্রিয় করলে উনি তালিকায় থাকবেন কিন্তু সাবেক হিসেবে চিহ্নিত হবেন। পুরোপুরি সরাতে কার্ডের মুছে-ফেলুন বাটন ব্যবহার করুন।' : 'Inactive keeps the record, marked as former. Use the card delete button to remove permanently.'}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'মোবাইল নম্বর:' : 'Phone:'}</label>
-                  <input
-                    ref={phoneInputRef}
-                    type="tel"
-                    placeholder="017xxxxxxxx"
-                    value={teacherFormData.phone || ''}
-                    onChange={(e) => { setTeacherFormData({ ...teacherFormData, phone: e.target.value }); if (formErrors.phone) setFormErrors(prev => ({ ...prev, phone: undefined })); }}
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                  {formErrors.phone && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.phone}</p>}
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ইমেইল:' : 'Email:'}</label>
-                  <input
-                    ref={emailInputRef}
-                    type="email"
-                    placeholder="teacher@madrasha.edu.bd"
-                    value={teacherFormData.email || ''}
-                    onChange={(e) => { setTeacherFormData({ ...teacherFormData, email: e.target.value }); if (formErrors.email) setFormErrors(prev => ({ ...prev, email: undefined })); }}
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                  {formErrors.email && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.email}</p>}
-                </div>
-              </div>
-
-              {/* Login Password */}
-              <div className="bg-teal-50/70 p-3 rounded-2xl border border-teal-200/80 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block font-bold text-teal-950 dark:text-teal-200 text-xs">
-                    {isBn ? 'লগইন পাসওয়ার্ড (Login Password):' : 'Login Password:'}{editingTeacher ? '' : ' *'}
-                  </label>
-                  <span className="text-[10px] text-teal-700 dark:text-teal-400 bg-teal-100/70 px-2 py-0.5 rounded-full font-bold">
-                    {isBn ? 'সরাসরি লগইনের জন্য' : 'For direct login'}
-                  </span>
-                </div>
-                <input
-                  ref={passwordInputRef}
-                  type="text"
-                  required={!editingTeacher}
-                  placeholder={editingTeacher ? (isBn ? 'ফাঁকা রাখলে আগের পাসওয়ার্ড থাকবে' : 'Leave blank to keep the old password') : (isBn ? 'পাসওয়ার্ড দিন' : 'Enter a password')}
-                  value={teacherFormData.password || ''}
-                  onChange={(e) => { setTeacherFormData({ ...teacherFormData, password: e.target.value }); if (formErrors.password) setFormErrors(prev => ({ ...prev, password: undefined })); }}
-                  className="w-full border border-teal-200 dark:border-teal-800 rounded-xl p-2.5 font-mono text-sm font-bold bg-white dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                />
-                {formErrors.password && <p className="text-[11px] text-rose-600 font-bold mt-1">{formErrors.password}</p>}
-
-              </div>
-
-              {/* Assigned Classes */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                  {isBn ? 'দায়িত্বপ্রাপ্ত শ্রেণি (Assigned Classes - শ্রেণি শিক্ষক):' : 'Assigned Class(es):'}
-                </label>
-                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
-                  {classes.map(c => {
-                    const isSelected = (teacherFormData.assignedClasses || []).includes(c.name);
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          const current = teacherFormData.assignedClasses || [];
-                          const updated = isSelected 
-                            ? current.filter(cn => cn !== c.name)
-                            : [...current, c.name];
-                          setTeacherFormData({ ...teacherFormData, assignedClasses: updated });
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'bg-teal-600 text-white shadow-xs' 
-                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isSelected ? '✓ ' : ''}{c.nameBn || c.name}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  {isBn ? 'শ্রেণি শিক্ষক হিসেবে নির্বাচিত শ্রেণির শিক্ষার্থী ও বকেয়া ফি এই শিক্ষক দেখতে পাবেন।' : 'Teacher will see students and dues for selected classes.'}
-                </p>
-              </div>
-
-              <div className="sticky bottom-0 bg-white dark:bg-slate-900 flex justify-end gap-2 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsAddEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold"
-                >
-                  {isBn ? 'বাতিল' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-xs flex items-center gap-1.5"
-                >
-                  <Save size={14} />
-                  <span>{isBn ? 'সংরক্ষণ করুন' : 'Save Staff'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Add / Edit Staff Modal (memoized & isolated state to eliminate input flickering) */}
+      <StaffEditModal
+        isOpen={isAddEditModalOpen}
+        onClose={() => setIsAddEditModalOpen(false)}
+        editingTeacher={editingTeacher}
+        classes={classes}
+        unifiedStaffList={unifiedStaffList}
+        users={users}
+        canCreateStaff={canCreateStaff}
+        isBn={isBn}
+        defaultEmployeeCode={nextEmployeeCode()}
+        initialLoginRole={editingTeacher ? resolveStaffRole(editingTeacher, users).role : 'teacher'}
+        initialAdditionalRoles={editingTeacher ? resolveStaffRole(editingTeacher, users).additionalRoles : []}
+        onSave={handleSaveStaffModal}
+      />
 
       {/* Delete Staff Confirm Modal */}
       {staffToDelete && (

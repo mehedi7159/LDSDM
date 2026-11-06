@@ -166,6 +166,7 @@ import {
   mergeQueuedIntoList,
   hasQueuedUpsertForField,
   fieldKeyFn,
+  pruneQueueAgainstRemoteData,
   type PendingPayloadItem,
 } from '../services/payloadQueue';
 import {
@@ -415,7 +416,9 @@ interface AppContextType extends AppState {
   confirmMarkEntryEnabledCloudSync: (nextValue?: boolean) => Promise<CloudConfirmResult>;
   confirmDeleteRecordsCloudSync: (removals: { field: string; ids: string[] }[], trashEntries: { id: string }[], failureMessage?: string) => Promise<CloudConfirmResult>;
   confirmTrashOpCloudSync: (removeTrashIds: string[], upserts: Record<string, any[]>, failureMessage?: string) => Promise<CloudConfirmResult>;
-  retryPendingCloudConfirms: () => Promise<void>;
+  retryPendingCloudConfirms: (options?: { isManual?: boolean }) => Promise<{ success: boolean; error?: string }>;
+  isRetryingConfirms: boolean;
+  lastRetryError: { message: string; timestamp: string; field?: string } | null;
   pendingPayloads: PendingPayloadItem[];
   pendingSyncCount: number;
   isRecordUnconfirmed: (field: string, key: string) => boolean;
@@ -2065,6 +2068,33 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     refreshPendingPayloads();
   };
 
+  const [isRetryingConfirms, setIsRetryingConfirms] = useState<boolean>(false);
+  const [lastRetryError, setLastRetryError] = useState<{ message: string; timestamp: string; field?: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('ldsdm_last_retry_error');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Cross-tab synchronization: when another tab updates pending payloads or completes a sync,
+  // update pendingPayloads state immediately so unconfirmed badges disappear across all open tabs.
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'ldsdm_pending_cloud_payloads' || e.key === 'ldsdm_pending_cloud_confirms') {
+        refreshPendingPayloads();
+      }
+      if (e.key === 'ldsdm_last_retry_error') {
+        try {
+          setLastRetryError(e.newValue ? JSON.parse(e.newValue) : null);
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Monitor Firebase Auth changes and authoritatively verify Custom Claims (role: "admin") or designated Owner
   useEffect(() => {
     // Safety fail-safe: Ensure the UI never hangs in an infinite loading state
@@ -2246,6 +2276,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // queued-payload preservation at the end can merge over them.
     const snapshotApplied: Record<string, any> = {};
 
+    // Build set of trashed IDs across remote data and local state to prevent
+    // resurrecting deleted records (e.g. Arafat MDR-T002)
+    const trashedIds = new Set<string>();
+    if (data.trashBin && Array.isArray(data.trashBin)) {
+      data.trashBin.forEach((t: any) => {
+        if (t?.id) trashedIds.add(String(t.id));
+        if (t?.data?.id) trashedIds.add(String(t.data.id));
+      });
+    }
+    (trashBin || []).forEach((t: any) => {
+      if (t?.id) trashedIds.add(String(t.id));
+      if (t?.data?.id) trashedIds.add(String(t.data.id));
+    });
+
     if (data.schoolProfile && !hasQueuedUpsertForField('schoolProfile')) {
       setSchoolProfile(data.schoolProfile);
       lastConfirmedRef.current['schoolProfile'] = data.schoolProfile;
@@ -2254,6 +2298,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
     if (data.students && Array.isArray(data.students)) {
       const cleanStudents = data.students
+        .filter(s => !trashedIds.has(String(s.id)))
         .filter(s => !s.id?.startsWith('demo-std-') && s.id !== 'st-1' && s.id !== 'st-2')
         .map(hydrateStudentLifecycle);
       setStudents(cleanStudents);
@@ -2345,10 +2390,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('madrasha_promotion_history', JSON.stringify(data.promotionHistory)); } catch {}
     }
     if (data.teachers && Array.isArray(data.teachers)) {
-      setTeachers(data.teachers);
-      lastConfirmedRef.current['teachers'] = data.teachers;
-      snapshotApplied['teachers'] = data.teachers;
-      try { localStorage.setItem('teachers', JSON.stringify(data.teachers)); } catch {}
+      const cleanTeachers = data.teachers.filter(t => !trashedIds.has(String(t.id)));
+      setTeachers(cleanTeachers);
+      lastConfirmedRef.current['teachers'] = cleanTeachers;
+      snapshotApplied['teachers'] = cleanTeachers;
+      try { localStorage.setItem('teachers', JSON.stringify(cleanTeachers)); } catch {}
     }
     if (data.staffLeaves && Array.isArray(data.staffLeaves)) {
       setStaffLeaves(data.staffLeaves);
@@ -2421,7 +2467,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('madrasha_exam_subject_assignments', JSON.stringify(data.examSubjectAssignments)); } catch {}
     }
     if (data.users && Array.isArray(data.users)) {
-      const cleanUsers = data.users.filter(u =>
+      const cleanUsers = data.users
+        .filter(u => !trashedIds.has(String(u.id)))
+        .filter(u =>
         !u.id.startsWith('user_teacher_') &&
         !u.id.startsWith('user_acc_') &&
         !u.id.startsWith('user_staff_') &&
@@ -2480,6 +2528,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       lastConfirmedRef.current['notices'] = cleanNotices;
       snapshotApplied['notices'] = cleanNotices;
       try { localStorage.setItem('madrasha_notices', JSON.stringify(cleanNotices)); } catch {}
+    }
+
+    // Prune pending payload queue against newly arrived remote data & trashBin
+    // (Clears unconfirmed badges across all tabs automatically)
+    const queuePruned = pruneQueueAgainstRemoteData(data);
+    if (queuePruned) {
+      refreshPendingPayloads();
     }
 
     // Phase 1 (Sadia fix, snapshot side): queued payloads survive
@@ -4655,11 +4710,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const k = keyFn(r);
       if (k) byKey.set(k, r);
     });
+
+    // Anti-resurrection guard (A6): any record present in trashBin must NEVER be
+    // diffed as a new delta and pushed back to the cloud.
+    const trashedIds = new Set<string>();
+    (trashBin || []).forEach((t: any) => {
+      if (t?.id) trashedIds.add(String(t.id));
+      if (t?.data?.id) trashedIds.add(String(t.data.id));
+    });
+
     return (current || []).filter((r) => {
       const k = keyFn(r);
       // Key-less records can never be confirmed; the writer rejects
       // them loudly, so the diff never silently carries them.
       if (!k) return false;
+      if (trashedIds.has(k)) return false;
       const prev = byKey.get(k);
       if (!prev) return true;
       return stableStringify(prev) !== stableStringify(r);
@@ -5352,14 +5417,34 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // NOT lost: its changes are still in state but not in
   // lastConfirmed, so the diff auto-sync picks them up.
   const retryInFlightRef = useRef(false);
-  const retryPendingCloudConfirms = async (): Promise<void> => {
-    if (retryInFlightRef.current) return;
+  const retryPendingCloudConfirms = async (options?: { isManual?: boolean }): Promise<{ success: boolean; error?: string }> => {
+    if (retryInFlightRef.current) return { success: false, error: 'in_flight' };
     const payloadItems = readPendingPayloads();
     const legacy = readPendingConfirms();
-    if (payloadItems.length === 0 && legacy.length === 0) return;
+    if (payloadItems.length === 0 && legacy.length === 0) {
+      if (options?.isManual) {
+        setLastRetryError(null);
+        try { localStorage.removeItem('ldsdm_last_retry_error'); } catch {}
+      }
+      return { success: true };
+    }
     const hasSession = !!(auth.currentUser || localStorage.getItem('madrasha_active_auth_session') || localStorage.getItem('madrasha_active_app_user_id'));
-    if (!hasSession) return;
+    if (!hasSession) {
+      const errObj = {
+        message: 'লগইন সেশন পাওয়া যায়নি (No authenticated session)',
+        timestamp: new Date().toLocaleTimeString('bn-BD')
+      };
+      if (options?.isManual) {
+        setLastRetryError(errObj);
+        try { localStorage.setItem('ldsdm_last_retry_error', JSON.stringify(errObj)); } catch {}
+      }
+      return { success: false, error: errObj.message };
+    }
+
     retryInFlightRef.current = true;
+    setIsRetryingConfirms(true);
+    let lastError: { message: string; timestamp: string; field?: string } | null = null;
+
     try {
       const fieldWriter: Record<string, (records: any[], actor: string) => Promise<void>> = {
         students: writeStudentsFieldToCloud,
@@ -5429,28 +5514,58 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             }
             clearPendingPayload(item.id);
           }
-        } catch {
-          // Stays queued for the next trigger; never spam the user.
+        } catch (itemErr: any) {
+          console.error('[CloudRetry] Failed to sync item:', item.field || item.op, itemErr);
+          lastError = {
+            message: itemErr?.message || String(itemErr) || 'Network/timeout error',
+            timestamp: new Date().toLocaleTimeString('bn-BD'),
+            field: item.field || item.op
+          };
         }
       }
       refreshPendingPayloads();
       if (legacy.length > 0) {
-        if (legacy.includes('attendance')) await confirmAttendanceCloudSync();
-        if (legacy.includes('staffAttendance')) await confirmStaffAttendanceCloudSync();
-        if (legacy.includes('fee')) await confirmFeeCloudSync();
-        if (legacy.includes('marks')) await confirmMarksCloudSync();
-        if (legacy.includes('students')) await confirmStudentsCloudSync();
-        if (legacy.includes('studentDelete')) await confirmStudentDeleteCloudSync();
-        if (legacy.includes('staff')) await confirmStaffCloudSync();
-        if (legacy.includes('notices')) await confirmNoticesCloudSync();
-        if (legacy.includes('schedule')) await confirmScheduleCloudSync();
-        if (legacy.includes('leaves')) await confirmLeavesCloudSync();
-        if (legacy.includes('feeStructures')) await confirmFeeStructuresCloudSync();
-        if (legacy.includes('feeTypes')) await confirmFeeTypesCloudSync();
-        try { localStorage.removeItem('ldsdm_pending_cloud_confirms'); } catch {}
+        try {
+          if (legacy.includes('attendance')) await confirmAttendanceCloudSync();
+          if (legacy.includes('staffAttendance')) await confirmStaffAttendanceCloudSync();
+          if (legacy.includes('fee')) await confirmFeeCloudSync();
+          if (legacy.includes('marks')) await confirmMarksCloudSync();
+          if (legacy.includes('students')) await confirmStudentsCloudSync();
+          if (legacy.includes('studentDelete')) await confirmStudentDeleteCloudSync();
+          if (legacy.includes('staff')) await confirmStaffCloudSync();
+          if (legacy.includes('notices')) await confirmNoticesCloudSync();
+          if (legacy.includes('schedule')) await confirmScheduleCloudSync();
+          if (legacy.includes('leaves')) await confirmLeavesCloudSync();
+          if (legacy.includes('feeStructures')) await confirmFeeStructuresCloudSync();
+          if (legacy.includes('feeTypes')) await confirmFeeTypesCloudSync();
+          try { localStorage.removeItem('ldsdm_pending_cloud_confirms'); } catch {}
+        } catch (legErr: any) {
+          console.error('[CloudRetry] Legacy sync error:', legErr);
+          if (!lastError) {
+            lastError = {
+              message: legErr?.message || String(legErr),
+              timestamp: new Date().toLocaleTimeString('bn-BD'),
+              field: 'legacy_sync'
+            };
+          }
+        }
       }
+
+      if (lastError) {
+        setLastRetryError(lastError);
+        try { localStorage.setItem('ldsdm_last_retry_error', JSON.stringify(lastError)); } catch {}
+      } else {
+        setLastRetryError(null);
+        try { localStorage.removeItem('ldsdm_last_retry_error'); } catch {}
+      }
+
+      return {
+        success: !lastError,
+        error: lastError?.message
+      };
     } finally {
       retryInFlightRef.current = false;
+      setIsRetryingConfirms(false);
     }
   };
 
@@ -6463,6 +6578,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       confirmDeleteRecordsCloudSync,
       confirmTrashOpCloudSync,
       retryPendingCloudConfirms,
+      isRetryingConfirms,
+      lastRetryError,
       pendingPayloads,
       pendingSyncCount,
       isRecordUnconfirmed,
