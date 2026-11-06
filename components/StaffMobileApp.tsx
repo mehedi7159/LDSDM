@@ -2626,8 +2626,23 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         {selectedClass}-{isEn ? ' no students found.' : 'এ কোনো শিক্ষার্থী পাওয়া যায়নি।'}
                       </p>
                     ) : sheetView === 'grid' ? (
-                      <div className="overflow-auto" style={{ maxHeight: 'min(70vh, 560px)', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
-                        <table className="w-full text-[12px] border-collapse">
+                      <div className="mobile-responsive-table space-y-2">
+                        <div className="flex items-center justify-between px-3 pt-2 print:hidden">
+                          <span className="text-[11px] font-semibold text-[#5b6478] dark:text-slate-400">
+                            {isEn ? 'Monthly attendance grid' : 'মাসিক হাজিরা গ্রিড টেবিল'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => window.print()}
+                            className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                            title={isEn ? 'Print table' : 'টেবিল প্রিন্ট করুন'}
+                          >
+                            <Printer size={13} />
+                            <span>{isEn ? 'Print' : 'প্রিন্ট'}</span>
+                          </button>
+                        </div>
+                        <div className="overflow-auto border-t border-[#e8ecf4] dark:border-white/5" style={{ maxHeight: 'min(70vh, 560px)', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+                          <table className="w-full text-[12px] border-collapse">
                           <thead>
                             <tr>
                               <th className="px-3 py-2.5 text-left font-bold sticky left-0 top-0 z-30 min-w-[140px] bg-[#f4f6fb] dark:bg-[#161c2e]">
@@ -2702,7 +2717,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           </tbody>
                         </table>
                       </div>
-                    ) : (
+                    </div>
+                  ) : (
                       <div className="space-y-3 pb-3">
                         <div className="grid grid-cols-7 gap-1 px-3.5 pt-3">
                           {[6, 0, 1, 2, 3, 4, 5].map(i => (

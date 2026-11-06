@@ -5,7 +5,7 @@ import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
 import { MARKS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
-import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle, Printer } from 'lucide-react';
 import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
@@ -549,7 +549,21 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           />
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+        <div className="mobile-responsive-table bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+          <div className="p-3 bg-gray-50/80 dark:bg-slate-800/50 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between print:hidden">
+            <span className="text-xs font-bold text-gray-700 dark:text-slate-300">
+              {selectedClass} • {currentSubject?.nameBn || currentSubject?.name}{exams.find(e => e.id === selectedExamId)?.name ? ` • ${exams.find(e => e.id === selectedExamId)?.name}` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+              title={language === 'bn' ? 'নম্বর তালিকা প্রিন্ট করুন' : 'Print marks table'}
+            >
+              <Printer size={13} />
+              <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50/80 border-b border-gray-200 dark:border-slate-700">

@@ -664,7 +664,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
       {/* 4. MODE 1: Student Daily Attendance List */}
       {activeMode === 'students' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="mobile-responsive-table bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
           <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users size={17} className="text-teal-700" />
@@ -672,6 +672,15 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 {selectedClass} • {formatSafeDate(selectedDate, isBn)} ({formatNumber(filteredStudents.length, language)} {isBn ? 'জন শিক্ষার্থী' : 'students'})
               </h3>
             </div>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all print:hidden"
+              title={isBn ? 'হাজিরা তালিকা প্রিন্ট করুন' : 'Print attendance list'}
+            >
+              <Printer size={13} />
+              <span>{isBn ? 'প্রিন্ট' : 'Print'}</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
