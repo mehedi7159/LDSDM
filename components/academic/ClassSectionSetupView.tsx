@@ -5,21 +5,24 @@ import { formatNumber } from '../../services/utils';
 import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { 
-  Layers, 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Users, 
-  UserCheck, 
-  CheckCircle2, 
-  AlertCircle, 
-  X, 
-  Sparkles, 
-  GraduationCap, 
+import {
+  Layers,
+  Plus,
+  Trash2,
+  Edit2,
+  Users,
+  UserCheck,
+  CheckCircle2,
+  AlertCircle,
+  ShieldAlert,
+  X,
+  Sparkles,
+  GraduationCap,
   DoorClosed,
   Phone
 } from 'lucide-react';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
+import { CLASSES_CLOUD_FAILURE_MESSAGE, SECTIONS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
 
 export const ClassSectionSetupView: React.FC = () => {
   const {
@@ -35,6 +38,9 @@ export const ClassSectionSetupView: React.FC = () => {
     addSection,
     updateSection,
     deleteSection,
+    confirmClassesCloudSync,
+    confirmSectionsCloudSync,
+    isRecordUnconfirmed,
     language
   } = useApp();
   const isBn = language === 'bn';
@@ -126,6 +132,98 @@ export const ClassSectionSetupView: React.FC = () => {
     teacherId: ''
   });
 
+  // 7 Nov 2026 Job 2 (instant save): builder/validation errors are
+  // shown in the modal instead of silently returning; background
+  // confirms queue the payload + badge on failure, with Retry below.
+  const [classFormError, setClassFormError] = useState<string | null>(null);
+  const [sectionFormError, setSectionFormError] = useState<string | null>(null);
+  const [pendingClassSave, setPendingClassSave] = useState<SchoolClass[] | null>(null);
+  const [pendingClassId, setPendingClassId] = useState<string | null>(null);
+  const [pendingClassError, setPendingClassError] = useState<string | null>(null);
+  const [isRetryingClass, setIsRetryingClass] = useState(false);
+  const [classSaveNote, setClassSaveNote] = useState(false);
+  const [pendingSectionSave, setPendingSectionSave] = useState<Section[] | null>(null);
+  const [pendingSectionId, setPendingSectionId] = useState<string | null>(null);
+  const [pendingSectionError, setPendingSectionError] = useState<string | null>(null);
+  const [isRetryingSection, setIsRetryingSection] = useState(false);
+  const [sectionSaveNote, setSectionSaveNote] = useState(false);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const classConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || CLASSES_CLOUD_FAILURE_MESSAGE));
+
+  const sectionConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || SECTIONS_CLOUD_FAILURE_MESSAGE));
+
+  const confirmClassesInBackground = (nextClasses: SchoolClass[], savedClassId: string) => {
+    void confirmClassesCloudSync(nextClasses).then((confirmResult) => {
+      if (!confirmResult.success) {
+        setPendingClassSave(nextClasses);
+        setPendingClassId(savedClassId);
+        setPendingClassError(classConfirmErrorMessage(confirmResult));
+      }
+    }).catch((err) => {
+      console.error('Background class cloud confirm failed:', err);
+      setPendingClassSave(nextClasses);
+      setPendingClassId(savedClassId);
+      setPendingClassError(CLASSES_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  const confirmSectionsInBackground = (nextSections: Section[], savedSectionId: string) => {
+    void confirmSectionsCloudSync(nextSections).then((confirmResult) => {
+      if (!confirmResult.success) {
+        setPendingSectionSave(nextSections);
+        setPendingSectionId(savedSectionId);
+        setPendingSectionError(sectionConfirmErrorMessage(confirmResult));
+      }
+    }).catch((err) => {
+      console.error('Background section cloud confirm failed:', err);
+      setPendingSectionSave(nextSections);
+      setPendingSectionId(savedSectionId);
+      setPendingSectionError(SECTIONS_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  const retryClassSave = async () => {
+    if (!pendingClassSave || isRetryingClass) return;
+    setIsRetryingClass(true);
+    try {
+      const result = await confirmClassesCloudSync(pendingClassSave);
+      if (result.success) {
+        setPendingClassSave(null);
+        setPendingClassId(null);
+        setPendingClassError(null);
+      } else {
+        setPendingClassError(classConfirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetryingClass(false);
+    }
+  };
+
+  const retrySectionSave = async () => {
+    if (!pendingSectionSave || isRetryingSection) return;
+    setIsRetryingSection(true);
+    try {
+      const result = await confirmSectionsCloudSync(pendingSectionSave);
+      if (result.success) {
+        setPendingSectionSave(null);
+        setPendingSectionId(null);
+        setPendingSectionError(null);
+      } else {
+        setPendingSectionError(sectionConfirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetryingSection(false);
+    }
+  };
+
   // Current class sections — from the canonical context store
   const currentSections = useMemo(() => {
     if (!selectedClass) return [];
@@ -135,24 +233,37 @@ export const ClassSectionSetupView: React.FC = () => {
   }, [sections, selectedClass]);
 
   // Handle Class Add/Edit
+  // 7 Nov 2026 Job 2 (instant save, Job 0 pattern): the empty-name
+  // guard used to return silently; the add call used to pass the whole
+  // form object as `name`, which the builder refused and the raw
+  // fallback then saved as an object-valued name. Now the call uses the
+  // real signature, a builder refusal keeps the modal open with the
+  // reason, and a successful save closes at once while the cloud
+  // confirm runs in the background (badge + Retry on failure).
   const handleSaveClass = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!classForm.name.trim()) return;
+    setClassFormError(null);
+    if (!classForm.name.trim()) {
+      setClassFormError(isBn ? 'শ্রেণির নাম আবশ্যক — নাম না দিলে সংরক্ষণ হবে না।' : 'Class name is required.');
+      return;
+    }
 
+    let saved: { schoolClass: SchoolClass | null; classes: SchoolClass[]; error?: string };
     if (editingClass) {
-      if (updateClass) {
-        updateClass({ ...editingClass, name: classForm.name.trim(), order: Number(classForm.order) });
-      }
+      if (!updateClass) return;
+      saved = updateClass({ ...editingClass, name: classForm.name.trim(), order: Number(classForm.order) });
     } else {
-      if (addClass) {
-        addClass({
-          id: `cls_${Date.now()}`,
-          name: classForm.name.trim(),
-          order: Number(classForm.order)
-        });
-      }
+      if (!addClass) return;
+      saved = addClass(classForm.name.trim(), undefined, { order: Number(classForm.order) });
+    }
+    if (saved.error || !saved.schoolClass) {
+      setClassFormError(saved.error || CLASSES_CLOUD_FAILURE_MESSAGE);
+      return;
     }
     setIsClassModalOpen(false);
+    setClassSaveNote(true);
+    setTimeout(() => setClassSaveNote(false), 2000);
+    confirmClassesInBackground(saved.classes, saved.schoolClass.id);
   };
 
   // Handle Section Add/Edit — writes go to the canonical context store,
@@ -160,6 +271,7 @@ export const ClassSectionSetupView: React.FC = () => {
   const handleSaveSection = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClass) return;
+    setSectionFormError(null);
 
     const payload = {
       name: sectionForm.name,
@@ -169,17 +281,25 @@ export const ClassSectionSetupView: React.FC = () => {
       teacherId: sectionForm.teacherId || undefined
     };
 
+    // Job 2: same instant-save shape as classes — builder refusal keeps
+    // the modal open with the reason; success closes at once and the
+    // cloud confirm runs in the background.
+    let saved: { section: Section | null; sections: Section[]; error?: string } | null = null;
     if (editingSectionId) {
       const existing = sections.find(s => s.id === editingSectionId);
       if (existing && updateSection) {
-        updateSection({ ...existing, ...payload });
+        saved = updateSection({ ...existing, ...payload });
       }
     } else if (addSection) {
-      addSection({
+      saved = addSection({
         classId: selectedClass.id,
         status: 'ACTIVE',
         ...payload
       });
+    }
+    if (saved && (saved.error || !saved.section)) {
+      setSectionFormError(saved.error || SECTIONS_CLOUD_FAILURE_MESSAGE);
+      return;
     }
 
     // If teacher selected, also sync with AppContext classTeacherAssignment if available
@@ -194,6 +314,11 @@ export const ClassSectionSetupView: React.FC = () => {
     }
 
     setIsSectionModalOpen(false);
+    if (saved?.section) {
+      setSectionSaveNote(true);
+      setTimeout(() => setSectionSaveNote(false), 2000);
+      confirmSectionsInBackground(saved.sections, saved.section.id);
+    }
   };
 
   const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
@@ -216,6 +341,7 @@ export const ClassSectionSetupView: React.FC = () => {
             onClick={() => {
               setEditingClass(null);
               setClassForm({ name: '', order: classes.length + 1 });
+              setClassFormError(null);
               setIsClassModalOpen(true);
             }}
             className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-2 px-3.5"
@@ -225,6 +351,36 @@ export const ClassSectionSetupView: React.FC = () => {
           </Button>
         </div>
       </PageHeader>
+
+      {/* Job 2 (instant save): a failed background cloud confirm leaves
+          the record queued with its amber badge — Retry here re-confirms
+          the still-local save. The banners hide once the payload lands. */}
+      {pendingClassSave && pendingClassId && isRecordUnconfirmed('classes', pendingClassId) && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{pendingClassError || CLASSES_CLOUD_FAILURE_MESSAGE}</p>
+            <p className="text-amber-800 dark:text-amber-300">{isBn ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button type="button" onClick={retryClassSave} disabled={isRetryingClass} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+      {pendingSectionSave && pendingSectionId && isRecordUnconfirmed('sections', pendingSectionId) && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{pendingSectionError || SECTIONS_CLOUD_FAILURE_MESSAGE}</p>
+            <p className="text-amber-800 dark:text-amber-300">{isBn ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button type="button" onClick={retrySectionSave} disabled={isRetryingSection} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+      {(classSaveNote || sectionSaveNote) && !pendingClassSave && !pendingSectionSave && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+        </div>
+      )}
 
       {/* Main Grid: Left Class Tabs, Right Sections Configuration */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -257,6 +413,10 @@ export const ClassSectionSetupView: React.FC = () => {
                 >
                   <div>
                     <div className="font-bold text-xs">{c.name}</div>
+                    {/* Job 2: background cloud confirm failed — local-only until retry. */}
+                    {isRecordUnconfirmed('classes', c.id) && (
+                      <UnconfirmedBadge isBn={isBn} />
+                    )}
                     <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-teal-100' : 'text-slate-400 dark:text-slate-500'}`}>
                       {isBn ? `শিক্ষার্থী: ${formatNumber(countStudents, 'bn')} জন` : `Students: ${countStudents}`}
                     </div>
@@ -269,6 +429,7 @@ export const ClassSectionSetupView: React.FC = () => {
                         e.stopPropagation();
                         setEditingClass(c);
                         setClassForm({ name: c.name, order: c.order || 1 });
+                        setClassFormError(null);
                         setIsClassModalOpen(true);
                       }}
                       className={`p-1 rounded ${isSelected ? 'hover:bg-teal-800 text-teal-100' : 'hover:bg-slate-200 text-slate-500 dark:text-slate-400'}`}
@@ -302,6 +463,7 @@ export const ClassSectionSetupView: React.FC = () => {
                     shift: 'দিবা',
                     teacherId: teachers[0]?.id || ''
                   });
+                  setSectionFormError(null);
                   setIsSectionModalOpen(true);
                 }}
                 className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 py-1.5 px-3"
@@ -331,6 +493,10 @@ export const ClassSectionSetupView: React.FC = () => {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-black text-slate-800 dark:text-slate-100">{sec.name}</span>
+                            {/* Job 2: background cloud confirm failed — local-only until retry. */}
+                            {isRecordUnconfirmed('sections', sec.id) && (
+                              <UnconfirmedBadge isBn={isBn} />
+                            )}
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300">
                               {sec.shift || 'দিবা'} শিফট
                             </span>
@@ -357,6 +523,7 @@ export const ClassSectionSetupView: React.FC = () => {
                                 shift: sec.shift || 'দিবা',
                                 teacherId: sec.teacherId || ''
                               });
+                              setSectionFormError(null);
                               setIsSectionModalOpen(true);
                             }}
                             className="p-1 text-slate-500 dark:text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded"
@@ -438,6 +605,12 @@ export const ClassSectionSetupView: React.FC = () => {
                   className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-mono"
                 />
               </div>
+              {classFormError && (
+                <p className="text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-lg px-3 py-2 flex items-start gap-1.5">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{classFormError}</span>
+                </p>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setIsClassModalOpen(false)} className="text-xs font-bold">
                   {isBn ? 'বাতিল' : 'Cancel'}
@@ -526,6 +699,13 @@ export const ClassSectionSetupView: React.FC = () => {
                   ))}
                 </select>
               </div>
+
+              {sectionFormError && (
+                <p className="text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-lg px-3 py-2 flex items-start gap-1.5">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{sectionFormError}</span>
+                </p>
+              )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setIsSectionModalOpen(false)} className="text-xs font-bold">

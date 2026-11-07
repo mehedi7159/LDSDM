@@ -2,24 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Subject, AcademicTeacher, ClassSubjectAssignment, TeacherSubjectAssignment, ClassTeacherAssignment } from '../types';
 import { Button } from './ui/Button';
-import { 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  X, 
-  FileText, 
-  Search, 
-  BookOpen, 
-  UserCheck, 
-  Layers, 
-  CheckCircle2, 
-  AlertCircle, 
-  Archive, 
-  Users, 
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  X,
+  FileText,
+  Search,
+  BookOpen,
+  UserCheck,
+  Layers,
+  CheckCircle2,
+  AlertCircle,
+  ShieldAlert,
+  Archive,
+  Users,
   GraduationCap,
   Calendar
 } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
+import { SUBJECTS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { BlankMarksheetView } from './BlankMarksheetView';
 import { getTeacherSubjects, getTeacherClasses } from '../services/academicCoreService';
 
@@ -31,11 +34,13 @@ interface SubjectManagerProps {
 
 export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'directory' }) => {
   const { 
-    subjects, 
-    addSubject, 
-    updateSubject, 
-    archiveSubject, 
-    deleteSubject, 
+    subjects,
+    addSubject,
+    updateSubject,
+    archiveSubject,
+    deleteSubject,
+    confirmSubjectsCloudSync,
+    isRecordUnconfirmed,
     classes, 
     sections,
     academicYears,
@@ -82,6 +87,16 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
   // Subject Form Editing State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+
+  // 7 Nov 2026 Job 2 (instant save): background-confirm state. The
+  // pending list is what Retry re-confirms; the banner hides once
+  // isRecordUnconfirmed turns false for the saved record.
+  const [subjectFormError, setSubjectFormError] = useState<string | null>(null);
+  const [pendingSubjectSave, setPendingSubjectSave] = useState<Subject[] | null>(null);
+  const [pendingSubjectId, setPendingSubjectId] = useState<string | null>(null);
+  const [pendingSubjectError, setPendingSubjectError] = useState<string | null>(null);
+  const [isRetryingSubject, setIsRetryingSubject] = useState(false);
+  const [subjectSaveNote, setSubjectSaveNote] = useState(false);
   
   const [newSubject, setNewSubject] = useState<Omit<Subject, 'id'>>({
     name: '',
@@ -178,13 +193,46 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
 
   const handleSubmitSubject = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      updateSubject({ ...newSubject, id: editingId });
-      setEditingId(null);
-    } else {
-      addSubject({ ...newSubject, classLevel: selectedClass, order: filteredSubjects.length + 1 });
+    setSubjectFormError(null);
+    // 7 Nov 2026 Job 2: the handler used to have NO validation check at
+    // all — an empty name sailed into the builder and the raw fallback
+    // saved it. Validate here (same bounds the builder enforces); the
+    // builder's own refusal (e.g. duplicate name/code) is shown below.
+    if (!newSubject.name?.trim()) {
+      setSubjectFormError(language === 'bn' ? 'বিষয়ের নাম আবশ্যক — নাম না দিলে সংরক্ষণ হবে না।' : 'Subject name is required.');
+      return;
     }
-    
+    const fullMarks = Number(newSubject.fullMarks);
+    const passMarks = Number(newSubject.passMarks);
+    if (isNaN(fullMarks) || fullMarks < 1 || fullMarks > 1000) {
+      setSubjectFormError(language === 'bn' ? 'পূর্ণমান ১ থেকে ১০০০ এর মধ্যে হতে হবে।' : 'Full marks must be between 1 and 1000.');
+      return;
+    }
+    if (isNaN(passMarks) || passMarks < 0 || passMarks > fullMarks) {
+      setSubjectFormError(language === 'bn' ? 'পাস মার্ক ০ থেকে পূর্ণমানের মধ্যে হতে হবে।' : 'Pass marks must be between 0 and full marks.');
+      return;
+    }
+
+    // Job 2 (instant save, Job 0 pattern): the local mutation applies
+    // and the form resets at once; the cloud confirm runs in the
+    // BACKGROUND via confirmSubjectsCloudSync. On failure the payload is
+    // queued, the subject shows the amber 'cloud-এ যায়নি' badge, and
+    // the banner below offers Retry. A builder refusal saves nothing
+    // and keeps the form open with the real reason.
+    let saved: { subject: Subject | null; subjects: Subject[]; error?: string };
+    if (editingId) {
+      saved = updateSubject({ ...newSubject, id: editingId });
+    } else {
+      saved = addSubject({ ...newSubject, classLevel: selectedClass, order: filteredSubjects.length + 1 });
+    }
+    if (saved.error || !saved.subject) {
+      setSubjectFormError(saved.error || SUBJECTS_CLOUD_FAILURE_MESSAGE);
+      return;
+    }
+    const savedSubjectId = saved.subject.id;
+    const nextSubjects = saved.subjects;
+    setEditingId(null);
+
     setNewSubject({
       name: '',
       nameBn: '',
@@ -210,6 +258,51 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
       status: 'ACTIVE',
       group: ''
     });
+    setSubjectSaveNote(true);
+    setTimeout(() => setSubjectSaveNote(false), 2000);
+    confirmSubjectsInBackground(nextSubjects, savedSubjectId);
+  };
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const subjectConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || SUBJECTS_CLOUD_FAILURE_MESSAGE));
+
+  const confirmSubjectsInBackground = (nextSubjects: Subject[], savedSubjectId: string) => {
+    void confirmSubjectsCloudSync(nextSubjects).then((confirmResult) => {
+      if (!confirmResult.success) {
+        setPendingSubjectSave(nextSubjects);
+        setPendingSubjectId(savedSubjectId);
+        setPendingSubjectError(subjectConfirmErrorMessage(confirmResult));
+      }
+    }).catch((err) => {
+      console.error('Background subject cloud confirm failed:', err);
+      setPendingSubjectSave(nextSubjects);
+      setPendingSubjectId(savedSubjectId);
+      setPendingSubjectError(SUBJECTS_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  // Retry re-confirms the still-local save (no re-save needed). The
+  // Diagnostics queue Retry covers the same payload, so whichever path
+  // lands first clears the badge.
+  const retrySubjectSave = async () => {
+    if (!pendingSubjectSave || isRetryingSubject) return;
+    setIsRetryingSubject(true);
+    try {
+      const result = await confirmSubjectsCloudSync(pendingSubjectSave);
+      if (result.success) {
+        setPendingSubjectSave(null);
+        setPendingSubjectId(null);
+        setPendingSubjectError(null);
+      } else {
+        setPendingSubjectError(subjectConfirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetryingSubject(false);
+    }
   };
 
   const handleEditSubject = (subject: Subject) => {
@@ -272,7 +365,16 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
     } else {
       newExamIds = [...currentExamIds, selectedExamId];
     }
-    updateSubject({ ...subject, examIds: newExamIds });
+    // Job 2: the exam toggle is a subject edit too — a refused update
+    // shows its reason instead of flipping silently, and a successful
+    // one gets the same background cloud confirm as the form save.
+    const saved = updateSubject({ ...subject, examIds: newExamIds });
+    if (saved.error || !saved.subject) {
+      setSubjectFormError(saved.error || SUBJECTS_CLOUD_FAILURE_MESSAGE);
+      return;
+    }
+    setSubjectFormError(null);
+    confirmSubjectsInBackground(saved.subjects, saved.subject.id);
   };
 
   // Find class sections
@@ -328,6 +430,36 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
           </button>
         </div>
       </div>
+
+      {/* Job 2 (instant save): a builder refusal shows its reason here;
+          a failed background cloud confirm leaves the subject queued
+          with its amber badge — Retry re-confirms the still-local save.
+          The banners hide once the payload lands. */}
+      {subjectFormError && (
+        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 rounded-xl text-xs sm:text-sm font-semibold flex items-start gap-2">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span className="flex-1 min-w-0">{subjectFormError}</span>
+          <button type="button" onClick={() => setSubjectFormError(null)} className="shrink-0 text-rose-500 hover:text-rose-700 cursor-pointer" aria-label="Dismiss">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      {pendingSubjectSave && pendingSubjectId && isRecordUnconfirmed('subjects', pendingSubjectId) && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{pendingSubjectError || SUBJECTS_CLOUD_FAILURE_MESSAGE}</p>
+            <p className="text-amber-800 dark:text-amber-300">{language === 'bn' ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button type="button" onClick={retrySubjectSave} disabled={isRetryingSubject} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+      {subjectSaveNote && !pendingSubjectSave && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* TAB 1: SUBJECT DIRECTORY & CATALOG                            */}
@@ -425,6 +557,10 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                                 {language === 'bn' ? (sub.nameBn || sub.name) : sub.name}
                                 {sub.group && <span className="text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 px-1.5 py-0.2 rounded font-bold uppercase">{sub.group}</span>}
                               </div>
+                              {/* Job 2: background cloud confirm failed — local-only until retry. */}
+                              {isRecordUnconfirmed('subjects', sub.id) && (
+                                <UnconfirmedBadge isBn={language === 'bn'} />
+                              )}
                               <div className="text-[11px] text-gray-400 dark:text-slate-500 flex flex-wrap gap-2 mt-0.5">
                                 {sub.hasCQ && <span>CQ: {sub.cqMarks} ({sub.cqPassMarks})</span>}
                                 {sub.hasMCQ && <span>MCQ: {sub.mcqMarks} ({sub.mcqPassMarks})</span>}
@@ -1078,6 +1214,10 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                   <span className="font-bold text-sm font-bangla">{language === 'bn' ? (sub.nameBn || sub.name) : sub.name}</span>
                   {sub.group && <span className="text-xs mt-1 opacity-80 uppercase font-bold">{sub.group}</span>}
                   <span className="text-[11px] mt-1 font-medium">{isAssigned ? '✓ অন্তর্ভুক্ত' : '+ অন্তর্ভুক্ত নয়'}</span>
+                  {/* Job 2: this subject's background cloud confirm failed — local-only until retry. */}
+                  {isRecordUnconfirmed('subjects', sub.id) && (
+                    <UnconfirmedBadge isBn={language === 'bn'} />
+                  )}
                 </div>
               );
             })}

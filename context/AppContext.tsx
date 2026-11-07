@@ -145,6 +145,9 @@ import {
   deriveStudentDeleteOp,
   mergeRecordsByKey,
   EXAMS_CLOUD_FAILURE_MESSAGE,
+  CLASSES_CLOUD_FAILURE_MESSAGE,
+  SECTIONS_CLOUD_FAILURE_MESSAGE,
+  SUBJECTS_CLOUD_FAILURE_MESSAGE,
   ASSIGNMENTS_CLOUD_FAILURE_MESSAGE,
   PROMOTION_CLOUD_FAILURE_MESSAGE,
   REMARKS_CLOUD_FAILURE_MESSAGE,
@@ -320,8 +323,13 @@ interface AppContextType extends AppState {
   setActiveAcademicYear: (id: string) => void;
   closeAcademicYear: (id: string) => void;
   setAcademicYears: (years: AcademicYear[]) => void;
-  addSection: (data: Omit<Section, 'id'>) => void;
-  updateSection: (section: Section) => void;
+  // 7 Nov 2026 Job 2: the add/update writers below return the stored
+  // record + the post-save list (+ a builder `error` when validation
+  // refused the save) so the UI can fire the background cloud confirm
+  // with the exact list — the same shape addStudent already returns.
+  // A builder error means NOTHING was saved (no silent raw fallback).
+  addSection: (data: Omit<Section, 'id'>) => { section: Section | null; sections: Section[]; error?: string };
+  updateSection: (section: Section) => { section: Section; sections: Section[]; error?: string };
   archiveSection: (id: string) => void;
   deleteSection: (id: string) => void;
   setSections: (sections: Section[]) => void;
@@ -330,8 +338,8 @@ interface AppContextType extends AppState {
   updateStudent: (student: Student) => { student: Student; students: Student[] };
   bulkUpdateStudents: (nextStudents: Student[]) => Student[];
   deleteStudent: (id: string) => { students: Student[]; trashBin: TrashItem[] } | null;
-  addSubject: (subject: Omit<Subject, 'id'>) => void;
-  updateSubject: (subject: Subject) => void;
+  addSubject: (subject: Omit<Subject, 'id'>) => { subject: Subject | null; subjects: Subject[]; error?: string };
+  updateSubject: (subject: Subject) => { subject: Subject; subjects: Subject[]; error?: string };
   archiveSubject: (id: string) => void;
   deleteSubject: (id: string) => void;
   addTeacher: (teacher: Omit<AcademicTeacher, 'id'>, loginRole?: UserRole) => Promise<{ success: boolean; message?: string; provisioning?: 'synced' | 'skipped' | 'failed'; nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[] }>;
@@ -365,17 +373,17 @@ interface AppContextType extends AppState {
   // no-op) when any update targets a closed exam — the caller must not
   // confirm a write that must not happen.
   bulkUpdateMarks: (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => MarkRecord[] | null;
-  addExam: (name: string, category: Exam['category'], nameBn?: string, details?: Partial<Exam>) => void;
-  updateExam: (exam: Exam) => void;
+  addExam: (name: string, category: Exam['category'], nameBn?: string, details?: Partial<Exam>) => { exam: Exam | null; exams: Exam[]; error?: string };
+  updateExam: (exam: Exam) => { exam: Exam; exams: Exam[]; error?: string };
   archiveExam: (id: string) => void;
   finalizeExam: (id: string) => void;
   deleteExam: (id: string) => void;
-  scheduleExamSubject: (assignment: Omit<ExamSubjectAssignment, 'id'>) => void;
-  archiveExamSubject: (id: string) => void;
+  scheduleExamSubject: (assignment: Omit<ExamSubjectAssignment, 'id'>) => { assignment: ExamSubjectAssignment | null; examSubjectAssignments: ExamSubjectAssignment[]; error?: string };
+  archiveExamSubject: (id: string) => { assignment: ExamSubjectAssignment | null; examSubjectAssignments: ExamSubjectAssignment[] };
   setExamSubjectAssignments: (assignments: ExamSubjectAssignment[]) => void;
   updateRemark: (studentId: string, examId: string, data: Partial<RemarkRecord>) => void;
-  addClass: (name: string, nameBn?: string, details?: Partial<SchoolClass>) => void;
-  updateClass: (cls: SchoolClass) => void;
+  addClass: (name: string, nameBn?: string, details?: Partial<SchoolClass>) => { schoolClass: SchoolClass | null; classes: SchoolClass[]; error?: string };
+  updateClass: (cls: SchoolClass) => { schoolClass: SchoolClass; classes: SchoolClass[]; error?: string };
   deleteClass: (id: string) => void;
   addTransaction: (transaction: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
   confirmAttendanceCloudSync: () => Promise<CloudConfirmResult>;
@@ -4176,7 +4184,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const addClass = (name: string, nameBn?: string, details?: Partial<SchoolClass>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { schoolClass } = buildCreateClassPayload({
+    const { schoolClass, error } = buildCreateClassPayload({
       name,
       nameBn,
       order: classes.length + 1,
@@ -4184,7 +4192,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       ...details
     }, 'inst_madrasah_primary', actor, classes);
 
-    const finalClass = schoolClass || ({ id: generateId(), name, nameBn, order: classes.length + 1, status: 'ACTIVE' } as SchoolClass);
+    // 7 Nov 2026 Job 2: a builder error used to fall through to a raw
+    // fallback that saved the record unvalidated (and, when the caller
+    // passed an object as `name`, stored that object as the class name).
+    // Refuse instead — nothing is saved, the caller shows `error`.
+    if (error || !schoolClass) {
+      return { schoolClass: null, classes, error: error || 'Invalid class data' };
+    }
+    const finalClass = schoolClass;
+    const nextClasses = [...classes, finalClass];
     setClasses(prev => [...prev, finalClass]);
     if (authUser) {
       recordClassAuditEvent({
@@ -4193,14 +4209,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
       });
     }
+    return { schoolClass: finalClass, classes: nextClasses };
   };
 
   const updateClass = (updatedClass: SchoolClass) => {
     const existing = classes.find(c => c.id === updatedClass.id);
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { schoolClass } = existing 
+    const { schoolClass, error } = existing
       ? buildUpdateClassPayload(existing, updatedClass, actor, classes)
       : { schoolClass: updatedClass };
+    // Job 2: a refused update saves nothing — the caller shows `error`
+    // instead of closing the form as if saved.
+    if (error) {
+      return { schoolClass: existing || updatedClass, classes, error };
+    }
+    const nextClasses = classes.map(c => c.id === schoolClass.id ? schoolClass : c);
     setClasses(prev => prev.map(c => c.id === schoolClass.id ? schoolClass : c));
     if (authUser) {
       recordClassAuditEvent({
@@ -4210,6 +4233,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         before: existing ? { name: existing.name, status: existing.status, order: existing.order } : null
       });
     }
+    return { schoolClass, classes: nextClasses };
   };
 
   const archiveClass = (id: string) => {
@@ -4246,24 +4270,33 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const addSection = (data: Omit<Section, 'id'>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { section } = buildCreateSectionPayload(data, 'inst_madrasah_primary', actor, sections, classes);
-    if (section) {
-      setSections(prev => [...prev, section]);
-      if (authUser) {
-        recordSectionAuditEvent({
-          action: 'SECTION_CREATED',
-          section,
-          actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
-        });
-      }
+    const { section, error } = buildCreateSectionPayload(data, 'inst_madrasah_primary', actor, sections, classes);
+    // 7 Nov 2026 Job 2: a refused build saves nothing — the caller
+    // shows `error` instead of closing as if saved.
+    if (error || !section) {
+      return { section: null, sections, error: error || 'Invalid section data' };
     }
+    const nextSections = [...sections, section];
+    setSections(prev => [...prev, section]);
+    if (authUser) {
+      recordSectionAuditEvent({
+        action: 'SECTION_CREATED',
+        section,
+        actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
+      });
+    }
+    return { section, sections: nextSections };
   };
 
   const updateSection = (updated: Section) => {
     const existing = sections.find(s => s.id === updated.id);
-    if (!existing) return;
+    if (!existing) return { section: updated, sections, error: 'Section not found' };
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { section } = buildUpdateSectionPayload(existing, updated, actor, sections, classes);
+    const { section, error } = buildUpdateSectionPayload(existing, updated, actor, sections, classes);
+    if (error) {
+      return { section: existing, sections, error };
+    }
+    const nextSections = sections.map(s => s.id === updated.id ? section : s);
     setSections(prev => prev.map(s => s.id === updated.id ? section : s));
     if (authUser) {
       recordSectionAuditEvent({
@@ -4273,6 +4306,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         before: { name: existing.name, classId: existing.classId, status: existing.status }
       });
     }
+    return { section, sections: nextSections };
   };
 
   const archiveSection = (id: string) => {
@@ -4409,8 +4443,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const addSubject = (subject: Omit<Subject, 'id'>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { subject: newSubject } = buildCreateSubjectPayload(subject, 'inst_madrasah_primary', actor, subjects);
-    const finalSubject = newSubject || ({ ...subject, id: generateId() } as Subject);
+    const { subject: newSubject, error } = buildCreateSubjectPayload(subject, 'inst_madrasah_primary', actor, subjects);
+    // 7 Nov 2026 Job 2: a builder error used to fall through to a raw
+    // fallback that saved the record unvalidated. Refuse instead —
+    // nothing is saved, the caller shows `error`.
+    if (error || !newSubject) {
+      return { subject: null, subjects, error: error || 'Invalid subject data' };
+    }
+    const finalSubject = newSubject;
+    const nextSubjects = [...subjects, finalSubject];
     setSubjects(prev => [...prev, finalSubject]);
     if (authUser) {
       recordSubjectAuditEvent({
@@ -4419,14 +4460,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
       });
     }
+    return { subject: finalSubject, subjects: nextSubjects };
   };
 
   const updateSubject = (updatedSubject: Subject) => {
     const existing = subjects.find(s => s.id === updatedSubject.id);
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { subject: finalSubject } = existing
+    const { subject: finalSubject, error } = existing
       ? buildUpdateSubjectPayload(existing, updatedSubject, actor, subjects)
       : { subject: updatedSubject };
+    // Job 2: a refused update saves nothing — the caller shows `error`.
+    if (error) {
+      return { subject: existing || updatedSubject, subjects, error };
+    }
+    const nextSubjects = subjects.map(s => s.id === finalSubject.id ? finalSubject : s);
     setSubjects(prev => prev.map(s => s.id === finalSubject.id ? finalSubject : s));
     if (authUser) {
       recordSubjectAuditEvent({
@@ -4436,6 +4483,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         before: existing ? { name: existing.name, code: existing.code, fullMarks: existing.fullMarks, status: existing.status } : null
       });
     }
+    return { subject: finalSubject, subjects: nextSubjects };
   };
 
   const archiveSubject = (id: string) => {
@@ -5226,7 +5274,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const list = nextNotices ?? noticesRef.current;
     const result = await confirmCloudWrite(
       () => writeNoticesFieldToCloud(list, confirmActorName()),
-      NOTICES_CLOUD_FAILURE_MESSAGE
+      NOTICES_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 2: the dashboard widget (and NoticeBoard) must
+      // SHOW the real reason (timeout vs refusal) — same as the student
+      // and salary fixes.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('notices', list, 'notices');
@@ -5320,14 +5372,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // confirms (explicit next-list or ref, confirmed-or-payload-queued).
   const confirmExamsCloudSync = async (nextExams?: Exam[]): Promise<CloudConfirmResult> => {
     const list = nextExams ?? examsRef.current;
-    const result = await confirmCloudWrite(() => writeExamsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(() => writeExamsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE, { includeRawError: true });
     if (result.success) { confirmUpsertSuccess('exams', list); } else { confirmUpsertFailure('exams', list); }
     return result;
   };
 
   const confirmExamSubjectAssignmentsCloudSync = async (next?: ExamSubjectAssignment[]): Promise<CloudConfirmResult> => {
     const list = next ?? examSubjectAssignmentsRef.current;
-    const result = await confirmCloudWrite(() => writeExamSubjectAssignmentsFieldToCloud(list, confirmActorName()), ASSIGNMENTS_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(() => writeExamSubjectAssignmentsFieldToCloud(list, confirmActorName()), ASSIGNMENTS_CLOUD_FAILURE_MESSAGE, { includeRawError: true });
     if (result.success) { confirmUpsertSuccess('examSubjectAssignments', list); } else { confirmUpsertFailure('examSubjectAssignments', list); }
     return result;
   };
@@ -5369,14 +5421,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const confirmSubjectsCloudSync = async (next?: Subject[]): Promise<CloudConfirmResult> => {
     const list = next ?? subjectsRef.current;
-    const result = await confirmCloudWrite(() => writeSubjectsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(() => writeSubjectsFieldToCloud(list, confirmActorName()), SUBJECTS_CLOUD_FAILURE_MESSAGE, { includeRawError: true });
     if (result.success) { confirmUpsertSuccess('subjects', list); } else { confirmUpsertFailure('subjects', list); }
     return result;
   };
 
   const confirmClassesCloudSync = async (next?: SchoolClass[]): Promise<CloudConfirmResult> => {
     const list = next ?? classesRef.current;
-    const result = await confirmCloudWrite(() => writeClassesFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(() => writeClassesFieldToCloud(list, confirmActorName()), CLASSES_CLOUD_FAILURE_MESSAGE, { includeRawError: true });
     if (result.success) { confirmUpsertSuccess('classes', list); } else { confirmUpsertFailure('classes', list); }
     return result;
   };
@@ -5390,7 +5442,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const confirmSectionsCloudSync = async (next?: Section[]): Promise<CloudConfirmResult> => {
     const list = next ?? sectionsRef.current;
-    const result = await confirmCloudWrite(() => writeSectionsFieldToCloud(list, confirmActorName()), EXAMS_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(() => writeSectionsFieldToCloud(list, confirmActorName()), SECTIONS_CLOUD_FAILURE_MESSAGE, { includeRawError: true });
     if (result.success) { confirmUpsertSuccess('sections', list); } else { confirmUpsertFailure('sections', list); }
     return result;
   };
@@ -6075,7 +6127,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // Exam handlers
   const addExam = (name: string, category: Exam['category'], nameBn?: string, details?: Partial<Exam>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { exam } = buildCreateExamPayload(
+    const { exam, error } = buildCreateExamPayload(
       {
         name,
         nameBn,
@@ -6099,16 +6151,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       classes
     );
 
-    const finalExam = exam || ({
-      id: generateId(),
-      name,
-      nameBn,
-      category,
-      academicYear: schoolProfile.academicYear,
-      status: 'SCHEDULED',
-      ...details
-    } as Exam);
-
+    // 7 Nov 2026 Job 2: a builder error used to fall through to a raw
+    // fallback that saved the exam unvalidated. Refuse instead —
+    // nothing is saved, the caller shows `error`.
+    if (error || !exam) {
+      return { exam: null, exams, error: error || 'Invalid exam data' };
+    }
+    const finalExam = exam;
+    const nextExams = [...exams, finalExam];
     setExams(prev => [...prev, finalExam]);
     if (authUser) {
       recordExamAuditEvent({
@@ -6117,14 +6167,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
       });
     }
+    return { exam: finalExam, exams: nextExams };
   };
 
   const updateExam = (updatedExam: Exam) => {
     const existing = exams.find(e => e.id === updatedExam.id);
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { exam: finalExam } = existing
+    const { exam: finalExam, error } = existing
       ? buildUpdateExamPayload(existing, updatedExam, actor, exams, academicYears, classes)
       : { exam: updatedExam };
+    // Job 2: a refused update saves nothing — the caller shows `error`.
+    if (error) {
+      return { exam: existing || updatedExam, exams, error };
+    }
+    const nextExams = exams.map(e => e.id === finalExam.id ? finalExam : e);
     setExams(prev => prev.map(e => e.id === finalExam.id ? finalExam : e));
     if (authUser) {
       recordExamAuditEvent({
@@ -6134,6 +6190,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         before: existing ? { name: existing.name, status: existing.status } : null
       });
     }
+    return { exam: finalExam, exams: nextExams };
   };
 
   const archiveExam = (id: string) => {
@@ -6186,7 +6243,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // Exam Subject Assignment handlers
   const scheduleExamSubject = (assignmentData: Omit<ExamSubjectAssignment, 'id'>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { assignment } = buildCreateExamSubjectPayload(
+    const { assignment, error } = buildCreateExamSubjectPayload(
       assignmentData,
       'inst_madrasah_primary',
       actor,
@@ -6198,23 +6255,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       academicYears,
       classSubjectAssignments
     );
-    if (assignment) {
-      setExamSubjectAssignments(prev => [...prev, assignment]);
-      if (authUser) {
-        recordExamSubjectAuditEvent({
-          action: 'EXAM_SUBJECT_ASSIGNED',
-          assignment,
-          actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
-        });
-      }
+    // 7 Nov 2026 Job 2: a refused build used to be a silent no-op (the
+    // tile flipped back with no message). Return the error instead.
+    if (error || !assignment) {
+      return { assignment: null, examSubjectAssignments, error: error || 'Invalid exam subject assignment' };
     }
+    const nextAssignments = [...examSubjectAssignments, assignment];
+    setExamSubjectAssignments(prev => [...prev, assignment]);
+    if (authUser) {
+      recordExamSubjectAuditEvent({
+        action: 'EXAM_SUBJECT_ASSIGNED',
+        assignment,
+        actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
+      });
+    }
+    return { assignment, examSubjectAssignments: nextAssignments };
   };
 
   const archiveExamSubject = (id: string) => {
     const existing = examSubjectAssignments.find(a => a.id === id);
-    if (!existing) return;
+    if (!existing) return { assignment: null, examSubjectAssignments };
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
     const archived = buildArchiveExamSubjectPayload(existing, actor);
+    const nextAssignments = examSubjectAssignments.map(a => a.id === id ? archived : a);
     setExamSubjectAssignments(prev => prev.map(a => a.id === id ? archived : a));
     if (authUser) {
       recordExamSubjectAuditEvent({
@@ -6223,6 +6286,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
       });
     }
+    return { assignment: archived, examSubjectAssignments: nextAssignments };
   };
 
   const addTransaction = (txData: Omit<FinanceTransaction, 'id' | 'createdAt'>): FinanceTransaction => {

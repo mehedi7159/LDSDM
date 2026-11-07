@@ -127,6 +127,18 @@ export const LEAVE_CLOUD_FAILURE_MESSAGE =
 export const EXAMS_CLOUD_FAILURE_MESSAGE =
   'পরীক্ষার তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 
+// 7 Nov 2026 Job 2: the class/section/subject confirms used to reuse
+// the exam message above, so a failed class save blamed the exam.
+// Each field now reports itself.
+export const CLASSES_CLOUD_FAILURE_MESSAGE =
+  'শ্রেণির তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const SECTIONS_CLOUD_FAILURE_MESSAGE =
+  'শাখার তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
+export const SUBJECTS_CLOUD_FAILURE_MESSAGE =
+  'বিষয়ের তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
+
 export const ASSIGNMENTS_CLOUD_FAILURE_MESSAGE =
   'অ্যাসাইনমেন্টের তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে, কিন্তু cloud-এ যায়নি — ইন্টারনেট/লগইন যাচাই করে আবার চেষ্টা করুন।';
 

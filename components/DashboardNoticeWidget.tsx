@@ -2,30 +2,33 @@ import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { NoticeItem, NoticeCategory, NoticePriority, NoticeTarget } from '../types';
-import { 
-  Megaphone, 
-  Pin, 
-  Calendar, 
-  Clock, 
-  Users, 
-  AlertCircle, 
-  Plus, 
-  ChevronRight, 
-  Sparkles, 
-  BookOpen, 
-  Printer, 
+import {
+  Megaphone,
+  Pin,
+  Calendar,
+  Clock,
+  Users,
+  AlertCircle,
+  ShieldAlert,
+  Plus,
+  ChevronRight,
+  Sparkles,
+  BookOpen,
+  Printer,
   X,
   CheckCircle2,
   FileText
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
+import { NOTICES_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 
 interface DashboardNoticeWidgetProps {
   onNavigateToNotices?: () => void;
 }
 
 export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ onNavigateToNotices }) => {
-  const { notices = [], addNotice, isAdmin, isSuperAdmin, authUser, language, classes = [] } = useApp();
+  const { notices = [], addNotice, confirmNoticesCloudSync, isRecordUnconfirmed, isAdmin, isSuperAdmin, authUser, language, classes = [] } = useApp();
   const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
 
@@ -65,11 +68,33 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
     return list;
   }, [notices, activeFilter]);
 
+  // 7 Nov 2026 Job 2 (instant save): background-confirm state. The
+  // pending list is what Retry re-confirms; the banner hides once
+  // isRecordUnconfirmed turns false for the saved notice.
+  const [pendingNoticeSave, setPendingNoticeSave] = useState<NoticeItem[] | null>(null);
+  const [pendingNoticeId, setPendingNoticeId] = useState<string | null>(null);
+  const [pendingNoticeError, setPendingNoticeError] = useState<string | null>(null);
+  const [isRetryingNotice, setIsRetryingNotice] = useState(false);
+  const [noticeSaveNote, setNoticeSaveNote] = useState(false);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const noticeConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || NOTICES_CLOUD_FAILURE_MESSAGE));
+
   const handleCreateNotice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
 
-    addNotice({
+    // Job 2 (instant save, Job 0 pattern): the notice applies locally
+    // and the modal closes at once; the cloud confirm runs in the
+    // BACKGROUND via confirmNoticesCloudSync. On failure the payload is
+    // queued, the notice shows the amber 'cloud-এ যায়নি' badge, and
+    // the banner below offers Retry. Closing the modal means 'saved on
+    // this device, syncing' — never a false 'published to cloud'.
+    const created = addNotice({
       title: title.trim(),
       content: content.trim(),
       category,
@@ -89,6 +114,42 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
     setPriority('normal');
     setIsPinned(false);
     setIsComposeModalOpen(false);
+
+    const nextNotices = [created, ...notices];
+    setNoticeSaveNote(true);
+    setTimeout(() => setNoticeSaveNote(false), 2000);
+    void confirmNoticesCloudSync(nextNotices).then((confirmResult) => {
+      if (!confirmResult.success) {
+        setPendingNoticeSave(nextNotices);
+        setPendingNoticeId(created.id);
+        setPendingNoticeError(noticeConfirmErrorMessage(confirmResult));
+      }
+    }).catch((err) => {
+      console.error('Background notice cloud confirm failed:', err);
+      setPendingNoticeSave(nextNotices);
+      setPendingNoticeId(created.id);
+      setPendingNoticeError(NOTICES_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  // Retry re-confirms the still-local save (no re-save needed). The
+  // Diagnostics queue Retry covers the same payload, so whichever path
+  // lands first clears the badge.
+  const retryNoticeSave = async () => {
+    if (!pendingNoticeSave || isRetryingNotice) return;
+    setIsRetryingNotice(true);
+    try {
+      const result = await confirmNoticesCloudSync(pendingNoticeSave);
+      if (result.success) {
+        setPendingNoticeSave(null);
+        setPendingNoticeId(null);
+        setPendingNoticeError(null);
+      } else {
+        setPendingNoticeError(noticeConfirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetryingNotice(false);
+    }
   };
 
   const getCategoryBadge = (cat: NoticeCategory) => {
@@ -151,6 +212,26 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
           )}
         </div>
       </div>
+
+      {/* Job 2 (instant save): a failed background cloud confirm leaves
+          the notice queued with its amber badge — Retry here re-confirms
+          the still-local save. The banner hides once the payload lands. */}
+      {pendingNoticeSave && pendingNoticeId && isRecordUnconfirmed('notices', pendingNoticeId) && (
+        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs flex items-start gap-2">
+          <ShieldAlert size={16} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{pendingNoticeError || NOTICES_CLOUD_FAILURE_MESSAGE}</p>
+            <p className="text-amber-800">{language === 'bn' ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button type="button" onClick={retryNoticeSave} disabled={isRetryingNotice} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+      {noticeSaveNote && !pendingNoticeSave && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -238,6 +319,10 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
                     {notice.title}
                   </h3>
+                  {/* Job 2: background cloud confirm failed — local-only until retry. */}
+                  {isRecordUnconfirmed('notices', notice.id) && (
+                    <UnconfirmedBadge isBn={language === 'bn'} />
+                  )}
 
                   {/* Content snippet */}
                   <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">

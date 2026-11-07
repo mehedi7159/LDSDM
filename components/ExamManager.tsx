@@ -2,22 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Exam, ExamSubjectAssignment, ExamStatus } from '../types';
 import { Button } from './ui/Button';
-import { 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  X, 
-  Calendar, 
-  CheckCircle2, 
-  AlertCircle, 
-  Archive, 
-  Lock, 
-  Layers, 
-  BookOpen, 
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  X,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
+  Archive,
+  Lock,
+  Layers,
+  BookOpen,
   Search,
-  CheckCheck
+  CheckCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
+import { EXAMS_CLOUD_FAILURE_MESSAGE, ASSIGNMENTS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { PageHeader } from './ui/PageHeader';
 import { SectionCard } from './ui/SectionCard';
 import { EmptyState } from './ui/EmptyState';
@@ -27,19 +30,22 @@ import { amountFor, isFeeTypeEnabled } from '../services/feeTypes';
 
 export const ExamManager = () => {
   const { 
-    exams, 
-    addExam, 
-    updateExam, 
-    archiveExam, 
-    finalizeExam, 
-    deleteExam, 
-    classes, 
-    subjects, 
-    academicYears, 
+    exams,
+    addExam,
+    updateExam,
+    archiveExam,
+    finalizeExam,
+    deleteExam,
+    classes,
+    subjects,
+    academicYears,
     classSubjectAssignments,
     examSubjectAssignments,
     scheduleExamSubject,
     archiveExamSubject,
+    confirmExamsCloudSync,
+    confirmExamSubjectAssignmentsCloudSync,
+    isRecordUnconfirmed,
     marks,
     students,
     feeTypes = [],
@@ -64,6 +70,20 @@ export const ExamManager = () => {
   const [schedulingExam, setSchedulingExam] = useState<Exam | null>(null);
   const [examToFinalize, setExamToFinalize] = useState<Exam | null>(null);
   const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+
+  // 7 Nov 2026 Job 2 (instant save): background-confirm state. The
+  // pending list is what Retry re-confirms; the banner hides once
+  // isRecordUnconfirmed turns false for the saved record.
+  const [pendingExamSave, setPendingExamSave] = useState<Exam[] | null>(null);
+  const [pendingExamId, setPendingExamId] = useState<string | null>(null);
+  const [pendingExamError, setPendingExamError] = useState<string | null>(null);
+  const [isRetryingExam, setIsRetryingExam] = useState(false);
+  const [examSaveNote, setExamSaveNote] = useState(false);
+  const [pendingAssignmentSave, setPendingAssignmentSave] = useState<ExamSubjectAssignment[] | null>(null);
+  const [pendingAssignmentId, setPendingAssignmentId] = useState<string | null>(null);
+  const [pendingAssignmentError, setPendingAssignmentError] = useState<string | null>(null);
+  const [isRetryingAssignment, setIsRetryingAssignment] = useState(false);
+  const [assignmentSaveError, setAssignmentSaveError] = useState<string | null>(null);
 
   // New/Edit Exam Form State
   const [formData, setFormData] = useState<Partial<Exam>>({
@@ -115,22 +135,37 @@ export const ExamManager = () => {
 
   const handleSaveExam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name?.trim()) return;
+    // 7 Nov 2026 Job 2: the empty-name guard used to return silently.
+    if (!formData.name?.trim()) {
+      showToast({
+        type: 'error',
+        title: language === 'bn' ? 'পরীক্ষার নাম আবশ্যক' : 'Exam name is required',
+        message: language === 'bn' ? 'পরীক্ষার নাম না দিলে সংরক্ষণ হবে না।' : 'Enter an exam name before saving.'
+      });
+      return;
+    }
 
+    // 7 Nov 2026 Job 2 (instant save, Job 0 pattern): the local mutation
+    // applies and the form resets at once; the cloud confirm runs in the
+    // BACKGROUND via confirmExamsCloudSync. On failure the payload is
+    // queued, the exam shows the amber 'cloud-এ যায়নি' badge, and the
+    // banner below offers Retry. Closing the form means 'saved on this
+    // device, syncing' — never a false 'saved to cloud'. A builder
+    // refusal (e.g. duplicate name) saves nothing and keeps the form
+    // open with the real reason.
+    let saved: { exam: Exam | null; exams: Exam[]; error?: string };
     if (editingExamId) {
       const existing = exams.find(ex => ex.id === editingExamId);
-      if (existing) {
-        updateExam({
-          ...existing,
-          ...formData,
-          name: formData.name.trim(),
-          academicYear: formData.academicYear || existing.academicYear,
-          category: formData.category || existing.category
-        } as Exam);
-      }
-      setEditingExamId(null);
+      if (!existing) return;
+      saved = updateExam({
+        ...existing,
+        ...formData,
+        name: formData.name.trim(),
+        academicYear: formData.academicYear || existing.academicYear,
+        category: formData.category || existing.category
+      } as Exam);
     } else {
-      addExam(
+      saved = addExam(
         formData.name.trim(),
         formData.category || 'Term',
         formData.nameBn?.trim(),
@@ -140,6 +175,17 @@ export const ExamManager = () => {
         }
       );
     }
+    if (saved.error || !saved.exam) {
+      showToast({
+        type: 'error',
+        title: language === 'bn' ? 'পরীক্ষা সংরক্ষণ হয়নি' : 'Exam not saved',
+        message: saved.error || EXAMS_CLOUD_FAILURE_MESSAGE
+      });
+      return;
+    }
+    const savedExamId = saved.exam.id;
+    const nextExams = saved.exams;
+    setEditingExamId(null);
 
     setFormData({
       name: '',
@@ -155,6 +201,142 @@ export const ExamManager = () => {
     });
     // Next create session may prefill the standard fee again.
     examFeePrefillKey.current = '';
+
+    setExamSaveNote(true);
+    setTimeout(() => setExamSaveNote(false), 2000);
+    confirmExamsInBackground(nextExams, savedExamId);
+  };
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const examConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || EXAMS_CLOUD_FAILURE_MESSAGE));
+
+  const assignmentConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || ASSIGNMENTS_CLOUD_FAILURE_MESSAGE));
+
+  const confirmExamsInBackground = (nextExams: Exam[], savedExamId: string) => {
+    void confirmExamsCloudSync(nextExams).then((confirmResult) => {
+      if (!confirmResult.success) {
+        setPendingExamSave(nextExams);
+        setPendingExamId(savedExamId);
+        setPendingExamError(examConfirmErrorMessage(confirmResult));
+      }
+    }).catch((err) => {
+      console.error('Background exam cloud confirm failed:', err);
+      setPendingExamSave(nextExams);
+      setPendingExamId(savedExamId);
+      setPendingExamError(EXAMS_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  const confirmAssignmentsInBackground = (next: ExamSubjectAssignment[], savedAssignmentId: string) => {
+    void confirmExamSubjectAssignmentsCloudSync(next).then((confirmResult) => {
+      if (!confirmResult.success) {
+        setPendingAssignmentSave(next);
+        setPendingAssignmentId(savedAssignmentId);
+        setPendingAssignmentError(assignmentConfirmErrorMessage(confirmResult));
+      }
+    }).catch((err) => {
+      console.error('Background exam-subject cloud confirm failed:', err);
+      setPendingAssignmentSave(next);
+      setPendingAssignmentId(savedAssignmentId);
+      setPendingAssignmentError(ASSIGNMENTS_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  // Retry re-confirms the still-local save (no re-save needed). The
+  // Diagnostics queue Retry covers the same payload, so whichever path
+  // lands first clears the badge.
+  const retryExamSave = async () => {
+    if (!pendingExamSave || isRetryingExam) return;
+    setIsRetryingExam(true);
+    try {
+      const result = await confirmExamsCloudSync(pendingExamSave);
+      if (result.success) {
+        setPendingExamSave(null);
+        setPendingExamId(null);
+        setPendingExamError(null);
+      } else {
+        setPendingExamError(examConfirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetryingExam(false);
+    }
+  };
+
+  const retryAssignmentSave = async () => {
+    if (!pendingAssignmentSave || isRetryingAssignment) return;
+    setIsRetryingAssignment(true);
+    try {
+      const result = await confirmExamSubjectAssignmentsCloudSync(pendingAssignmentSave);
+      if (result.success) {
+        setPendingAssignmentSave(null);
+        setPendingAssignmentId(null);
+        setPendingAssignmentError(null);
+      } else {
+        setPendingAssignmentError(assignmentConfirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetryingAssignment(false);
+    }
+  };
+
+  // Per-exam mark-entry toggle is an exam edit too — same background
+  // confirm as the form save (Job 2).
+  const handleToggleMarkEntry = (exam: Exam) => {
+    const saved = updateExam({ ...exam, markEntryAllowed: exam.markEntryAllowed === false });
+    if (saved.error || !saved.exam) {
+      showToast({
+        type: 'error',
+        title: language === 'bn' ? 'পরিবর্তন হয়নি' : 'Change not saved',
+        message: saved.error || EXAMS_CLOUD_FAILURE_MESSAGE
+      });
+      return;
+    }
+    confirmExamsInBackground(saved.exams, saved.exam.id);
+  };
+
+  // Subject-schedule toggle: a refused build used to flip the tile back
+  // with no message at all. Now the reason is shown and nothing flips.
+  const handleToggleSubjectSchedule = (
+    sub: typeof subjects[number],
+    cls: typeof classes[number],
+    isScheduled: boolean,
+    assignment?: ExamSubjectAssignment
+  ) => {
+    setAssignmentSaveError(null);
+    if (isScheduled && assignment) {
+      const res = archiveExamSubject(assignment.id);
+      if (!res.assignment) return;
+      confirmAssignmentsInBackground(res.examSubjectAssignments, res.assignment.id);
+      return;
+    }
+    const targetClassId = cls.id || cls.name;
+    const res = scheduleExamSubject({
+      examId: schedulingExam!.id,
+      academicYearId: selectedYearId,
+      classId: targetClassId,
+      subjectId: sub.id,
+      fullMarks: sub.fullMarks,
+      passMarks: sub.passMarks,
+      cqFullMarks: sub.cqMarks,
+      cqPassMarks: sub.cqPassMarks,
+      mcqFullMarks: sub.mcqMarks,
+      mcqPassMarks: sub.mcqPassMarks,
+      practicalFullMarks: sub.practicalMarks,
+      practicalPassMarks: sub.practicalPassMarks,
+      status: 'ACTIVE'
+    });
+    if (res.error || !res.assignment) {
+      setAssignmentSaveError(res.error || ASSIGNMENTS_CLOUD_FAILURE_MESSAGE);
+      return;
+    }
+    confirmAssignmentsInBackground(res.examSubjectAssignments, res.assignment.id);
   };
 
   const startEditExam = (exam: Exam) => {
@@ -243,6 +425,30 @@ export const ExamManager = () => {
         </div>
       </PageHeader>
 
+      {/* Job 2 (instant save): the background cloud confirm failed for
+          the just-saved exam — it sits queued with its amber badge.
+          This banner offers Retry; it hides itself once the payload
+          lands (here or via the Diagnostics queue retry). */}
+      {pendingExamSave && pendingExamId && isRecordUnconfirmed('exams', pendingExamId) && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{pendingExamError || EXAMS_CLOUD_FAILURE_MESSAGE}</p>
+            <p className="text-amber-800 dark:text-amber-300">{language === 'bn' ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button type="button" onClick={retryExamSave} disabled={isRetryingExam} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+
+      {/* Job 2: the form closed at once — the exam is saved on this
+          device and syncing to the cloud in the background. */}
+      {examSaveNote && !pendingExamSave && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+        </div>
+      )}
+
       {/* Main Grid: Exam List & Create Form */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Exam List Panel */}
@@ -318,6 +524,11 @@ export const ExamManager = () => {
                               <Lock size={12} /> {language === 'bn' ? 'মার্ক এন্ট্রি বন্ধ' : 'Mark entry closed'}
                             </span>
                           )}
+                          {/* Job 2: background cloud confirm failed — the
+                              record is local-only until the retry lands it. */}
+                          {isRecordUnconfirmed('exams', exam.id) && (
+                            <UnconfirmedBadge isBn={language === 'bn'} />
+                          )}
                         </div>
 
                         <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex flex-wrap gap-3">
@@ -340,7 +551,7 @@ export const ExamManager = () => {
                             permission = master AND exam), so exams can be
                             pre-opened. Absent flag = open. */}
                         <button
-                          onClick={() => updateExam({ ...exam, markEntryAllowed: exam.markEntryAllowed === false })}
+                          onClick={() => handleToggleMarkEntry(exam)}
                           title={language === 'bn' ? 'চাপ দিলে এই পরীক্ষার মার্ক এন্ট্রি খুলবে/বন্ধ হবে' : 'Toggle mark entry for this exam'}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer ${
                             exam.markEntryAllowed === false
@@ -562,6 +773,26 @@ export const ExamManager = () => {
               </button>
             </div>
 
+            {/* Job 2: a refused schedule build shows its reason here
+                (the tile used to flip back silently); a failed background
+                confirm shows the amber banner with Retry. */}
+            {assignmentSaveError && (
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 rounded-xl text-xs font-semibold flex items-start gap-2">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <span>{assignmentSaveError}</span>
+              </div>
+            )}
+            {pendingAssignmentSave && pendingAssignmentId && isRecordUnconfirmed('examSubjectAssignments', pendingAssignmentId) && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs flex items-start gap-2">
+                <ShieldAlert size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0 leading-relaxed">
+                  <p className="font-semibold">{pendingAssignmentError || ASSIGNMENTS_CLOUD_FAILURE_MESSAGE}</p>
+                  <p className="text-amber-800 dark:text-amber-300">{language === 'bn' ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+                </div>
+                <button type="button" onClick={retryAssignmentSave} disabled={isRetryingAssignment} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+              </div>
+            )}
+
             <div className="space-y-4">
               {classes.map(cls => {
                 const classSubjects = subjects.filter(s => s.classLevel === cls.name && s.status !== 'INACTIVE');
@@ -586,31 +817,11 @@ export const ExamManager = () => {
                         const isScheduled = !!assignment;
 
                         return (
-                          <div 
+                          <div
                             key={sub.id}
-                            onClick={() => {
-                              if (isScheduled && assignment) {
-                                archiveExamSubject(assignment.id);
-                              } else {
-                                scheduleExamSubject({
-                                  examId: schedulingExam.id,
-                                  academicYearId: selectedYearId,
-                                  classId: targetClassId,
-                                  subjectId: sub.id,
-                                  fullMarks: sub.fullMarks,
-                                  passMarks: sub.passMarks,
-                                  cqFullMarks: sub.cqMarks,
-                                  cqPassMarks: sub.cqPassMarks,
-                                  mcqFullMarks: sub.mcqMarks,
-                                  mcqPassMarks: sub.mcqPassMarks,
-                                  practicalFullMarks: sub.practicalMarks,
-                                  practicalPassMarks: sub.practicalPassMarks,
-                                  status: 'ACTIVE'
-                                });
-                              }
-                            }}
+                            onClick={() => handleToggleSubjectSchedule(sub, cls, isScheduled, assignment)}
                             className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
-                              isScheduled 
+                              isScheduled
                                 ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-950 dark:text-blue-200 font-bold'
                                 : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-gray-300'
                             }`}
@@ -618,6 +829,11 @@ export const ExamManager = () => {
                             <div>
                               <div className="text-xs font-bangla">{sub.nameBn || sub.name}</div>
                               <div className="text-[10px] text-gray-400 dark:text-slate-500 font-normal">পূর্ণমান: {sub.fullMarks}</div>
+                              {/* Job 2: this assignment's background cloud
+                                  confirm failed — local-only until retry. */}
+                              {assignment && isRecordUnconfirmed('examSubjectAssignments', assignment.id) && (
+                                <UnconfirmedBadge isBn={language === 'bn'} />
+                              )}
                             </div>
 
                             <div>
