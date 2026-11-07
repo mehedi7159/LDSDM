@@ -407,6 +407,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
+            onConfirmTransactions={confirmFeeCloudSync}
+            onReceiptCloudStatus={setVoucherCloudConfirmed}
             onShowReceipt={openVoucher}
             showToast={showToast}
           />

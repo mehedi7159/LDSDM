@@ -26,6 +26,7 @@ import { paymentMethodLabel } from '../../services/paymentMethod';
 import { FUND_METAS, FinanceFilterCategory } from './types';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { useApp } from '../../context/AppContext';
 import { LedgerStatementModal } from './LedgerStatementModal';
 
@@ -44,7 +45,7 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
   onDeleteTransaction,
   showToast,
 }) => {
-  const { schoolProfile } = useApp();
+  const { schoolProfile, isRecordUnconfirmed } = useApp();
   const isBn = language === 'bn';
 
   const [pillarFilter, setPillarFilter] = useState<FinanceFilterCategory>('ALL');
@@ -428,6 +429,14 @@ export const FinanceLedger: React.FC<FinanceLedgerProps> = ({
                     <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3 px-3.5 font-mono font-bold text-slate-900 dark:text-white">
                         {tx.voucherNo}
+                        {/* Job 1 (optimistic save): a voucher whose
+                            background cloud confirm failed stays
+                            local-only — badged, never passing for
+                            cloud-saved. Clears when the queued payload
+                            lands (Retry / Diagnostics). */}
+                        {isRecordUnconfirmed('transactions', tx.id) && (
+                          <UnconfirmedBadge isBn={isBn} />
+                        )}
                       </td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {tx.date}

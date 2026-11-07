@@ -5105,7 +5105,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const list = nextTransactions ?? transactionsRef.current;
     const result = await confirmCloudWrite(
       () => writeTransactionsFieldToCloud(list, confirmActorName()),
-      failureMessage || FEE_CLOUD_FAILURE_MESSAGE
+      failureMessage || FEE_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 (teacher-salary fix): the salary form must SHOW the
+      // real reason (timeout vs refusal) — a swallowed generic message
+      // looks exactly like a dead Save button. Same as the student fix.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('transactions', list, 'fee');
