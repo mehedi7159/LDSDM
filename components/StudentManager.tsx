@@ -165,6 +165,16 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // 7 Nov 2026 emergency: the Save button showed no feedback while the
+  // cloud confirm ran (up to 40s on a slow connection), so a tap looked
+  // dead. isSaving disables the buttons + shows a saving label until the
+  // confirm settles, and the error scrolls into view + repeats in the
+  // sticky footer, so a failure is visible where the user is looking.
+  const [isSaving, setIsSaving] = useState(false);
+  const errorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   // Truthful-save Step 2: a failed cloud confirmation keeps the local
   // save and stores the next-list here, so the banner's retry button
   // re-confirms exactly what was saved (no re-save, no stale list).
@@ -294,12 +304,21 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     return true;
   };
 
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message — a generic message
+  // after a long silent wait is what made the Save button look dead.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || STUDENTS_CLOUD_FAILURE_MESSAGE));
+
   const handleSave = async (stayInModal: boolean = false) => {
     setError(null);
     setSuccess(false);
     setPendingStudentSave(null);
+    setIsSaving(true);
 
-    if (!validateForm()) return;
+    if (!validateForm()) { setIsSaving(false); return; }
 
     const name = formData.name.trim();
     const isFormer = formData.status === 'Former' || !!formData.isFormer;
@@ -370,11 +389,13 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       const confirmResult = await confirmStudentsCloudSync(nextStudents);
       if (!confirmResult.success) {
         setPendingStudentSave(nextStudents);
-        setError(confirmResult.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+        setError(confirmErrorMessage(confirmResult));
+        setIsSaving(false);
         return;
       }
 
       setSuccess(true);
+      setIsSaving(false);
       setTimeout(() => setSuccess(false), 2000);
 
       if (stayInModal) {
@@ -388,14 +409,17 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     } catch (err) {
       console.error('Failed to save student:', err);
       setError('Failed to save student. Please try again.');
+      setIsSaving(false);
     }
   };
 
   // Retry re-confirms the still-local student save (no re-save needed).
   // On success the modal closes — re-saving would duplicate the record.
   const retryStudentSave = async () => {
-    if (!pendingStudentSave) return;
+    if (!pendingStudentSave || isSaving) return;
+    setIsSaving(true);
     const result = await confirmStudentsCloudSync(pendingStudentSave);
+    setIsSaving(false);
     if (result.success) {
       setPendingStudentSave(null);
       setError(null);
@@ -404,7 +428,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       setIsModalOpen(false);
       resetForm();
     } else {
-      setError(result.message || STUDENTS_CLOUD_FAILURE_MESSAGE);
+      setError(confirmErrorMessage(result));
     }
   };
 
@@ -1732,7 +1756,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6" noValidate>
               {error && (
-                <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <div ref={errorRef} className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold flex items-center gap-2">
                   <ShieldAlert size={16} className="shrink-0" />
                   <span>{error}</span>
                   {pendingStudentSave && (
@@ -2156,17 +2180,24 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* Sticky action footer inside student modal - Save button always visible */}
               <div className="sticky bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 -mx-6 -mb-6 p-4 rounded-b-3xl flex flex-wrap items-center justify-end gap-2.5 z-10 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+                {error && (
+                  <span className="flex-1 min-w-[180px] text-left text-xs font-semibold text-red-600 dark:text-red-400">{error}</span>
+                )}
+                {pendingStudentSave && (
+                  <button type="button" onClick={retryStudentSave} disabled={isSaving} className="shrink-0 px-3 py-2 rounded-md bg-amber-600 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+                )}
                 <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>{t('cancel')}</Button>
                 {!editingId && (
                   <Button 
                     type="button" 
                     variant="secondary" 
                     onClick={() => handleSave(true)}
+                    disabled={isSaving}
                   >
-                    {t('saveAndAddAnother' as any) || 'Save & Add Another'}
+                    {isSaving ? (language === 'bn' ? 'সংরক্ষণ হচ্ছে…' : 'Saving…') : (t('saveAndAddAnother' as any) || 'Save & Add Another')}
                   </Button>
                 )}
-                <Button type="submit">{t('save')}</Button>
+                <Button type="submit" disabled={isSaving}>{isSaving ? (language === 'bn' ? 'সংরক্ষণ হচ্ছে…' : 'Saving…') : t('save')}</Button>
               </div>
             </form>
           </div>

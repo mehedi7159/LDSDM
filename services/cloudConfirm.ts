@@ -163,6 +163,13 @@ export const RECEIPT_LOCAL_ONLY_NOTE =
 export const RETRY_LABEL = 'আবার চেষ্টা করুন';
 
 const CONFIRM_TIMEOUT_MS = 40000;
+
+// Student saves carry the largest single field (~341 KB full-doc read +
+// full-list write). On a slow phone connection the shared 40s cap can
+// expire before the round-trip finishes, so the students writer gets a
+// longer cap. See 7 Nov 2026 emergency (student add/edit Save doing
+// nothing on the phone).
+const STUDENTS_CONFIRM_TIMEOUT_MS = 90000;
 const PENDING_KEY = 'ldsdm_pending_cloud_confirms';
 
 export type PendingConfirmKind =
@@ -179,7 +186,7 @@ export type PendingConfirmKind =
   | 'feeStructures'
   | 'feeTypes';
 
-export type CloudConfirmResult = { success: boolean; message?: string };
+export type CloudConfirmResult = { success: boolean; message?: string; rawMessage?: string };
 
 /** Union by record key; incoming (local) records win on key conflict. */
 export function mergeRecordsByKey<T>(
@@ -364,7 +371,7 @@ export async function writeStudentsFieldToCloud(
 ): Promise<void> {
   await withTimeout(
     writeFieldToCloud('students', students, updatedBy),
-    CONFIRM_TIMEOUT_MS,
+    STUDENTS_CONFIRM_TIMEOUT_MS,
     'students cloud confirm'
   );
 }
@@ -752,10 +759,16 @@ export async function writeTrashOpToCloud(
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'trash op cloud confirm');
 }
 
-/** Runs a caller-supplied write and maps its outcome (deleteTeacher template). */
+/** Runs a caller-supplied write and maps its outcome (deleteTeacher template).
+ * By default the specific error is logged and a generic failure message is
+ * returned. Callers that must SHOW the reason (e.g. the student form, where
+ * a timeout looks exactly like a dead button) pass { includeRawError: true }
+ * and get the raw message in `rawMessage` — the record stays queued either
+ * way; only the diagnosis becomes visible. */
 export async function confirmCloudWrite(
   write: () => Promise<void>,
-  failureMessage: string
+  failureMessage: string,
+  opts?: { includeRawError?: boolean }
 ): Promise<CloudConfirmResult> {
   try {
     await write();
@@ -763,7 +776,9 @@ export async function confirmCloudWrite(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn('Cloud confirm failed:', message);
-    return { success: false, message: failureMessage };
+    return opts?.includeRawError
+      ? { success: false, message: failureMessage, rawMessage: message }
+      : { success: false, message: failureMessage };
   }
 }
 

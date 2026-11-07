@@ -5142,7 +5142,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const list = nextStudents ?? studentsRef.current;
     const result = await confirmCloudWrite(
       () => writeStudentsFieldToCloud(list, confirmActorName()),
-      STUDENTS_CLOUD_FAILURE_MESSAGE
+      STUDENTS_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 emergency: the student form must SHOW the real reason
+      // (timeout vs refusal) — a swallowed generic message looks exactly
+      // like a dead Save button.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('students', list, 'students');
