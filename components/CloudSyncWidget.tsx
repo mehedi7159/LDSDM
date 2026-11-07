@@ -69,6 +69,8 @@ export const CloudSyncWidget: React.FC = () => {
     pendingPayloads,
     pendingSyncCount,
     retryPendingCloudConfirms,
+    isRetryingConfirms,
+    lastRetryError,
     discardPendingPayload
   } = useApp();
   
@@ -334,10 +336,25 @@ export const CloudSyncWidget: React.FC = () => {
             </span>
             <button
               type="button"
-              onClick={() => retryPendingCloudConfirms()}
-              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer shrink-0"
+              disabled={isRetryingConfirms}
+              onClick={async () => {
+                const res = await retryPendingCloudConfirms({ isManual: true });
+                if (res.success) {
+                  setSyncNotification(language === 'bn' ? 'অপেক্ষমাণ তথ্য সফলভাবে ক্লাউডে সিঙ্ক হয়েছে!' : 'Pending records synced successfully to cloud!');
+                  setTimeout(() => setSyncNotification(null), 3500);
+                } else if (res.error && res.error !== 'in_flight') {
+                  setSyncNotification(language === 'bn' ? `সিঙ্ক ব্যর্থ হয়েছে: ${res.error}` : `Sync failed: ${res.error}`);
+                  setTimeout(() => setSyncNotification(null), 4000);
+                }
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer shrink-0 flex items-center gap-1.5 transition-all"
             >
-              {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Retry now'}
+              <RefreshCw size={12} className={isRetryingConfirms ? 'animate-spin' : ''} />
+              <span>
+                {isRetryingConfirms
+                  ? (language === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...')
+                  : (language === 'bn' ? 'আবার চেষ্টা করুন' : 'Retry now')}
+              </span>
             </button>
           </div>
           <div className="space-y-1.5">
@@ -353,7 +370,7 @@ export const CloudSyncWidget: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => discardPendingPayload(item.id)}
-                  className="text-amber-700 dark:text-amber-300 hover:text-rose-700 underline shrink-0"
+                  className="text-amber-700 dark:text-amber-300 hover:text-rose-700 underline shrink-0 cursor-pointer"
                   title={language === 'bn' ? 'এই অপেক্ষমাণ তথ্য ইচ্ছাকৃতভাবে বাদ দিন' : 'Deliberately discard this queued payload'}
                 >
                   {language === 'bn' ? 'বাদ দিন' : 'Discard'}
@@ -361,6 +378,22 @@ export const CloudSyncWidget: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {/* Last retry error alert with exact failure reason & timestamp */}
+          {lastRetryError && (
+            <div className="p-2.5 rounded-xl bg-rose-100/90 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 text-[11px] text-rose-800 dark:text-rose-200 flex items-start gap-2 animate-in fade-in duration-150">
+              <AlertCircle size={14} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <p className="font-semibold break-words">
+                  {language === 'bn' ? 'সিঙ্ক ব্যর্থতা কারণ:' : 'Sync failure reason:'} {lastRetryError.message}
+                </p>
+                <p className="text-[10px] text-rose-600 dark:text-rose-300 font-mono">
+                  {lastRetryError.field ? `${language === 'bn' ? 'ক্ষেত্র' : 'Field'}: ${lastRetryError.field} • ` : ''}
+                  {language === 'bn' ? 'সময়' : 'Time'}: {lastRetryError.timestamp}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
