@@ -61,6 +61,7 @@ import { AdmissionApplicationManager, AdmissionApplication } from './students/Ad
 import { ClassSectionMatrixView } from './students/ClassSectionMatrixView';
 import { GuardianDirectoryView } from './students/GuardianDirectoryView';
 import { EmptyState } from './ui/EmptyState';
+import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
 import { PageHeader } from './ui/PageHeader';
 import { useTheme } from '../context/ThemeContext';
 
@@ -95,6 +96,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     deleteStudent, 
     confirmStudentsCloudSync,
     confirmStudentDeleteCloudSync,
+    isRecordUnconfirmed,
     classes, 
     feeStructures,
     feeTypes,
@@ -165,12 +167,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  // 7 Nov 2026 emergency: the Save button showed no feedback while the
-  // cloud confirm ran (up to 40s on a slow connection), so a tap looked
-  // dead. isSaving disables the buttons + shows a saving label until the
-  // confirm settles, and the error scrolls into view + repeats in the
-  // sticky footer, so a failure is visible where the user is looking.
-  const [isSaving, setIsSaving] = useState(false);
+  // 7 Nov 2026 Job 0 (instant save): the cc5eabd0 isSaving state made
+  // the Save button sit on 'সংরক্ষণ হচ্ছে…' while the cloud confirm
+  // ran (up to 90s). The save no longer blocks on the confirm, so there
+  // is no long saving state at all — only isRetrying guards the small
+  // Retry button against double-taps.
+  const [isRetrying, setIsRetrying] = useState(false);
   const errorRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -178,7 +180,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   // Truthful-save Step 2: a failed cloud confirmation keeps the local
   // save and stores the next-list here, so the banner's retry button
   // re-confirms exactly what was saved (no re-save, no stale list).
+  // pendingStudentId is the saved record's id — the list banner only
+  // shows while that record is still unconfirmed, so it hides itself
+  // once the payload lands via this retry OR the Diagnostics retry.
   const [pendingStudentSave, setPendingStudentSave] = useState<Student[] | null>(null);
+  const [pendingStudentId, setPendingStudentId] = useState<string | null>(null);
+  const [pendingSaveError, setPendingSaveError] = useState<string | null>(null);
   const [pendingStudentDelete, setPendingStudentDelete] = useState<{ students: Student[]; trashBin: TrashItem[] } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isStudentDeleting, setIsStudentDeleting] = useState(false);
@@ -312,13 +319,24 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
       : (result.message || STUDENTS_CLOUD_FAILURE_MESSAGE));
 
-  const handleSave = async (stayInModal: boolean = false) => {
+  // 7 Nov 2026 Job 0 (instant save): the modal used to block-await the
+  // cloud confirm — getDoc of the full ~341 KB main_store + setDoc of
+  // the full students array — so one click sat on 'সংরক্ষণ হচ্ছে…' for
+  // 60-90s on a slow connection. Now the local mutation applies and the
+  // modal closes AT ONCE; the confirm runs in the BACKGROUND via the
+  // same confirmStudentsCloudSync (90s timeout, raw error text). On
+  // failure it queues the payload, the record shows the amber
+  // 'cloud-এ যায়নি' badge, and the list banner offers Retry. Modal
+  // closing means 'saved on this device, syncing' — never a false
+  // 'saved to cloud'.
+  const handleSave = (stayInModal: boolean = false) => {
     setError(null);
     setSuccess(false);
     setPendingStudentSave(null);
-    setIsSaving(true);
+    setPendingStudentId(null);
+    setPendingSaveError(null);
 
-    if (!validateForm()) { setIsSaving(false); return; }
+    if (!validateForm()) return;
 
     const name = formData.name.trim();
     const isFormer = formData.status === 'Former' || !!formData.isFormer;
@@ -350,85 +368,94 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       feePayableAmount: feeArrangement.payableAmount,
     };
 
-    try {
-      // Truthful save (Step 2): the local mutation runs first, then the
-      // awaited cloud confirmation decides the feedback. On failure the
-      // modal stays open with an honest error + retry — never a false
-      // success, and the local record is never dropped.
-      let nextStudents: Student[];
-      if (editingId) {
-        const res = updateStudent({ ...dataToSave, id: editingId });
-        nextStudents = res.students;
-        if (authUser) {
-          recordStudentAuditEvent({
-            action: 'STUDENT_UPDATED',
-            student: { ...dataToSave, id: editingId } as Student,
-            actor: {
-              uid: authUser.uid,
-              email: authUser.email || '',
-              role: isSuperAdmin ? 'superadmin' : (authClaims?.role || 'admin')
-            }
-          });
-        }
-      } else {
-        const res = addStudent(dataToSave);
-        nextStudents = res.students;
-        if (authUser) {
-          recordStudentAuditEvent({
-            action: 'STUDENT_CREATED',
-            student: { ...dataToSave, id: 'new' } as Student,
-            actor: {
-              uid: authUser.uid,
-              email: authUser.email || '',
-              role: isSuperAdmin ? 'superadmin' : (authClaims?.role || 'admin')
-            }
-          });
-        }
+    // Local mutation first — the list updates and the modal closes at
+    // once. The cloud confirm below never blocks this path.
+    let nextStudents: Student[];
+    let savedStudentId: string;
+    if (editingId) {
+      const res = updateStudent({ ...dataToSave, id: editingId });
+      nextStudents = res.students;
+      savedStudentId = res.student.id;
+      if (authUser) {
+        recordStudentAuditEvent({
+          action: 'STUDENT_UPDATED',
+          student: { ...dataToSave, id: editingId } as Student,
+          actor: {
+            uid: authUser.uid,
+            email: authUser.email || '',
+            role: isSuperAdmin ? 'superadmin' : (authClaims?.role || 'admin')
+          }
+        });
       }
+    } else {
+      const res = addStudent(dataToSave);
+      nextStudents = res.students;
+      savedStudentId = res.student.id;
+      if (authUser) {
+        recordStudentAuditEvent({
+          action: 'STUDENT_CREATED',
+          student: { ...dataToSave, id: 'new' } as Student,
+          actor: {
+            uid: authUser.uid,
+            email: authUser.email || '',
+            role: isSuperAdmin ? 'superadmin' : (authClaims?.role || 'admin')
+          }
+        });
+      }
+    }
 
-      const confirmResult = await confirmStudentsCloudSync(nextStudents);
+    // Honest local feedback: saved on this device, cloud sync running
+    // in the background. The list banner below shows this briefly; the
+    // per-record badge is the real cloud state.
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 2000);
+
+    if (stayInModal) {
+      const currentClass = formData.classLevel;
+      resetForm(currentClass);
+      setTimeout(() => nameInputRef.current?.focus(), 0);
+    } else {
+      setIsModalOpen(false);
+      resetForm();
+    }
+
+    // Background confirm — fire and forget from the UI's point of view.
+    // On failure confirmStudentsCloudSync queues the payload (via
+    // confirmUpsertFailure), so the badge + list banner appear and the
+    // Diagnostics queue can retry it.
+    void confirmStudentsCloudSync(nextStudents).then((confirmResult) => {
       if (!confirmResult.success) {
         setPendingStudentSave(nextStudents);
-        setError(confirmErrorMessage(confirmResult));
-        setIsSaving(false);
-        return;
+        setPendingStudentId(savedStudentId);
+        setPendingSaveError(confirmErrorMessage(confirmResult));
       }
-
-      setSuccess(true);
-      setIsSaving(false);
-      setTimeout(() => setSuccess(false), 2000);
-
-      if (stayInModal) {
-        const currentClass = formData.classLevel;
-        resetForm(currentClass);
-        setTimeout(() => nameInputRef.current?.focus(), 0);
-      } else {
-        setIsModalOpen(false);
-        resetForm();
-      }
-    } catch (err) {
-      console.error('Failed to save student:', err);
-      setError('Failed to save student. Please try again.');
-      setIsSaving(false);
-    }
+    }).catch((err) => {
+      console.error('Background student cloud confirm failed:', err);
+      setPendingStudentSave(nextStudents);
+      setPendingStudentId(savedStudentId);
+      setPendingSaveError(STUDENTS_CLOUD_FAILURE_MESSAGE);
+    });
   };
 
   // Retry re-confirms the still-local student save (no re-save needed).
-  // On success the modal closes — re-saving would duplicate the record.
+  // Used by the list banner + the modal error banner. The Diagnostics
+  // queue Retry covers the same payload, so whichever path lands first
+  // clears the badge (the banner hides once isRecordUnconfirmed turns
+  // false for the saved record).
   const retryStudentSave = async () => {
-    if (!pendingStudentSave || isSaving) return;
-    setIsSaving(true);
-    const result = await confirmStudentsCloudSync(pendingStudentSave);
-    setIsSaving(false);
-    if (result.success) {
-      setPendingStudentSave(null);
-      setError(null);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
-      setIsModalOpen(false);
-      resetForm();
-    } else {
-      setError(confirmErrorMessage(result));
+    if (!pendingStudentSave || isRetrying) return;
+    setIsRetrying(true);
+    try {
+      const result = await confirmStudentsCloudSync(pendingStudentSave);
+      if (result.success) {
+        setPendingStudentSave(null);
+        setPendingStudentId(null);
+        setPendingSaveError(null);
+      } else {
+        setPendingSaveError(confirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetrying(false);
     }
   };
 
@@ -746,6 +773,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   {student.studentId}
                 </span>
               </div>
+              {/* Job 0 (instant save): a record whose background cloud
+                  confirm failed stays visibly marked until its queued
+                  payload lands — same pattern as the staff badge. */}
+              {isRecordUnconfirmed('students', student.id) && (
+                <UnconfirmedBadge isBn={language === 'bn'} />
+              )}
               {altName && altName !== displayName && (
                 <div className="text-xs text-gray-500 dark:text-slate-400 font-bangla truncate">{altName}</div>
               )}
@@ -1291,6 +1324,30 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         </div>
       )}
 
+      {/* Job 0 (instant save): the background cloud confirm failed for
+          the just-saved record — it sits queued with its amber badge.
+          This banner offers Retry; it hides itself once the payload
+          lands (here or via the Diagnostics queue retry). */}
+      {pendingStudentSave && pendingStudentId && isRecordUnconfirmed('students', pendingStudentId) && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{pendingSaveError || STUDENTS_CLOUD_FAILURE_MESSAGE}</p>
+            <p className="text-amber-800 dark:text-amber-300">{language === 'bn' ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button type="button" onClick={retryStudentSave} disabled={isRetrying} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+
+      {/* Job 0 (instant save): the modal closed at once — the record is
+          saved on this device and syncing to the cloud in the background. */}
+      {success && !pendingStudentSave && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+        </div>
+      )}
+
       {/* Search & Class Filter */}
       <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
@@ -1446,6 +1503,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                           {language !== 'bn' && student.nameBn && <div className="text-[10px] text-gray-400 dark:text-slate-500 truncate font-bangla">{student.nameBn}</div>}
                         </div>
                       </div>
+                      {/* Job 0 (instant save): badge for a record whose
+                          background cloud confirm failed — see StudentCard. */}
+                      {isRecordUnconfirmed('students', student.id) && <UnconfirmedBadge isBn={language === 'bn'} />}
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-300 whitespace-nowrap font-medium">
                       <span>{language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}</span>
@@ -2184,7 +2244,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <span className="flex-1 min-w-[180px] text-left text-xs font-semibold text-red-600 dark:text-red-400">{error}</span>
                 )}
                 {pendingStudentSave && (
-                  <button type="button" onClick={retryStudentSave} disabled={isSaving} className="shrink-0 px-3 py-2 rounded-md bg-amber-600 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+                  <button type="button" onClick={retryStudentSave} disabled={isRetrying} className="shrink-0 px-3 py-2 rounded-md bg-amber-600 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
                 )}
                 <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>{t('cancel')}</Button>
                 {!editingId && (
@@ -2192,12 +2252,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     type="button" 
                     variant="secondary" 
                     onClick={() => handleSave(true)}
-                    disabled={isSaving}
                   >
-                    {isSaving ? (language === 'bn' ? 'সংরক্ষণ হচ্ছে…' : 'Saving…') : (t('saveAndAddAnother' as any) || 'Save & Add Another')}
+                    {t('saveAndAddAnother' as any) || 'Save & Add Another'}
                   </Button>
                 )}
-                <Button type="submit" disabled={isSaving}>{isSaving ? (language === 'bn' ? 'সংরক্ষণ হচ্ছে…' : 'Saving…') : t('save')}</Button>
+                <Button type="submit">{t('save')}</Button>
               </div>
             </form>
           </div>
