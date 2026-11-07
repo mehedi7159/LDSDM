@@ -5256,7 +5256,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const userList = nextUsers ?? usersRef.current;
     const result = await confirmCloudWrite(
       () => writeStaffFieldsToCloud(teacherList, userList, confirmActorName()),
-      STAFF_CLOUD_FAILURE_MESSAGE
+      STAFF_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 3 (staff instant save): the background confirm
+      // must SHOW the real reason (timeout vs refusal) — a swallowed
+      // generic message looks exactly like a dead Save button. Same as
+      // the student and fee fixes.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('teachers', teacherList, 'staff');
@@ -5794,6 +5799,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // them to confirmStaffCloudSync.
     const nextTeachers = teachers.map(t => t.id === teacher.id ? teacherWithCredentials : t);
     setTeachers(nextTeachers);
+
+    // 7 Nov 2026 Job 3 (staff instant save): queue the FULL updated
+    // record optimistically, in the same step as setTeachers — mirrors
+    // addTeacher. If the app is killed while the background confirm is
+    // pending, the payload already sits in the queue, so the retry
+    // replays the stored record instead of losing it. Confirm success
+    // clears this field exactly as before.
+    queuePendingPayload({ field: 'teachers', op: 'upsert', records: [teacherWithCredentials], updatedBy: confirmActorName() });
+    refreshPendingPayloads();
 
     // Update in users
     const nextUsers = users.map(u => {

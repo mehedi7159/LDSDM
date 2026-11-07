@@ -539,6 +539,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     }
   };
 
+  // Plain-language confirm failure (7 Nov 2026 Job 3): a timeout (slow
+  // connection) says so explicitly instead of the generic cloud message
+  // — a generic message after a long silent wait is what made the Save
+  // button look dead. Mirrors the student form.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (isBn ? STAFF_CLOUD_FAILURE_MESSAGE : 'Staff information saved on this device, but not yet in cloud — check internet/login and retry.'));
+
   // Handle save teacher
   const handleSaveTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -639,7 +648,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     const additionalRoles = formAdditionalRoles.filter(r => r !== formLoginRole);
 
     if (editingTeacher) {
-      const sync = await updateTeacher({
+      // 7 Nov 2026 Job 3 (instant save): the old code block-awaited the
+      // cloud confirm — getDoc of the full ~341 KB main_store + setDoc
+      // of the full teachers + users lists — so one click sat for
+      // 60-90s on a slow connection. Now the local mutation applies at
+      // once (updateTeacher sets the lists synchronously, before its
+      // credential-sync await) and the modal closes AT ONCE; the
+      // confirm runs in the BACKGROUND via the same
+      // confirmStaffCloudSync (90s timeout, raw error text). On failure
+      // it queues the payload, the record shows the amber
+      // 'cloud-এ যায়নি' badge, and the Diagnostics queue can retry
+      // it. Modal closing means 'saved on this device, syncing' —
+      // never a false 'saved to cloud'.
+      const syncPromise = updateTeacher({
         ...editingTeacher,
         ...teacherFormData,
         name: teacherFormData.name.trim(),
@@ -647,40 +668,56 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         password: passwordToSave,
         additionalRoles
       } as AcademicTeacher, formLoginRole);
-      // Phase 2 edit validation: a payload error must STOP the save
-      // here — show it under the field, keep the modal open, NEVER
-      // a success toast with the old record saved.
-      if (sync.error) {
-        const msg = sync.error;
-        const isCodeErr = /কোড|code/i.test(msg);
-        const isEmailErr = /ইমেইল|email/i.test(msg);
-        if (isCodeErr) { setFormErrors({ employeeCode: msg }); employeeCodeInputRef.current?.focus(); }
-        else if (isEmailErr) { setFormErrors({ email: msg }); emailInputRef.current?.focus(); }
-        else showToast(msg);
-        return;
-      }
-      // Truthful save (Step 2): the credential sync above never covered
-      // the main_store record write — confirm it here, and let the
-      // record's cloud status lead the toast (credential status second).
-      const record = await confirmStaffCloudSync(sync.nextTeachers, sync.nextUsers);
-      if (!record.success) {
-        const credClause = sync.status === 'failed'
-          ? (isBn ? ' Firebase sync-ও হয়নি।' : ' Firebase sync also failed.')
-          : (sync.status === 'skipped' && sync.reason === 'no-email')
-            ? (isBn ? ' Firebase sync হয়নি (email নেই)।' : ' Firebase sync did not run (no email).')
-            : '';
-        showToast(isBn
-          ? `${STAFF_CLOUD_FAILURE_MESSAGE}${credClause}`
-          : `Staff information saved on this device, but not yet in cloud — check internet/login and retry.${credClause}`);
-      } else if (sync.status === 'failed') {
-        showToast(isBn ? `তথ্য আপডেট হয়েছে, তবে Firebase sync হয়নি (${syncFailureNote(sync.reason, true)})` : `Information updated, but Firebase sync failed (${sync.reason})`);
-      } else if (sync.status === 'skipped' && sync.reason === 'no-email') {
-        showToast(isBn ? 'তথ্য আপডেট হয়েছে; এই staff-এর email নেই বলে Firebase sync হয়নি' : 'Information updated; no email, so Firebase sync did not run');
-      } else {
-        showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
-      }
+      setIsAddEditModalOpen(false);
+      showToast(isBn ? 'তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…');
+      void syncPromise.then((sync) => {
+        // Phase 2 edit validation: a payload error must surface — the
+        // record was NOT changed (validation runs before the local
+        // apply), so this toast is the only signal. The form itself
+        // already validates the same rules inline before submit, so
+        // this path should almost never fire.
+        if (sync.error) {
+          showToast(sync.error);
+          return;
+        }
+        // Background confirm — fire and forget from the UI's point of
+        // view. On failure confirmStaffCloudSync queues the payload
+        // (via confirmUpsertFailure), so the badge appears and the
+        // Diagnostics queue can retry it.
+        void confirmStaffCloudSync(sync.nextTeachers, sync.nextUsers).then((record) => {
+          // Truthful save (Step 2): the credential sync above never
+          // covered the main_store record write — the record's cloud
+          // status leads the toast (credential status second).
+          const credClause = sync.status === 'failed'
+            ? (isBn ? ' Firebase sync-ও হয়নি।' : ' Firebase sync also failed.')
+            : (sync.status === 'skipped' && sync.reason === 'no-email')
+              ? (isBn ? ' Firebase sync হয়নি (email নেই)।' : ' Firebase sync did not run (no email).')
+              : '';
+          if (!record.success) {
+            showToast(`${confirmErrorMessage(record)}${credClause}`);
+          } else if (sync.status === 'failed') {
+            showToast(isBn ? `তথ্য আপডেট হয়েছে, তবে Firebase sync হয়নি (${syncFailureNote(sync.reason, true)})` : `Information updated, but Firebase sync failed (${sync.reason})`);
+          } else if (sync.status === 'skipped' && sync.reason === 'no-email') {
+            showToast(isBn ? 'তথ্য আপডেট হয়েছে; এই staff-এর email নেই বলে Firebase sync হয়নি' : 'Information updated; no email, so Firebase sync did not run');
+          } else {
+            showToast(isBn ? 'শিক্ষক/কর্মচারীর তথ্য সফলভাবে আপডেট হয়েছে' : 'Staff information updated successfully');
+          }
+        }).catch((err) => {
+          console.error('Background staff cloud confirm failed:', err);
+          showToast(isBn ? STAFF_CLOUD_FAILURE_MESSAGE : 'Staff information saved on this device, but not yet in cloud — check internet/login and retry.');
+        });
+      }).catch((err) => {
+        console.error('Background staff save failed:', err);
+        showToast(isBn ? 'সংরক্ষণ করা যায়নি — আবার চেষ্টা করুন।' : 'Could not save — please try again.');
+      });
     } else {
-      const addRes = await addTeacher({
+      // 7 Nov 2026 Job 3 (instant save): same as the edit branch — the
+      // local record applies at once (addTeacher sets the lists and
+      // queues the payload synchronously, before its provisioning
+      // await) and the modal closes; provisioning + cloud confirm run
+      // in the background. A provisioning failure still never blocks
+      // creation, and the staff member's next login still retries it.
+      const addPromise = addTeacher({
         name: teacherFormData.name.trim(),
         nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
         employeeCode: teacherFormData.employeeCode || `MDR-T${Date.now().toString().slice(-3)}`,
@@ -693,41 +730,46 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         assignedClasses: teacherFormData.assignedClasses || [],
         assignedSubjects: teacherFormData.assignedSubjects || []
       }, formLoginRole);
-      if (addRes && !addRes.success) {
-        const msg = addRes.message || (isBn ? 'যুক্ত করা যায়নি — তথ্য যাচাই করুন' : 'Could not add — please check the information');
-        const isCodeErr = /কোড|code/i.test(msg);
-        const isEmailErr = /ইমেইল|email/i.test(msg);
-        if (isCodeErr) { setFormErrors({ employeeCode: msg }); employeeCodeInputRef.current?.focus(); }
-        else if (isEmailErr) { setFormErrors({ email: msg }); emailInputRef.current?.focus(); }
-        else showToast(msg);
-        return;
-      }
-      // Truthful save (Step 2): the old toast claimed the login account
-      // was created even when provisioning failed or was skipped, and
-      // never confirmed the record write. Both outcomes are now stated
-      // plainly; provisioning itself is unchanged (failure still never
-      // blocks creation, next login still retries).
-      const record = await confirmStaffCloudSync(addRes.nextTeachers, addRes.nextUsers);
-      const provBn = addRes.provisioning === 'synced'
-        ? 'লগইন অ্যাকাউন্ট সক্রিয় হয়েছে।'
-        : addRes.provisioning === 'failed'
-          ? 'লগইন অ্যাকাউন্ট তৈরি হয়নি — কর্মীর পরের লগইনে আবার চেষ্টা হবে।'
-          : 'লগইন তথ্য সংরক্ষিত হয়েছে।';
-      const provEn = addRes.provisioning === 'synced'
-        ? 'Login account activated.'
-        : addRes.provisioning === 'failed'
-          ? 'Login account could not be created — it will retry on the staff member\'s next login.'
-          : 'Login credentials saved.';
-      if (!record.success) {
-        showToast(isBn
-          ? `${STAFF_CLOUD_FAILURE_MESSAGE} ${provBn}`
-          : `Staff information saved on this device, but not yet in cloud — check internet/login and retry. ${provEn}`);
-      } else {
-        showToast(isBn ? `নতুন শিক্ষক/কর্মচারী সফলভাবে যুক্ত হয়েছে। ${provBn}` : `New staff member added successfully. ${provEn}`);
-      }
+      setIsAddEditModalOpen(false);
+      showToast(isBn ? 'তথ্য এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…');
+      void addPromise.then((addRes) => {
+        if (addRes && !addRes.success) {
+          showToast(addRes.message || (isBn ? 'যুক্ত করা যায়নি — তথ্য যাচাই করুন' : 'Could not add — please check the information'));
+          return;
+        }
+        // Truthful save (Step 2): the old toast claimed the login
+        // account was created even when provisioning failed or was
+        // skipped, and never confirmed the record write. Both outcomes
+        // are now stated plainly; provisioning itself is unchanged
+        // (failure still never blocks creation, next login still
+        // retries).
+        const provBn = addRes.provisioning === 'synced'
+          ? 'লগইন অ্যাকাউন্ট সক্রিয় হয়েছে।'
+          : addRes.provisioning === 'failed'
+            ? 'লগইন অ্যাকাউন্ট তৈরি হয়নি — কর্মীর পরের লগইনে আবার চেষ্টা হবে।'
+            : 'লগইন তথ্য সংরক্ষিত হয়েছে।';
+        const provEn = addRes.provisioning === 'synced'
+          ? 'Login account activated.'
+          : addRes.provisioning === 'failed'
+            ? 'Login account could not be created — it will retry on the staff member\'s next login.'
+            : 'Login credentials saved.';
+        void confirmStaffCloudSync(addRes.nextTeachers, addRes.nextUsers).then((record) => {
+          if (!record.success) {
+            showToast(isBn
+              ? `${confirmErrorMessage(record)} ${provBn}`
+              : `${confirmErrorMessage(record)} ${provEn}`);
+          } else {
+            showToast(isBn ? `নতুন শিক্ষক/কর্মচারী সফলভাবে যুক্ত হয়েছে। ${provBn}` : `New staff member added successfully. ${provEn}`);
+          }
+        }).catch((err) => {
+          console.error('Background staff cloud confirm failed:', err);
+          showToast(isBn ? `${STAFF_CLOUD_FAILURE_MESSAGE} ${provBn}` : `Staff information saved on this device, but not yet in cloud — check internet/login and retry. ${provEn}`);
+        });
+      }).catch((err) => {
+        console.error('Background staff add failed:', err);
+        showToast(isBn ? 'যুক্ত করা যায়নি — আবার চেষ্টা করুন।' : 'Could not add — please try again.');
+      });
     }
-
-    setIsAddEditModalOpen(false);
   };
 
   // Approval dialog state (Phase 1): approving a teacher must let the

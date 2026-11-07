@@ -182,6 +182,11 @@ const CONFIRM_TIMEOUT_MS = 40000;
 // longer cap. See 7 Nov 2026 emergency (student add/edit Save doing
 // nothing on the phone).
 const STUDENTS_CONFIRM_TIMEOUT_MS = 90000;
+
+// 7 Nov 2026 Job 3 (staff save): the staff confirm reads the same full
+// ~341 KB main_store (getDoc) and writes the teachers + users lists, so
+// it carries the same timeout risk as students — same 90s cap.
+const STAFF_CONFIRM_TIMEOUT_MS = 90000;
 const PENDING_KEY = 'ldsdm_pending_cloud_confirms';
 
 export type PendingConfirmKind =
@@ -450,7 +455,7 @@ export async function writeStaffFieldsToCloud(
 ): Promise<void> {
   await withTimeout(
     writeFieldsToCloud({ teachers, users }, updatedBy),
-    CONFIRM_TIMEOUT_MS,
+    STAFF_CONFIRM_TIMEOUT_MS,
     'staff cloud confirm'
   );
 }
