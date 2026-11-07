@@ -416,7 +416,12 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             onAddTransaction={addTransaction}
             onConfirmTransactions={confirmFeeCloudSync}
             onReceiptCloudStatus={setVoucherCloudConfirmed}
-            onShowReceipt={openVoucher}
+            // Job 1 receipt gap (7 Nov 2026): NOT openVoucher — it resets
+            // voucherCloudConfirmed to true, which would erase the false
+            // the form sets just before opening (same-tick batching).
+            // Direct setter, like student-fee, so the receipt opens
+            // local-only until the background confirm lands.
+            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
             showToast={showToast}
           />
         )}
