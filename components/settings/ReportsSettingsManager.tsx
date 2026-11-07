@@ -49,6 +49,7 @@ import { Button } from '../ui/Button';
 import { ServerDataGate } from '../ui/ServerDataGate';
 import { useTheme } from '../../context/ThemeContext';
 import { SchoolProfile } from '../../types';
+import { RETRY_LABEL, SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 
 export type ReportsSettingsSubTab = 
   | 'notices' 
@@ -71,6 +72,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
   const {
     schoolProfile,
     updateSchoolProfile,
+    confirmSchoolProfileCloudSync,
+    isRecordUnconfirmed,
     notices = [],
     students = [],
     teachers = [],
@@ -104,6 +107,18 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
   // Profile Form state
   const [profileData, setProfileData] = useState<SchoolProfile>(schoolProfile);
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+  // 7 Nov 2026 Job 6 (settings profile instant save): the save used to
+  // call sync updateSchoolProfile and show instant 'সফলভাবে সংরক্ষিত!'
+  // while the cloud write rode the silent background diff sync — a slow
+  // connection failed with no UI at all. Now the local apply happens at
+  // once, the confirm runs in the BACKGROUND, the green badge appears
+  // ONLY when the confirm lands, and a failure shows an amber banner
+  // with the real reason + Retry. The queued scalar payload also lights
+  // the banner after a reload (isRecordUnconfirmed '__scalar__').
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+  const [profileSyncing, setProfileSyncing] = useState(false);
+  const [isRetryingProfile, setIsRetryingProfile] = useState(false);
+  const profileUnconfirmed = isRecordUnconfirmed('schoolProfile', '__scalar__');
 
   useEffect(() => {
     setProfileData(schoolProfile);
@@ -214,11 +229,72 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
     setProfileData(prev => ({ ...prev, [field]: '' }));
   };
 
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message — a generic message
+  // after a long silent wait is what made the Save button look dead.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE));
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validation: the two name fields are required (the form also marks
+    // them required); an email, when given, must look like an email.
+    if (!profileData.name?.trim() || !profileData.nameBn?.trim()) {
+      showToast({
+        type: 'error',
+        title: isBn ? 'নাম দরকার' : 'Name Required',
+        message: isBn ? 'মাদ্রাসার নাম (বাংলা ও English) দুটোই দিতে হবে।' : 'Both the Bangla and English madrasah names are required.'
+      });
+      return;
+    }
+    if (profileData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email.trim())) {
+      showToast({
+        type: 'error',
+        title: isBn ? 'ইমেইল ঠিক নয়' : 'Invalid Email',
+        message: isBn ? 'সঠিক ইমেইল ঠিকানা দিন, অথবা খালি রাখুন।' : 'Enter a valid email address, or leave it blank.'
+      });
+      return;
+    }
+    setProfileSaveError(null);
+    setProfileSaveSuccess(false);
+    // Instant (Job 0 template): the local mutation applies at once and
+    // the confirm runs in the BACKGROUND — the Save button never blocks
+    // on the full-doc round-trip. Closing/saving means 'saved on this
+    // device, syncing'; the green badge appears only when the confirm
+    // lands, and a failure shows the amber banner + Retry below.
     updateSchoolProfile(profileData);
-    setProfileSaveSuccess(true);
-    setTimeout(() => setProfileSaveSuccess(false), 3000);
+    setProfileSyncing(true);
+    showToast({
+      type: 'info',
+      title: isBn ? 'সংরক্ষিত হয়েছে' : 'Saved',
+      message: isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'
+    });
+    void confirmSchoolProfileCloudSync(profileData).then((result) => {
+      setProfileSyncing(false);
+      if (result.success) {
+        setProfileSaveSuccess(true);
+        setTimeout(() => setProfileSaveSuccess(false), 3000);
+      } else {
+        setProfileSaveError(confirmErrorMessage(result));
+      }
+    });
+  };
+
+  // Retry re-confirms the SAME saved profile (no re-save needed).
+  const retryProfileSave = async () => {
+    if (isRetryingProfile) return;
+    setIsRetryingProfile(true);
+    setProfileSaveError(null);
+    const result = await confirmSchoolProfileCloudSync(profileData);
+    setIsRetryingProfile(false);
+    if (result.success) {
+      setProfileSaveSuccess(true);
+      setTimeout(() => setProfileSaveSuccess(false), 3000);
+    } else {
+      setProfileSaveError(confirmErrorMessage(result));
+    }
   };
 
   // Quick 1-click full JSON backup download
@@ -558,6 +634,12 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
+              {profileSyncing && (
+                <div className="flex items-center gap-2 px-3.5 py-2 bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400 text-xs font-bold rounded-xl border border-sky-200 dark:border-sky-800 animate-in fade-in">
+                  <Clock size={15} />
+                  <span>{isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+                </div>
+              )}
               {profileSaveSuccess && (
                 <div className="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-xl border border-emerald-200 dark:border-emerald-800 animate-in fade-in">
                   <CheckCircle2 size={15} />
@@ -573,6 +655,17 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </button>
             </div>
           </div>
+
+          {/* 7 Nov 2026 Job 6: cloud confirm failed — amber banner with the
+              real reason + Retry. Also lights when a queued profile payload
+              survives a reload (the save already landed on this device). */}
+          {(profileSaveError || profileUnconfirmed) && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-xs font-bold rounded-2xl border border-amber-200 dark:border-amber-800 animate-in fade-in">
+              <AlertCircle size={16} className="shrink-0" />
+              <p className="flex-1">{profileSaveError || SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE}</p>
+              <button type="button" onClick={retryProfileSave} disabled={isRetryingProfile} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+            </div>
+          )}
 
           {/* Form Fields Card */}
  <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-6">
@@ -879,6 +972,28 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               <span>{isBn ? 'পরিবর্তন সেভ করুন' : 'Save Changes'}</span>
             </button>
           </div>
+
+          {/* 7 Nov 2026 Job 6: same save status as the profile tab — the
+              branding form shares handleSaveProfile. */}
+          {profileSyncing && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400 text-xs font-bold rounded-2xl border border-sky-200 dark:border-sky-800 animate-in fade-in">
+              <Clock size={16} className="shrink-0" />
+              <span>{isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+            </div>
+          )}
+          {profileSaveSuccess && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-2xl border border-emerald-200 dark:border-emerald-800 animate-in fade-in">
+              <CheckCircle2 size={16} className="shrink-0" />
+              <span>{isBn ? 'সফলভাবে সংরক্ষিত!' : 'Saved successfully!'}</span>
+            </div>
+          )}
+          {(profileSaveError || profileUnconfirmed) && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-xs font-bold rounded-2xl border border-amber-200 dark:border-amber-800 animate-in fade-in">
+              <AlertCircle size={16} className="shrink-0" />
+              <p className="flex-1">{profileSaveError || SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE}</p>
+              <button type="button" onClick={retryProfileSave} disabled={isRetryingProfile} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             

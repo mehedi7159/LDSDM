@@ -5454,7 +5454,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const confirmSchoolProfileCloudSync = async (nextProfile?: SchoolProfile): Promise<CloudConfirmResult> => {
     const profile = nextProfile ?? schoolProfileRef.current;
-    const result = await confirmCloudWrite(() => writeSchoolProfileFieldToCloud(profile as any, confirmActorName()), SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(
+      () => writeSchoolProfileFieldToCloud(profile as any, confirmActorName()),
+      SCHOOL_PROFILE_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 6 (settings profile instant save): the background
+      // confirm must SHOW the real reason (timeout vs refusal) — a
+      // swallowed generic message looks exactly like a dead Save button.
+      // Same as the student/staff/fee fixes.
+      { includeRawError: true }
+    );
     if (result.success) { confirmScalarSuccess('schoolProfile', profile); } else { confirmScalarFailure('schoolProfile', profile); }
     return result;
   };
