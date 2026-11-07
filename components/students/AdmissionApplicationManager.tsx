@@ -12,22 +12,24 @@ import {
   OfficeAdmissionApplication
 } from '../../services/admissionApplicationsService';
 import { Button } from '../ui/Button';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { useTheme } from '../../context/ThemeContext';
-import { STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Filter, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  UserCheck, 
-  Phone, 
-  Printer, 
-  Calendar, 
-  User, 
+import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
+import {
+  FileText,
+  Plus,
+  Search,
+  Filter,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  UserCheck,
+  Phone,
+  Printer,
+  Calendar,
+  User,
   GraduationCap,
+  ShieldAlert,
   Sparkles,
   ArrowRight
 } from 'lucide-react';
@@ -43,9 +45,30 @@ export type AdmissionApplication = OfficeAdmissionApplication;
 export const AdmissionApplicationManager: React.FC<{
   onEnrollStudent?: (app: AdmissionApplication) => void;
 }> = ({ onEnrollStudent }) => {
-  const { classes, addStudent, confirmStudentsCloudSync, language } = useApp();
+  const { classes, addStudent, confirmStudentsCloudSync, isRecordUnconfirmed, language } = useApp();
   const { showToast } = useTheme();
   const isBn = language === 'bn';
+
+  // 7 Nov 2026 Job 5 (instant approve+enroll): a failed background
+  // confirm keeps the saved student list + record id here, so Retry
+  // re-confirms exactly what was enrolled — never a second addStudent
+  // call (which would mint a new random autoStudentId and enrol the
+  // same applicant twice).
+  type FailedEnroll = { students: Student[]; studentId: string; studentNo: string; applicantName: string; message: string };
+  const [enrollFailures, setEnrollFailures] = useState<Record<string, FailedEnroll>>({});
+  // Failed enrolments whose student is still unconfirmed (the banner
+  // hides itself once the payload lands here or via Diagnostics).
+  const failedEnrolls = Object.keys(enrollFailures).flatMap(appId => {
+    const f = enrollFailures[appId];
+    const app = applications.find(a => a.id === appId);
+    return f && app && isRecordUnconfirmed('students', f.studentId) ? [{ app, f }] : [];
+  });
+  // In-flight guard per application id (ref = authoritative: two taps
+  // in the same tick must both see the first one; state mirrors it
+  // for the button label/disabled rendering).
+  const enrollingRef = useRef<Set<string>>(new Set());
+  const [enrollingAppIds, setEnrollingAppIds] = useState<ReadonlySet<string>>(new Set());
+  const [isRetryingId, setIsRetryingId] = useState<string | null>(null);
 
   // Stored applications — read from the canonical unified store
   const [applications, setApplications] = useState<AdmissionApplication[]>(() =>
@@ -143,60 +166,158 @@ export const AdmissionApplicationManager: React.FC<{
     });
   };
 
-  // Truthful-save Step 2-বাকি: success toast only after the cloud
-  // write lands; failure shows the honest error instead (the local
-  // record + application tracker stay untouched).
-  const handleApproveAndEnroll = async (app: AdmissionApplication) => {
-    // 1. Add as active enrolled student
-    const currentYear = new Date().getFullYear();
-    const autoStudentId = `${currentYear}${Math.floor(100 + Math.random() * 900)}`;
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message — same helper as
+  // the student form (Job 0), because confirmStudentsCloudSync already
+  // passes { includeRawError: true } and the raw text is in rawMessage.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || STUDENTS_CLOUD_FAILURE_MESSAGE));
 
-    const added = addStudent({
-      name: app.applicantName,
-      nameBn: app.applicantNameBn || app.applicantName,
-      gender: app.gender,
-      dateOfBirth: app.dateOfBirth,
-      classLevel: app.desiredClass,
-      studentId: autoStudentId,
-      roll: '১',
-      rollNumber: '১',
-      fatherName: app.fatherName,
-      fatherNameBn: app.fatherNameBn || app.fatherName,
-      motherName: app.motherName,
-      guardianName: app.fatherNameBn || app.fatherName || 'অভিভাবক',
-      guardianPhone: app.guardianPhone,
-      guardianEmail: app.guardianEmail || '',
-      address: app.address,
-      admissionDate: new Date().toISOString().split('T')[0],
-      status: 'Active',
-      isFormer: false
-    });
-
-    // 2. Mark application status as APPROVED (shown as APPROVED on this
-    // screen; the canonical store records the truthful terminal state
-    // 'admitted' so the Online Admissions tracker shows it as admitted too)
+  // The cloud confirm has landed — ONLY now does the application become
+  // APPROVED (this screen + the canonical store, so the Online
+  // Admissions tracker shows it as admitted too) and the user is taken
+  // to the student list. Shared by the background confirm + Retry.
+  const markEnrolledApproved = (app: AdmissionApplication, studentNo: string) => {
     setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'APPROVED' } : a));
     updateAdmissionApplicationStatus(app.id, 'admitted');
-
     if (onEnrollStudent) {
       onEnrollStudent(app);
     }
-
-    const result = await confirmStudentsCloudSync(added.students);
-    if (!result.success) {
-      showToast({
-        type: 'error',
-        message: result.message || STUDENTS_CLOUD_FAILURE_MESSAGE
-      });
-      return;
-    }
-
     showToast({
       type: 'success',
       message: isBn
-        ? `অভিনন্দন! "${app.applicantNameBn || app.applicantName}" সফলভাবে শিক্ষার্থী হিসেবে ভর্তি হয়েছেন (আইডি: ${autoStudentId})।`
-        : `Success! "${app.applicantName}" has been successfully enrolled as a student (ID: ${autoStudentId}).`
+        ? `অভিনন্দন! "${app.applicantNameBn || app.applicantName}" সফলভাবে শিক্ষার্থী হিসেবে ভর্তি হয়েছেন (আইডি: ${studentNo})।`
+        : `Success! "${app.applicantName}" has been successfully enrolled as a student (ID: ${studentNo}).`
     });
+  };
+
+  // 7 Nov 2026 Job 5 (instant approve+enroll, Job 0 template): the old
+  // handler block-awaited the cloud confirm AFTER already marking the
+  // application APPROVED (and switching to the student list) — so a
+  // failed confirm left the row stuck as "ভর্তি সম্পন্ন" with no retry,
+  // and a double-tap re-ran addStudent with a new random autoStudentId
+  // (duplicate enrolment). Now the local enrolment applies AT ONCE and
+  // the confirm runs in the BACKGROUND via the same
+  // confirmStudentsCloudSync (90s timeout, raw error text). APPROVED is
+  // set only when the confirm lands. On failure the payload stays
+  // queued, the row keeps its amber 'cloud-এ যায়নি' badge + Retry, and
+  // the application stays PENDING. Never a false 'saved to cloud'.
+  const handleApproveAndEnroll = (app: AdmissionApplication) => {
+    // Double-enrol guard: one approval enrols one student, once. A
+    // second tap while the background confirm is still running — or a
+    // tap on a row whose enrolment already failed — must never call
+    // addStudent again. A failed enrolment is recovered only via Retry,
+    // which re-confirms the same saved list.
+    if (enrollingRef.current.has(app.id) || enrollFailures[app.id]) return;
+    try {
+      // 1. Add as active enrolled student (local apply, at once)
+      const currentYear = new Date().getFullYear();
+      const autoStudentId = `${currentYear}${Math.floor(100 + Math.random() * 900)}`;
+
+      const added = addStudent({
+        name: app.applicantName,
+        nameBn: app.applicantNameBn || app.applicantName,
+        gender: app.gender,
+        dateOfBirth: app.dateOfBirth,
+        classLevel: app.desiredClass,
+        studentId: autoStudentId,
+        roll: '১',
+        rollNumber: '১',
+        fatherName: app.fatherName,
+        fatherNameBn: app.fatherNameBn || app.fatherName,
+        motherName: app.motherName,
+        guardianName: app.fatherNameBn || app.fatherName || 'অভিভাবক',
+        guardianPhone: app.guardianPhone,
+        guardianEmail: app.guardianEmail || '',
+        address: app.address,
+        admissionDate: new Date().toISOString().split('T')[0],
+        status: 'Active',
+        isFormer: false
+      });
+
+      enrollingRef.current.add(app.id);
+      setEnrollingAppIds(prev => new Set(prev).add(app.id));
+
+      // Honest local feedback at once: the student is on this device
+      // now; the cloud confirm is running in the background.
+      showToast({
+        type: 'success',
+        message: isBn
+          ? `"${app.applicantNameBn || app.applicantName}" এই ডিভাইসে ভর্তি হয়েছে — cloud-এ যাচ্ছে…`
+          : `"${app.applicantName}" enrolled on this device — syncing to cloud…`
+      });
+
+      // 2. Background confirm — fire and forget from the UI's point of
+      // view. On failure confirmStudentsCloudSync queues the payload
+      // (via confirmUpsertFailure), so the amber badge + Retry appear
+      // and the Diagnostics queue can retry it.
+      void confirmStudentsCloudSync(added.students).then((result) => {
+        enrollingRef.current.delete(app.id);
+        setEnrollingAppIds(prev => { const next = new Set(prev); next.delete(app.id); return next; });
+        if (!result.success) {
+          setEnrollFailures(prev => ({
+            ...prev,
+            [app.id]: {
+              students: added.students,
+              studentId: added.student.id,
+              studentNo: autoStudentId,
+              applicantName: app.applicantNameBn || app.applicantName,
+              message: confirmErrorMessage(result)
+            }
+          }));
+          showToast({ type: 'error', message: confirmErrorMessage(result) });
+          return;
+        }
+        markEnrolledApproved(app, autoStudentId);
+      }).catch((err) => {
+        console.error('Background admission enrol cloud confirm failed:', err);
+        enrollingRef.current.delete(app.id);
+        setEnrollingAppIds(prev => { const next = new Set(prev); next.delete(app.id); return next; });
+        setEnrollFailures(prev => ({
+          ...prev,
+          [app.id]: {
+            students: added.students,
+            studentId: added.student.id,
+            studentNo: autoStudentId,
+            applicantName: app.applicantNameBn || app.applicantName,
+            message: STUDENTS_CLOUD_FAILURE_MESSAGE
+          }
+        }));
+        showToast({ type: 'error', message: STUDENTS_CLOUD_FAILURE_MESSAGE });
+      });
+    } catch (err) {
+      console.error('Approve & enrol failed:', err);
+      showToast({
+        type: 'error',
+        message: isBn ? 'ভর্তি অনুমোদন করা যায়নি — আবার চেষ্টা করুন।' : 'Could not approve & enrol — please try again.'
+      });
+    }
+  };
+
+  // Retry re-confirms the already-enrolled student (no re-enrol, no new
+  // student id). Only the explicit Retry awaits the confirm. On success
+  // the application becomes APPROVED exactly as a first-time landing.
+  const handleRetryEnroll = async (app: AdmissionApplication) => {
+    const failure = enrollFailures[app.id];
+    if (!failure || isRetryingId) return;
+    setIsRetryingId(app.id);
+    try {
+      const result = await confirmStudentsCloudSync(failure.students);
+      if (!result.success) {
+        setEnrollFailures(prev => ({ ...prev, [app.id]: { ...failure, message: confirmErrorMessage(result) } }));
+        showToast({ type: 'error', message: confirmErrorMessage(result) });
+        return;
+      }
+      setEnrollFailures(prev => { const next = { ...prev }; delete next[app.id]; return next; });
+      markEnrolledApproved(app, failure.studentNo);
+    } catch (err) {
+      console.error('Admission enrol retry failed:', err);
+      showToast({ type: 'error', message: STUDENTS_CLOUD_FAILURE_MESSAGE });
+    } finally {
+      setIsRetryingId(null);
+    }
   };
 
   const handleReject = (appId: string) => {
@@ -306,6 +427,23 @@ export const AdmissionApplicationManager: React.FC<{
         </div>
       </div>
 
+      {/* Job 5 (instant approve+enroll): the background cloud confirm
+          failed for a just-enrolled applicant — the student sits queued
+          with its amber badge in the student list. This banner offers
+          Retry; it hides itself once the payload lands (here or via the
+          Diagnostics queue retry). The row itself stays PENDING until
+          the confirm lands, so it can never pass for enrolled. */}
+      {failedEnrolls.map(({ app: failedApp, f }) => (
+        <div key={failedApp.id} className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{f.message}</p>
+            <p className="text-amber-800 dark:text-amber-300">{isBn ? `"${f.applicantName}"-এর ভর্তির তথ্য এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।` : `The enrolment for "${f.applicantName}" is saved on this device — it has not reached the cloud yet.`}</p>
+          </div>
+          <button type="button" onClick={() => handleRetryEnroll(failedApp)} disabled={isRetryingId === failedApp.id} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      ))}
+
       {/* Applications Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
@@ -365,6 +503,12 @@ export const AdmissionApplicationManager: React.FC<{
                           <span>{isBn ? 'অপেক্ষমাণ' : 'Pending'}</span>
                         </span>
                       )}
+                      {/* Job 5: the student is enrolled locally but the
+                          cloud confirm failed — the amber badge says so
+                          instead of the row passing for enrolled. */}
+                      {app.status === 'PENDING' && enrollFailures[app.id] && isRecordUnconfirmed('students', enrollFailures[app.id].studentId) && (
+                        <UnconfirmedBadge isBn={isBn} />
+                      )}
                       {app.status === 'APPROVED' && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                           <CheckCircle2 size={12} />
@@ -381,21 +525,40 @@ export const AdmissionApplicationManager: React.FC<{
                     <td className="py-3 px-4 text-right">
                       {app.status === 'PENDING' ? (
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleApproveAndEnroll(app)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                            title={isBn ? 'অনুমোদন দিয়ে সরাসরি শিক্ষার্থী হিসেবে ভর্তি করুন' : 'Approve & Enroll as Active Student'}
-                          >
-                            <UserCheck size={13} />
-                            <span>{isBn ? 'ভর্তি অনুমোদন' : 'Enroll'}</span>
-                          </button>
-                          <button
-                            onClick={() => handleReject(app.id)}
-                            className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 text-slate-600 dark:text-slate-300 hover:text-rose-700 rounded-lg text-xs font-bold transition cursor-pointer"
-                            title={isBn ? 'বাতিল করুন' : 'Reject'}
-                          >
-                            <XCircle size={14} />
-                          </button>
+                          {/* Job 5: a failed enrolment is recovered only
+                              via Retry (re-confirms the same saved
+                              student — never a second addStudent, never
+                              a duplicate enrolment). Enroll + Reject stay
+                              hidden until the failure is resolved. */}
+                          {enrollFailures[app.id] ? (
+                            <button
+                              onClick={() => handleRetryEnroll(app)}
+                              disabled={isRetryingId === app.id}
+                              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={enrollFailures[app.id].message}
+                            >
+                              <span>{RETRY_LABEL}</span>
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleApproveAndEnroll(app)}
+                                disabled={enrollingAppIds.has(app.id)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={isBn ? 'অনুমোদন দিয়ে সরাসরি শিক্ষার্থী হিসেবে ভর্তি করুন' : 'Approve & Enroll as Active Student'}
+                              >
+                                <UserCheck size={13} />
+                                <span>{enrollingAppIds.has(app.id) ? (isBn ? 'ভর্তি হচ্ছে…' : 'Enrolling…') : (isBn ? 'ভর্তি অনুমোদন' : 'Enroll')}</span>
+                              </button>
+                              <button
+                                onClick={() => handleReject(app.id)}
+                                className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 text-slate-600 dark:text-slate-300 hover:text-rose-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                                title={isBn ? 'বাতিল করুন' : 'Reject'}
+                              >
+                                <XCircle size={14} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">{isBn ? 'কার্যকর হয়েছে' : 'Processed'}</span>
