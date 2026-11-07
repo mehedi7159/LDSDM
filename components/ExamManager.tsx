@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
-import { EXAMS_CLOUD_FAILURE_MESSAGE, ASSIGNMENTS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
+import { EXAMS_CLOUD_FAILURE_MESSAGE, ASSIGNMENTS_CLOUD_FAILURE_MESSAGE, MARK_ENTRY_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { PageHeader } from './ui/PageHeader';
 import { SectionCard } from './ui/SectionCard';
 import { EmptyState } from './ui/EmptyState';
@@ -45,6 +45,7 @@ export const ExamManager = () => {
     archiveExamSubject,
     confirmExamsCloudSync,
     confirmExamSubjectAssignmentsCloudSync,
+    confirmMarkEntryEnabledCloudSync,
     isRecordUnconfirmed,
     marks,
     students,
@@ -84,6 +85,15 @@ export const ExamManager = () => {
   const [pendingAssignmentError, setPendingAssignmentError] = useState<string | null>(null);
   const [isRetryingAssignment, setIsRetryingAssignment] = useState(false);
   const [assignmentSaveError, setAssignmentSaveError] = useState<string | null>(null);
+
+  // 7 Nov 2026 Job 7 (instant save): the master mark-entry switch used
+  // to toast instant success with no cloud confirm at all. The toggle
+  // still applies locally at once; the confirm runs in the BACKGROUND
+  // and the green toast appears ONLY when it lands.
+  const [pendingMarkEntryValue, setPendingMarkEntryValue] = useState<boolean | null>(null);
+  const [pendingMarkEntryError, setPendingMarkEntryError] = useState<string | null>(null);
+  const [isRetryingMarkEntry, setIsRetryingMarkEntry] = useState(false);
+  const [isTogglingMarkEntry, setIsTogglingMarkEntry] = useState(false);
 
   // New/Edit Exam Form State
   const [formData, setFormData] = useState<Partial<Exam>>({
@@ -286,6 +296,66 @@ export const ExamManager = () => {
     }
   };
 
+  // Plain-language confirm failure for the master switch: a timeout
+  // (slow connection) says so explicitly instead of the generic message.
+  const markEntryConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || MARK_ENTRY_CLOUD_FAILURE_MESSAGE));
+
+  // Master mark-entry switch (Job 7): applies locally at once; the
+  // cloud confirm runs in the BACKGROUND. The success toast appears
+  // ONLY when the confirm lands — never an instant 'saved' claim.
+  // Failure queues the payload and shows the amber banner with Retry
+  // (same boolean value, never a second toggle). The button stays
+  // disabled while a toggle/Retry is in flight (double-toggle guard).
+  const handleToggleMarkEntryEnabled = () => {
+    if (isTogglingMarkEntry || isRetryingMarkEntry) return;
+    const next = !markEntryEnabled;
+    setIsTogglingMarkEntry(true);
+    setMarkEntryEnabled(next);
+    setPendingMarkEntryValue(next);
+    setPendingMarkEntryError(null);
+    void confirmMarkEntryEnabledCloudSync(next).then((confirmResult) => {
+      setIsTogglingMarkEntry(false);
+      if (confirmResult.success) {
+        setPendingMarkEntryValue(null);
+        setPendingMarkEntryError(null);
+        showToast({
+          type: next ? 'success' : 'info',
+          title: language === 'bn' ? (next ? 'মার্ক এন্ট্রি খোলা হয়েছে' : 'মার্ক এন্ট্রি বন্ধ করা হয়েছে') : (next ? 'Mark entry opened' : 'Mark entry closed'),
+          message: language === 'bn'
+            ? (next ? 'সব পরীক্ষায় মার্ক এন্ট্রি আবার চালু হয়েছে (যে পরীক্ষার নিজস্ব টগল বন্ধ, সেটি বন্ধই থাকবে)।' : 'এখন থেকে কেউ কোনো পরীক্ষায় মার্ক এন্ট্রি করতে পারবে না।')
+            : (next ? 'Mark entry is open again for all exams (exams with their own toggle off stay closed).' : 'Nobody can enter marks for any exam now.')
+        });
+      } else {
+        setPendingMarkEntryError(markEntryConfirmErrorMessage(confirmResult));
+      }
+    }).catch((err) => {
+      console.error('Background mark-entry cloud confirm failed:', err);
+      setIsTogglingMarkEntry(false);
+      setPendingMarkEntryValue(next);
+      setPendingMarkEntryError(MARK_ENTRY_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  // Retry re-confirms the same boolean value — never toggles again.
+  const retryMarkEntrySave = async () => {
+    if (pendingMarkEntryValue === null || isRetryingMarkEntry || isTogglingMarkEntry) return;
+    setIsRetryingMarkEntry(true);
+    try {
+      const result = await confirmMarkEntryEnabledCloudSync(pendingMarkEntryValue);
+      if (result.success) {
+        setPendingMarkEntryValue(null);
+        setPendingMarkEntryError(null);
+      } else {
+        setPendingMarkEntryError(markEntryConfirmErrorMessage(result));
+      }
+    } finally {
+      setIsRetryingMarkEntry(false);
+    }
+  };
+
   // Per-exam mark-entry toggle is an exam edit too — same background
   // confirm as the form save (Job 2).
   const handleToggleMarkEntry = (exam: Exam) => {
@@ -387,18 +457,9 @@ export const ExamManager = () => {
             type="button"
             aria-pressed={markEntryEnabled}
             title={language === 'bn' ? 'চাপ দিলে সব পরীক্ষার মার্ক এন্ট্রি খুলবে/বন্ধ হবে' : 'Toggle mark entry for all exams'}
-            onClick={() => {
-              const next = !markEntryEnabled;
-              setMarkEntryEnabled(next);
-              showToast({
-                type: next ? 'success' : 'info',
-                title: language === 'bn' ? (next ? 'মার্ক এন্ট্রি খোলা হয়েছে' : 'মার্ক এন্ট্রি বন্ধ করা হয়েছে') : (next ? 'Mark entry opened' : 'Mark entry closed'),
-                message: language === 'bn'
-                  ? (next ? 'সব পরীক্ষায় মার্ক এন্ট্রি আবার চালু হয়েছে (যে পরীক্ষার নিজস্ব টগল বন্ধ, সেটি বন্ধই থাকবে)।' : 'এখন থেকে কেউ কোনো পরীক্ষায় মার্ক এন্ট্রি করতে পারবে না।')
-                  : (next ? 'Mark entry is open again for all exams (exams with their own toggle off stay closed).' : 'Nobody can enter marks for any exam now.')
-              });
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+            onClick={handleToggleMarkEntryEnabled}
+            disabled={isTogglingMarkEntry || isRetryingMarkEntry}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
               markEntryEnabled
                 ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300'
                 : 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300'
@@ -443,6 +504,30 @@ export const ExamManager = () => {
       {/* Job 2: the form closed at once — the exam is saved on this
           device and syncing to the cloud in the background. */}
       {examSaveNote && !pendingExamSave && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+        </div>
+      )}
+
+      {/* Job 7 (instant save): the master mark-entry switch's background
+          cloud confirm failed — the toggle sits queued, applied on this
+          device only. Retry re-confirms the same value; it never
+          toggles again. */}
+      {pendingMarkEntryValue !== null && pendingMarkEntryError && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+          <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{pendingMarkEntryError}</p>
+            <p className="text-amber-800 dark:text-amber-300">{language === 'bn' ? 'সেটিংটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The setting is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button type="button" onClick={retryMarkEntrySave} disabled={isRetryingMarkEntry} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+
+      {/* Job 7: the switch applied on this device at once and is
+          syncing to the cloud in the background. */}
+      {pendingMarkEntryValue !== null && !pendingMarkEntryError && (
         <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>

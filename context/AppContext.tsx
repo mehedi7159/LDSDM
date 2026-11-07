@@ -5118,7 +5118,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setDailyStudentAttendance(records);
     const result = await confirmCloudWrite(
       () => writeAttendanceFieldToCloud(records, confirmActorName()),
-      ATTENDANCE_CLOUD_FAILURE_MESSAGE
+      ATTENDANCE_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 7: the background confirm must SHOW the real reason
+      // (timeout vs refusal) — same as the student/staff/fee fixes.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('dailyStudentAttendance', records, 'attendance');
@@ -5133,7 +5136,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setDailyStaffAttendance(records);
     const result = await confirmCloudWrite(
       () => writeStaffAttendanceFieldToCloud(records, confirmActorName()),
-      ATTENDANCE_CLOUD_FAILURE_MESSAGE
+      ATTENDANCE_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 7: the background confirm must SHOW the real reason
+      // (timeout vs refusal) — same as the student/staff/fee fixes.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('dailyStaffAttendance', records, 'staffAttendance');
@@ -5178,7 +5184,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const list = nextMarks ?? marksRef.current;
     const result = await confirmCloudWrite(
       () => writeMarksFieldToCloud(list, confirmActorName()),
-      MARKS_CLOUD_FAILURE_MESSAGE
+      MARKS_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 7: the background confirm must SHOW the real reason
+      // (timeout vs refusal) — same as the student/staff/fee fixes.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('marks', list, 'marks');
@@ -5301,7 +5310,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         academicScheduleService.getCalendarEvents(),
         confirmActorName()
       ),
-      SCHEDULE_CLOUD_FAILURE_MESSAGE
+      SCHEDULE_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 7: the background confirm must SHOW the real reason
+      // (timeout vs refusal) — same as the student/staff/fee fixes.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('classRoutines', academicScheduleService.getRoutines(), 'schedule');
@@ -5326,7 +5338,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const list = nextLeaves ?? staffLeavesRef.current;
     const result = await confirmCloudWrite(
       () => writeStaffLeavesFieldToCloud(list, confirmActorName()),
-      LEAVE_CLOUD_FAILURE_MESSAGE
+      LEAVE_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 7: the background confirm must SHOW the real reason
+      // (timeout vs refusal) — same as the student/staff/fee fixes.
+      { includeRawError: true }
     );
     if (result.success) {
       confirmUpsertSuccess('staffLeaves', list, 'leaves');
@@ -5412,7 +5427,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const confirmPromotionHistoryCloudSync = async (next?: PromotionHistoryRecord[]): Promise<CloudConfirmResult> => {
     const list = next ?? promotionHistoryRef.current;
-    const result = await confirmCloudWrite(() => writePromotionHistoryFieldToCloud(list, confirmActorName()), PROMOTION_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(
+      () => writePromotionHistoryFieldToCloud(list, confirmActorName()),
+      PROMOTION_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 7: the background confirm must SHOW the real reason
+      // (timeout vs refusal) — same as the student/staff/fee fixes.
+      { includeRawError: true }
+    );
     if (result.success) { confirmUpsertSuccess('promotionHistory', list); } else { confirmUpsertFailure('promotionHistory', list); }
     return result;
   };
@@ -5469,7 +5490,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const confirmMarkEntryEnabledCloudSync = async (nextValue?: boolean): Promise<CloudConfirmResult> => {
     const value = nextValue ?? markEntryEnabledRef.current;
-    const result = await confirmCloudWrite(() => writeMarkEntryEnabledFieldToCloud(value, confirmActorName()), MARK_ENTRY_CLOUD_FAILURE_MESSAGE);
+    const result = await confirmCloudWrite(
+      () => writeMarkEntryEnabledFieldToCloud(value, confirmActorName()),
+      MARK_ENTRY_CLOUD_FAILURE_MESSAGE,
+      // 7 Nov 2026 Job 7: the background confirm must SHOW the real reason
+      // (timeout vs refusal) — same as the student/staff/fee fixes.
+      { includeRawError: true }
+    );
     if (result.success) { confirmScalarSuccess('markEntryEnabled', value); } else { confirmScalarFailure('markEntryEnabled', value); }
     return result;
   };

@@ -44,7 +44,7 @@ import { AcademicTeacher } from '../../types/academic';
 import { FinanceTransaction, UserRole, StaffLeaveRecord, AppUser } from '../../types';
 import { resolveApprovalRoleId, resolveStaffRole, roleLabelBn, DESIGNATION_OPTIONS, DESIGNATION_OTHER, isMappedDesignation } from '../../services/staffRole';
 import { deleteInstitutionMembers } from '../../services/rbac';
-import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, SALARY_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
+import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, SALARY_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
 import { decideStaffLeave } from '../../services/staffSelfService';
 import { PageHeader } from '../ui/PageHeader';
 import { ServerUnavailablePanel } from '../ui/ServerDataGate';
@@ -207,6 +207,25 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // Phase 5: leave-add failure keeps the modal open with this error +
   // a re-confirm-only retry (never a second record).
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  // Job 7 (instant/optimistic leave save): the local mutation applies
+  // and the modal closes AT ONCE; the cloud confirm runs in the
+  // background. A failed confirm never drops the record — it stays
+  // queued (confirmUpsertFailure), the row shows the amber
+  // UnconfirmedBadge, and the banner below offers a re-confirm-only
+  // Retry. The modal submit + decision buttons are guarded against
+  // double-tap so one tap can never create a second leave/decision.
+  const [isSavingLeave, setIsSavingLeave] = useState(false);
+  const [pendingLeaveSave, setPendingLeaveSave] = useState<StaffLeaveRecord[] | null>(null);
+  const [pendingLeaveId, setPendingLeaveId] = useState<string | null>(null);
+  const [pendingLeaveError, setPendingLeaveError] = useState<string | null>(null);
+  const [isRetryingLeave, setIsRetryingLeave] = useState(false);
+  const [decidingLeaveId, setDecidingLeaveId] = useState<string | null>(null);
+  // Specific failure text: a timeout names the slow connection; anything
+  // else falls back to the leave failure message (never a bare 'saved').
+  const leaveConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || LEAVE_CLOUD_FAILURE_MESSAGE));
   const [newLeaveData, setNewLeaveData] = useState<Partial<StaffLeaveRecord>>({
     teacherId: '',
     leaveType: 'CASUAL',
@@ -950,12 +969,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     }
   };
 
-  // Handle add leave — Phase 5: cloud-confirmed like approve/reject.
-  // The record stays local on failure (never dropped) and the modal
-  // stays open with an inline error + re-confirm-only retry; the
-  // 'leaves' auto-retry also delivers it on the next trigger.
-  const handleSaveLeave = async (e: React.FormEvent) => {
+  // Handle add leave — Job 7 (instant/optimistic, Job 0 pattern): the
+  // local record applies and the modal closes AT ONCE — the cloud
+  // confirm NEVER blocks the modal. On background failure the record
+  // stays in the local list (visible in the tab, amber-badged) and the
+  // banner below offers a re-confirm-only retry; the 'leaves'
+  // auto-retry also delivers it on the next trigger. The toast is
+  // honest: saved on this device, syncing — never 'saved to cloud'.
+  const handleSaveLeave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingLeave) return;
     if (!newLeaveData.teacherId) {
       showToast(isBn ? 'দয়া করে শিক্ষক/কর্মী নির্বাচন করুন' : 'Please select staff');
       return;
@@ -984,29 +1007,61 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       approvedBy: isOwnerAdmin ? 'অধ্যক্ষ / প্রধান' : 'প্রশাসন'
     };
 
+    setIsSavingLeave(true);
     const next = [record, ...leaves];
     setLeaves(next);
-    const result = await confirmLeavesCloudSync(next);
-    if (result.success) {
-      setLeaveError(null);
-      setIsLeaveModalOpen(false);
-      showToast(isBn ? 'ছুটির আবেদন সফলভাবে রেকর্ড করা হয়েছে' : 'Leave record added successfully');
-    } else {
-      // Record stays in the local list (visible in the tab) — the
-      // retry below re-confirms the same list, never a second record.
-      setLeaveError(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
-    }
+    setLeaveError(null);
+    setIsLeaveModalOpen(false);
+    showToast(isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…');
+    // Double-tap guard: the local apply above is synchronous, so the
+    // guard only needs to cover the double-click window — it must NOT
+    // stay up while the background confirm runs, or no second leave
+    // could be added until the confirm settles.
+    setTimeout(() => setIsSavingLeave(false), 500);
+    // Background confirm — fire and forget from the UI's point of view.
+    // On failure confirmLeavesCloudSync queues the payload (via
+    // confirmUpsertFailure), so the badge + list banner appear and the
+    // Diagnostics queue can retry it.
+    void confirmLeavesCloudSync(next).then((result) => {
+      if (!result.success) {
+        const msg = leaveConfirmErrorMessage(result);
+        setPendingLeaveSave(next);
+        setPendingLeaveId(record.id);
+        setPendingLeaveError(msg);
+        setLeaveError(msg);
+      }
+    }).catch((err) => {
+      console.error('Background leave cloud confirm failed:', err);
+      setPendingLeaveSave(next);
+      setPendingLeaveId(record.id);
+      setPendingLeaveError(LEAVE_CLOUD_FAILURE_MESSAGE);
+      setLeaveError(LEAVE_CLOUD_FAILURE_MESSAGE);
+    });
   };
 
-  // Phase 5: leave-add retry — re-confirm only, never re-add.
+  // Phase 5: leave-add retry — re-confirm only, never re-add. Only this
+  // explicit Retry awaits the confirm; it re-confirms the SAME saved
+  // list (pendingLeaveSave), so a retry can never create a duplicate.
   const handleRetryLeaveSave = async () => {
-    const result = await confirmLeavesCloudSync(leaves);
-    if (result.success) {
-      setLeaveError(null);
-      setIsLeaveModalOpen(false);
-      showToast(isBn ? 'ছুটির আবেদন সফলভাবে রেকর্ড করা হয়েছে' : 'Leave record added successfully');
-    } else {
-      setLeaveError(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+    if (isRetryingLeave) return;
+    const list = pendingLeaveSave ?? leaves;
+    setIsRetryingLeave(true);
+    try {
+      const result = await confirmLeavesCloudSync(list);
+      if (result.success) {
+        setPendingLeaveSave(null);
+        setPendingLeaveId(null);
+        setPendingLeaveError(null);
+        setLeaveError(null);
+        setIsLeaveModalOpen(false);
+        showToast(isBn ? 'ছুটির আবেদন সফলভাবে রেকর্ড করা হয়েছে' : 'Leave record added successfully');
+      } else {
+        const msg = leaveConfirmErrorMessage(result);
+        setPendingLeaveError(msg);
+        setLeaveError(msg);
+      }
+    } finally {
+      setIsRetryingLeave(false);
     }
   };
 
@@ -1027,26 +1082,50 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
   // Step 4 (25 Oct 2026): approve/reject for STAFF-SUBMITTED (PENDING)
   // requests only. Admin-entered leaves above keep their existing
-  // behavior (recorded APPROVED directly). The decision is confirmed
-  // against the cloud: on failure the row reverts to PENDING and a
-  // failure toast shows — the admin is never told a decision landed
-  // when it did not. REJECTED rows stay listed in this tab but are
-  // excluded from every report count (reports filter APPROVED only).
-  const handleLeaveDecision = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
+  // behavior (recorded APPROVED directly). Job 7 (instant/optimistic):
+  // the decision applies locally AT ONCE and the confirm runs in the
+  // background — on failure the row STAYS decided (never silently
+  // reverts to PENDING) with its amber 'cloud-এ যায়নি' badge, and the
+  // banner below shows the specific error with a re-confirm-only
+  // Retry. REJECTED rows stay listed in this tab but are excluded
+  // from every report count (reports filter APPROVED only).
+  const handleLeaveDecision = (id: string, decision: 'APPROVED' | 'REJECTED') => {
     const target = leaves.find((l) => l.id === id);
     if (!target || target.status !== 'PENDING') return;
+    if (decidingLeaveId === id) return;
     const decidedBy = isOwnerAdmin ? 'অধ্যক্ষ / প্রধান' : 'প্রশাসন';
     const next = decideStaffLeave(leaves, id, decision, decidedBy);
+    setDecidingLeaveId(id);
     setLeaves(next);
-    const result = await confirmLeavesCloudSync(next);
-    if (result.success) {
-      showToast(decision === 'APPROVED'
-        ? (isBn ? 'ছুটি অনুমোদিত হয়েছে' : 'Leave approved')
-        : (isBn ? 'ছুটি বাতিল করা হয়েছে' : 'Leave rejected'));
-    } else {
-      setLeaves(leaves);
-      showToast(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
-    }
+    // Background confirm — fire and forget. The success toast below
+    // fires only once the cloud has actually confirmed the decision.
+    void confirmLeavesCloudSync(next).then((result) => {
+      setDecidingLeaveId((cur) => (cur === id ? null : cur));
+      if (result.success) {
+        // A retry that already landed clears this pending state first;
+        // only clear it here when it still belongs to this decision.
+        if (pendingLeaveId === id) {
+          setPendingLeaveSave(null);
+          setPendingLeaveId(null);
+          setPendingLeaveError(null);
+        }
+        showToast(decision === 'APPROVED'
+          ? (isBn ? 'ছুটি অনুমোদিত হয়েছে' : 'Leave approved')
+          : (isBn ? 'ছুটি বাতিল করা হয়েছে' : 'Leave rejected'));
+      } else {
+        // The decided row stays decided (locally) — the banner + row
+        // badge surface the failure; Retry re-confirms this same list.
+        setPendingLeaveSave(next);
+        setPendingLeaveId(id);
+        setPendingLeaveError(leaveConfirmErrorMessage(result));
+      }
+    }).catch((err) => {
+      console.error('Background leave decision cloud confirm failed:', err);
+      setDecidingLeaveId((cur) => (cur === id ? null : cur));
+      setPendingLeaveSave(next);
+      setPendingLeaveId(id);
+      setPendingLeaveError(LEAVE_CLOUD_FAILURE_MESSAGE);
+    });
   };
 
   // Sub-tabs list — Phase 4: tabs 1+2 are ONE merged tab
@@ -1898,6 +1977,29 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               </button>
             </div>
 
+            {/* Job 7 (instant save): the background cloud confirm failed
+                for the just-saved/decided record — it sits queued with
+                its amber badge. This banner offers Retry; it hides
+                itself once the payload lands (here or via the
+                Diagnostics queue retry). */}
+            {pendingLeaveSave && pendingLeaveId && isRecordUnconfirmed('staffLeaves', pendingLeaveId) && (
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-3xl text-xs sm:text-sm flex items-start gap-2.5">
+                <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0 leading-relaxed">
+                  <p className="font-semibold">{pendingLeaveError || LEAVE_CLOUD_FAILURE_MESSAGE}</p>
+                  <p className="text-amber-800 dark:text-amber-300">{isBn ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRetryLeaveSave}
+                  disabled={isRetryingLeave}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {RETRY_LABEL}
+                </button>
+              </div>
+            )}
+
             {/* Leave Records Table */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div className="overflow-x-auto">
@@ -1947,6 +2049,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                              l.status === 'PENDING' ? (isBn ? 'অপেক্ষমাণ' : 'Pending') :
                              (isBn ? 'বাতিল' : 'Rejected')}
                           </span>
+                          {isRecordUnconfirmed('staffLeaves', l.id) && (
+                            <div className="mt-1 flex justify-center"><UnconfirmedBadge isBn={isBn} /></div>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 text-right text-slate-600 dark:text-slate-300 font-medium">
                           {l.approvedBy || (isBn ? 'অধ্যক্ষ' : 'Principal')}
@@ -1957,7 +2062,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleLeaveDecision(l.id, 'APPROVED')}
-                                className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+                                disabled={decidingLeaveId === l.id}
+                                className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={isBn ? 'অনুমোদন করুন' : 'Approve'}
                               >
                                 <Check size={14} />
@@ -1965,7 +2071,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleLeaveDecision(l.id, 'REJECTED')}
-                                className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                                disabled={decidingLeaveId === l.id}
+                                className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={isBn ? 'বাতিল করুন' : 'Reject'}
                               >
                                 <X size={14} />
@@ -2610,7 +2717,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     <button
                       type="button"
                       onClick={handleRetryLeaveSave}
-                      className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shrink-0 cursor-pointer"
+                      disabled={isRetryingLeave}
+                      className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isBn ? 'আবার চেষ্টা করুন' : 'Retry'}
                     </button>
@@ -2625,7 +2733,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold flex items-center gap-1.5"
+                  disabled={isSavingLeave}
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save size={14} />
                   <span>{isBn ? 'ছুটি রেকর্ড করুন' : 'Approve Leave'}</span>

@@ -6,6 +6,7 @@ import { formatNumber } from '../services/utils';
 import { MARKS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle, Printer } from 'lucide-react';
+import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
 import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
@@ -111,6 +112,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     classes, 
     bulkUpdateMarks, 
     confirmMarksCloudSync,
+    isRecordUnconfirmed,
     markEntryEnabled,
     t, 
     language, 
@@ -132,6 +134,20 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   // the marks themselves are already saved locally).
   const [cloudFailure, setCloudFailure] = useState<string | null>(null);
   const lastFailedMarksRef = useRef<MarkRecord[] | null>(null);
+  // 7 Nov 2026 Job 7 (instant save): retry in flight + the sequence of
+  // the latest local save, so a stale background confirm can never
+  // overwrite the status of a newer save.
+  const [isRetrying, setIsRetrying] = useState(false);
+  const saveSeqRef = useRef(0);
+  // Invalid marks: message text (not just a red border) — set when a
+  // typed mark fails validation, cleared once the pending edits are
+  // all valid and saved.
+  const [invalidMarksMessage, setInvalidMarksMessage] = useState<string | null>(null);
+  // Instant-save note: the local mutation applied at once; the cloud
+  // confirm is still running in the background. Shown briefly after an
+  // explicit Save click — never a 'saved to cloud' claim.
+  const [showLocalSaveNote, setShowLocalSaveNote] = useState(false);
+  const localSaveNoteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'id'>('name');
 
   // Local state to store edits for fast snappy input response
@@ -206,8 +222,16 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       return a.name.localeCompare(b.name);
     });
 
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message — a generic message
+  // after a long silent wait is what made the Save button look dead.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || MARKS_CLOUD_FAILURE_MESSAGE));
+
   // Flush any pending auto-save immediately, skipping any invalid records
-  const flushPendingSave = useCallback(async (): Promise<'saved' | 'error' | 'idle'> => {
+  const flushPendingSave = useCallback(async (fromSaveButton?: unknown): Promise<'saved' | 'error' | 'idle'> => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
@@ -260,15 +284,27 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       });
     });
 
-    // Truthful-save Step 2-বাকি: 'সংরক্ষিত' দেখায় শুধু cloud
-    // confirm হলে। Failure-এ নম্বর ফোনেই থাকে (কখনো মোছা হয় না),
-    // error দেখায় + retry-র জন্য list ধরে রাখে (auto-retry-ও চলে)।
+    // 7 Nov 2026 Job 7 (instant save): the local mutation applies at
+    // once and the UI responds immediately — the cloud confirm below
+    // NEVER blocks this path. It runs in the background; on failure the
+    // payload is queued, the affected rows show the amber 'cloud-এ
+    // যায়নি' badge, and the banner offers Retry. 'saved' is set only
+    // when the background confirm actually succeeds.
     let nextMarks: MarkRecord[] | null = null;
     if (updates.length > 0) {
+      setSaveStatus('saving');
       nextMarks = bulkUpdateMarks(updates);
     }
-    
+
     pendingUpdatesRef.current = remainingPending;
+    const hadInvalid = Object.keys(remainingPending).length > 0;
+    if (hadInvalid) {
+      setInvalidMarksMessage(language === 'bn'
+        ? 'কিছু নম্বর অবৈধ — লাল ঘরের নম্বর ঠিক করুন। অবৈধ নম্বর সংরক্ষণ হয়নি।'
+        : 'Some marks are invalid — fix the highlighted fields. Invalid marks were not saved.');
+    } else {
+      setInvalidMarksMessage(null);
+    }
     // bulkUpdateMarks returns null when the exam closed after the
     // edits were typed — refuse, do not confirm anything.
     if (nextMarks === null) {
@@ -276,35 +312,61 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       return 'error';
     }
     if (nextMarks) {
-      const result = await confirmMarksCloudSync(nextMarks);
-      if (!result.success) {
-        setCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+      if (fromSaveButton) {
+        setShowLocalSaveNote(true);
+        if (localSaveNoteTimeoutRef.current) clearTimeout(localSaveNoteTimeoutRef.current);
+        localSaveNoteTimeoutRef.current = setTimeout(() => setShowLocalSaveNote(false), 2500);
+      }
+      const seq = ++saveSeqRef.current;
+      void confirmMarksCloudSync(nextMarks).then((result) => {
+        if (seq !== saveSeqRef.current) return;
+        if (!result.success) {
+          setCloudFailure(confirmErrorMessage(result));
+          lastFailedMarksRef.current = nextMarks;
+          setSaveStatus('error');
+          return;
+        }
+        setCloudFailure(null);
+        lastFailedMarksRef.current = null;
+        setSaveStatus(hadInvalid ? 'error' : 'saved');
+      }).catch((err) => {
+        console.error('Background marks cloud confirm failed:', err);
+        if (seq !== saveSeqRef.current) return;
+        setCloudFailure(MARKS_CLOUD_FAILURE_MESSAGE);
         lastFailedMarksRef.current = nextMarks;
         setSaveStatus('error');
-        return 'error';
-      }
-      setCloudFailure(null);
-      lastFailedMarksRef.current = null;
+      });
     }
-    if (Object.keys(remainingPending).length > 0) {
+    if (hadInvalid) {
       setSaveStatus('error');
       return 'error';
     }
-    setSaveStatus('saved');
+    setSaveStatus(nextMarks ? 'saving' : 'saved');
     return 'saved';
   }, [currentSubject, selectedExamId, bulkUpdateMarks, confirmMarksCloudSync, language, isExamLocked, isEntryClosedByAdmin]);
 
   // Retry re-confirms the last failed marks list (never re-saves).
   const retryMarksCloudSync = async () => {
     const list = lastFailedMarksRef.current;
-    if (!list) return;
-    const result = await confirmMarksCloudSync(list);
-    if (result.success) {
-      setCloudFailure(null);
-      lastFailedMarksRef.current = null;
-      setSaveStatus('saved');
-    } else {
-      setCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+    if (!list || isRetrying) return;
+    setIsRetrying(true);
+    // A retry supersedes any background confirm still in flight — its
+    // late callback must not overwrite the retry's outcome.
+    saveSeqRef.current++;
+    try {
+      const result = await confirmMarksCloudSync(list);
+      if (result.success) {
+        setCloudFailure(null);
+        lastFailedMarksRef.current = null;
+        setSaveStatus('saved');
+      } else {
+        setCloudFailure(confirmErrorMessage(result));
+      }
+    } catch (err) {
+      console.error('Marks cloud retry failed:', err);
+      setCloudFailure(MARKS_CLOUD_FAILURE_MESSAGE);
+    } finally {
+      setIsRetrying(false);
     }
   };
 
@@ -372,6 +434,12 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       const validation = validateStudentMark(updated, currentSubject, language);
       if (!validation.isValid) {
         setSaveStatus('error');
+        // Invalid marks show a message, not just a red border — the
+        // flush re-checks all pending rows and clears this once every
+        // pending edit is valid.
+        setInvalidMarksMessage(language === 'bn'
+          ? 'কিছু নম্বর অবৈধ — লাল ঘরের নম্বর ঠিক করুন। অবৈধ নম্বর সংরক্ষণ হয়নি।'
+          : 'Some marks are invalid — fix the highlighted fields. Invalid marks were not saved.');
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       } else {
         setSaveStatus('saving');
@@ -435,11 +503,20 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
           <button
             onClick={flushPendingSave}
-            disabled={isEntryDisabled}
-            className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            disabled={isEntryDisabled || saveStatus === 'saving'}
+            className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            <Save size={14} />
-            {language === 'bn' ? 'সেভ করুন' : 'Save'}
+            {saveStatus === 'saving' ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                {language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}
+              </>
+            ) : (
+              <>
+                <Save size={14} />
+                {language === 'bn' ? 'সেভ করুন' : 'Save'}
+              </>
+            )}
           </button>
         </div>
       </PageHeader>
@@ -459,7 +536,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Truthful-save Step 2-বাকি: cloud-failure banner (marks stay local, retry re-confirms only) */}
+      {/* Job 7 (instant save): cloud-failure banner — the marks stay
+          local, retry re-confirms the same list only. The message is
+          specific: a timeout says so explicitly. */}
       {cloudFailure && (
         <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center gap-3">
           <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
@@ -467,10 +546,37 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           <button
             type="button"
             onClick={retryMarksCloudSync}
-            className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer"
+            disabled={isRetrying}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {language === 'bn' ? RETRY_LABEL : 'Retry'}
+            {isRetrying
+              ? (language === 'bn' ? 'আবার চেষ্টা করা হচ্ছে...' : 'Retrying...')
+              : (language === 'bn' ? RETRY_LABEL : 'Retry')}
           </button>
+        </div>
+      )}
+
+      {/* Job 7 (instant save): the local mutation applied at once — this
+          means 'saved on this device, syncing', never a cloud success.
+          The header spinner shows the background confirm; 'সংরক্ষিত'
+          appears only when it actually lands. */}
+      {showLocalSaveNote && !cloudFailure && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
+          <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div className="flex-1 text-xs font-bold leading-relaxed">
+            {language === 'bn'
+              ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…'
+              : 'Saved on this device — syncing to cloud…'}
+          </div>
+        </div>
+      )}
+
+      {/* Invalid marks: message text next to the red border — the
+          per-field error sits under each invalid input below. */}
+      {invalidMarksMessage && !isEntryClosedByAdmin && (
+        <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 flex items-center gap-3">
+          <AlertCircle size={16} className="text-red-600 dark:text-red-400 shrink-0" />
+          <div className="flex-1 text-xs font-bold leading-relaxed">{invalidMarksMessage}</div>
         </div>
       )}
 
@@ -624,6 +730,15 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                   const mark = localMarks[student.id] || { obtained: '', cq: '', mcq: '', practical: '', isAbsent: false };
                   const validation = validateStudentMark(mark, currentSubject, language);
                   const isAbsent = mark.isAbsent;
+                  // Row's saved record — its amber badge shows when the
+                  // background cloud confirm failed and the payload is
+                  // still queued (local-only).
+                  const existingMark = currentSubject && selectedExamId
+                    ? marks.find(m =>
+                        m.studentId === student.id &&
+                        m.subjectId === currentSubject.id &&
+                        m.examId === selectedExamId)
+                    : undefined;
                   
                   const numObtained = mark.obtained === '' ? 0 : Number(mark.obtained);
                   const grade = calculateSubjectGrade(numObtained, currentSubject?.fullMarks, undefined, isAbsent, currentSubject?.passMarks);
@@ -637,6 +752,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                       <td className="px-4 py-3">
                         <div className="font-bold text-gray-900 dark:text-white text-xs font-bangla">{student.name}</div>
                         <div className="text-[10px] text-gray-400 dark:text-slate-500 font-mono">{student.studentId || student.id}</div>
+                        {existingMark && isRecordUnconfirmed('marks', existingMark.id) && (
+                          <UnconfirmedBadge isBn={language === 'bn'} />
+                        )}
                       </td>
 
                       {/* CQ Input */}
@@ -652,6 +770,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                             } disabled:bg-gray-100 disabled:opacity-50`}
                             placeholder="0"
                           />
+                          {validation.cqError && (
+                            <div className="mt-1 text-[10px] leading-tight font-bold text-red-600 dark:text-red-400">{validation.cqError}</div>
+                          )}
                         </td>
                       )}
 
@@ -668,6 +789,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                             } disabled:bg-gray-100 disabled:opacity-50`}
                             placeholder="0"
                           />
+                          {validation.mcqError && (
+                            <div className="mt-1 text-[10px] leading-tight font-bold text-red-600 dark:text-red-400">{validation.mcqError}</div>
+                          )}
                         </td>
                       )}
 
@@ -684,6 +808,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                             } disabled:bg-gray-100 disabled:opacity-50`}
                             placeholder="0"
                           />
+                          {validation.practicalError && (
+                            <div className="mt-1 text-[10px] leading-tight font-bold text-red-600 dark:text-red-400">{validation.practicalError}</div>
+                          )}
                         </td>
                       )}
 
@@ -699,6 +826,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                           } disabled:opacity-75`}
                           placeholder="0"
                         />
+                        {validation.obtainedError && (
+                          <div className="mt-1 text-[10px] leading-tight font-bold text-red-600 dark:text-red-400">{validation.obtainedError}</div>
+                        )}
                       </td>
 
                       {/* Grade / GPA preview */}

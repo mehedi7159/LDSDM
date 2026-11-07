@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AcademicCalendarEvent } from '../../types/academic';
 import { academicScheduleService } from '../../services/academicScheduleService';
@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { SCHEDULE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { 
   Calendar, 
   Plus, 
@@ -26,17 +27,63 @@ import {
 } from 'lucide-react';
 
 export const AcademicCalendarView: React.FC = () => {
-  const { language, confirmScheduleCloudSync } = useApp();
+  const { language, confirmScheduleCloudSync, isRecordUnconfirmed } = useApp();
   const isBn = language === 'bn';
 
-  // Truthful-save Step 2: service saves are local-only until the awaited
-  // cloud confirmation; on failure this banner + retry appears (the data
-  // stays in the service, never dropped).
-  const [scheduleCloudFailure, setScheduleCloudFailure] = useState<string | null>(null);
-  const confirmSchedule = async () => {
-    const result = await confirmScheduleCloudSync();
-    if (result.success) setScheduleCloudFailure(null);
-    else setScheduleCloudFailure(result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE);
+  // 7 Nov 2026 Job 7 (instant save, Job 0 pattern): the local mutation
+  // applies and the modal closes at once; the cloud confirm runs in the
+  // BACKGROUND. On failure the payload is queued, the saved event shows
+  // the amber 'cloud-এ যায়নি' badge, and the banner below offers Retry
+  // (re-confirm only — never a second local write). Closing the modal
+  // means 'saved on this device, syncing' — never a false 'saved to cloud'.
+  // The service swallows localStorage write errors, so every local save
+  // is verified by re-reading; a save that did not land keeps the modal
+  // open with a real message instead of claiming a save.
+  const [pendingSchedule, setPendingSchedule] = useState<{ field: string; id: string | null; error: string; localFailure?: boolean } | null>(null);
+  const [isRetryingSchedule, setIsRetryingSchedule] = useState(false);
+  const [scheduleSaveNote, setScheduleSaveNote] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  // Form-level error shown in the modal (empty title / local save failure).
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE));
+
+  const LOCAL_SAVE_FAILURE_MESSAGE = isBn
+    ? 'এই ডিভাইসে সংরক্ষণ হয়নি — ব্রাউজার স্টোরেজে জায়গা নেই বা বন্ধ আছে। কিছু জায়গা খালি করে আবার চেষ্টা করুন।'
+    : 'Could not save on this device — browser storage is full or unavailable. Free some space and try again.';
+  const LOCAL_DELETE_FAILURE_MESSAGE = isBn
+    ? 'এই ডিভাইসে মোছা হয়নি — ব্রাউজার স্টোরেজে সমস্যা। কিছু জায়গা খালি করে আবার চেষ্টা করুন।'
+    : 'Could not delete on this device — browser storage has a problem. Free some space and try again.';
+
+  const confirmScheduleInBackground = (savedId: string | null) => {
+    void confirmScheduleCloudSync().then((result) => {
+      if (result.success) setPendingSchedule(null);
+      else setPendingSchedule({ field: 'calendarEvents', id: savedId, error: confirmErrorMessage(result) });
+    }).catch((err) => {
+      console.error('Background schedule cloud confirm failed:', err);
+      setPendingSchedule({ field: 'calendarEvents', id: savedId, error: SCHEDULE_CLOUD_FAILURE_MESSAGE });
+    });
+  };
+
+  // Retry re-confirms the still-local save (no re-save needed). The
+  // Diagnostics queue Retry covers the same payload, so whichever path
+  // lands first clears the badge.
+  const retryScheduleSave = async () => {
+    if (isRetryingSchedule) return;
+    setIsRetryingSchedule(true);
+    try {
+      const result = await confirmScheduleCloudSync();
+      if (result.success) setPendingSchedule(null);
+      else setPendingSchedule((prev) => (prev ? { ...prev, error: confirmErrorMessage(result) } : { field: 'calendarEvents', id: null, error: confirmErrorMessage(result) }));
+    } finally {
+      setIsRetryingSchedule(false);
+    }
   };
 
   const [filterType, setFilterType] = useState<string>('ALL');
@@ -98,6 +145,7 @@ export const AcademicCalendarView: React.FC = () => {
   // Open Add Modal
   const handleOpenAdd = () => {
     setEditingEvent(null);
+    setFormError(null);
     const today = new Date().toISOString().split('T')[0];
     setFormState({
       title: '',
@@ -114,6 +162,7 @@ export const AcademicCalendarView: React.FC = () => {
   // Open Edit Modal
   const handleOpenEdit = (event: AcademicCalendarEvent) => {
     setEditingEvent(event);
+    setFormError(null);
     setFormState({
       title: event.title,
       titleBn: event.titleBn || event.title,
@@ -126,10 +175,18 @@ export const AcademicCalendarView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Save Event
-  const handleSave = async (e: React.FormEvent) => {
+  // Save Event — instant/optimistic: the local mutation applies and the
+  // modal closes at once; the cloud confirm runs in the background
+  // (never block-awaited here).
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.titleBn.trim() && !formState.title.trim()) return;
+    if (savingRef.current) return;
+    // 7 Nov 2026 Job 7: an empty title used to return silently — show
+    // the message instead of dropping the save without a word.
+    if (!formState.titleBn.trim() && !formState.title.trim()) {
+      setFormError(isBn ? 'ইভেন্টের নাম দিন — খালি নাম সংরক্ষণ হবে না।' : 'Enter an event name — an empty name cannot be saved.');
+      return;
+    }
 
     const start = new Date(formState.startDate);
     const end = new Date(formState.endDate);
@@ -148,10 +205,31 @@ export const AcademicCalendarView: React.FC = () => {
       description: formState.description.trim()
     };
 
-    academicScheduleService.saveCalendarEvent(payload);
-    setIsModalOpen(false);
-    setVersion(v => v + 1);
-    await confirmSchedule();
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      const saved = academicScheduleService.saveCalendarEvent(payload);
+      // The service swallows localStorage write errors — verify the save
+      // actually landed by re-reading; if it did not, keep the modal open
+      // with a real message instead of claiming a save.
+      const landed = academicScheduleService.getCalendarEvents().some(ev => ev.id === saved.id && (ev.titleBn || ev.title) === (saved.titleBn || saved.title));
+      if (!landed) {
+        setFormError(LOCAL_SAVE_FAILURE_MESSAGE);
+        return;
+      }
+      setIsModalOpen(false);
+      setFormError(null);
+      setVersion(v => v + 1);
+      setScheduleSaveNote(true);
+      setTimeout(() => setScheduleSaveNote(false), 2000);
+      confirmScheduleInBackground(saved.id);
+    } catch (err) {
+      console.error('Calendar local save failed:', err);
+      setFormError(LOCAL_SAVE_FAILURE_MESSAGE);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   // Delete
@@ -202,11 +280,27 @@ export const AcademicCalendarView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Truthful-save failure banner (Step 2): schedule data stays in the service until a retry confirms the cloud write. */}
-      {scheduleCloudFailure && (
+      {/* Job 7 (instant save): the background cloud confirm failed for
+          the just-saved event — it sits queued with its amber badge.
+          This banner offers Retry (re-confirm only, never a second local
+          write); it hides itself once the payload lands (here or via the
+          Diagnostics queue retry). A delete has no surviving row, so its
+          failure shows on the error alone (id null). */}
+      {pendingSchedule && (pendingSchedule.id === null || isRecordUnconfirmed(pendingSchedule.field, pendingSchedule.id)) && (
         <div className="p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 rounded-xl text-xs font-bold flex flex-col gap-2">
-          <span>{scheduleCloudFailure}</span>
-          <button type="button" onClick={confirmSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+          <span>{pendingSchedule.error}</span>
+          {!pendingSchedule.localFailure && (
+            <span>{isBn ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</span>
+          )}
+          <button type="button" onClick={retryScheduleSave} disabled={isRetryingSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+      {/* Job 7: the modal closed at once — the event is saved on this
+          device and syncing to the cloud in the background. */}
+      {scheduleSaveNote && !pendingSchedule && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
         </div>
       )}
       {/* Top Header */}
@@ -322,6 +416,7 @@ export const AcademicCalendarView: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   {getEventBadge(event.type, event.isHoliday)}
+                  {isRecordUnconfirmed('calendarEvents', event.id) && <UnconfirmedBadge isBn={isBn} />}
                   <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
                     {formatSafeDate(event.startDate, isBn)} 
                     {event.startDate !== event.endDate ? ` – ${formatSafeDate(event.endDate, isBn)}` : ''}
@@ -381,12 +476,18 @@ export const AcademicCalendarView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs flex items-start gap-2">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                  <div>{formError}</div>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'ইভেন্ট বা ছুটির নাম (বাংলা) *' : 'Title (Bangla) *'}</label>
                 <input
                   type="text"
                   value={formState.titleBn}
-                  onChange={e => setFormState({ ...formState, titleBn: e.target.value })}
+                  onChange={e => { setFormState({ ...formState, titleBn: e.target.value }); setFormError(null); }}
                   required
                   placeholder="যেমন: পবিত্র ঈদুল ফিতর"
                   className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
@@ -474,7 +575,8 @@ export const AcademicCalendarView: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold"
+                  disabled={isSaving}
+                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingEvent ? (isBn ? 'আপডেট করুন' : 'Update') : (isBn ? 'সংরক্ষণ করুন' : 'Save')}
                 </Button>
@@ -488,12 +590,19 @@ export const AcademicCalendarView: React.FC = () => {
       <ConfirmDialog
         isOpen={!!eventToDelete}
         onClose={() => setEventToDelete(null)}
-        onConfirm={async () => {
+        onConfirm={() => {
           if (eventToDelete) {
-            academicScheduleService.deleteCalendarEvent(eventToDelete);
+            const id = eventToDelete;
+            academicScheduleService.deleteCalendarEvent(id);
             setVersion(v => v + 1);
             setEventToDelete(null);
-            await confirmSchedule();
+            // The service swallows localStorage write errors — verify the
+            // delete actually landed before confirming it to the cloud.
+            if (academicScheduleService.getCalendarEvents().some(ev => ev.id === id)) {
+              setPendingSchedule({ field: 'calendarEvents', id: null, error: LOCAL_DELETE_FAILURE_MESSAGE, localFailure: true });
+              return;
+            }
+            confirmScheduleInBackground(null);
           }
         }}
         title={isBn ? 'ইভেন্ট ডিলিট নিশ্চিতকরণ' : 'Confirm Event Deletion'}

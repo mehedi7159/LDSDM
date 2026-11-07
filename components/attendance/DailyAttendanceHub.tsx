@@ -7,6 +7,8 @@ import {
   AttendanceStatus 
 } from '../../services/dailyAttendanceService';
 import { formatNumber, formatSafeDate } from '../../services/utils';
+import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { Button } from '../ui/Button';
 import { 
   Calendar, 
@@ -57,6 +59,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     dailyStaffAttendance = [],
     confirmAttendanceCloudSync,
     confirmStaffAttendanceCloudSync,
+    isRecordUnconfirmed,
     exams = [], 
     remarks = [], 
     updateRemark, 
@@ -77,6 +80,27 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '১ম শ্রেণি');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // 7 Nov 2026 Job 7 (staff attendance ONLY — the student save above is
+  // untouched): instant/optimistic staff save. The old staff path
+  // block-awaited the cloud confirm and on failure showed only a
+  // generic 5-second button label. Now the local save applies at once,
+  // the confirm runs in the BACKGROUND, and a failure stays visible as
+  // a persistent amber banner + per-row 'cloud-এ যায়নি' badges until
+  // it is retried or lands. No timeout ever clears the error.
+  const [staffSaving, setStaffSaving] = useState(false);
+  const [staffSyncing, setStaffSyncing] = useState(false);
+  const [staffRetrying, setStaffRetrying] = useState(false);
+  const [staffSaveError, setStaffSaveError] = useState<string | null>(null);
+  const [staffSavedJustNow, setStaffSavedJustNow] = useState(false);
+  const staffSaveInFlightRef = useRef(false);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const staffConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || ATTENDANCE_CLOUD_FAILURE_MESSAGE));
 
   // Enrolled active students in selected class
   const classStudents = useMemo(() => {
@@ -106,6 +130,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   const savedStaffRecords = useMemo(() => dailyStaffAttendance.filter(
     r => r.date === selectedDate
   ), [dailyStaffAttendance, selectedDate]);
+
+  // Today's saved staff records still sitting in the payload queue
+  // (i.e. local-only). The banner shows while any of them is
+  // unconfirmed, so it survives a remount and hides only once the
+  // payload lands — here or via the Diagnostics queue retry.
+  const staffUnconfirmedToday = useMemo(() =>
+    savedStaffRecords.some(r => isRecordUnconfirmed('dailyStaffAttendance', r.id)),
+    [savedStaffRecords, isRecordUnconfirmed]);
 
   // Load student attendance for selectedDate & selectedClass
   // Step 3: edit maps initialize from the shared-context derivation.
@@ -229,10 +261,21 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     setTimeout(() => setSaveStatus('idle'), confirmed ? 2500 : 5000);
   };
 
-  // Save staff attendance — same honest pattern as the student save:
-  // local save first, then the staff cloud confirm is AWAITED.
-  const handleSaveStaffAttendance = async () => {
-    setSaveStatus('saving');
+  // Save staff attendance — INSTANT/OPTIMISTIC (Job 7, staff only):
+  // the local save applies at once and the UI responds immediately;
+  // the cloud confirm NEVER blocks this handler — it runs in the
+  // background. On failure the confirm queues the payload (via
+  // confirmUpsertFailure), the rows show the amber 'cloud-এ যায়নি'
+  // badge, and the persistent banner below offers Retry. The instant
+  // response means 'saved on this device, syncing' — never a false
+  // 'saved to cloud'. The 'সংরক্ষিত হয়েছে' note appears only after
+  // the background confirm actually succeeds.
+  const handleSaveStaffAttendance = () => {
+    if (staffSaveInFlightRef.current || staffSyncing) return;
+    staffSaveInFlightRef.current = true;
+    setStaffSaving(true);
+    setStaffSaveError(null);
+    setStaffSavedJustNow(false);
     const recordsToSave: DailyStaffAttendanceRecord[] = teachers.map(teacher => {
       const current = staffAttendanceMap[teacher.id] || { status: 'PRESENT' };
       return {
@@ -248,15 +291,56 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       };
     });
 
+    // Local mutation first — synchronous, so the save lands on this
+    // device at once. Step 3: no manual refresh — the context
+    // derivation above recomputes from the mirrored write.
     dailyAttendanceService.batchSaveStaffAttendance(recordsToSave);
-    // Step 3: no manual refresh — same context derivation as above.
-    let confirmed = false;
-    if (confirmStaffAttendanceCloudSync) {
+    setStaffSaving(false);
+    staffSaveInFlightRef.current = false;
+
+    // Background confirm — fire and forget from the UI's point of
+    // view. The save button stays disabled while it is in flight
+    // (double-submit guard); Retry lives in the banner below.
+    if (!confirmStaffAttendanceCloudSync) return;
+    setStaffSyncing(true);
+    void confirmStaffAttendanceCloudSync().then((result) => {
+      setStaffSyncing(false);
+      if (result.success) {
+        setStaffSaveError(null);
+        setStaffSavedJustNow(true);
+        setTimeout(() => setStaffSavedJustNow(false), 2500);
+      } else {
+        setStaffSaveError(staffConfirmErrorMessage(result));
+      }
+    }).catch((err) => {
+      console.error('Background staff attendance cloud confirm failed:', err);
+      setStaffSyncing(false);
+      setStaffSaveError(ATTENDANCE_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  // Retry re-runs ONLY the cloud confirm for the already-saved staff
+  // records — never a second local write. The Diagnostics queue retry
+  // covers the same payload, so whichever lands first clears the
+  // badges (the banner hides once isRecordUnconfirmed turns false).
+  const handleRetryStaffAttendanceSave = async () => {
+    if (staffRetrying || !confirmStaffAttendanceCloudSync) return;
+    setStaffRetrying(true);
+    try {
       const result = await confirmStaffAttendanceCloudSync();
-      confirmed = result.success;
+      if (result.success) {
+        setStaffSaveError(null);
+        setStaffSavedJustNow(true);
+        setTimeout(() => setStaffSavedJustNow(false), 2500);
+      } else {
+        setStaffSaveError(staffConfirmErrorMessage(result));
+      }
+    } catch (err) {
+      console.error('Staff attendance retry failed:', err);
+      setStaffSaveError(ATTENDANCE_CLOUD_FAILURE_MESSAGE);
+    } finally {
+      setStaffRetrying(false);
     }
-    setSaveStatus(confirmed ? 'saved' : 'error');
-    setTimeout(() => setSaveStatus('idle'), confirmed ? 2500 : 5000);
   };
 
   // Auto-Rollup: Calculate attendance from Daily Records into Exam Remarks
@@ -643,11 +727,11 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           {activeMode === 'staff' && (
             <Button
               onClick={handleSaveStaffAttendance}
-              disabled={saveStatus === 'saving'}
+              disabled={staffSaving || staffSyncing || staffRetrying}
               className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2"
             >
               <Save size={16} />
-              <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত!' : 'Saved!') : saveStatus === 'error' ? (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন' : 'Save failed — try again') : (isBn ? 'স্টাফ হাজিরা সংরক্ষণ' : 'Save Staff')}</span>
+              <span>{staffSyncing ? (isBn ? 'cloud-এ যাচ্ছে…' : 'Syncing to cloud…') : (isBn ? 'স্টাফ হাজিরা সংরক্ষণ' : 'Save Staff')}</span>
             </Button>
           )}
 
@@ -661,6 +745,42 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Job 7 (staff only): persistent failure banner + honest sync
+          feedback. The banner shows while any of today's staff records
+          is still queued (local-only) and hides only once the payload
+          lands — no timeout ever clears it. The syncing note means
+          'saved on this device, syncing'; 'সংরক্ষিত হয়েছে' appears
+          only after the background confirm succeeds. */}
+      {activeMode === 'staff' && staffUnconfirmedToday && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs sm:text-sm flex items-start gap-2.5">
+          <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 leading-relaxed">
+            <p className="font-semibold">{staffSaveError || ATTENDANCE_CLOUD_FAILURE_MESSAGE}</p>
+            <p className="text-amber-800">{isBn ? 'স্টাফ হাজিরা এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'Staff attendance is saved on this device — it has not reached the cloud yet.'}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRetryStaffAttendanceSave}
+            disabled={staffRetrying || staffSyncing}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {RETRY_LABEL}
+          </button>
+        </div>
+      )}
+      {activeMode === 'staff' && staffSyncing && (
+        <div className="p-3.5 bg-teal-50 border border-teal-200 text-teal-800 rounded-2xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <Loader2 size={16} className="animate-spin shrink-0" />
+          <span>{isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+        </div>
+      )}
+      {activeMode === 'staff' && staffSavedJustNow && !staffSyncing && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{isBn ? 'স্টাফ হাজিরা cloud-এ সংরক্ষিত হয়েছে।' : 'Staff attendance saved to cloud.'}</span>
+        </div>
+      )}
 
       {/* 4. MODE 1: Student Daily Attendance List */}
       {activeMode === 'students' && (
@@ -862,6 +982,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                       <td className="py-3 px-4">
                         <div className="font-bold text-slate-900">{teacher.name}</div>
                         <div className="text-[11px] text-teal-800 font-semibold">{teacher.designation || 'শিক্ষক'}</div>
+                        {isRecordUnconfirmed('dailyStaffAttendance', `${selectedDate}_${teacher.id}`) && (
+                          <UnconfirmedBadge isBn={isBn} />
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">

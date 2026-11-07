@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SyllabusItem } from '../../types/academic';
 import { academicScheduleService } from '../../services/academicScheduleService';
@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { SCHEDULE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { 
   FileText, 
   Plus, 
@@ -25,17 +26,63 @@ import {
 } from 'lucide-react';
 
 export const SyllabusPlannerView: React.FC = () => {
-  const { classes, subjects, language, confirmScheduleCloudSync } = useApp();
+  const { classes, subjects, language, confirmScheduleCloudSync, isRecordUnconfirmed } = useApp();
   const isBn = language === 'bn';
 
-  // Truthful-save Step 2: service saves are local-only until the awaited
-  // cloud confirmation; on failure this banner + retry appears (the data
-  // stays in the service, never dropped).
-  const [scheduleCloudFailure, setScheduleCloudFailure] = useState<string | null>(null);
-  const confirmSchedule = async () => {
-    const result = await confirmScheduleCloudSync();
-    if (result.success) setScheduleCloudFailure(null);
-    else setScheduleCloudFailure(result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE);
+  // 7 Nov 2026 Job 7 (instant save, Job 0 pattern): the local mutation
+  // applies and the modal closes at once; the cloud confirm runs in the
+  // BACKGROUND. On failure the payload is queued, the saved chapter shows
+  // the amber 'cloud-এ যায়নি' badge, and the banner below offers Retry
+  // (re-confirm only — never a second local write). Closing the modal
+  // means 'saved on this device, syncing' — never a false 'saved to cloud'.
+  // The service swallows localStorage write errors, so every local save
+  // is verified by re-reading; a save that did not land keeps the modal
+  // open with a real message instead of claiming a save.
+  const [pendingSchedule, setPendingSchedule] = useState<{ field: string; id: string | null; error: string; localFailure?: boolean } | null>(null);
+  const [isRetryingSchedule, setIsRetryingSchedule] = useState(false);
+  const [scheduleSaveNote, setScheduleSaveNote] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  // Form-level error shown in the modal (empty title / local save failure).
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE));
+
+  const LOCAL_SAVE_FAILURE_MESSAGE = isBn
+    ? 'এই ডিভাইসে সংরক্ষণ হয়নি — ব্রাউজার স্টোরেজে জায়গা নেই বা বন্ধ আছে। কিছু জায়গা খালি করে আবার চেষ্টা করুন।'
+    : 'Could not save on this device — browser storage is full or unavailable. Free some space and try again.';
+  const LOCAL_DELETE_FAILURE_MESSAGE = isBn
+    ? 'এই ডিভাইসে মোছা হয়নি — ব্রাউজার স্টোরেজে সমস্যা। কিছু জায়গা খালি করে আবার চেষ্টা করুন।'
+    : 'Could not delete on this device — browser storage has a problem. Free some space and try again.';
+
+  const confirmScheduleInBackground = (savedId: string | null) => {
+    void confirmScheduleCloudSync().then((result) => {
+      if (result.success) setPendingSchedule(null);
+      else setPendingSchedule({ field: 'syllabusItems', id: savedId, error: confirmErrorMessage(result) });
+    }).catch((err) => {
+      console.error('Background schedule cloud confirm failed:', err);
+      setPendingSchedule({ field: 'syllabusItems', id: savedId, error: SCHEDULE_CLOUD_FAILURE_MESSAGE });
+    });
+  };
+
+  // Retry re-confirms the still-local save (no re-save needed). The
+  // Diagnostics queue Retry covers the same payload, so whichever path
+  // lands first clears the badge.
+  const retryScheduleSave = async () => {
+    if (isRetryingSchedule) return;
+    setIsRetryingSchedule(true);
+    try {
+      const result = await confirmScheduleCloudSync();
+      if (result.success) setPendingSchedule(null);
+      else setPendingSchedule((prev) => (prev ? { ...prev, error: confirmErrorMessage(result) } : { field: 'syllabusItems', id: null, error: confirmErrorMessage(result) }));
+    } finally {
+      setIsRetryingSchedule(false);
+    }
   };
 
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '১ম শ্রেণি');
@@ -112,6 +159,7 @@ export const SyllabusPlannerView: React.FC = () => {
   const handleOpenAdd = () => {
     const defaultSub = subjects.find(s => s.classLevel === selectedClass) || subjects[0];
     setEditingItem(null);
+    setFormError(null);
     setFormState({
       classLevel: selectedClass,
       subjectId: defaultSub?.id || '',
@@ -131,6 +179,7 @@ export const SyllabusPlannerView: React.FC = () => {
   // Open Edit Modal
   const handleOpenEdit = (item: SyllabusItem) => {
     setEditingItem(item);
+    setFormError(null);
     setFormState({
       classLevel: item.classLevel,
       subjectId: item.subjectId,
@@ -147,10 +196,18 @@ export const SyllabusPlannerView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Save Syllabus Item
-  const handleSave = async (e: React.FormEvent) => {
+  // Save Syllabus Item — instant/optimistic: the local mutation applies
+  // and the modal closes at once; the cloud confirm runs in the
+  // background (never block-awaited here).
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.title.trim()) return;
+    if (savingRef.current) return;
+    // 7 Nov 2026 Job 7: an empty title used to return silently — show
+    // the message instead of dropping the save without a word.
+    if (!formState.title.trim()) {
+      setFormError(isBn ? 'অধ্যায়ের নাম দিন — খালি শিরোনাম সংরক্ষণ হবে না।' : 'Enter a chapter title — an empty title cannot be saved.');
+      return;
+    }
 
     const sub = subjects.find(s => s.id === formState.subjectId);
     const payload: SyllabusItem = {
@@ -169,14 +226,36 @@ export const SyllabusPlannerView: React.FC = () => {
       targetDate: formState.targetDate || undefined
     };
 
-    academicScheduleService.saveSyllabusItem(payload);
-    setIsModalOpen(false);
-    setVersion(v => v + 1);
-    await confirmSchedule();
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      const saved = academicScheduleService.saveSyllabusItem(payload);
+      // The service swallows localStorage write errors — verify the save
+      // actually landed by re-reading; if it did not, keep the modal open
+      // with a real message instead of claiming a save.
+      const landed = academicScheduleService.getSyllabusItems().some(s => s.id === saved.id && s.title === saved.title);
+      if (!landed) {
+        setFormError(LOCAL_SAVE_FAILURE_MESSAGE);
+        return;
+      }
+      setIsModalOpen(false);
+      setFormError(null);
+      setVersion(v => v + 1);
+      setScheduleSaveNote(true);
+      setTimeout(() => setScheduleSaveNote(false), 2000);
+      confirmScheduleInBackground(saved.id);
+    } catch (err) {
+      console.error('Syllabus local save failed:', err);
+      setFormError(LOCAL_SAVE_FAILURE_MESSAGE);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
-  // Quick Period Progress Update
-  const handleQuickProgress = async (item: SyllabusItem, delta: number) => {
+  // Quick Period Progress Update — same background confirm as the form
+  // save; the list updates at once, no blocking wait.
+  const handleQuickProgress = (item: SyllabusItem, delta: number) => {
     const total = item.totalPeriods || 1;
     const nextCompleted = Math.max(0, Math.min(total, (item.completedPeriods || 0) + delta));
     let nextStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' = item.status;
@@ -184,9 +263,19 @@ export const SyllabusPlannerView: React.FC = () => {
     else if (nextCompleted >= total) nextStatus = 'COMPLETED';
     else nextStatus = 'IN_PROGRESS';
 
-    academicScheduleService.updateLessonProgress(item.id, nextCompleted, nextStatus);
-    setVersion(v => v + 1);
-    await confirmSchedule();
+    try {
+      academicScheduleService.updateLessonProgress(item.id, nextCompleted, nextStatus);
+      const landed = academicScheduleService.getSyllabusItems().find(s => s.id === item.id);
+      if (!landed || (landed.completedPeriods || 0) !== nextCompleted) {
+        setPendingSchedule({ field: 'syllabusItems', id: null, error: LOCAL_SAVE_FAILURE_MESSAGE, localFailure: true });
+        return;
+      }
+      setVersion(v => v + 1);
+      confirmScheduleInBackground(item.id);
+    } catch (err) {
+      console.error('Syllabus progress update failed:', err);
+      setPendingSchedule({ field: 'syllabusItems', id: null, error: LOCAL_SAVE_FAILURE_MESSAGE, localFailure: true });
+    }
   };
 
   // Delete
@@ -203,11 +292,27 @@ export const SyllabusPlannerView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Truthful-save failure banner (Step 2): schedule data stays in the service until a retry confirms the cloud write. */}
-      {scheduleCloudFailure && (
+      {/* Job 7 (instant save): the background cloud confirm failed for
+          the just-saved chapter — it sits queued with its amber badge.
+          This banner offers Retry (re-confirm only, never a second local
+          write); it hides itself once the payload lands (here or via the
+          Diagnostics queue retry). A delete has no surviving row, so its
+          failure shows on the error alone (id null). */}
+      {pendingSchedule && (pendingSchedule.id === null || isRecordUnconfirmed(pendingSchedule.field, pendingSchedule.id)) && (
         <div className="p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 rounded-xl text-xs font-bold flex flex-col gap-2">
-          <span>{scheduleCloudFailure}</span>
-          <button type="button" onClick={confirmSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+          <span>{pendingSchedule.error}</span>
+          {!pendingSchedule.localFailure && (
+            <span>{isBn ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</span>
+          )}
+          <button type="button" onClick={retryScheduleSave} disabled={isRetryingSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+      {/* Job 7: the modal closed at once — the chapter is saved on this
+          device and syncing to the cloud in the background. */}
+      {scheduleSaveNote && !pendingSchedule && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
         </div>
       )}
       {/* Top Header */}
@@ -389,6 +494,7 @@ export const SyllabusPlannerView: React.FC = () => {
                         <span>{isBn ? 'পরিকল্পিত' : 'Planned'}</span>
                       </span>
                     )}
+                    {isRecordUnconfirmed('syllabusItems', item.id) && <UnconfirmedBadge isBn={isBn} />}
                   </div>
 
                   <h3 className="font-black text-slate-800 dark:text-slate-100 text-sm">{item.title}</h3>
@@ -492,6 +598,12 @@ export const SyllabusPlannerView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs flex items-start gap-2">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                  <div>{formError}</div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">{isBn ? 'শ্রেণি' : 'Class'}</label>
@@ -555,7 +667,7 @@ export const SyllabusPlannerView: React.FC = () => {
                 <input
                   type="text"
                   value={formState.title}
-                  onChange={e => setFormState({ ...formState, title: e.target.value })}
+                  onChange={e => { setFormState({ ...formState, title: e.target.value }); setFormError(null); }}
                   required
                   placeholder="যেমন: হরফ চেনা, নুকতা ও হরকত পরিচয়"
                   className="w-full text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2 font-semibold"
@@ -630,7 +742,8 @@ export const SyllabusPlannerView: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold"
+                  disabled={isSaving}
+                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingItem ? (isBn ? 'আপডেট করুন' : 'Update') : (isBn ? 'সংরক্ষণ করুন' : 'Save')}
                 </Button>
@@ -644,12 +757,19 @@ export const SyllabusPlannerView: React.FC = () => {
       <ConfirmDialog
         isOpen={!!topicToDelete}
         onClose={() => setTopicToDelete(null)}
-        onConfirm={async () => {
+        onConfirm={() => {
           if (topicToDelete) {
-            academicScheduleService.deleteSyllabusItem(topicToDelete);
+            const id = topicToDelete;
+            academicScheduleService.deleteSyllabusItem(id);
             setVersion(v => v + 1);
             setTopicToDelete(null);
-            await confirmSchedule();
+            // The service swallows localStorage write errors — verify the
+            // delete actually landed before confirming it to the cloud.
+            if (academicScheduleService.getSyllabusItems().some(s => s.id === id)) {
+              setPendingSchedule({ field: 'syllabusItems', id: null, error: LOCAL_DELETE_FAILURE_MESSAGE, localFailure: true });
+              return;
+            }
+            confirmScheduleInBackground(null);
           }
         }}
         title={isBn ? 'অধ্যায় ডিলিট নিশ্চিতকরণ' : 'Confirm Topic Deletion'}

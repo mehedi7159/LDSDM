@@ -18,6 +18,7 @@ import {
   executeClassPromotion 
 } from '../services/promotionService';
 import { formatNumber, formatSafeDate } from '../services/utils';
+import { PROMOTION_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { Button } from './ui/Button';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { PromotionGazetteModal } from './PromotionGazetteModal';
@@ -68,6 +69,8 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
     authClaims,
     isSuperAdmin,
     bulkPromoteStudents,
+    confirmPromotionHistoryCloudSync,
+    confirmStudentsCloudSync,
     promotionHistory,
     clearPromotionHistory
   } = useApp();
@@ -86,6 +89,18 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // 7 Nov 2026 Job 7 (instant save): the completion screen used to show
+  // BEFORE any cloud write. The promotion still applies locally at
+  // once, but the completion screen now carries an honest sync state:
+  // 'syncing' until the background confirms land, an error + Retry if
+  // either fails. Retry re-confirms the SAME snapshots — never re-runs
+  // the promotion (that would duplicate it).
+  const [pendingPromotionHistory, setPendingPromotionHistory] = useState<PromotionHistoryRecord[] | null>(null);
+  const [pendingPromotionStudents, setPendingPromotionStudents] = useState<Student[] | null>(null);
+  const [pendingPromotionError, setPendingPromotionError] = useState<string | null>(null);
+  const [isRetryingPromotion, setIsRetryingPromotion] = useState(false);
+  const [promotionCloudConfirmed, setPromotionCloudConfirmed] = useState(false);
 
   // Search & Filter inside promotion table
   const [tableSearch, setTableSearch] = useState('');
@@ -326,6 +341,64 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
     });
   }, [promotionItems, filterAction, tableSearch]);
 
+  // Plain-language confirm failures: a timeout (slow connection) says
+  // so explicitly instead of the generic cloud message.
+  const promotionConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || PROMOTION_CLOUD_FAILURE_MESSAGE));
+
+  const promotionStudentsConfirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || STUDENTS_CLOUD_FAILURE_MESSAGE));
+
+  // A promotion writes TWO fields: the students (new class/roll) and
+  // the promotion history record. Both confirms run in the background;
+  // either failure keeps BOTH snapshots pending so Retry re-confirms
+  // the same data. The promotion itself is never re-run.
+  const runPromotionConfirms = async (nextHistory: PromotionHistoryRecord[], nextStudents: Student[]) => {
+    const [historyResult, studentsResult] = await Promise.all([
+      confirmPromotionHistoryCloudSync(nextHistory),
+      confirmStudentsCloudSync(nextStudents)
+    ]);
+    if (historyResult.success && studentsResult.success) {
+      setPendingPromotionHistory(null);
+      setPendingPromotionStudents(null);
+      setPendingPromotionError(null);
+      setPromotionCloudConfirmed(true);
+      return true;
+    }
+    setPendingPromotionError(
+      !historyResult.success
+        ? promotionConfirmErrorMessage(historyResult)
+        : promotionStudentsConfirmErrorMessage(studentsResult)
+    );
+    return false;
+  };
+
+  const confirmPromotionInBackground = (nextHistory: PromotionHistoryRecord[], nextStudents: Student[]) => {
+    void runPromotionConfirms(nextHistory, nextStudents).catch((err) => {
+      console.error('Background promotion cloud confirm failed:', err);
+      setPendingPromotionError(PROMOTION_CLOUD_FAILURE_MESSAGE);
+    });
+  };
+
+  // Retry re-confirms the same promotion records — never re-runs the
+  // promotion, which would duplicate it.
+  const retryPromotionSave = async () => {
+    if (!pendingPromotionHistory || !pendingPromotionStudents || isRetryingPromotion || isProcessing) return;
+    setIsRetryingPromotion(true);
+    try {
+      await runPromotionConfirms(pendingPromotionHistory, pendingPromotionStudents);
+    } catch (err) {
+      console.error('Promotion cloud retry failed:', err);
+      setPendingPromotionError(PROMOTION_CLOUD_FAILURE_MESSAGE);
+    } finally {
+      setIsRetryingPromotion(false);
+    }
+  };
+
   // Handle final execution of promotion
   const handleExecutePromotion = async () => {
     setIsProcessing(true);
@@ -359,6 +432,15 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
 
       setIsConfirmOpen(false);
       setCompletedRecord(historyRecord);
+      // Job 7: honest local state — the completion screen shows the
+      // promotion as saved on this device, syncing; the background
+      // confirms below decide the cloud state.
+      setPromotionCloudConfirmed(false);
+      const nextHistory = [historyRecord, ...promotionHistory];
+      setPendingPromotionHistory(nextHistory);
+      setPendingPromotionStudents(updatedStudents);
+      setPendingPromotionError(null);
+      confirmPromotionInBackground(nextHistory, updatedStudents);
     } catch (err) {
       console.error('Failed to execute promotion:', err);
       showError('Failed to execute promotion. Please try again.');
@@ -435,6 +517,20 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
           {/* VIEW: Promotion Wizard */}
           {activeView === 'wizard' && (
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/50">
+              {/* Job 7: the last promotion's background cloud confirm
+                  failed — it sits queued, applied on this device only.
+                  Retry re-confirms the same records, never re-runs the
+                  promotion. */}
+              {pendingPromotionHistory && pendingPromotionError && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
+                  <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0 leading-relaxed">
+                    <p className="font-semibold">{pendingPromotionError}</p>
+                    <p className="text-amber-800">{language === 'bn' ? 'প্রমোশনটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The promotion is saved on this device — it has not reached the cloud yet.'}</p>
+                  </div>
+                  <button type="button" onClick={retryPromotionSave} disabled={isRetryingPromotion} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+                </div>
+              )}
               {/* Configuration Panel */}
               <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1116,6 +1212,30 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                 {completedRecord.sourceClass} ➔ {completedRecord.targetClass} ({completedRecord.targetAcademicYear})
               </p>
             </div>
+
+            {/* Job 7: honest sync state — the promotion applied on this
+                device at once; the green cloud confirmation appears
+                only when both background confirms land. */}
+            {pendingPromotionError ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs text-left flex items-start gap-2">
+                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0 leading-relaxed">
+                  <p className="font-semibold">{pendingPromotionError}</p>
+                  <p className="text-amber-800">{language === 'bn' ? 'প্রমোশনটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The promotion is saved on this device — it has not reached the cloud yet.'}</p>
+                </div>
+                <button type="button" onClick={retryPromotionSave} disabled={isRetryingPromotion} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+              </div>
+            ) : promotionCloudConfirmed ? (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 size={16} className="shrink-0" />
+                <span>{language === 'bn' ? 'cloud-এ সংরক্ষিত হয়েছে ✓' : 'Saved to cloud ✓'}</span>
+              </div>
+            ) : (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 size={16} className="shrink-0" />
+                <span>{language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
+              </div>
+            )}
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs grid grid-cols-3 gap-2">
               <div>

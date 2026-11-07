@@ -8,6 +8,7 @@ import { PWAInstallButton } from './ui/PWAInstallButton';
 import { ServerDataGate } from './ui/ServerDataGate';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
@@ -244,6 +245,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     updateStudent,
     deleteStudent,
     bulkUpdateMarks,
+    isRecordUnconfirmed,
     markEntryEnabled,
     language,
     setLanguage,
@@ -396,6 +398,26 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [attendanceCloudFailure, setAttendanceCloudFailure] = useState<string | null>(null);
   const [feeCloudFailure, setFeeCloudFailure] = useState<string | null>(null);
   const [marksCloudFailure, setMarksCloudFailure] = useState<string | null>(null);
+  // 7 Nov 2026 Job 7 (instant/optimistic saves): in-flight flags for the
+  // three mobile saves below — the submit button shows its working label
+  // and stays disabled while the background cloud confirm runs, so a
+  // double-tap cannot file the same marks/leave/attendance twice.
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
+  const [attendanceRetrying, setAttendanceRetrying] = useState(false);
+  const [marksSaving, setMarksSaving] = useState(false);
+  const [marksRetrying, setMarksRetrying] = useState(false);
+  const [marksClosedNotice, setMarksClosedNotice] = useState<string | null>(null);
+  const [leaveRetrying, setLeaveRetrying] = useState(false);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message — a generic message
+  // after a long silent wait is what made the Save button look dead.
+  // Same helper shape as Job 0 (StudentManager); the fallback differs
+  // per field, so it is a parameter here.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }, fallback: string) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isEn ? 'Timed out — slow internet, the save did not finish. Try again on a better connection.' : 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।')
+      : (result.message || fallback));
 
   // Helper for Bengali number formatting
   const toBn = (num: number | string | undefined | null) => {
@@ -680,11 +702,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return () => { document.body.style.overflow = prev; };
   }, [latePicker]);
 
-  // Truthful save (25 Oct 2026): the success notice fires ONLY after the
-  // awaited cloud confirmation. On failure the records stay in the local
-  // service store (never dropped) and an honest failure banner with a
-  // retry action is shown instead of a false success.
-  const handleSaveAttendance = async () => {
+  // 7 Nov 2026 Job 7 (instant save): the local batch save applies at
+  // once and the UI answers immediately — the cloud confirm runs in the
+  // BACKGROUND and never blocks the button. On failure the records stay
+  // in the local service store (never dropped), the banner shows the
+  // specific reason with a retry, and each unconfirmed row gets the amber
+  // 'cloud-এ যায়নি' badge. The button shows 'সংরক্ষণ হচ্ছে…' while the
+  // confirm is in flight so a double-tap cannot save twice. The instant
+  // response means 'saved on this device, syncing' — never a false
+  // 'saved to cloud'.
+  const handleSaveAttendance = () => {
+    if (attendanceSaving) return;
     const records: DailyStudentAttendanceRecord[] = classStudents.map(st => {
       const status = studentAttendanceMap[st.id] || 'PRESENT';
       const mins = status === 'LATE' ? (lateMinutesMap[st.id] || 0) : 0;
@@ -702,25 +730,42 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     });
 
     dailyAttendanceService.batchSaveStudentAttendance(records);
-    const result = await confirmAttendanceCloudSync();
-    if (result.success) {
-      setAttendanceCloudFailure(null);
-      setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
-      setTimeout(() => setSaveSuccessNotice(null), 3000);
-    } else {
-      setAttendanceCloudFailure(result.message || ATTENDANCE_CLOUD_FAILURE_MESSAGE);
-    }
+    setAttendanceCloudFailure(null);
+    setAttendanceSaving(true);
+    setSaveSuccessNotice(isEn ? 'Attendance saved on this device — syncing to cloud…' : 'হাজিরা এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…');
+    void confirmAttendanceCloudSync().then((result) => {
+      setAttendanceSaving(false);
+      if (result.success) {
+        setAttendanceCloudFailure(null);
+        setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
+        setTimeout(() => setSaveSuccessNotice(null), 3000);
+      } else {
+        setSaveSuccessNotice(null);
+        setAttendanceCloudFailure(confirmErrorMessage(result, ATTENDANCE_CLOUD_FAILURE_MESSAGE));
+      }
+    }).catch((err) => {
+      console.error('Background attendance cloud confirm failed:', err);
+      setAttendanceSaving(false);
+      setSaveSuccessNotice(null);
+      setAttendanceCloudFailure(ATTENDANCE_CLOUD_FAILURE_MESSAGE);
+    });
   };
 
   // Retry re-confirms the still-local records (no re-save needed).
   const retryAttendanceCloudSync = async () => {
-    const result = await confirmAttendanceCloudSync();
-    if (result.success) {
-      setAttendanceCloudFailure(null);
-      setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
-      setTimeout(() => setSaveSuccessNotice(null), 3000);
-    } else {
-      setAttendanceCloudFailure(result.message || ATTENDANCE_CLOUD_FAILURE_MESSAGE);
+    if (attendanceRetrying || attendanceSaving) return;
+    setAttendanceRetrying(true);
+    try {
+      const result = await confirmAttendanceCloudSync();
+      if (result.success) {
+        setAttendanceCloudFailure(null);
+        setSaveSuccessNotice('✓ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
+        setTimeout(() => setSaveSuccessNotice(null), 3000);
+      } else {
+        setAttendanceCloudFailure(confirmErrorMessage(result, ATTENDANCE_CLOUD_FAILURE_MESSAGE));
+      }
+    } finally {
+      setAttendanceRetrying(false);
     }
   };
 
@@ -737,6 +782,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
   }, [classSubjects, selectedSubjectId]);
 
+  // A closed-exam notice belongs to the exam it was refused for — clear
+  // it when the teacher moves to another exam/subject.
+  useEffect(() => {
+    setMarksClosedNotice(null);
+  }, [selectedExamId, selectedSubjectId]);
+
   const [marksInputMap, setMarksInputMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -751,13 +802,26 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     setMarksInputMap(initialMap);
   }, [selectedExamId, selectedSubjectId, classStudents, marks]);
 
-  const handleSaveMarks = async () => {
+  // 7 Nov 2026 Job 7 (instant save): the local marks apply at once and
+  // the UI answers immediately — the cloud confirm runs in the BACKGROUND
+  // and never blocks the button. On failure the marks stay local, the
+  // banner shows the specific reason with a retry, and each unconfirmed
+  // row gets the amber 'cloud-এ যায়নি' badge. A CLOSED exam must SAY
+  // so — never a silent return (audit row 20). The instant response
+  // means 'saved on this device, syncing' — never a false 'saved to
+  // cloud'.
+  const handleSaveMarks = () => {
     if (!canEnterMarks) return; // Permission gate: admin has not enabled entry
     // Admin switch gate: a closed exam cannot be saved, even from a
-    // form opened before admin closed it (the closed notice is on
-    // screen; this is defense in depth, not the only guard).
-    if (!isMarkEntryAllowedForExam(exams.find(e => e.id === selectedExamId), markEntryEnabled)) return;
+    // form opened before admin closed it. The closed notice is on
+    // screen; this is defense in depth — but it must SAY so, never
+    // return silently.
+    if (!isMarkEntryAllowedForExam(exams.find(e => e.id === selectedExamId), markEntryEnabled)) {
+      setMarksClosedNotice(isEn ? 'Marks entry for this exam is closed by the admin — nothing was saved. Ask the admin to open entry again.' : 'এডমিন এই পরীক্ষার মার্ক এন্ট্রি বন্ধ রেখেছেন — কিছুই সংরক্ষণ হয়নি। আবার এন্ট্রি করতে এডমিনকে খুলে দিতে বলুন।');
+      return;
+    }
     if (!selectedExamId || !selectedSubjectId) return;
+    if (marksSaving) return;
     const markRecordsToUpdate: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
 
     classStudents.forEach(st => {
@@ -779,33 +843,51 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     });
 
     if (markRecordsToUpdate.length > 0) {
-      // Truthful save (Step 2): success only after the awaited cloud
-      // confirmation; on failure the marks stay local and an honest
-      // failure banner with a retry action is shown instead.
       // bulkUpdateMarks returns null when the exam is closed by admin
-      // — then nothing is confirmed and no success is shown.
+      // — then nothing is confirmed and no success is shown; say so.
       const nextMarks = bulkUpdateMarks(markRecordsToUpdate);
-      if (!nextMarks) return;
-      const result = await confirmMarksCloudSync(nextMarks);
-      if (result.success) {
-        setMarksCloudFailure(null);
-        setSaveSuccessNotice('✓ নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
-        setTimeout(() => setSaveSuccessNotice(null), 3000);
-      } else {
-        setMarksCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+      if (!nextMarks) {
+        setMarksClosedNotice(isEn ? 'Marks entry for this exam is closed by the admin — nothing was saved. Ask the admin to open entry again.' : 'এডমিন এই পরীক্ষার মার্ক এন্ট্রি বন্ধ রেখেছেন — কিছুই সংরক্ষণ হয়নি। আবার এন্ট্রি করতে এডমিনকে খুলে দিতে বলুন।');
+        return;
       }
+      setMarksCloudFailure(null);
+      setMarksClosedNotice(null);
+      setMarksSaving(true);
+      setSaveSuccessNotice(isEn ? 'Marks saved on this device — syncing to cloud…' : 'নম্বর এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…');
+      void confirmMarksCloudSync(nextMarks).then((result) => {
+        setMarksSaving(false);
+        if (result.success) {
+          setMarksCloudFailure(null);
+          setSaveSuccessNotice('✓ নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
+          setTimeout(() => setSaveSuccessNotice(null), 3000);
+        } else {
+          setSaveSuccessNotice(null);
+          setMarksCloudFailure(confirmErrorMessage(result, MARKS_CLOUD_FAILURE_MESSAGE));
+        }
+      }).catch((err) => {
+        console.error('Background marks cloud confirm failed:', err);
+        setMarksSaving(false);
+        setSaveSuccessNotice(null);
+        setMarksCloudFailure(MARKS_CLOUD_FAILURE_MESSAGE);
+      });
     }
   };
 
   // Retry re-confirms the still-local marks (no re-save needed).
   const retryMarksCloudSync = async () => {
-    const result = await confirmMarksCloudSync();
-    if (result.success) {
-      setMarksCloudFailure(null);
-      setSaveSuccessNotice('✓ নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
-      setTimeout(() => setSaveSuccessNotice(null), 3000);
-    } else {
-      setMarksCloudFailure(result.message || MARKS_CLOUD_FAILURE_MESSAGE);
+    if (marksRetrying || marksSaving) return;
+    setMarksRetrying(true);
+    try {
+      const result = await confirmMarksCloudSync();
+      if (result.success) {
+        setMarksCloudFailure(null);
+        setSaveSuccessNotice('✓ নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
+        setTimeout(() => setSaveSuccessNotice(null), 3000);
+      } else {
+        setMarksCloudFailure(confirmErrorMessage(result, MARKS_CLOUD_FAILURE_MESSAGE));
+      }
+    } finally {
+      setMarksRetrying(false);
     }
   };
 
@@ -1807,7 +1889,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     [staffLeaves, myLeaveIdentity]
   );
 
-  const handleSubmitLeave = async (e: React.FormEvent) => {
+  // 7 Nov 2026 Job 7 (instant save): the request is filed locally at
+  // once and the UI answers immediately — the cloud confirm runs in the
+  // BACKGROUND and never blocks the button. The submit button shows
+  // 'জমা হচ্ছে…' and stays disabled while the confirm is in flight, so
+  // a double-tap cannot file the same request twice. On failure the
+  // request stays local (never dropped), the banner shows the specific
+  // reason with a retry, and the row gets the amber 'cloud-এ যায়নি'
+  // badge. The instant response means 'saved on this device, syncing'
+  // — never a false 'saved to cloud'.
+  const handleSubmitLeave = (e: React.FormEvent) => {
     e.preventDefault();
     if (leaveSubmitting) return;
     const days = computeLeaveDays(leaveStart, leaveEnd);
@@ -1820,43 +1911,57 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return;
     }
     setLeaveSubmitting(true);
-    try {
-      const record = buildStaffLeaveRequest(
-        {
-          teacherId: myLeaveIdentity,
-          teacherName: myTeacherRecord?.nameBn || myTeacherRecord?.name || displayName,
-          designation: myTeacherRecord?.designation || currentUser?.designation || '',
-          leaveType,
-          startDate: leaveStart,
-          endDate: leaveEnd,
-          reason: leaveReason.trim(),
-        },
-        `leave_${Date.now()}`
-      );
-      const next = [record, ...staffLeaves];
-      setStaffLeaves(next);
-      const result = await confirmLeavesCloudSync(next);
+    const record = buildStaffLeaveRequest(
+      {
+        teacherId: myLeaveIdentity,
+        teacherName: myTeacherRecord?.nameBn || myTeacherRecord?.name || displayName,
+        designation: myTeacherRecord?.designation || currentUser?.designation || '',
+        leaveType,
+        startDate: leaveStart,
+        endDate: leaveEnd,
+        reason: leaveReason.trim(),
+      },
+      `leave_${Date.now()}`
+    );
+    const next = [record, ...staffLeaves];
+    setStaffLeaves(next);
+    setLeaveFailure(null);
+    setLeaveSuccess(isEn ? 'Leave request saved on this device — syncing to cloud…' : 'ছুটির আবেদন এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…');
+    void confirmLeavesCloudSync(next).then((result) => {
+      setLeaveSubmitting(false);
       if (result.success) {
         setLeaveFailure(null);
         setLeaveSuccess(isEn ? 'Leave request submitted — pending approval.' : 'ছুটির আবেদন জমা হয়েছে — অনুমোদনের অপেক্ষায় আছে।');
         setLeaveReason('');
         setTimeout(() => setLeaveSuccess(null), 3500);
       } else {
-        setLeaveFailure(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+        setLeaveSuccess(null);
+        setLeaveFailure(confirmErrorMessage(result, LEAVE_CLOUD_FAILURE_MESSAGE));
       }
-    } finally {
+    }).catch((err) => {
+      console.error('Background leave cloud confirm failed:', err);
       setLeaveSubmitting(false);
-    }
+      setLeaveSuccess(null);
+      setLeaveFailure(LEAVE_CLOUD_FAILURE_MESSAGE);
+    });
   };
 
+  // Retry re-confirms the still-local request (no re-filing — never a
+  // duplicate request).
   const retryLeaveCloudSync = async () => {
-    const result = await confirmLeavesCloudSync();
-    if (result.success) {
-      setLeaveFailure(null);
-      setLeaveSuccess(isEn ? 'Leave request synced to cloud.' : 'ছুটির আবেদন cloud-এ পৌঁছেছে।');
-      setTimeout(() => setLeaveSuccess(null), 3500);
-    } else {
-      setLeaveFailure(result.message || LEAVE_CLOUD_FAILURE_MESSAGE);
+    if (leaveRetrying || leaveSubmitting) return;
+    setLeaveRetrying(true);
+    try {
+      const result = await confirmLeavesCloudSync();
+      if (result.success) {
+        setLeaveFailure(null);
+        setLeaveSuccess(isEn ? 'Leave request synced to cloud.' : 'ছুটির আবেদন cloud-এ পৌঁছেছে।');
+        setTimeout(() => setLeaveSuccess(null), 3500);
+      } else {
+        setLeaveFailure(confirmErrorMessage(result, LEAVE_CLOUD_FAILURE_MESSAGE));
+      }
+    } finally {
+      setLeaveRetrying(false);
     }
   };
 
@@ -2254,7 +2359,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const attendanceCloudFailureToast = attendanceCloudFailure && (
     <div className="mx-4 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
       <span>{attendanceCloudFailure}</span>
-      <button type="button" onClick={retryAttendanceCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+      <button type="button" onClick={retryAttendanceCloudSync} disabled={attendanceRetrying || attendanceSaving} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">{attendanceRetrying ? (isEn ? 'Retrying…' : 'আবার চেষ্টা করা হচ্ছে…') : RETRY_LABEL}</button>
     </div>
   );
 
@@ -2507,6 +2612,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                                       <Phone size={12} className="shrink-0" />
                                       <span className="truncate">{phone ? toBn(phone) : '—'}{roll ? ` • ${isEn ? 'Roll' : 'রোল'}: ${toBn(roll)}` : ''}</span>
                                     </p>
+                                    {isRecordUnconfirmed('dailyStudentAttendance', `${attendanceDate}_${st.id}`) && <UnconfirmedBadge isBn={!isEn} />}
                                   </div>
                                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 ${badgeCls}`}>
                                     {badgeLabel}
@@ -2539,10 +2645,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         <div className="sticky bottom-[84px] z-30 pt-1">
                           <button
                             onClick={handleSaveAttendance}
-                            className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
+                            disabled={attendanceSaving}
+                            className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                           >
                             <Save size={17} />
-                            <span>{isEn ? 'Save attendance' : 'হাজিরা সংরক্ষণ করুন'}</span>
+                            <span>{attendanceSaving ? (isEn ? 'Saving…' : 'সংরক্ষণ হচ্ছে…') : (isEn ? 'Save attendance' : 'হাজিরা সংরক্ষণ করুন')}</span>
                           </button>
                         </div>
                       )}
@@ -3247,6 +3354,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 {classStudents.map(st => {
                   const currentVal = marksInputMap[st.id] ?? '';
                   const numVal = Number(currentVal);
+                  const existingMark = marks.find(m => m.studentId === st.id && m.subjectId === selectedSubjectId && m.examId === selectedExamId);
                   const grade = currentVal !== ''
                     ? (numVal >= 80 ? 'A+' : numVal >= 70 ? 'A' : numVal >= 60 ? 'A-' : numVal >= 50 ? 'B' : numVal >= 40 ? 'C' : numVal >= 33 ? 'D' : 'F')
                     : '—';
@@ -3261,6 +3369,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           <span className="text-[11px] text-[#8a93a8]">
                             রোল {toBn(st.roll || st.rollNumber || '—')} • গ্রেড: <strong className={grade === 'F' ? 'text-[#dc2626]' : 'text-[#059669]'}>{grade}</strong>
                           </span>
+                          {existingMark && isRecordUnconfirmed('marks', existingMark.id) && <UnconfirmedBadge isBn={!isEn} />}
                         </div>
                       </div>
                       {canEnterMarksForExam ? (
@@ -3288,7 +3397,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               {marksCloudFailure && (
                 <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
                   <span>{marksCloudFailure}</span>
-                  <button type="button" onClick={retryMarksCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+                  <button type="button" onClick={retryMarksCloudSync} disabled={marksRetrying || marksSaving} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">{marksRetrying ? (isEn ? 'Retrying…' : 'আবার চেষ্টা করা হচ্ছে…') : RETRY_LABEL}</button>
+                </div>
+              )}
+
+              {/* Closed-exam save attempt (Job 7): the save was refused, not
+                  silently dropped — no retry here, retry cannot reopen an
+                  exam the admin closed. */}
+              {marksClosedNotice && (
+                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                  <span>{marksClosedNotice}</span>
                 </div>
               )}
 
@@ -3296,10 +3414,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 <div className="sticky bottom-[84px] z-30 pt-1">
                   <button
                     onClick={handleSaveMarks}
-                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
+                    disabled={marksSaving}
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Save size={17} />
-                    <span>নম্বর সংরক্ষণ করুন</span>
+                    <span>{marksSaving ? 'সংরক্ষণ হচ্ছে…' : 'নম্বর সংরক্ষণ করুন'}</span>
                   </button>
                 </div>
               )}
@@ -4415,7 +4534,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           {leaveFailure && (
             <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
               <span>{leaveFailure}</span>
-              <button type="button" onClick={retryLeaveCloudSync} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+              <button type="button" onClick={retryLeaveCloudSync} disabled={leaveRetrying || leaveSubmitting} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">{leaveRetrying ? (isEn ? 'Retrying…' : 'আবার চেষ্টা করা হচ্ছে…') : RETRY_LABEL}</button>
             </div>
           )}
 
@@ -4476,7 +4595,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 disabled={leaveSubmitting}
                 className="w-full py-3.5 rounded-[20px] brand-grad text-white text-sm font-bold active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
-                {isEn ? 'Submit leave request' : 'ছুটির আবেদন জমা দিন'}
+                {leaveSubmitting ? (isEn ? 'Submitting…' : 'জমা হচ্ছে…') : (isEn ? 'Submit leave request' : 'ছুটির আবেদন জমা দিন')}
               </button>
               <p className="text-[11px] font-semibold text-[#8a93a8]">
                 {isEn ? 'Your request goes to the principal/admin as pending — it counts only after approval.' : 'আবেদনটি অধ্যক্ষ/প্রশাসনের কাছে অপেক্ষমাণ হিসেবে যাবে — অনুমোদন হলেই শুধু গণনায় আসবে।'}
@@ -4494,6 +4613,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <div className="text-xs">
                     <p className="font-bold">{l.startDate}{l.startDate !== l.endDate ? ` → ${l.endDate}` : ''}</p>
                     <p className="text-[#8a93a8] font-semibold">{l.reason || (isEn ? 'No reason given' : 'কারণ দেওয়া হয়নি')}</p>
+                    {isRecordUnconfirmed('staffLeaves', l.id) && <UnconfirmedBadge isBn={!isEn} />}
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${l.status === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' : l.status === 'PENDING' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300'}`}>
                     {l.status === 'APPROVED' ? (isEn ? 'Approved' : 'অনুমোদিত') : l.status === 'PENDING' ? (isEn ? 'Pending' : 'অপেক্ষমাণ') : (isEn ? 'Rejected' : 'বাতিল')}

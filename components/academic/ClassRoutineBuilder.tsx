@@ -11,6 +11,7 @@ import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { SCHEDULE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
+import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { 
   Calendar, 
   Clock, 
@@ -31,18 +32,83 @@ import {
 } from 'lucide-react';
 
 export const ClassRoutineBuilder: React.FC = () => {
-  const { classes, subjects, teachers, language, confirmScheduleCloudSync } = useApp();
+  const { classes, subjects, teachers, language, confirmScheduleCloudSync, isRecordUnconfirmed } = useApp();
   const isBn = language === 'bn';
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Truthful-save Step 2: the service save below is local-only until the
-  // awaited cloud confirmation; on failure this banner + retry appears
-  // (the data stays in the service, never dropped).
-  const [scheduleCloudFailure, setScheduleCloudFailure] = useState<string | null>(null);
-  const confirmSchedule = async () => {
-    const result = await confirmScheduleCloudSync();
-    if (result.success) setScheduleCloudFailure(null);
-    else setScheduleCloudFailure(result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE);
+  // 7 Nov 2026 Job 7 (instant save, Job 0 pattern): the local mutation
+  // applies and the modal closes at once; the cloud confirm runs in the
+  // BACKGROUND. On failure the payload is queued, the saved period shows
+  // the amber 'cloud-এ যায়নি' badge, and the banner below offers Retry
+  // (re-confirm only — never a second local write). Closing the modal
+  // means 'saved on this device, syncing' — never a false 'saved to cloud'.
+  // The service swallows localStorage write errors, so every local save
+  // is verified by re-reading; a save that did not land keeps the modal
+  // open with a real message instead of claiming a save.
+  const [pendingSchedule, setPendingSchedule] = useState<{ field: string; id: string | null; error: string; localFailure?: boolean } | null>(null);
+  const [isRetryingSchedule, setIsRetryingSchedule] = useState(false);
+  const [scheduleSaveNote, setScheduleSaveNote] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
+      : (result.message || SCHEDULE_CLOUD_FAILURE_MESSAGE));
+
+  const LOCAL_SAVE_FAILURE_MESSAGE = isBn
+    ? 'এই ডিভাইসে সংরক্ষণ হয়নি — ব্রাউজার স্টোরেজে জায়গা নেই বা বন্ধ আছে। কিছু জায়গা খালি করে আবার চেষ্টা করুন।'
+    : 'Could not save on this device — browser storage is full or unavailable. Free some space and try again.';
+  const LOCAL_DELETE_FAILURE_MESSAGE = isBn
+    ? 'এই ডিভাইসে মোছা হয়নি — ব্রাউজার স্টোরেজে সমস্যা। কিছু জায়গা খালি করে আবার চেষ্টা করুন।'
+    : 'Could not delete on this device — browser storage has a problem. Free some space and try again.';
+
+  const confirmScheduleInBackground = (savedId: string | null) => {
+    void confirmScheduleCloudSync().then((result) => {
+      if (result.success) setPendingSchedule(null);
+      else setPendingSchedule({ field: 'classRoutines', id: savedId, error: confirmErrorMessage(result) });
+    }).catch((err) => {
+      console.error('Background schedule cloud confirm failed:', err);
+      setPendingSchedule({ field: 'classRoutines', id: savedId, error: SCHEDULE_CLOUD_FAILURE_MESSAGE });
+    });
+  };
+
+  // Retry re-confirms the still-local save (no re-save needed). The
+  // Diagnostics queue Retry covers the same payload, so whichever path
+  // lands first clears the badge.
+  const retryScheduleSave = async () => {
+    if (isRetryingSchedule) return;
+    setIsRetryingSchedule(true);
+    try {
+      const result = await confirmScheduleCloudSync();
+      if (result.success) setPendingSchedule(null);
+      else setPendingSchedule((prev) => (prev ? { ...prev, error: confirmErrorMessage(result) } : { field: 'classRoutines', id: null, error: confirmErrorMessage(result) }));
+    } finally {
+      setIsRetryingSchedule(false);
+    }
+  };
+
+  // The service's saveRoutineItem returns no id for a new period (it
+  // generates one internally), so verify by re-reading: an edit must
+  // still carry its id with the new subject; a create must have added
+  // exactly this day/period/class/subject row (a conflict check already
+  // rejects any pre-existing row for the slot, so the match is unique).
+  const verifyRoutineSaved = (payload: ClassRoutineItem, wasEdit: boolean): string | null => {
+    const list = academicScheduleService.getRoutines();
+    if (wasEdit) {
+      const found = list.find(r => r.id === payload.id);
+      return found && found.subjectId === payload.subjectId ? found.id : null;
+    }
+    const found = list.find(r =>
+      r.dayOfWeek === payload.dayOfWeek &&
+      r.periodNumber === payload.periodNumber &&
+      r.classLevel === payload.classLevel &&
+      (r.sectionName || '') === (payload.sectionName || '') &&
+      r.subjectId === payload.subjectId
+    );
+    return found ? found.id : null;
   };
 
   // Active View Mode: 'by_class' (Class view) or 'by_teacher' (Teacher view)
@@ -142,9 +208,12 @@ export const ClassRoutineBuilder: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Save routine period
-  const handleSave = async (e: React.FormEvent) => {
+  // Save routine period — instant/optimistic: the local mutation applies
+  // and the modal closes at once; the cloud confirm runs in the
+  // background (never block-awaited here).
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRef.current) return;
     if (!formState.subjectId) {
       setConflictError(isBn ? 'অনুগ্রহ করে একটি বিষয় নির্বাচন করুন।' : 'Please select a subject.');
       return;
@@ -170,16 +239,33 @@ export const ClassRoutineBuilder: React.FC = () => {
       status: 'ACTIVE'
     };
 
-    const result = academicScheduleService.saveRoutineItem(payload);
-    if (!result.success) {
-      setConflictError(result.conflictError || 'দ্বন্দ্বের কারণে সংরক্ষণ করা যায়নি।');
-      return;
-    }
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      const result = academicScheduleService.saveRoutineItem(payload);
+      if (!result.success) {
+        setConflictError(result.conflictError || 'দ্বন্দ্বের কারণে সংরক্ষণ করা যায়নি।');
+        return;
+      }
+      const savedId = verifyRoutineSaved(payload, !!editingItem);
+      if (!savedId) {
+        setConflictError(LOCAL_SAVE_FAILURE_MESSAGE);
+        return;
+      }
 
-    setIsModalOpen(false);
-    setConflictError(null);
-    setVersion(v => v + 1);
-    await confirmSchedule();
+      setIsModalOpen(false);
+      setConflictError(null);
+      setVersion(v => v + 1);
+      setScheduleSaveNote(true);
+      setTimeout(() => setScheduleSaveNote(false), 2000);
+      confirmScheduleInBackground(savedId);
+    } catch (err) {
+      console.error('Routine local save failed:', err);
+      setConflictError(LOCAL_SAVE_FAILURE_MESSAGE);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   // Delete routine period
@@ -215,11 +301,27 @@ export const ClassRoutineBuilder: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Truthful-save failure banner (Step 2): schedule data stays in the service until a retry confirms the cloud write. */}
-      {scheduleCloudFailure && (
+      {/* Job 7 (instant save): the background cloud confirm failed for
+          the just-saved period — it sits queued with its amber badge.
+          This banner offers Retry (re-confirm only, never a second local
+          write); it hides itself once the payload lands (here or via the
+          Diagnostics queue retry). A delete has no surviving row, so its
+          failure shows on the error alone (id null). */}
+      {pendingSchedule && (pendingSchedule.id === null || isRecordUnconfirmed(pendingSchedule.field, pendingSchedule.id)) && (
         <div className="p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 rounded-xl text-xs font-bold flex flex-col gap-2">
-          <span>{scheduleCloudFailure}</span>
-          <button type="button" onClick={confirmSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">{RETRY_LABEL}</button>
+          <span>{pendingSchedule.error}</span>
+          {!pendingSchedule.localFailure && (
+            <span>{isBn ? 'তথ্যটি এই ডিভাইসে সংরক্ষিত আছে — cloud-এ যায়নি।' : 'The record is saved on this device — it has not reached the cloud yet.'}</span>
+          )}
+          <button type="button" onClick={retryScheduleSave} disabled={isRetryingSchedule} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">{RETRY_LABEL}</button>
+        </div>
+      )}
+      {/* Job 7: the modal closed at once — the period is saved on this
+          device and syncing to the cloud in the background. */}
+      {scheduleSaveNote && !pendingSchedule && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{isBn ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}</span>
         </div>
       )}
       {/* Top Header & Mode Toggle */}
@@ -408,6 +510,8 @@ export const ClassRoutineBuilder: React.FC = () => {
                                 <Users size={11} className="shrink-0 text-teal-600 dark:text-teal-400" />
                                 <span className="truncate">{match.teacherName || (isBn ? 'শিক্ষক অপ্রাপ্ত' : 'No teacher')}</span>
                               </div>
+
+                              {isRecordUnconfirmed('classRoutines', match.id) && <UnconfirmedBadge isBn={isBn} />}
 
                               {viewMode === 'by_teacher' && (
                                 <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300 mt-1">
@@ -655,7 +759,8 @@ export const ClassRoutineBuilder: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold"
+                  disabled={isSaving}
+                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingItem ? (isBn ? 'আপডেট করুন' : 'Update') : (isBn ? 'সংরক্ষণ করুন' : 'Save')}
                 </Button>
@@ -669,12 +774,19 @@ export const ClassRoutineBuilder: React.FC = () => {
       <ConfirmDialog
         isOpen={!!periodToDelete}
         onClose={() => setPeriodToDelete(null)}
-        onConfirm={async () => {
+        onConfirm={() => {
           if (periodToDelete) {
-            academicScheduleService.deleteRoutineItem(periodToDelete);
+            const id = periodToDelete;
+            academicScheduleService.deleteRoutineItem(id);
             setVersion(v => v + 1);
             setPeriodToDelete(null);
-            await confirmSchedule();
+            // The service swallows localStorage write errors — verify the
+            // delete actually landed before confirming it to the cloud.
+            if (academicScheduleService.getRoutines().some(r => r.id === id)) {
+              setPendingSchedule({ field: 'classRoutines', id: null, error: LOCAL_DELETE_FAILURE_MESSAGE, localFailure: true });
+              return;
+            }
+            confirmScheduleInBackground(null);
           }
         }}
         title={isBn ? 'পিরিয়ড ডিলিট নিশ্চিতকরণ' : 'Confirm Period Deletion'}
