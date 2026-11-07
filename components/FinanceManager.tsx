@@ -397,7 +397,14 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
-            onShowReceipt={openVoucher}
+            onConfirmTransactions={confirmFeeCloudSync}
+            onReceiptCloudStatus={setVoucherCloudConfirmed}
+            // Job 4: NOT openVoucher — it resets voucherCloudConfirmed
+            // to true, which would erase the false the form sets just
+            // before opening (same-tick batching). Direct setter, like
+            // student-fee, so the receipt opens local-only until the
+            // background confirm lands.
+            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
             showToast={showToast}
           />
         )}
@@ -419,7 +426,10 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
-            onShowReceipt={openVoucher}
+            onConfirmTransactions={confirmFeeCloudSync}
+            onReceiptCloudStatus={setVoucherCloudConfirmed}
+            // Job 4: NOT openVoucher — see donation tab above.
+            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
             showToast={showToast}
           />
         )}
@@ -429,7 +439,10 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
-            onShowReceipt={openVoucher}
+            onConfirmTransactions={confirmFeeCloudSync}
+            onReceiptCloudStatus={setVoucherCloudConfirmed}
+            // Job 4: NOT openVoucher — see donation tab above.
+            onShowReceipt={(tx) => setSelectedVoucherForPrint(tx)}
             showToast={showToast}
           />
         )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   PlusCircle, 
   ArrowDownLeft, 
@@ -17,6 +17,7 @@ import {
   ExpenseCategory 
 } from '../../types';
 import { formatBanglaNumber, generateVoucherNo } from '../../services/utils';
+import { feeCloudFailureMessage, FEE_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { FUND_METAS } from './types';
 import { Button } from '../ui/Button';
 
@@ -24,6 +25,15 @@ interface GeneralVoucherEntryProps {
   transactions: FinanceTransaction[];
   language: 'en' | 'bn';
   onAddTransaction: (tx: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
+  // 7 Nov 2026 Job 4 (optimistic save, Job 1 salary template): the
+  // confirm runs in the BACKGROUND — the local voucher applies and the
+  // receipt opens at once, marked local-only until the confirm lands.
+  // A local-only voucher must never print as if it reached the cloud.
+  // This is confirmFeeCloudSync from context (raw error text).
+  onConfirmTransactions: (next: FinanceTransaction[], failureMessage?: string) => Promise<{ success: boolean; message?: string; rawMessage?: string }>;
+  // Mirrors StudentFeeCollection: false while the voucher is local-only,
+  // true once the background confirm lands (live-updates the open receipt).
+  onReceiptCloudStatus?: (confirmed: boolean) => void;
   onShowReceipt: (tx: FinanceTransaction) => void;
   showToast: (msg: string) => void;
 }
@@ -32,6 +42,8 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
   transactions,
   language,
   onAddTransaction,
+  onConfirmTransactions,
+  onReceiptCloudStatus,
   onShowReceipt,
   showToast,
 }) => {
@@ -49,6 +61,31 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
   const [referenceNo, setReferenceNo] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [collectedBy, setCollectedBy] = useState<string>('হিসাবরক্ষক');
+  // Job 4 (optimistic save): cloud-confirm failure state. The voucher
+  // stays local (visible in the list, badged in the ledger) and the
+  // retry below re-confirms the SAME transaction list — resubmitting
+  // would mint a second voucher.
+  const [voucherConfirmError, setVoucherConfirmError] = useState<string | null>(null);
+  const [voucherPendingTx, setVoucherPendingTx] = useState<FinanceTransaction | null>(null);
+  // 7 Nov 2026 Job 4: NO blocking isSaving state — the old pattern sat
+  // on a dead screen for 60-90s on a slow connection. The double-create
+  // guard below is a synchronous fingerprint check instead: an identical
+  // submission (same type, fund, category, amount, date, person,
+  // reference) is refused while its background confirm is still in
+  // flight, or within 10s of the last submit — a double-tap can never
+  // mint a second voucher, while a genuinely different voucher always
+  // goes through at once.
+  const lastSubmitRef = useRef<{ fp: string; at: number } | null>(null);
+  const confirmPendingRef = useRef(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  // Plain-language confirm failure: a timeout (slow connection) says so
+  // explicitly instead of the generic cloud message — a generic message
+  // after a long silent wait is what made the Save button look dead.
+  const confirmErrorMessage = (result: { message?: string; rawMessage?: string }) =>
+    (result.rawMessage?.includes('timed out')
+      ? (isBn ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, ভাউচার সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the voucher save did not finish. Try again on a better connection.')
+      : (result.message || FEE_CLOUD_FAILURE_MESSAGE));
 
   const incomeCategoriesList: { value: IncomeCategory; label: string }[] = [
     { value: 'GENERAL_DONATION', label: 'সাধারণ দান ও অনুদান' },
@@ -100,6 +137,20 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
       return;
     }
 
+    // Double-create guard (synchronous — set BEFORE the local add, so a
+    // double-tap in the same tick is refused too). Identical voucher
+    // while its confirm is in flight, or within 10s of the last submit.
+    const fingerprint = [txType, fundType, category, amount, date, paymentMethod, payerOrPayee.trim(), referenceNo.trim()].join('|');
+    const now = Date.now();
+    if (
+      lastSubmitRef.current?.fp === fingerprint &&
+      (now - lastSubmitRef.current.at < 10000 || confirmPendingRef.current)
+    ) {
+      showToast(isBn ? 'এই ভাউচারটি ইতিমধ্যে জমা দেওয়া হয়েছে — আবার চাপবেন না।' : 'This voucher was already submitted — please do not submit it again.');
+      return;
+    }
+    lastSubmitRef.current = { fp: fingerprint, at: now };
+
     const nextVoucher = generateVoucherNo(txType, transactions);
     const catObj = txType === 'INCOME' 
       ? incomeCategoriesList.find(c => c.value === category)
@@ -123,8 +174,23 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
       collectedBy,
     };
 
+    // 7 Nov 2026 Job 4 (instant save, Job 1 salary template): the form
+    // used to show a 'সফলভাবে সংরক্ষিত' toast and print the receipt as
+    // cloud-confirmed with NO confirm at all — the write depended on
+    // background auto-sync. Now the local transaction applies and the
+    // receipt opens AT ONCE (marked local-only); the confirm runs in
+    // the BACKGROUND via confirmFeeCloudSync (raw error text). On
+    // failure it queues the payload, the ledger row shows the amber
+    // 'cloud-এ যায়নি' badge, and the banner below offers Retry. The
+    // receipt flips to cloud-confirmed live when the background
+    // confirm lands. The success toast fires ONLY then — never a false
+    // 'saved to cloud'.
     const created = onAddTransaction(newTx);
-    showToast(isBn ? `ভাউচার নং ${nextVoucher} সফলভাবে সংরক্ষিত হয়েছে!` : `Voucher ${nextVoucher} created!`);
+    setVoucherPendingTx(created);
+    setVoucherConfirmError(null);
+    confirmPendingRef.current = true;
+    onReceiptCloudStatus?.(false);
+    showToast(isBn ? `ভাউচার নং ${nextVoucher} এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…` : `Voucher ${nextVoucher} saved on this device — syncing to cloud…`);
     onShowReceipt(created);
 
     // Reset Form
@@ -133,6 +199,63 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
     setReferenceNo('');
     setDescription('');
     setCustomCategoryName('');
+
+    const failureMsg = isBn
+      ? feeCloudFailureMessage(nextVoucher)
+      : `Voucher ${nextVoucher} saved on this device only — not yet in the cloud. Please retry.`;
+
+    // Background confirm — fire and forget from the UI's point of view.
+    // On failure confirmFeeCloudSync queues the payload (via
+    // confirmUpsertFailure), so the ledger badge appears and the
+    // Diagnostics queue can retry it.
+    void onConfirmTransactions([created, ...transactions], failureMsg).then((result) => {
+      confirmPendingRef.current = false;
+      if (!result.success) {
+        setVoucherConfirmError(confirmErrorMessage(result));
+        return;
+      }
+      setVoucherPendingTx(null);
+      setVoucherConfirmError(null);
+      onReceiptCloudStatus?.(true);
+      showToast(isBn ? `ভাউচার নং ${nextVoucher} সফলভাবে সংরক্ষিত হয়েছে!` : `Voucher ${nextVoucher} created!`);
+    }).catch((err) => {
+      confirmPendingRef.current = false;
+      console.error('Background voucher cloud confirm failed:', err);
+      setVoucherConfirmError(isBn
+        ? `ভাউচার cloud-এ যায়নি (${err instanceof Error ? err.message : 'অজানা ত্রুটি'}) — আবার চেষ্টা করুন।`
+        : `Voucher did not reach cloud (${err instanceof Error ? err.message : 'unknown error'}) — please retry.`);
+    });
+  };
+
+  // Job 4: voucher retry — re-confirm only, never a second voucher.
+  // The pending voucher is deduped out of the list (it already landed
+  // in local state), so the confirm writes each voucher exactly once.
+  const handleRetryVoucherConfirm = async () => {
+    if (!voucherPendingTx || isRetrying) return;
+    setIsRetrying(true);
+    try {
+      const failureMsg = isBn
+        ? feeCloudFailureMessage(voucherPendingTx.voucherNo)
+        : `Voucher ${voucherPendingTx.voucherNo} saved on this device only — not yet in the cloud. Please retry.`;
+      const list = [voucherPendingTx, ...transactions.filter((t) => t.id !== voucherPendingTx.id)];
+      const result = await onConfirmTransactions(list, failureMsg);
+      if (!result.success) {
+        setVoucherConfirmError(confirmErrorMessage(result));
+        return;
+      }
+      setVoucherPendingTx(null);
+      setVoucherConfirmError(null);
+      onReceiptCloudStatus?.(true);
+      showToast(isBn ? `ভাউচার নং ${voucherPendingTx.voucherNo} সফলভাবে সংরক্ষিত হয়েছে!` : `Voucher ${voucherPendingTx.voucherNo} created!`);
+      onShowReceipt(voucherPendingTx);
+    } catch (err) {
+      console.error('Failed to retry voucher confirm:', err);
+      setVoucherConfirmError(isBn
+        ? `ভাউচার cloud-এ যায়নি (${err instanceof Error ? err.message : 'অজানা ত্রুটি'}) — আবার চেষ্টা করুন।`
+        : `Voucher did not reach cloud (${err instanceof Error ? err.message : 'unknown error'}) — please retry.`);
+    } finally {
+      setIsRetrying(false);
+    }
   };
 
   return (
@@ -356,6 +479,23 @@ export const GeneralVoucherEntry: React.FC<GeneralVoucherEntryProps> = ({
             {isBn ? 'ভাউচার সেভ করুন ও প্রিন্ট' : 'Save & Print Voucher'}
           </Button>
         </div>
+
+        {/* Job 4 (optimistic save): the background cloud confirm failed
+            — voucher stays local (badged in the ledger), retry
+            re-confirms the same voucher (never a second one). */}
+        {voucherConfirmError && (
+          <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-xl p-3 flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">{voucherConfirmError}</span>
+            <button
+              type="button"
+              onClick={handleRetryVoucherConfirm}
+              disabled={isRetrying}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-[11px] font-bold shrink-0 cursor-pointer"
+            >
+              {isRetrying ? (isBn ? 'চেষ্টা চলছে…' : 'Retrying…') : (isBn ? 'আবার চেষ্টা করুন' : 'Retry')}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );
