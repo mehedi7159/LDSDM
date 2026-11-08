@@ -99,21 +99,15 @@ export function isGoogleOnlyAccount(
 
 /**
  * Password to stamp on an approved account record, if any.
- * Google-only members MUST NOT get the legacy '123456' fallback — a
- * stamped default password would open portal password-login for an
- * account that was never given a password. Returns undefined for
- * Google-only members (callers spread it conditionally, never as an
- * explicit undefined field), otherwise the member's password or the
- * legacy '123456' default for email members.
+ * Step 1 password removal: passwords are never stored in plain text
+ * on account or staff records. Real authentication credentials live
+ * strictly in Firebase Auth. Returns undefined always.
  */
-export function approvalPasswordFor(member: {
+export function approvalPasswordFor(_member: {
   password?: string;
   authProvider?: string;
 }): string | undefined {
-  if (isGoogleOnlyAccount(member)) {
-    return undefined;
-  }
-  return member.password || '123456';
+  return undefined;
 }
 
 /**

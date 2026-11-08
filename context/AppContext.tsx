@@ -1156,7 +1156,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         };
       } else if (target) {
         const approvedGoogleOnly = isGoogleOnlyAccount(target);
-        const approvedPassword = approvalPasswordFor(target);
         approvedUser = {
           id: target.uid,
           name: target.displayName || 'User',
@@ -1164,7 +1163,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           phone: target.phone || '',
           email: target.email || undefined,
           ...(approvedGoogleOnly ? { authProvider: 'google' as const } : {}),
-          ...(approvedPassword !== undefined ? { password: approvedPassword } : {}),
           role: cleanRole,
           assignedClasses,
           status: 'active',
@@ -1178,7 +1176,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           approvedTeacher = { ...existsApprovedTeacher, status: 'ACTIVE' as const, assignedClasses };
         } else {
           const approvedTeacherGoogleOnly = isGoogleOnlyAccount(target);
-          const approvedTeacherPassword = approvalPasswordFor(target);
           approvedTeacher = {
             id: uid,
             institutionId: 'inst_madrasah_primary',
@@ -1187,7 +1184,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             phone: target.phone || '',
             email: target.email,
             ...(approvedTeacherGoogleOnly ? { authProvider: 'google' as const } : {}),
-            ...(approvedTeacherPassword !== undefined ? { password: approvedTeacherPassword } : {}),
             designation: target.requestedRole || 'সহকারী শিক্ষক',
             status: 'ACTIVE',
             assignedClasses,
@@ -1207,11 +1203,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           } : u);
         }
         if (target) {
-          // Google-only members must NEVER get the legacy '123456'
-          // fallback: a stamped default password would open portal
-          // password-login for an account that was never given one.
+          // Passwords live in Firebase Auth, never stamped on app user records
           const googleOnly = isGoogleOnlyAccount(target);
-          const approvalPassword = approvalPasswordFor(target);
           const newUser: AppUser = {
             id: target.uid,
             name: target.displayName || 'User',
@@ -1219,7 +1212,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             phone: target.phone || '',
             email: target.email || undefined,
             ...(googleOnly ? { authProvider: 'google' as const } : {}),
-            ...(approvalPassword !== undefined ? { password: approvalPassword } : {}),
             role: cleanRole,
             assignedClasses,
             status: 'active',
@@ -1232,10 +1224,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
       // If teacher, ensure present and ACTIVE in academic teachers list
       if (cleanRole === 'teacher' && target) {
-        // Same Google-only rule as the account record above: no
-        // stamped '123456' password for Google-only members.
+        // Passwords live in Firebase Auth, never stamped on staff records
         const teacherGoogleOnly = isGoogleOnlyAccount(target);
-        const teacherApprovalPassword = approvalPasswordFor(target);
         setTeachers(prev => {
           const exists = prev.find(t => t.id === uid || (target.email && t.email?.toLowerCase() === target.email.toLowerCase()) || (target.phone && t.phone === target.phone));
           if (exists) {
@@ -1251,7 +1241,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
               phone: target.phone || '',
               email: target.email,
               ...(teacherGoogleOnly ? { authProvider: 'google' as const } : {}),
-              ...(teacherApprovalPassword !== undefined ? { password: teacherApprovalPassword } : {}),
               designation: target.requestedRole || 'সহকারী শিক্ষক',
               status: 'ACTIVE',
               assignedClasses,
@@ -1631,7 +1620,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       nameBn: (data.nameBn || data.name).trim(),
       phone: cleanPhone,
       email: cleanEmail || undefined,
-      password: data.password?.trim() || '123',
       role: data.role,
       designation: data.designation?.trim(),
       assignedClasses: data.assignedClasses || [],
@@ -1794,7 +1782,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           nameBn: teacher.nameBn || teacher.name,
           phone: teacher.phone || '',
           email: teacher.email || undefined,
-          password: teacher.password || '123456',
           authProvider: teacher.authProvider,
           role: deriveRoleFromDesignation(teacher.designation),
           additionalRoles: sanitizeAdditionalRoles(teacher.additionalRoles, deriveRoleFromDesignation(teacher.designation)) as UserRole[],
@@ -3639,7 +3626,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           nameBn: matchedTeacher.nameBn || matchedTeacher.name,
           phone: matchedTeacher.phone || '',
           email: matchedTeacher.email || undefined,
-          password: matchedTeacher.password || '123456',
           role: deriveRoleFromDesignation(matchedTeacher.designation),
           additionalRoles: sanitizeAdditionalRoles(matchedTeacher.additionalRoles, deriveRoleFromDesignation(matchedTeacher.designation)) as UserRole[],
           designation: matchedTeacher.designation || 'সহকারী শিক্ষক',
@@ -4532,7 +4518,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // without one it is derived from the designation — never hard-coded,
       // otherwise every staff member (e.g. the accountant) becomes a teacher.
       const effectiveRole: UserRole = loginRole ?? deriveRoleFromDesignation(teacher.designation);
-      const rawPassword = teacherData.password?.trim() || '123456';
+      // Step 1: never invent default passwords. Real passwords live in Firebase Auth.
+      const rawPassword = teacherData.password?.trim() || undefined;
       const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
       const cleanPhone = teacher.phone?.trim() || '';
       // Multi-role: additional roles chosen in the staff form ride on
@@ -4543,7 +4530,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
       const teacherWithCredentials: AcademicTeacher = {
         ...teacher,
-        password: rawPassword,
         email: cleanEmail,
         additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
         status: teacherData.status || 'ACTIVE'
@@ -4569,7 +4555,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         email: cleanEmail || (cleanPhone ? `teacher.${cleanPhone.replace(/[^0-9]/g, '')}@madrasha.local` : `teacher.${teacher.id}@madrasha.local`),
         displayName: teacher.nameBn || teacher.name,
         phone: cleanPhone,
-        password: rawPassword,
         roleId: `role_${effectiveRole}`,
         additionalRoleIds: additionalRoles.map(r => roleKeyToRoleId(r)),
         requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',
@@ -4588,7 +4573,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         nameBn: teacher.nameBn || teacher.name,
         phone: cleanPhone,
         email: cleanEmail,
-        password: rawPassword,
         role: effectiveRole,
         additionalRoles: additionalRoles.length > 0 ? [...additionalRoles] : undefined,
         designation: teacher.designation || 'মুয়াল্লিম / সহকারী শিক্ষক',
@@ -5807,9 +5791,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return { status: 'failed', reason: 'invalid-input', error: validationError };
     }
 
-    // Never invent a password: blank keeps the stored one, and a record
-    // with no password anywhere stays passwordless (29 Oct 2026).
-    const rawPassword = updatedTeacher.password?.trim() || existing?.password || '';
+    // Step 1: real credentials live in Firebase Auth. Local/cloud staff records never store passwords.
+    const rawPassword = updatedTeacher.password?.trim() || '';
     const cleanEmail = teacher.email?.trim().toLowerCase() || undefined;
     const cleanPhone = teacher.phone?.trim() || '';
     // Multi-role: the form passes additionalRoles on updatedTeacher;
@@ -5822,7 +5805,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const teacherWithCredentials: AcademicTeacher = {
       ...teacher,
-      password: rawPassword,
       email: cleanEmail,
       phone: cleanPhone,
       additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
@@ -5853,7 +5835,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           nameBn: teacher.nameBn || teacher.name,
           email: cleanEmail,
           phone: cleanPhone,
-          password: rawPassword,
           designation: teacher.designation,
           role: effectiveRole,
           additionalRoles: additionalRoles.length > 0 ? [...additionalRoles] : undefined,
@@ -5872,7 +5853,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       email: cleanEmail || (cleanPhone ? `teacher.${cleanPhone.replace(/[^0-9]/g, '')}@madrasha.local` : `teacher.${teacher.id}@madrasha.local`),
       displayName: teacher.nameBn || teacher.name,
       phone: cleanPhone,
-      password: rawPassword,
       roleId: `role_${effectiveRole}`,
       additionalRoleIds: additionalRoles.map(r => roleKeyToRoleId(r)),
       requestedRole: teacher.designation || 'সহকারী শিক্ষক (Teacher)',

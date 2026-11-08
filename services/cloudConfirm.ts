@@ -268,6 +268,18 @@ function stripUndefinedRecord<T>(record: T): T {
 }
 
 /**
+ * Step 1 password removal: strip plain-text password from staff/user
+ * records before writing to Firestore. Passwords belong strictly in
+ * Firebase Auth.
+ */
+export function stripStaffPassword<T extends Record<string, any>>(record: T): T {
+  if (!record || typeof record !== 'object') return record;
+  if (!('password' in record)) return record;
+  const { password, ...rest } = record;
+  return rest as T;
+}
+
+/**
  * Phase 1 choke-point routing (4 Nov 2026): every confirmed writer
  * passes through here, so no writer can bypass the validators.
  *  - Id assertion: a record without its field's stable key throws
@@ -299,7 +311,10 @@ async function writeFieldsToCloud(
   });
 
   for (const [field, localRecords] of Object.entries(fields)) {
-    const records = localRecords || [];
+    let records = localRecords || [];
+    if (field === 'teachers' || field === 'users') {
+      records = records.map(stripStaffPassword);
+    }
     if (records.length === 0) continue;
     const keyFn = (keyFns && keyFns[field]) || fieldKeyFn(field);
     assertUpsertRecords(field, records, keyFn, field === 'remarks' ? 'studentId+examId' : field === 'feeStructures' ? 'classLevel' : 'id');
@@ -453,8 +468,10 @@ export async function writeStaffFieldsToCloud(
   users: AppUser[],
   updatedBy: string
 ): Promise<void> {
+  const safeTeachers = (teachers || []).map(stripStaffPassword);
+  const safeUsers = (users || []).map(stripStaffPassword);
   await withTimeout(
-    writeFieldsToCloud({ teachers, users }, updatedBy),
+    writeFieldsToCloud({ teachers: safeTeachers, users: safeUsers }, updatedBy),
     STAFF_CONFIRM_TIMEOUT_MS,
     'staff cloud confirm'
   );

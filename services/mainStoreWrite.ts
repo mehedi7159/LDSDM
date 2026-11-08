@@ -64,6 +64,27 @@ export function isPublicShapedStudent(record: Record<string, any>): boolean {
 }
 
 /**
+ * Staff password assertion (Step 1). Throws naming the field and index
+ * if any teacher or user record contains a plain-text password. Passwords
+ * belong strictly in Firebase Auth, never in Firestore main_store.
+ */
+export function assertNoPasswordInStaff(
+  field: string,
+  records: Record<string, any>[]
+): void {
+  if (field !== 'teachers' && field !== 'users') return;
+  for (let i = 0; i < (records || []).length; i++) {
+    const rec = records[i];
+    if (rec && typeof rec === 'object' && 'password' in rec && rec.password !== undefined) {
+      throw new Error(
+        `Phase 1 choke point: ${field} write rejected — record at index ${i} contains plain-text 'password' field. ` +
+          `Passwords must never be stored in Firestore main_store.`
+      );
+    }
+  }
+}
+
+/**
  * Id assertion (check 2). Throws naming the field and the offending
  * record index. Never silently skip.
  */
@@ -73,6 +94,7 @@ export function assertUpsertRecords(
   keyFn: (r: Record<string, any>) => string,
   keyName = 'id'
 ): void {
+  assertNoPasswordInStaff(field, records);
   for (let i = 0; i < (records || []).length; i++) {
     const key = keyFn(records[i]);
     if (!key) {
@@ -135,6 +157,8 @@ export function validateFullPayload(
           'A state without staff keys is a partial (e.g. public-portal) state, never the full store.'
       );
     }
+    assertNoPasswordInStaff('teachers', teachers);
+    assertNoPasswordInStaff('users', users);
     const students = (payload as any).students;
     if (teachers.length === 0 && users.length === 0 && Array.isArray(students) && students.length > 0) {
       throw new Error(
