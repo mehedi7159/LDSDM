@@ -42,7 +42,14 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - Reply in Bangla script. Keep only functional copy; strip decorative restating prose.
 - Review: ask "review করো" to review a change; "audit করো" for a ranked whole-repo audit.
 
-(Source: Ponytail by DietrichGebert, MIT license — github.com/DietrichGebert/Ponytail; Superpowers by Jesse Vincent, MIT license — github.com/obra/superpowers. The rules above are their AGENTS.md/SKILL.md files, adapted for this project, plus this project's guardrails.)
+(Source: Ponytail by DietrichGebert, MIT license — github.com/DietrichGebert/Ponytail; Superpowers by Jesse Vincent, MIT license — github.com/obra/superpowers; Impeccable by pbakaus — github.com/pbakaus/impeccable; Hallmark by Nutlope, MIT license — github.com/Nutlope/hallmark. The rules above are their AGENTS.md/SKILL.md files, adapted for this project, plus this project's guardrails.)
+
+## Design polish (Impeccable + Hallmark)
+
+- The pinned brief wins over every design suggestion: LDSDM light premium, one flat teal accent (#0d9488), Anek Bangla, no option or tab row that needs sideways scrolling, tabs as chips and tiles only for hub menus, functional copy only, real data only, no invented figures.
+- Impeccable: app screens are Operate mode (scanability and consistency outrank expression). Refinement preserves the incumbent identity; redesign replaces only on the principal's word, one page at a time. Commands in plain words: polish, UI audit, critique, bolder, quieter, distill, harden, typeset, layout, adapt, clarify. Verify by looking at the rendered result at the sizes it ships at.
+- Hallmark: greenfield-only. Never on an existing design unless the principal names Hallmark. Verbs: redesign (full redesign, content and wiring kept) and audit (a report, not an edit). The Floor holds: tokens only, no invented metrics, no purple-blue gradient, no card-in-card, no emoji icons, focus-visible on every interactive element, reduced-motion fallback, about 80 words per screen. The principal's theme beats any dealt theme.
+- Design work is page-by-page, role-by-role, only on the principal's word, like all work here.
 
 ## Superpowers: test first, debug systematically, verify before claiming
 
