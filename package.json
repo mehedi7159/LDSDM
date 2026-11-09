@@ -15,6 +15,7 @@
     "test:rbac": "tsx scripts/test-rbac.ts",
     "test:exam": "tsx scripts/test-exam-backup-restore.ts",
     "test:student": "tsx scripts/test-student-foundation.ts",
+    "test:student-save-loss": "tsx scripts/verify-student-save-data-loss.ts",
     "test:academic": "tsx scripts/test-academic-foundation.ts",
     "test:academic-assignments": "tsx scripts/test-academic-assignments.ts",
     "test:exam-marks": "tsx scripts/test-exam-marks-foundation.ts",

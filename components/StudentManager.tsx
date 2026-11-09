@@ -373,7 +373,17 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     let nextStudents: Student[];
     let savedStudentId: string;
     if (editingId) {
-      const res = updateStudent({ ...dataToSave, id: editingId });
+      let res: { student: Student; students: Student[] };
+      try {
+        res = updateStudent({ ...dataToSave, id: editingId });
+      } catch (e) {
+        // Loud refusal from updateStudent (student missing from the
+        // local list): show it in the modal and save nothing — never
+        // a false success for an edit that never applied.
+        console.error('Student edit refused:', e);
+        setError(language === 'bn' ? 'ছাত্রটি এই ডিভাইসের তালিকায় পাওয়া যায়নি — এডিট সংরক্ষণ হয়নি। তালিকা রিফ্রেশ করে আবার চেষ্টা করুন।' : 'Student not found in this device list — edit not saved. Refresh the list and try again.');
+        return;
+      }
       nextStudents = res.students;
       savedStudentId = res.student.id;
       if (authUser) {
@@ -1826,7 +1836,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               )}
               {success && (
                 <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-bold">
-                  {t('savedSuccessfully' as any) || 'Saved successfully!'}
+                  {language === 'bn' ? 'এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…' : 'Saved on this device — syncing to cloud…'}
                 </div>
               )}
 
