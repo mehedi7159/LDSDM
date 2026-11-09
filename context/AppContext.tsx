@@ -2090,6 +2090,26 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Warn before the tab/PC closes while unconfirmed records exist:
+  // a close mid-confirm would otherwise lose a save. Reads
+  // localStorage fresh at event time, so no stale closure.
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      let hasPending = false;
+      try {
+        hasPending = readPendingPayloads().length > 0;
+      } catch {
+        hasPending = false;
+      }
+      if (hasPending) {
+        e.preventDefault();
+        e.returnValue = 'ক্লাউডে না যাওয়া ডাটা আছে — এখন বন্ধ করলে হারাতে পারে।';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // Monitor Firebase Auth changes and authoritatively verify Custom Claims (role: "admin") or designated Owner
   useEffect(() => {
     // Safety fail-safe: Ensure the UI never hangs in an infinite loading state
@@ -4349,10 +4369,18 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const updateStudent = (updatedStudent: Student) => {
     const existing = students.find(s => s.id === updatedStudent.id);
+    // Loud refusal: no local record means the edit would save raw
+    // form data — a partial (public-shaped) record the choke point
+    // then refuses at write time, so the edit would die silently in
+    // the queue. Refuse here, visibly, instead of pretending success.
+    if (!existing) {
+      throw new Error(
+        `updateStudent refused — student ${updatedStudent.id} is not in the local list; ` +
+          `saving the raw form data would write a partial record. Re-open the student and try again.`
+      );
+    }
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { student: finalStudent } = existing 
-      ? buildUpdateStudentPayload(existing, updatedStudent, actor)
-      : { student: updatedStudent };
+    const { student: finalStudent } = buildUpdateStudentPayload(existing, updatedStudent, actor);
     const nextStudents = students.map(s => s.id === finalStudent.id ? finalStudent : s);
     setStudents(nextStudents);
     if (authUser) {
@@ -5185,6 +5213,18 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     nextStudents?: Student[]
   ): Promise<CloudConfirmResult> => {
     const list = nextStudents ?? studentsRef.current;
+    // Queue the delta SYNCHRONOUSLY before the confirm starts: if
+    // the tab/PC closes while the 90s confirm is still pending, this
+    // queue entry is what saves the record (Bug 2 — queueing only on
+    // failure leaves nothing behind). The success path clears it;
+    // the failure path re-queues the same delta (merged by key, so
+    // no duplicate writes). One funnel covers every student-save
+    // path (StudentManager, admission, TC, promotion, mobile, portal).
+    const delta = diffRecords('students', lastConfirmedRef.current['students'], list);
+    if (delta.length > 0) {
+      queuePendingPayload({ field: 'students', op: 'upsert', records: delta, updatedBy: confirmActorName() });
+      refreshPendingPayloads();
+    }
     const result = await confirmCloudWrite(
       () => writeStudentsFieldToCloud(list, confirmActorName()),
       STUDENTS_CLOUD_FAILURE_MESSAGE,

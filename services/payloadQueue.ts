@@ -375,10 +375,37 @@ export function mergeQueuedIntoList<T extends Record<string, any>>(
 }
 
 /**
+ * Key-order-insensitive JSON compare (same shape as AppContext's
+ * stableStringify, local to this module so the queue never depends
+ * on React state). Plain JSON.stringify is key-order sensitive and
+ * must never decide whether two records are equal.
+ */
+export function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) as string;
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify((value as Record<string, unknown>)[k])}`).join(',')}}`;
+}
+
+/** True when the remote timestamp is strictly newer than the queued
+ * one. Missing or unparsable timestamps never count as newer — only
+ * content equality may prune then. */
+function isNewerTimestamp(remoteTs: unknown, queuedTs: unknown): boolean {
+  if (remoteTs == null || queuedTs == null) return false;
+  if (typeof remoteTs === 'number' && typeof queuedTs === 'number') return remoteTs > queuedTs;
+  if (typeof remoteTs === 'string' && typeof queuedTs === 'string') return remoteTs > queuedTs;
+  const r = Date.parse(String(remoteTs));
+  const q = Date.parse(String(queuedTs));
+  return Number.isFinite(r) && Number.isFinite(q) && r > q;
+}
+
+/**
  * Prune pending queue entries that have already arrived in cloud data.
- * If a record queued for upsert is already present in remote data, it has landed,
- * so we remove it from the pending queue. This clears badges and unconfirmed flags
- * across all tabs automatically as soon as cloud data is received.
+ * A queued upsert is resolved ONLY when its content already landed in
+ * cloud, the cloud holds a NEWER version of it, or it is in trashBin
+ * (deleted). Key presence alone never resolves it: an edit's key is
+ * already in the cloud as the OLD version, so pruning on key alone
+ * silently discards the edit and the list reverts (Bug 1).
  */
 export function pruneQueueAgainstRemoteData(data: Record<string, any>): boolean {
   if (!data || typeof data !== 'object') return false;
@@ -399,19 +426,34 @@ export function pruneQueueAgainstRemoteData(data: Record<string, any>): boolean 
     if (item.op === 'upsert' && item.field && data[item.field]) {
       const remoteList = Array.isArray(data[item.field]) ? data[item.field] : [];
       const keyFn = fieldKeyFn(item.field);
-      const remoteKeys = new Set(remoteList.map((r: any) => keyFn(r)).filter(Boolean));
+      const remoteByKey = new Map<string, any>();
+      remoteList.forEach((r: any) => {
+        const k = keyFn(r);
+        if (k) remoteByKey.set(k, r);
+      });
 
       if (item.hasScalar) {
-        if (JSON.stringify(data[item.field]) === JSON.stringify(item.scalarValue)) {
+        if (stableStringify(data[item.field]) === stableStringify(item.scalarValue)) {
           changed = true;
           continue; // completely landed
         }
       } else if (item.records) {
-        // A record is resolved if it either landed in cloud OR is in trashBin (deleted)
+        // A record is resolved if its content landed in cloud, the
+        // cloud holds a newer version, or it is in trashBin (deleted).
         const remaining = item.records.filter((r) => {
           const k = keyFn(r);
           if (!k) return false;
-          if (remoteKeys.has(k) || trashedIds.has(k)) {
+          if (trashedIds.has(k)) {
+            changed = true;
+            return false;
+          }
+          const remote = remoteByKey.get(k);
+          if (!remote) return true;
+          if (stableStringify(remote) === stableStringify(r)) {
+            changed = true;
+            return false;
+          }
+          if (isNewerTimestamp((remote as any).updatedAt, (r as any).updatedAt)) {
             changed = true;
             return false;
           }
