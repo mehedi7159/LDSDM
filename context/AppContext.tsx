@@ -110,6 +110,8 @@ import {
   writeStudentDeleteFieldsToCloud,
   writeStaffFieldsToCloud,
   writeNoticesFieldToCloud,
+  noticesCollectionRef,
+  readNoticesFromCollection,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
@@ -159,6 +161,7 @@ import {
   readPendingConfirms,
   type CloudConfirmResult,
 } from '../services/cloudConfirm';
+import { migrateNoticesToCollection } from '../services/migrationSplit';
 import {
   readPendingPayloads,
   queuePendingPayload,
@@ -1992,6 +1995,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // session still on the public feed auto-synced its partial state
   // when the main snapshot was slower than the 1200 ms debounce).
   const hasLoadedMainStoreRef = useRef(false);
+  // Job 1 (notices split): once the notices collection feed has
+  // delivered docs, it is the read source — main_store notices are
+  // ignored after that, so a stale main_store snapshot can never
+  // overwrite newer collection data. Until then main_store stays the
+  // fallback (read-switch with fallback, per the split plan).
+  const noticesFromCollectionRef = useRef(false);
+  // Guards the one-time notices backfill against concurrent feed events.
+  const noticesBackfillInFlightRef = useRef(false);
+  // Job 1: ids already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledNoticeIdsRef = useRef<Set<string>>(new Set());
+  // Job 1: the last docs the notices collection feed delivered — the
+  // straggler check compares main_store notices against this set.
+  const lastCollectionNoticesRef = useRef<NoticeItem[]>([]);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2282,8 +2299,33 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // first, hardcoded branches as fallback — outcomes unchanged, see
   // scripts/test-rbac-equivalence.ts).
 
+  // Job 1 one-time backfill: copy main_store notices into the new
+  // collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // notice deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillNoticesOnce = async (source?: NoticeItem[]) => {
+    if (noticesBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['notices'] || [];
+    const pending = (list || []).filter((n) => n && n.id && !backfilledNoticeIdsRef.current.has(String(n.id)));
+    if (pending.length === 0) return;
+    noticesBackfillInFlightRef.current = true;
+    try {
+      await migrateNoticesToCollection(pending);
+      pending.forEach((n) => backfilledNoticeIdsRef.current.add(String(n.id)));
+    } catch (err: any) {
+      console.warn('Notices backfill notice:', err?.message || err);
+    } finally {
+      noticesBackfillInFlightRef.current = false;
+    }
+  };
+
   // Helper: Atomically load remote data into both React state and localStorage cache
-  const applyRemoteData = (data: any) => {
+  // opts.fromNoticesCollection marks data that came from the Job 1
+  // notices collection feed (not from a main_store snapshot).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -2538,11 +2580,30 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('madrasha_app_users', JSON.stringify(healedUsers)); } catch {}
     }
     if (data.notices && Array.isArray(data.notices)) {
-      const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
-      setNotices(cleanNotices);
-      lastConfirmedRef.current['notices'] = cleanNotices;
-      snapshotApplied['notices'] = cleanNotices;
-      try { localStorage.setItem('madrasha_notices', JSON.stringify(cleanNotices)); } catch {}
+      // Job 1: main_store notices apply only while the collection feed
+      // has not taken over as the source. The collection feed's own
+      // snapshots always apply (its handler decides when an empty
+      // snapshot is real — see startNoticesFeed).
+      if (opts?.fromNoticesCollection || !noticesFromCollectionRef.current) {
+        const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
+        setNotices(cleanNotices);
+        lastConfirmedRef.current['notices'] = cleanNotices;
+        snapshotApplied['notices'] = cleanNotices;
+        try { localStorage.setItem('madrasha_notices', JSON.stringify(cleanNotices)); } catch {}
+        // Job 1: main_store is known now — copy any not-yet-backfilled
+        // notices into the new collection (the feed handler's empty
+        // snapshot may have fired before main_store loaded).
+        if (!opts?.fromNoticesCollection) void backfillNoticesOnce();
+      } else {
+        // Job 1: the collection is the source, but main_store may hold
+        // stragglers (written by a stale pre-split tab, which only
+        // writes main_store). Copy them into the collection; the feed
+        // then delivers them. Nothing is lost, nothing is wiped.
+        const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
+        const colIds = new Set((lastCollectionNoticesRef.current || []).map((n) => String(n.id)));
+        const stragglers = cleanNotices.filter((n) => !colIds.has(String(n.id)));
+        if (stragglers.length > 0) void backfillNoticesOnce(stragglers);
+      }
     }
 
     // Prune pending payload queue against newly arrived remote data & trashBin
@@ -2628,18 +2689,78 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     let cancelled = false;
     let activeUnsubscribe: (() => void) | null = null;
+    let noticesUnsubscribe: (() => void) | null = null;
+
+    const stopNoticesFeed = () => {
+      if (noticesUnsubscribe) {
+        try { noticesUnsubscribe(); } catch {}
+        noticesUnsubscribe = null;
+      }
+    };
 
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
         activeUnsubscribe = null;
       }
+      stopNoticesFeed();
+    };
+
+    // Job 1 read-switch: the notices collection feed. Once it delivers
+    // docs it becomes the read source (noticesFromCollectionRef); an
+    // empty snapshot before that means the backfill has not run yet, so
+    // main_store notices stay in place (fallback) and the backfill
+    // runs. An empty snapshot AFTER docs existed means every notice
+    // was deleted — that empty list applies for real.
+    const startNoticesFeed = () => {
+      if (cancelled) return;
+      stopNoticesFeed();
+      noticesUnsubscribe = onSnapshot(
+        noticesCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as NoticeItem;
+            return { ...data, id: (data as any).id || d.id };
+          });
+          lastCollectionNoticesRef.current = docs;
+          if (docs.length > 0) {
+            // Take over only when the collection holds every notice the
+            // confirmed main_store list knows — a partial collection
+            // (backfill still running) must not hide the rest. Queued
+            // local notices survive via preserveQueuedPayloads, so the
+            // check uses the confirmed list, not local state.
+            const knownIds = new Set(((lastConfirmedRef.current['notices'] || []) as NoticeItem[]).map((n) => String(n.id)));
+            const colIds = new Set(docs.map((d) => String(d.id)));
+            const complete = [...knownIds].every((id) => colIds.has(id));
+            if (complete) {
+              noticesFromCollectionRef.current = true;
+              applyRemoteData({ notices: docs }, { fromNoticesCollection: true });
+            } else {
+              void backfillNoticesOnce();
+            }
+          } else if (noticesFromCollectionRef.current) {
+            applyRemoteData({ notices: [] }, { fromNoticesCollection: true });
+          } else {
+            void backfillNoticesOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Notices collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store notices keep showing.
+        }
+      );
     };
 
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
       feedKindRef.current = 'main';
+      // Job 1: signed-in sessions also listen on the new notices
+      // collection (the read-switch). Public sessions never start it —
+      // they read notices from the public_portal document instead.
+      startNoticesFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -3327,7 +3448,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     try {
       const snap = await getDoc(doc(db, 'institution', 'main_store'));
       if (!snap.exists()) return;
-      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData(snap.data()));
+      const data = snap.data();
+      // Job 1: the portal's notices come from the new collection when
+      // it has docs; main_store notices stay the fallback until the
+      // backfill (a collection read failure also falls back, never
+      // breaks the rebuild).
+      let notices = (data as any).notices;
+      try {
+        const colNotices = await readNoticesFromCollection();
+        if (colNotices.length > 0) notices = colNotices;
+      } catch (colErr: any) {
+        console.warn('Notices collection read notice (portal keeps main_store notices):', colErr?.message || colErr);
+      }
+      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices }));
     } catch (pubErr: any) {
       console.warn('Public portal rebuild notice:', pubErr?.message || pubErr);
     }
