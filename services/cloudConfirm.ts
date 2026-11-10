@@ -65,8 +65,9 @@
  * auto-sync itself is replaced by a diff/union propagator in
  * AppContext — no writer in this module can shrink a list.
  */
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { CANONICAL_PRIMARY_INSTITUTION_ID } from './dataAdapter';
 import type { DailyStudentAttendanceRecord, DailyStaffAttendanceRecord } from './dailyAttendanceService';
 import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem, StaffLeaveRecord, Exam, Subject, SchoolClass, RemarkRecord } from '../types';
 import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent, AcademicYear, Section, ClassSubjectAssignment, TeacherSubjectAssignment, ClassTeacherAssignment, ExamSubjectAssignment } from '../types/academic';
@@ -253,7 +254,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * — '', 0, false and null are valid Firestore values and are kept.
  * Records without undefined keys pass through untouched (same object).
  */
-function stripUndefinedRecord<T>(record: T): T {
+export function stripUndefinedRecord<T>(record: T): T {
   if (!record || typeof record !== 'object') return record;
   let dirty = false;
   for (const value of Object.values(record as Record<string, unknown>)) {
@@ -477,15 +478,59 @@ export async function writeStaffFieldsToCloud(
   );
 }
 
+/**
+ * Job 1 (notices split): the new home of notices. The path is built
+ * from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
+ */
+export function noticesCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'notices');
+}
+
+/** Read all notice docs from the new collection (empty array when none). */
+export async function readNoticesFromCollection(): Promise<NoticeItem[]> {
+  const snap = await getDocs(noticesCollectionRef());
+  return snap.docs.map((d) => {
+    const data = d.data() as NoticeItem;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
+/** Write notice docs into the new collection (setDoc merge by id). */
+export async function writeNoticesToCollection(notices: NoticeItem[]): Promise<void> {
+  const col = noticesCollectionRef();
+  for (const n of notices || []) {
+    if (!n || !n.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(n.id)), stripUndefinedRecord(n), { merge: true });
+  }
+}
+
+/** Delete notice docs from the new collection (missing docs are a no-op). */
+export async function deleteNoticesFromCollection(ids: string[]): Promise<void> {
+  const col = noticesCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
 export async function writeNoticesFieldToCloud(
   notices: NoticeItem[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(
-    writeFieldToCloud('notices', notices, updatedBy),
-    CONFIRM_TIMEOUT_MS,
-    'notices cloud confirm'
-  );
+  const write = async (): Promise<void> => {
+    const list = notices || [];
+    if (list.length > 0) {
+      // Job 1 dual-write: same id assertion as the main_store leg, then
+      // the new collection first. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('notices', list as any, fieldKeyFn('notices'));
+      await writeNoticesToCollection(list);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldToCloud('notices', list, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'notices cloud confirm');
 }
 
 /** Routine + syllabus + calendar travel together (one editor save can touch all three via the bridge) — one write carries all three. */
@@ -709,6 +754,15 @@ export async function writeDeleteFieldsToCloud(
     const cleanTrash = (trashEntries || []).filter((t) => t && t.id);
     if (cleanRemovals.length === 0 && cleanTrash.length === 0) return;
     validateDeleteOp(cleanRemovals, cleanTrash);
+    // Job 1 (notices split): notices also live in the new collection —
+    // delete their docs there too, so a deleted notice can never be
+    // resurrected by the notices feed. deleteDoc of a missing doc
+    // succeeds, so a retry replays this idempotently.
+    for (const removal of cleanRemovals) {
+      if (removal.field === 'notices') {
+        await deleteNoticesFromCollection(removal.ids);
+      }
+    }
     const ref = doc(db, 'institution', 'main_store');
     const snap = await getDoc(ref);
     const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
@@ -769,6 +823,12 @@ export async function writeTrashOpToCloud(
       assertUpsertRecords(field, records, keyFn);
       const existing = data[field] as Record<string, any>[] | undefined;
       payload[field] = mergeRecordsByKey(existing || [], records, keyFn).map(stripUndefinedRecord);
+      // Job 1: a restored notice must also return to the new collection,
+      // which is now the read source — otherwise the restore would stay
+      // invisible until a main_store read.
+      if (field === 'notices') {
+        await writeNoticesToCollection(records as NoticeItem[]);
+      }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a
     // protected list in practice: restores grow them, permanent
