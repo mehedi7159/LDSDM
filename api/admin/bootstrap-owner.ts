@@ -14,6 +14,6 @@
  *   this env var is the supported credential source; the handler also
  *   accepts it being a path, which only applies to the standalone server.
  */
-import { handleAdminBootstrapApi } from '../../server/adminApi.ts';
+import { handleAdminBootstrapApi } from '../../server/adminApi';
 
 export default handleAdminBootstrapApi;
