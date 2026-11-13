@@ -326,7 +326,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           password: (u as any).password,
           additionalRoles: (u.additionalRoles || []) as string[],
           status: (u.status === 'blocked' || u.status === 'inactive') ? 'INACTIVE' : 'ACTIVE',
-          assignedClasses: u.assignedClasses || []
+          employeeCode: u.employeeCode,
+          assignedClasses: u.assignedClasses || [],
+          assignedSubjects: u.assignedSubjects || []
         });
       }
     });
@@ -726,6 +728,19 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         showToast(isBn ? 'সংরক্ষণ করা যায়নি — আবার চেষ্টা করুন।' : 'Could not save — please try again.');
       });
     } else {
+      // Save-time code: a blank code gets the trash-aware max+1 —
+      // never the old timestamp fallback (its last 3 digits repeat
+      // every second). The final code is duplicate-checked before
+      // saving, not just the typed one.
+      const finalEmployeeCode = (teacherFormData.employeeCode || '').trim()
+        || nextEmployeeCode(unifiedStaffList, trashBin);
+      if (unifiedStaffList.some(s =>
+        (s.employeeCode || '').trim().toLowerCase() === finalEmployeeCode.toLowerCase()
+      )) {
+        setFormErrors({ employeeCode: isBn ? 'এই কর্মী কোড ইতিমধ্যে ব্যবহৃত হয়েছে' : 'This employee code is already in use' });
+        employeeCodeInputRef.current?.focus();
+        return;
+      }
       // 7 Nov 2026 Job 3 (instant save): same as the edit branch — the
       // local record applies at once (addTeacher sets the lists and
       // queues the payload synchronously, before its provisioning
@@ -735,7 +750,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       const addPromise = addTeacher({
         name: teacherFormData.name.trim(),
         nameBn: teacherFormData.nameBn?.trim() || teacherFormData.name.trim(),
-        employeeCode: teacherFormData.employeeCode || `MDR-T${Date.now().toString().slice(-3)}`,
+        employeeCode: finalEmployeeCode,
         designation: teacherFormData.designation || 'সহকারী শিক্ষক',
         phone: teacherFormData.phone || '',
         email: teacherFormData.email || '',
@@ -1634,7 +1649,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'আইডি / কোড:' : 'Employee ID:'}</span>
-                      <span className="font-mono font-bold text-slate-700 dark:text-slate-200">{staff.employeeCode || `EMP-${staff.id.slice(0, 6)}`}</span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-200">{staff.employeeCode || '—'}</span>
                     </div>
 
                     {staff.phone && (
@@ -2135,7 +2150,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       {staff.designation || 'সহকারী শিক্ষক'}
                     </p>
                     <div className="font-mono text-[11px] font-bold text-slate-500 mt-0.5">
-                      ID: {staff.employeeCode || `MDR-T${idx + 1}`}
+                      ID: {staff.employeeCode || '—'}
                     </div>
                   </div>
 
@@ -2143,7 +2158,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                   <div className="border-t border-teal-100 pt-3 text-[10px] text-slate-600 flex items-end justify-between">
                     <div>
                       <div><strong className="text-slate-800">{isBn ? 'মোবাইল:' : 'Phone:'}</strong> {staff.phone || 'N/A'}</div>
-                      <div><strong className="text-slate-800">{isBn ? 'মেয়াদ:' : 'Valid:'}</strong> {schoolProfile.academicYear || '২০২৫-২০২৬'}</div>
+                      <div><strong className="text-slate-800">{isBn ? 'মেয়াদ:' : 'Valid:'}</strong> {schoolProfile.academicYear || '—'}</div>
                     </div>
 
                     <div className="text-center">

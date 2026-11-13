@@ -1936,7 +1936,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setAdminEmail(user.email || '');
     setIsAdmin(isAdministrative);
     setAuthRole(user.role);
-    setModeState(isAdministrative ? 'editor' : 'viewer');
+    setModeState(isAdministrative ? 'admin' : 'viewer');
 
     const memberRecord: InstitutionMember = {
       uid: user.id,
@@ -3863,7 +3863,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const isAdministrative = foundUser.role === 'super_admin' || foundUser.role === 'principal' || isOwner;
       setIsAdmin(isAdministrative);
       setAuthRole(foundUser.role);
-      setModeState(isAdministrative ? 'editor' : 'viewer');
+      setModeState(isAdministrative ? 'admin' : 'viewer');
 
       const memberRecord: InstitutionMember = {
         uid: foundUser.id,

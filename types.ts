@@ -539,6 +539,9 @@ export interface AppUser {
   studentRoll?: string;
   studentClass?: string;
   designation?: string;
+  // Staff code carried on a login record (legacy records may hold
+  // one; new records keep the code on the teacher record only).
+  employeeCode?: string;
   status: 'active' | 'pending' | 'blocked';
   createdAt: string;
   lastLogin?: string;
