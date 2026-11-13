@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
-import { calculateTotalDues, calculateFeeAging, academicYearFallbackStartMonth } from '../services/studentDuesService';
+import { calculateTotalDues, calculateFeeAging, academicYearFallbackStartMonth, isTuitionPayment } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 import { calcPassRate } from '../services/gradingEngine';
 
@@ -182,7 +182,7 @@ export const MadrasaReports: React.FC = () => {
     }
     const paidByKey = new Map<string, number>();
     for (const tx of transactions || []) {
-      if (tx.type !== 'INCOME' || !tx.studentId) continue;
+      if (tx.type !== 'INCOME' || !tx.studentId || !isTuitionPayment(tx)) continue;
       const key = `${tx.studentId}__${normFeeMonth(tx)}`;
       paidByKey.set(key, (paidByKey.get(key) || 0) + (Number(tx.amount) || 0));
     }

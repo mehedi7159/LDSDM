@@ -275,20 +275,22 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   // (never in monthly dues); মোট = পরিশোধিত + বকেয়া (to-date account
   // total, NOT a lifetime total). Breakdown rows reconcile EXACTLY with
   // the cards (column sums = cards; every row balances) because the
-  // canonical aging applies ALL income fungibly to finished months'
-  // tuition (oldest first): tuition row = gross aged obligation G
-  // (monthlyExpected x finished months) / applied A = G - totalAged /
-  // totalAged; exam row = pending only (paid exam money is already
-  // inside পরিশোধিত, counted under tuition-applied or other-collections
-  // by its month); other row = totalPaid - A (current-month payments +
+  // canonical aging applies only TUITION money to finished months'
+  // tuition (oldest first — shared isTuitionPayment rule): tuition row
+  // = gross aged obligation G (monthlyExpected x finished months) /
+  // applied A = G - totalAged / totalAged; exam row = paid exam money +
+  // pending (exam money never enters tuition); other row = the residual
+  // (current-month payments, one-time admission/session/book payments,
   // payments beyond the gross aged obligation). Per-category one-time
   // rows (admission/session/...) are deliberately NOT split out: their
-  // payments are already absorbed into the tuition row by the canonical
-  // aging, so separate rows would double-count (the residual would go
-  // negative) — see the job report for the proof.
+  // payments land in the other-collections row as the residual, so
+  // separate rows would double-count.
   const feeSummary = useMemo(() => {
     if (!currentStudent) return null;
     const totalPaid = myTransactions.reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+    const examPaid = myTransactions
+      .filter(tx => tx.category === 'EXAM_FEE' || !!tx.examId)
+      .reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
     const examPending = pendingExamFees.reduce((s, e) => s + (Number(e.examFee) || 0), 0);
     const totalAged = feeAging ? feeAging.totalAged : 0;
     let grossAged = 0;
@@ -302,10 +304,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     const tuitionApplied = Math.max(0, grossAged - totalAged);
     const due = totalAged + examPending;
     const total = totalPaid + due;
-    const otherPaid = Math.max(0, totalPaid - tuitionApplied);
+    const otherPaid = Math.max(0, totalPaid - tuitionApplied - examPaid);
     const rows: Array<{ key: 'tuition' | 'exam' | 'other'; total: number; paid: number; due: number }> = [];
     if (grossAged > 0 || totalAged > 0) rows.push({ key: 'tuition', total: grossAged, paid: tuitionApplied, due: totalAged });
-    if (examPending > 0) rows.push({ key: 'exam', total: examPending, paid: 0, due: examPending });
+    if (examPending > 0 || examPaid > 0) rows.push({ key: 'exam', total: examPaid + examPending, paid: examPaid, due: examPending });
     if (otherPaid > 0) rows.push({ key: 'other', total: otherPaid, paid: otherPaid, due: 0 });
     return { totalPaid, totalAged, examPending, due, total, rows };
   }, [currentStudent, myTransactions, pendingExamFees, feeAging, monthlyExpected]);
@@ -1681,7 +1683,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                               {row.key === 'tuition'
                                 ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
                                 : row.key === 'exam'
-                                  ? (language === 'bn' ? 'পরীক্ষার ফি বাকি' : 'Exam Fee Pending')
+                                  ? (language === 'bn' ? 'পরীক্ষার ফি' : 'Exam Fee')
                                   : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
                             </td>
                             <td className="py-1.5 pr-2 text-right font-bold">৳{toBn(row.total.toLocaleString('en-US'))}</td>
@@ -1705,7 +1707,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                           {row.key === 'tuition'
                             ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
                             : row.key === 'exam'
-                              ? (language === 'bn' ? 'পরীক্ষার ফি বাকি' : 'Exam Fee Pending')
+                              ? (language === 'bn' ? 'পরীক্ষার ফি' : 'Exam Fee')
                               : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-center">
@@ -1726,8 +1728,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   </div>
                   <p className="text-[11px] text-slate-500 mt-2">
                     {language === 'bn'
-                      ? 'আদায়কৃত পরীক্ষার ফি মোট পরিশোধিত-এর মধ্যে আছে (আদায়ের মাস অনুযায়ী মাসিক বেতন বা অন্যান্য সারিতে); এখানে শুধু বাকি পরীক্ষার ফি আলাদা দেখানো হয়েছে। ভর্তি/সেশন/অন্য ফি-র আলাদা সারি নেই, কারণ বকেয়ার নিয়মে সমাপ্ত মাসে আদায় হওয়া যেকোনো ফি-র টাকা পুরনো মাসের বকেয়ায় ধরা হয়।'
-                      : 'Collected exam fees are inside total paid (under tuition or other collections by collection month); only pending exam fees are split out here. No separate admission/session rows: under the dues rule, any fee collected in a finished month counts against that month\'s dues.'}
+                      ? 'পরীক্ষার ফি-র নিজের সারি আছে — আদায়কৃত ও বাকি দুটোই; পরীক্ষার ফি মাসিক বেতনের বকেয়ায় ধরা হয় না। ভর্তি/সেশন/অন্য ফি-র আলাদা সারি নেই, সেগুলো অন্যান্য আদায় সারিতে থাকে।'
+                      : 'Exam fees have their own row — paid and pending; exam money never counts toward tuition dues. No separate admission/session rows: those sit in other collections.'}
                   </p>
                 </div>
               )}

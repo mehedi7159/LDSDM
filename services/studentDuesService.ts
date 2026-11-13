@@ -51,6 +51,26 @@ export function monthlyExpectedFor(
   const struct = feeStructures.find(f => f.classLevel === student.classLevel);
   return classFeeBase(struct, feeTypes);
 }
+/**
+ * Shared tuition-allocation rule (master audit): a payment counts toward
+ * monthly tuition dues only when it is tuition money. Exam-fee money
+ * (category EXAM_FEE, or any row carrying examId — examId is set ONLY on
+ * exam-fee payments) never counts, and a row whose feeBreakdown has no
+ * monthly line (tuition / boarding / food — the heads inside
+ * monthlyExpected) is one-time money, not tuition. A legacy row with no
+ * breakdown at all still counts: old readers wrote none, and those
+ * payments were tuition.
+ */
+export function isTuitionPayment(tx: FinanceTransaction): boolean {
+  if (tx.type !== 'INCOME') return false;
+  if (tx.category === 'EXAM_FEE' || tx.examId) return false;
+  if (tx.feeBreakdown && tx.feeBreakdown.length > 0) {
+    return tx.feeBreakdown.some(l =>
+      /tuition|বেতন|boarding|বোর্ডিং|food|খাবার/i.test(`${l.name || ''} ${l.nameBn || ''}`));
+  }
+  return true;
+}
+
 export function calculateSingleStudentDue(
   student: Student,
   feeStructures: ClassFeeStructure[],
@@ -259,7 +279,8 @@ export function calculateFeeAging(
   if (monthlyExpected <= 0) return empty;
 
   const myTx = transactions.filter(tx =>
-    tx.type === 'INCOME' && tx.studentId && (tx.studentId === student.id || tx.studentId === student.studentId));
+    tx.type === 'INCOME' && tx.studentId && (tx.studentId === student.id || tx.studentId === student.studentId)
+    && isTuitionPayment(tx));
 
   // Start month: admission date first, then record creation, then the
   // earliest month the student ever paid for (feeMonth, else tx date),
