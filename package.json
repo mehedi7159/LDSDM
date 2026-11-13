@@ -25,6 +25,8 @@
     "test:notice-button-viewer": "tsx scripts/verify-notice-button-viewer.ts",
     "test:guardian-portal-ids": "tsx scripts/verify-guardian-portal-ids.ts",
     "test:backup-snapshot-count": "tsx scripts/verify-backup-snapshot-count.ts",
+    "test:mobile-nav-routing": "tsx scripts/verify-mobile-nav-routing.ts",
+    "test:teacher-add-subject": "tsx scripts/verify-teacher-add-subject-field.ts",
     "test:academic": "tsx scripts/test-academic-foundation.ts",
     "test:academic-assignments": "tsx scripts/test-academic-assignments.ts",
     "test:exam-marks": "tsx scripts/test-exam-marks-foundation.ts",
