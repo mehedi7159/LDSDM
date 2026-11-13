@@ -217,8 +217,26 @@ export async function checkPersistentStorageStatus(): Promise<boolean> {
 // ----------------------------------------------------------------------------
 
 export function extractSystemCounts(payload: SystemDataPayload): SystemDataCounts {
+  // Same rule as applyRemoteData (context/AppContext.tsx): a record whose
+  // id appears in trashBin is not live — Diagnostics filters it out before
+  // showing the count — so snapshots must not count it either. A student
+  // deleted to trash but still present in the stored students array was
+  // counted in every snapshot (174) while live showed 173.
+  const trashedIds = new Set<string>();
+  if (Array.isArray(payload.trashBin)) {
+    payload.trashBin.forEach((t: any) => {
+      if (t?.id) trashedIds.add(String(t.id));
+      if (t?.data?.id) trashedIds.add(String(t.data.id));
+    });
+  }
+  const activeStudents = Array.isArray(payload.students)
+    ? payload.students.filter((s: any) => !trashedIds.has(String(s?.id)))
+    : [];
+  const activeTeachers = Array.isArray(payload.teachers)
+    ? payload.teachers.filter((t: any) => !trashedIds.has(String(t?.id)))
+    : [];
   return {
-    students: Array.isArray(payload.students) ? payload.students.length : 0,
+    students: activeStudents.length,
     classes: Array.isArray(payload.classes) ? payload.classes.length : 0,
     subjects: Array.isArray(payload.subjects) ? payload.subjects.length : 0,
     exams: Array.isArray(payload.exams) ? payload.exams.length : 0,
@@ -226,7 +244,7 @@ export function extractSystemCounts(payload: SystemDataPayload): SystemDataCount
     remarks: Array.isArray(payload.remarks) ? payload.remarks.length : 0,
     transactions: Array.isArray(payload.transactions) ? payload.transactions.length : 0,
     feeStructures: Array.isArray(payload.feeStructures) ? payload.feeStructures.length : 0,
-    teachers: Array.isArray(payload.teachers) ? payload.teachers.length : 0,
+    teachers: activeTeachers.length,
     academicYears: Array.isArray(payload.academicYears) ? payload.academicYears.length : 0,
     trashBin: Array.isArray(payload.trashBin) ? payload.trashBin.length : 0,
   };

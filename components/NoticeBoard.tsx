@@ -1,6 +1,7 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { NoticeItem, NoticeCategory, NoticePriority, NoticeTarget } from '../types';
 import { 
   Megaphone, 
@@ -820,12 +821,19 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
     isSuperAdmin, 
     authUser, 
     language, 
+    mode,
     classes = [], 
     schoolProfile 
   } = useApp();
 
+  const { showToast } = useTheme();
+
   const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
+  // Viewer Mode (read-only session, e.g. admin claim missing): the
+  // new-notice button stays visible so the refusal is explained with a
+  // message instead of failing silently — the modal never opens here.
+  const isViewerMode = mode === 'viewer';
   const isBn = language === 'bn';
 
   // Filters & State
@@ -870,6 +878,17 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
   const [formAuthorRole, setFormAuthorRole] = useState(isBn ? 'অধ্যক্ষ / সুপারিনটেনডেন্ট' : 'Principal');
 
   const openCompose = (noticeToEdit?: NoticeItem) => {
+    // Viewer Mode: a new notice cannot be added in a read-only session.
+    // Refuse with a clear message (same toast ExamManager uses for a
+    // refused save) instead of failing silently. Editing is untouched.
+    if (!noticeToEdit && isViewerMode) {
+      showToast({
+        type: 'error',
+        title: isBn ? 'নোটিশ যোগ করা যাবে না' : 'Cannot add a notice',
+        message: isBn ? 'ভিউয়ার মোডে নোটিশ যোগ করা যাবে না। আপনি এখন শুধু দেখার মোডে আছেন — নোটিশ দিতে অ্যাডমিন অ্যাক্সেস প্রয়োজন।' : 'Notices cannot be added in Viewer Mode. You are in read-only mode — admin access is required to post a notice.'
+      });
+      return;
+    }
     if (noticeToEdit) {
       setEditingNotice(noticeToEdit);
       setFormTitle(noticeToEdit.title);
@@ -1221,7 +1240,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             </button>
           )}
 
-          {canManage && (
+          {(canManage || isViewerMode) && (
             <button
               onClick={() => openCompose()}
  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
@@ -1346,8 +1365,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
           description={isBn 
             ? 'এই ফিল্টারে কোনো বিজ্ঞপ্তি নেই।' 
             : 'No announcements in this category.'}
-          actionLabel={canManage ? (isBn ? 'নতুন নোটিশ প্রকাশ করুন' : 'Post New Notice') : undefined}
-          onAction={canManage ? () => openCompose() : undefined}
+          actionLabel={(canManage || isViewerMode) ? (isBn ? 'নতুন নোটিশ প্রকাশ করুন' : 'Post New Notice') : undefined}
+          onAction={(canManage || isViewerMode) ? () => openCompose() : undefined}
           actionIcon={Plus}
         />
       ) : (

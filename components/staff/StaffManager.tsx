@@ -14,8 +14,6 @@ import {
   Mail, 
   Edit2,
   Trash2,
-  Eye,
-  EyeOff,
   Search, 
   Filter, 
   CheckCircle2, 
@@ -269,13 +267,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Staff removal (confirm dialog) + per-card password reveal
+  // Staff removal (confirm dialog)
   const [staffToDelete, setStaffToDelete] = useState<AcademicTeacher | null>(null);
   // Phase 2: rejecting an application confirms first (previously the
   // reject buttons called rejectMember directly, no dialog at all).
   const [applicantToReject, setApplicantToReject] = useState<AcademicTeacher | null>(null);
   const [isDeletingStaff, setIsDeletingStaff] = useState(false);
-  const [revealedPwId, setRevealedPwId] = useState<string | null>(null);
 
   const handleDeleteStaff = async () => {
     if (!staffToDelete || isDeletingStaff) return;
@@ -1601,7 +1598,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                         type="button"
                         onClick={() => setStaffToDelete(staff)}
                         className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition-colors"
-                        title={isBn ? 'স্থায়ীভাবে মুছে ফেলুন' : 'Remove permanently'}
+                        title={isBn ? 'রিসাইকেল বিনে পাঠান' : 'Move to Recycle Bin'}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -1658,22 +1655,6 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                       </div>
                     )}
 
-                    {staff.password && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400 dark:text-slate-500 font-medium">{isBn ? 'লগইন পাসওয়ার্ড:' : 'Login Password:'}</span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">{revealedPwId === staff.id ? staff.password : '••••••'}</span>
-                          <button
-                            type="button"
-                            onClick={() => setRevealedPwId(revealedPwId === staff.id ? null : staff.id)}
-                            className="text-slate-400 dark:text-slate-500 hover:text-teal-700 transition-colors"
-                            title={isBn ? 'দেখুন/লুকান' : 'Show/hide'}
-                          >
-                            {revealedPwId === staff.id ? <EyeOff size={12} /> : <Eye size={12} />}
-                          </button>
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Assigned Classes / Subjects Tags */}
