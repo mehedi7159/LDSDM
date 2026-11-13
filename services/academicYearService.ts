@@ -178,3 +178,25 @@ export async function recordAcademicYearAuditEvent(params: {
     console.warn('[AcademicYearService] Audit record notice:', err);
   }
 }
+
+const ID_CARD_VALIDITY_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+/**
+ * ID-card "মেয়াদ" default, as "Month YYYY" (the format the card
+ * prints). Derived from the CURRENT academic year's end date, so the
+ * validity rolls forward with the academic year instead of expiring
+ * on a hardcoded month. Falls back to December of the current
+ * calendar year when no current year (or no end date) is set.
+ * Master audit F8: replaces the hardcoded 'December 2026'.
+ */
+export function defaultIdCardValidity(years: AcademicYear[]): string {
+  const current = (years || []).find(y => y.isCurrent) || (years || [])[0];
+  const end = current?.endDate ? new Date(current.endDate) : null;
+  if (end && !Number.isNaN(end.getTime())) {
+    return `${ID_CARD_VALIDITY_MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+  }
+  return `December ${new Date().getFullYear()}`;
+}

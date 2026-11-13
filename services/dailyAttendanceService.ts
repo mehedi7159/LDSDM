@@ -437,4 +437,30 @@ export function summarizeStaffRecords(
   };
 }
 
+/**
+ * Master audit F10: a remarks triple (workingDays / totalPresent /
+ * totalAbsent) is only possible when present + absent <= working
+ * days and all three are >= 0. Returns a plain-language problem, or
+ * null when the triple is possible. Missing values count as 0.
+ */
+export function validateRemarkAttendance(
+  workingDays?: number | null,
+  totalPresent?: number | null,
+  totalAbsent?: number | null
+): string | null {
+  const wd = Number(workingDays) || 0;
+  const pr = Number(totalPresent) || 0;
+  const ab = Number(totalAbsent) || 0;
+  if (wd < 0 || pr < 0 || ab < 0) return 'কর্মদিবস, উপস্থিতি ও অনুপস্থিতি — সবই ০ বা তার বেশি হতে হবে।';
+  if (pr + ab > wd) return 'উপস্থিতি + অনুপস্থিতি মোট কর্মদিবসের বেশি হতে পারবে না।';
+  return null;
+}
+
+/** Attendance rate for a remarks triple, capped at 100%. */
+export function cappedAttendanceRate(totalPresent?: number | null, workingDays?: number | null): number {
+  const wd = Number(workingDays) || 0;
+  if (wd <= 0) return 0;
+  return Math.min(100, Math.round(((Number(totalPresent) || 0) / wd) * 100));
+}
+
 export const dailyAttendanceService = new DailyAttendanceService();

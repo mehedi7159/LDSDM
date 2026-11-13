@@ -24,6 +24,7 @@ import {
   Legend
 } from 'recharts';
 import { dailyAttendanceService } from '../services/dailyAttendanceService';
+import { toAsciiDigits } from '../services/studentService';
 
 export const AttendanceReportView: React.FC = () => {
   const { students = [], classes = [], schoolProfile, language, t } = useApp();
@@ -49,7 +50,7 @@ export const AttendanceReportView: React.FC = () => {
   const classStudents = useMemo(() => {
     return (students || [])
       .filter(s => s && (s.classLevel === selectedClass || (s as any).class === selectedClass) && !s.isFormer && s.status !== 'Former')
-      .sort((a, b) => (Number(a.roll || a.rollNumber || '0') || 0) - (Number(b.roll || b.rollNumber || '0') || 0));
+      .sort((a, b) => (Number(toAsciiDigits(a.roll || a.rollNumber || '0')) || 0) - (Number(toAsciiDigits(b.roll || b.rollNumber || '0')) || 0));
   }, [students, selectedClass]);
 
   // Monthly attendance statistics — REAL recorded data only.

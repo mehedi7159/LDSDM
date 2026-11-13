@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext';
 import { Student, Exam } from '../types';
 import { formatNumber } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
+import { defaultIdCardValidity } from '../services/academicYearService';
+import { toAsciiDigits } from '../services/studentService';
 import { 
   CreditCard, 
   Printer, 
@@ -24,7 +26,7 @@ import { Button } from './ui/Button';
 type CardDocType = 'id_card' | 'admit_card' | 'testimonial';
 
 export const StudentIDCardGenerator: React.FC = () => {
-  const { students, classes, exams, schoolProfile, language } = useApp();
+  const { students, classes, exams, academicYears = [], schoolProfile, language } = useApp();
   const printRef = useRef<HTMLDivElement>(null);
 
   const [docType, setDocType] = useState<CardDocType>('id_card');
@@ -32,7 +34,9 @@ export const StudentIDCardGenerator: React.FC = () => {
   const [selectedExamId, setSelectedExamId] = useState<string>(exams[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('all'); // 'all' or specific student id
-  const [validUntil, setValidUntil] = useState<string>('December 2026');
+  // Master audit F8: validity derives from the current academic
+  // year's end date (editable below) — never a hardcoded month.
+  const [validUntil, setValidUntil] = useState<string>(() => defaultIdCardValidity(academicYears));
 
   const selectedExam = useMemo(() => {
     return exams.find(e => e.id === selectedExamId) || exams[0];
@@ -42,7 +46,8 @@ export const StudentIDCardGenerator: React.FC = () => {
   const classStudents = useMemo(() => {
     return (students || [])
 .filter(s => (classNamesMatch(s.class, selectedClass) || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
-      .sort((a, b) => (Number(a.roll) || 0) - (Number(b.roll) || 0));
+      // Master audit F11: Number('১') is NaN — normalize first.
+      .sort((a, b) => (Number(toAsciiDigits(a.roll)) || 0) - (Number(toAsciiDigits(b.roll)) || 0));
   }, [students, selectedClass]);
 
   // Filtered by student search or selection
@@ -53,11 +58,11 @@ export const StudentIDCardGenerator: React.FC = () => {
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(s => 
-        s.name.toLowerCase().includes(q) || 
+      list = list.filter(s =>
+        s.name.toLowerCase().includes(q) ||
         (s.nameBn && s.nameBn.includes(q)) ||
-        (s.studentId && s.studentId.toLowerCase().includes(q)) ||
-        String(s.roll || '').includes(q)
+        (s.studentId && toAsciiDigits(s.studentId).toLowerCase().includes(toAsciiDigits(q))) ||
+        toAsciiDigits(String(s.roll || '')).includes(toAsciiDigits(q))
       );
     }
     return list;
@@ -192,6 +197,24 @@ export const StudentIDCardGenerator: React.FC = () => {
                 ))}
               </select>
             </div>
+
+            {/* Master audit F8: ID-card validity, derived from the
+                academic year but editable — it prints in the card
+                footer, so it must never silently expire. */}
+            {docType === 'id_card' && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  {language === 'bn' ? 'মেয়াদ:' : 'Valid until:'}
+                </label>
+                <input
+                  type="text"
+                  value={validUntil}
+                  onChange={(e) => setValidUntil(e.target.value)}
+                  placeholder="December 2026"
+                  className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-800 dark:text-slate-100 w-32"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

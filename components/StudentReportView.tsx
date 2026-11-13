@@ -69,7 +69,10 @@ export const StudentReportView: React.FC = () => {
   // Aggregate stats
   const safeStudents = students || [];
   const totalCount = safeStudents.length;
-  const activeCount = safeStudents.filter(s => s.status === 'active').length;
+  // Master audit F7: canonical status is 'Active' — compare
+  // case-insensitively (Fix #6 pattern), or Active students count
+  // as inactive and wear the rose badge.
+  const activeCount = safeStudents.filter(s => s.status?.toLowerCase() === 'active').length;
   const inactiveCount = totalCount - activeCount;
   const residentialCount = safeStudents.filter(s => s.isResidential).length;
   const nonResidentialCount = totalCount - residentialCount;
@@ -377,9 +380,9 @@ export const StudentReportView: React.FC = () => {
                     <td className="py-3 px-4 font-bold text-rose-600 dark:text-rose-400">{s.bloodGroup || '-'}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        s.status === 'active' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400'
+                        s.status?.toLowerCase() === 'active' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400'
                       }`}>
-                        {s.status === 'active' ? (language === 'bn' ? 'সক্রিয়' : 'Active') : (language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')}
+                        {s.status?.toLowerCase() === 'active' ? (language === 'bn' ? 'সক্রিয়' : 'Active') : (language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')}
                       </span>
                     </td>
                   </tr>

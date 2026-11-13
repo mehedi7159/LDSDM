@@ -39,6 +39,7 @@ import {
 } from '../services/smsNotificationService';
 import { formatNumber } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
+import { toAsciiDigits } from '../services/studentService';
 
 interface ResultSmsNotificationModalProps {
   isOpen: boolean;
@@ -116,8 +117,9 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
     return students
       .filter(s => classNamesMatch(s.classLevel, classLevel) && s.status === 'Active' && !s.isFormer)
       .sort((a, b) => {
-        const rollA = parseInt(a.roll || '0', 10);
-        const rollB = parseInt(b.roll || '0', 10);
+        // Master audit F11: parseInt('১') is NaN — normalize first.
+        const rollA = parseInt(toAsciiDigits(a.roll || '0'), 10);
+        const rollB = parseInt(toAsciiDigits(b.roll || '0'), 10);
         return rollA - rollB;
       });
   }, [students, classLevel]);

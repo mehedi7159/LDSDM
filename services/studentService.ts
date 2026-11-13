@@ -227,23 +227,24 @@ export function filterStudents(
   return list;
 }
 
+const BENGALI_DIGITS = '০১২৩৪৫৬৭৮৯';
+
+/**
+ * Bengali digits → ASCII ('১' → '1'); every other character is kept.
+ * Number('১') is NaN, so any numeric use of a roll/id must pass
+ * through here first. (Same helper as fix/master-admission-roll —
+ * the two branches add it independently; keep one copy at merge.)
+ */
+export function toAsciiDigits(value: string | number | null | undefined): string {
+  return String(value ?? '').replace(/[০-৯]/g, d => String(BENGALI_DIGITS.indexOf(d)));
+}
+
 /**
  * Retrieve a student by immutable ID or external studentId
  */
 export function findStudentById(students: Student[], id: string): Student | undefined {
   if (!id) return undefined;
   return students.find(s => s.id === id || s.studentId === id);
-}
-
-const BENGALI_DIGITS = '০১২৩৪৫৬৭৮৯';
-
-/**
- * Bengali digits → ASCII ('১' → '1'); every other character is kept.
- * Number('১') is NaN, so any numeric use of a roll/id must pass
- * through here first.
- */
-export function toAsciiDigits(value: string | number | null | undefined): string {
-  return String(value ?? '').replace(/[০-৯]/g, d => String(BENGALI_DIGITS.indexOf(d)));
 }
 
 /**
@@ -301,6 +302,14 @@ export function buildCreateStudentPayload(
   const isFormer = input.status === 'Former' || input.status === 'archived' || !!input.isFormer;
   const status: StudentLifecycleStatus = isFormer ? 'Former' : (input.status || 'Active');
 
+  // Master audit F11: rolls are stored ASCII — a Bengali-digit roll
+  // breaks sorting/searching and mints mixed-script auto-IDs.
+  // Every save path funnels through this builder, so admission and
+  // portal adds are covered too.
+  const normalizedRoll = input.roll != null && input.roll !== '' ? toAsciiDigits(input.roll) : undefined;
+  const normalizedRollNumber =
+    input.rollNumber != null && input.rollNumber !== '' ? toAsciiDigits(input.rollNumber) : normalizedRoll;
+
   const student: Student = stripUndefinedValues({
     ...input,
     // Save-time guard: a requested studentId that is already taken
@@ -311,7 +320,8 @@ export function buildCreateStudentPayload(
     institutionId: input.institutionId || institutionId,
     status,
     isFormer,
-    rollNumber: input.rollNumber || input.roll,
+    roll: normalizedRoll,
+    rollNumber: normalizedRollNumber || input.roll,
     createdAt: now,
     createdBy: actor?.uid || 'system',
     updatedAt: now,
@@ -344,6 +354,10 @@ export function buildUpdateStudentPayload(
 
   const now = new Date().toISOString();
   const isFormer = merged.status === 'Former' || merged.status === 'archived' || !!merged.isFormer;
+
+  // Master audit F11: rolls are stored ASCII (see create builder).
+  if (merged.roll != null && merged.roll !== '') merged.roll = toAsciiDigits(merged.roll);
+  if (merged.rollNumber != null && merged.rollNumber !== '') merged.rollNumber = toAsciiDigits(merged.rollNumber);
 
   const student: Student = stripUndefinedValues({
     ...merged,

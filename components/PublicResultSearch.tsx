@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, formatBanglaNumber, shortenSubjectName } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
+import { toAsciiDigits } from '../services/studentService';
 import { ResultVerificationQR } from './ResultVerificationQR';
 import { VerifiedResultModal } from './VerifiedResultModal';
 
@@ -47,14 +48,15 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
     }
 
     const found = students.find(s => {
-      const matchId = (s.studentId && s.studentId.toLowerCase() === query) || (s.id && s.id.toLowerCase() === query);
-      const matchRoll = s.roll && String(s.roll).trim() === query;
+      const matchId = (s.studentId && toAsciiDigits(s.studentId).toLowerCase() === toAsciiDigits(query)) || (s.id && toAsciiDigits(s.id).toLowerCase() === toAsciiDigits(query));
+      // Master audit F11: search '1' must find roll '১'.
+      const matchRoll = s.roll && toAsciiDigits(String(s.roll).trim()) === toAsciiDigits(query);
       const matchClass = selectedClass === 'All' || !selectedClass || classNamesMatch(s.classLevel, selectedClass);
       return (matchId || matchRoll) && matchClass;
     }) || students.find(s => {
       // Fallback matching just roll or ID without class filter
-      const matchId = (s.studentId && s.studentId.toLowerCase() === query) || (s.id && s.id.toLowerCase() === query);
-      const matchRoll = s.roll && String(s.roll).trim() === query;
+      const matchId = (s.studentId && toAsciiDigits(s.studentId).toLowerCase() === toAsciiDigits(query)) || (s.id && toAsciiDigits(s.id).toLowerCase() === toAsciiDigits(query));
+      const matchRoll = s.roll && toAsciiDigits(String(s.roll).trim()) === toAsciiDigits(query);
       return matchId || matchRoll;
     });
 
