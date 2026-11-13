@@ -5,6 +5,6 @@
  * server/staffPasswordApi.ts and is shared with the Vite dev middleware
  * and the standalone server route, mirroring api/admin/bootstrap-owner.ts.
  */
-import { handleStaffPasswordSyncApi } from '../../server/staffPasswordApi';
+import { handleStaffPasswordSyncApi } from '../../server/staffPasswordApi.js';
 
 export default handleStaffPasswordSyncApi;
