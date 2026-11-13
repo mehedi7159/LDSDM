@@ -1410,6 +1410,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const handleToggleStudentStatus = async (st: Student, active: boolean) => {
     if (!updateStudent) return;
     const result = updateStudent({ ...st, status: active ? 'Inactive' : 'Active' });
+    // Master audit F2: a builder-refused toggle saves nothing — show
+    // the failure instead of confirming a status that never changed.
+    if (result.error) {
+      setStudentCloudFailure(result.error);
+      return;
+    }
     const confirmResult = await confirmStudentsCloudSync(result.students);
     if (confirmResult.success) {
       setStudentCloudFailure(null);

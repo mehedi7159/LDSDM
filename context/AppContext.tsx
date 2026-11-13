@@ -337,8 +337,8 @@ interface AppContextType extends AppState {
   deleteSection: (id: string) => void;
   setSections: (sections: Section[]) => void;
   archiveClass: (id: string) => void;
-  addStudent: (student: Omit<Student, 'id'>) => { student: Student; students: Student[] };
-  updateStudent: (student: Student) => { student: Student; students: Student[] };
+  addStudent: (student: Omit<Student, 'id'>) => { student: Student | null; students: Student[]; error?: string };
+  updateStudent: (student: Student) => { student: Student; students: Student[]; error?: string };
   bulkUpdateStudents: (nextStudents: Student[]) => Student[];
   deleteStudent: (id: string) => { students: Student[]; trashBin: TrashItem[] } | null;
   addSubject: (subject: Omit<Subject, 'id'>) => { subject: Subject | null; subjects: Subject[]; error?: string };
@@ -4485,8 +4485,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const addStudent = (student: Omit<Student, 'id'>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { student: newStudent } = buildCreateStudentPayload(student, 'inst_madrasah_primary', actor, students.map(s => s.studentId));
-    const finalStudent = newStudent || ({ ...student, id: generateId() } as Student);
+    const { student: newStudent, error } = buildCreateStudentPayload(student, 'inst_madrasah_primary', actor, students.map(s => s.studentId));
+    // 7 Nov 2026 Job 2 pattern (like addClass/addSubject): a builder
+    // error used to fall through to a raw fallback that saved the
+    // record unvalidated. Refuse instead — nothing is saved, the
+    // caller shows `error`.
+    if (error || !newStudent) {
+      return { student: null, students, error: error || 'Invalid student data' };
+    }
+    const finalStudent = newStudent;
     // Truthful-save Step 2: compute the next list once, set it, and
     // return it — the caller passes it to confirmStudentsCloudSync, so
     // the cloud write carries exactly what was saved (never a stale
@@ -4516,7 +4523,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     }
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { student: finalStudent } = buildUpdateStudentPayload(existing, updatedStudent, actor);
+    const { student: finalStudent, error } = buildUpdateStudentPayload(existing, updatedStudent, actor);
+    // Job 2 pattern (like updateSubject): a refused edit saves nothing
+    // — the builder returns the unchanged record, so returning it
+    // without the error would silently no-op while the UI shows
+    // success. The caller shows `error`.
+    if (error) {
+      return { student: existing, students, error };
+    }
     const nextStudents = students.map(s => s.id === finalStudent.id ? finalStudent : s);
     setStudents(nextStudents);
     if (authUser) {

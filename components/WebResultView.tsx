@@ -79,7 +79,7 @@ export const WebResultView: React.FC = () => {
   // Active students in the selected class
   const classStudents = useMemo(() => {
     return (students || [])
-      .filter(s => (s.class === selectedClass || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
+.filter(s => (classNamesMatch(s.class, selectedClass) || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
       .sort((a, b) => (Number(a.roll) || 0) - (Number(b.roll) || 0));
   }, [students, selectedClass]);
 

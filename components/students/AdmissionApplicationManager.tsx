@@ -15,7 +15,7 @@ import { Button } from '../ui/Button';
 import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { useTheme } from '../../context/ThemeContext';
 import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
-import { resolveUniqueStudentId } from '../../services/studentService';
+import { resolveUniqueStudentId, nextFreeRoll } from '../../services/studentService';
 import {
   FileText,
   Plus,
@@ -221,6 +221,10 @@ export const AdmissionApplicationManager: React.FC<{
         `${currentYear}${Math.floor(100 + Math.random() * 900)}`,
         students.map(s => s.studentId)
       );
+      // Master audit F3: every approved applicant used to get roll '১'.
+      // Next free roll in the target class (max numeric roll + 1,
+      // ASCII digits) — Bengali-digit rolls count at their value.
+      const nextRoll = nextFreeRoll(students, app.desiredClass);
 
       const added = addStudent({
         name: app.applicantName,
@@ -229,8 +233,8 @@ export const AdmissionApplicationManager: React.FC<{
         dateOfBirth: app.dateOfBirth,
         classLevel: app.desiredClass,
         studentId: autoStudentId,
-        roll: '১',
-        rollNumber: '১',
+        roll: nextRoll,
+        rollNumber: nextRoll,
         fatherName: app.fatherName,
         fatherNameBn: app.fatherNameBn || app.fatherName,
         motherName: app.motherName,
@@ -242,6 +246,17 @@ export const AdmissionApplicationManager: React.FC<{
         status: 'Active',
         isFormer: false
       });
+
+      // Master audit F2: a builder-refused enrolment saves nothing —
+      // show the error and keep the application PENDING (no success
+      // toast, no cloud confirm for a student that was never added).
+      if (added.error || !added.student) {
+        showToast({
+          type: 'error',
+          message: added.error || (isBn ? 'ভর্তি অনুমোদন করা যায়নি — তথ্য অসম্পূর্ণ।' : 'Could not approve & enrol — incomplete data.')
+        });
+        return;
+      }
 
       enrollingRef.current.add(app.id);
       setEnrollingAppIds(prev => new Set(prev).add(app.id));

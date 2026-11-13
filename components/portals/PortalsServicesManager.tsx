@@ -295,6 +295,14 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
     const added = addStudent(newStudentData as any);
 
+    // Master audit F2: a builder-refused admit saves nothing — show
+    // the error and leave the application as-is (no 'admitted' mark,
+    // no cloud confirm for a student that was never added).
+    if (added.error || !added.student) {
+      showError(added.error || (isBn ? 'ভর্তি করা যায়নি — তথ্য অসম্পূর্ণ।' : 'Could not admit — incomplete data.'));
+      return;
+    }
+
     const updated = admissions.map(a => a.id === app.id ? { ...a, status: 'admitted' as const } : a);
     saveAdmissions(updated);
 

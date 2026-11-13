@@ -61,11 +61,21 @@ export const DEFAULT_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     // granted through this template layer and are kept. NOTE: 'results.print'
     // is granted by NEITHER the hardcoded branch nor the previous template,
     // so it is deliberately NOT added.
+    // Master audit F1: 'attendance.*' is NOT granted here anymore — the
+    // wildcard covered staff attendance too, letting any teacher open
+    // and save it against the principal's 25-Oct-2026 admin-only rule.
+    // Student attendance keeps its enumerated keys; staff attendance
+    // lives under the separate 'staff.attendance.manage' key (outside
+    // the 'attendance.' prefix, so no attendance.* grant can open it)
+    // held by admin/owner/superadmin only.
     permissions: [
       'students.view',
       'classes.view',
       'subjects.*',
-      'attendance.*',
+      'attendance.view',
+      'attendance.create',
+      'attendance.edit',
+      'attendance.delete',
       'exams.view',
       'marks.*',
       'results.view',
