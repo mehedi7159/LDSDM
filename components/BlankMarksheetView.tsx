@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Subject, Student, Exam } from '../types';
 import { formatNumber, toBengali } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
+import { getBlankMarksheetSubjects } from '../services/blankMarksheetLookup';
 import { Button } from './ui/Button';
 import { Printer, Download, Eye, FileText, CheckCircle2, Scissors, ArrowLeft, Loader2, LayoutGrid, Columns } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -32,17 +34,11 @@ export const BlankMarksheetView: React.FC<BlankMarksheetViewProps> = ({
   // Selected Exam object
   const currentExam = exams.find(e => e.id === selectedExamId) || exams[0];
 
-  // Filter subjects for the selected class
-  const classSubjects = subjects
-    .filter(s => s.classLevel === selectedClass)
-    .filter(s => {
-      if (!selectedExamId) return true;
-      if (s.examIds && s.examIds.length > 0) {
-        return s.examIds.includes(selectedExamId);
-      }
-      return true;
-    })
-    .sort((a, b) => a.order - b.order);
+  // Filter subjects for the selected class (class-name match is
+  // canonicalized — শিশু matches Play — and the exam filter applies only
+  // when some class subject is assigned to this exam; see
+  // services/blankMarksheetLookup.ts).
+  const classSubjects = getBlankMarksheetSubjects(subjects, selectedClass, selectedExamId);
 
   // Selected subjects to print (all or specific one)
   const activeSubjectsToRender = selectedSubjectId === 'ALL'
@@ -52,7 +48,7 @@ export const BlankMarksheetView: React.FC<BlankMarksheetViewProps> = ({
   // Filter active students for selected class and sort by Student ID naturally
   // Students with valid IDs are sorted ascending; students WITHOUT an ID are placed at the bottom
   const classStudents = students
-    .filter(s => s.classLevel === selectedClass && s.status === 'Active' && !s.isFormer)
+    .filter(s => classNamesMatch(s.classLevel, selectedClass) && s.status === 'Active' && !s.isFormer)
     .sort((a, b) => {
       const idA = (a.studentId || '').trim();
       const idB = (b.studentId || '').trim();
