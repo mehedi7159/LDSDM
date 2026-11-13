@@ -38,9 +38,10 @@ import { formatNumber, formatBanglaNumber } from '../../services/utils';
 import { SubjectManager } from '../SubjectManager';
 import { DailyAttendanceHub } from '../attendance/DailyAttendanceHub';
 import { TeacherSalaryEntry } from '../finance/TeacherSalaryEntry';
-import { AcademicTeacher } from '../../types/academic';
+import { AcademicTeacher, Subject } from '../../types/academic';
 import { FinanceTransaction, UserRole, StaffLeaveRecord, AppUser } from '../../types';
 import { resolveApprovalRoleId, resolveStaffRole, roleLabelBn, DESIGNATION_OPTIONS, DESIGNATION_OTHER, isMappedDesignation } from '../../services/staffRole';
+import { nextEmployeeCode } from '../../services/staffCode';
 import { deleteInstitutionMembers } from '../../services/rbac';
 import { STAFF_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, SALARY_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
 import { decideStaffLeave } from '../../services/staffSelfService';
@@ -73,6 +74,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const { 
     teachers = [], 
     setTeachers,
+    trashBin = [],
     addTeacher,
     updateTeacher,
     confirmStaffCloudSync,
@@ -475,18 +477,15 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     });
   }, [unifiedStaffList, users, searchQuery, statusFilter, roleFilter]);
 
-  // Handle open add modal
-  // Phase 2: next code = max existing numeric suffix + 1 — the old
-    // length+1 reused a deleted code whenever the list shrank.
-    const nextEmployeeCode = () => {
-      let max = 0;
-      unifiedStaffList.forEach(s => {
-        const m = (s.employeeCode || '').match(/(\d+)\s*$/);
-        if (m) max = Math.max(max, parseInt(m[1], 10));
-      });
-      return `MDR-T${String(max + 1).padStart(3, '0')}`;
-    };
+  // Fix #14: `subjects` holds one record per class, so one name (e.g.
+  // গণিত) repeats — the form picker needs one chip per name.
+  const distinctSubjects = useMemo(() => {
+    const byName = new Map<string, Subject>();
+    subjects.forEach(s => { if (s.name && !byName.has(s.name)) byName.set(s.name, s); });
+    return [...byName.values()];
+  }, [subjects]);
 
+  // Handle open add modal
   const handleOpenAddModal = () => {
     setEditingTeacher(null);
     setFormLoginRole('teacher');
@@ -496,7 +495,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setTeacherFormData({
       name: '',
       nameBn: '',
-      employeeCode: nextEmployeeCode(),
+      employeeCode: nextEmployeeCode(unifiedStaffList, trashBin),
       designation: 'মুয়াল্লিম (সহকারী শিক্ষক)',
       phone: '',
       email: '',
@@ -2545,6 +2544,44 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                   {isBn ? 'শ্রেণি শিক্ষক হিসেবে নির্বাচিত শ্রেণির শিক্ষার্থী ও বকেয়া ফি এই শিক্ষক দেখতে পাবেন।' : 'Teacher will see students and dues for selected classes.'}
+                </p>
+              </div>
+
+              {/* Assigned Subjects — Fix #14: same chip pattern as Assigned
+                  Classes above and the approval dialog; stores subject
+                  names in teacherFormData.assignedSubjects (saved by both
+                  add and edit branches, already wired). */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                  {isBn ? 'দায়িত্বপ্রাপ্ত বিষয় (Assigned Subjects):' : 'Assigned Subject(s):'}
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl max-h-28 overflow-y-auto">
+                  {distinctSubjects.map(s => {
+                    const isSelected = (teacherFormData.assignedSubjects || []).includes(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          const current = teacherFormData.assignedSubjects || [];
+                          const updated = isSelected
+                            ? current.filter(sn => sn !== s.name)
+                            : [...current, s.name];
+                          setTeacherFormData({ ...teacherFormData, assignedSubjects: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : ''}{s.nameBn || s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  {isBn ? 'এই শিক্ষক যেসব বিষয় পড়ান, সেগুলো বেছে দিন।' : 'Pick the subjects this teacher teaches.'}
                 </p>
               </div>
 

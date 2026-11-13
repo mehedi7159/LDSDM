@@ -182,7 +182,7 @@ const AppContent = () => {
     // guard requires reports.view || subjects.view, so a guardian (who
     // has neither) used to pass this gate and hit a restricted wall. It
     // has its own case below mirroring the render guard.
-    if (tab === 'dashboard' || tab === 'web_results' || tab === 'student_profile' || tab === 'notice_board' || tab === 'user_settings') {
+    if (tab === 'dashboard' || tab === 'web_results' || tab === 'student_profile' || tab === 'notice_board' || tab === 'notices' || tab === 'user_settings') {
       return true;
     }
 
@@ -206,6 +206,7 @@ const AppContent = () => {
         return isAdmin || hasPermission('students.view') || hasPermission('reports.view');
       case 'subjects':
       case 'class_routine':
+      case 'routine':
         return isAdmin || hasPermission('subjects.view') || hasPermission('subjectAssignments.view') || currentUser?.role === 'teacher';
       // The cases below mirror their renderContent guards exactly. They
       // used to share the subjects case above, which let roles PASS this
@@ -276,6 +277,7 @@ const AppContent = () => {
       case 'exam_analytics':
         return isAdmin || hasPermission('marks.view') || hasPermission('marks.create') || hasPermission('reports.view') || currentUser?.role === 'teacher';
       case 'guardian_portal':
+      case 'portals_hub':
       case 'online_admissions':
       case 'public_web_results':
         return true;
@@ -477,6 +479,7 @@ const AppContent = () => {
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('subjectAssignments.view') || hasPermission('teachers.view'))
           ? <AcademicManager initialSubTab="teachers" onNavigateTab={(tab) => setActiveTab(tab)} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'শিক্ষক ও বিষয় বণ্টন' : 'Teacher-Subject Assignment'} onGoToResults={() => setActiveTab('dashboard')} />;
+      case 'routine':
       case 'class_routine':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('academic.view') || hasPermission('subjects.view'))
           ? <AcademicManager initialSubTab="routine" onNavigateTab={(tab) => setActiveTab(tab)} />
@@ -521,6 +524,7 @@ const AppContent = () => {
         return <ExamResultsManager initialSubTab="web_results" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'student_profile':
         return <StudentProfileView initialStudentId={profileStudentId} onBack={() => setActiveTab('dashboard')} onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'notices':
       case 'notice_board':
         return <ReportsSettingsManager initialSubTab="notices" onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'student_id_cards':
@@ -617,6 +621,7 @@ const AppContent = () => {
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('marks.view') || hasPermission('marks.create') || hasPermission('reports.view')) 
           ? <ExamResultsManager initialSubTab="cards" onNavigateTab={(tab) => setActiveTab(tab)} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'ফলাফল ও মার্কশিট' : 'Result Cards & Tabulation'} onGoToResults={() => setActiveTab('dashboard')} />;
+      case 'portals_hub':
       case 'guardian_portal': {
         // A guardian session (guardian role held, no admin-tier role)
         // gets the SELF-SERVICE portal — their own child(ren) only.
@@ -677,6 +682,7 @@ const AppContent = () => {
     class_section_setup: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
     teacher_assignment: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
     class_routine: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
+    routine: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
     syllabus_planner: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
     academic_calendar: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
     academic_reports: { bn: 'একাডেমিক তথ্য', en: 'Academic data' },
@@ -704,6 +710,7 @@ const AppContent = () => {
     staff_analytics: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
     recycle_bin: { bn: 'রিসাইকেল বিন', en: 'Recycle bin' },
     guardian_portal: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
+    portals_hub: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
     online_admissions: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
     public_web_results: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
     sms_gateway: { bn: 'পোর্টাল তথ্য', en: 'Portal data' },
@@ -719,6 +726,7 @@ const AppContent = () => {
     'admin_reports',
     'system_diagnostics',
     'notice_board',
+    'notices',
   ]);
   const renderContent = () => {
     if (SERVER_DATA_UNGATED_TABS.has(activeTab)) return renderContentInner();
