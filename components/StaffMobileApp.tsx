@@ -413,6 +413,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [marksSaving, setMarksSaving] = useState(false);
   const [marksRetrying, setMarksRetrying] = useState(false);
   const [marksClosedNotice, setMarksClosedNotice] = useState<string | null>(null);
+  const [marksRejectedNotice, setMarksRejectedNotice] = useState<string | null>(null);
   const [leaveRetrying, setLeaveRetrying] = useState(false);
 
   // Plain-language confirm failure: a timeout (slow connection) says so
@@ -849,12 +850,20 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     });
 
     if (markRecordsToUpdate.length > 0) {
-      // bulkUpdateMarks returns null when the exam is closed by admin
-      // — then nothing is confirmed and no success is shown; say so.
-      const nextMarks = bulkUpdateMarks(markRecordsToUpdate);
+      // bulkUpdateMarks returns marks null when the exam is closed by
+      // admin — then nothing is confirmed and no success is shown; say
+      // so. Rejected rows (over-full, finalized/locked) are skipped, not
+      // saved raw — their errors are shown, the valid rows still save.
+      const result = bulkUpdateMarks(markRecordsToUpdate);
+      const nextMarks = result.marks;
       if (!nextMarks) {
         setMarksClosedNotice(isEn ? 'Marks entry for this exam is closed by the admin — nothing was saved. Ask the admin to open entry again.' : 'এডমিন এই পরীক্ষার মার্ক এন্ট্রি বন্ধ রেখেছেন — কিছুই সংরক্ষণ হয়নি। আবার এন্ট্রি করতে এডমিনকে খুলে দিতে বলুন।');
         return;
+      }
+      if (result.errors.length > 0) {
+        setMarksRejectedNotice(isEn ? `${result.errors.length} mark(s) were not saved — ${result.errors[0]}` : `${result.errors.length}টি নম্বর সংরক্ষণ হয়নি — ${result.errors[0]}`);
+      } else {
+        setMarksRejectedNotice(null);
       }
       setMarksCloudFailure(null);
       setMarksClosedNotice(null);
@@ -3437,6 +3446,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               {marksClosedNotice && (
                 <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
                   <span>{marksClosedNotice}</span>
+                </div>
+              )}
+
+              {/* Rejected rows (over-full, finalized/locked): skipped, not
+                  saved — the valid rows above still saved. */}
+              {marksRejectedNotice && (
+                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                  <span>{marksRejectedNotice}</span>
                 </div>
               )}
 

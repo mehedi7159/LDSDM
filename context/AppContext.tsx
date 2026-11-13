@@ -371,11 +371,14 @@ interface AppContextType extends AppState {
   assignClassTeacher: (assignment: Omit<ClassTeacherAssignment, 'id'>) => void;
   archiveClassTeacherAssignment: (id: string) => void;
   setClassTeacherAssignments: (assignments: ClassTeacherAssignment[]) => void;
-  updateMark: (mark: Omit<MarkRecord, 'id'> & { id?: string }) => void;
-  // Admin mark-entry gate (Nov 2026): returns null (distinct from [] =
-  // no-op) when any update targets a closed exam — the caller must not
-  // confirm a write that must not happen.
-  bulkUpdateMarks: (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => MarkRecord[] | null;
+  // A rejected record returns its builder error — nothing is written
+  // for it (Nov 2026: the old raw-record fallback saved unvalidated marks).
+  updateMark: (mark: Omit<MarkRecord, 'id'> & { id?: string }) => { error?: string };
+  // Admin mark-entry gate (Nov 2026): returns marks null (distinct from
+  // [] = no-op) when any update targets a closed exam — the caller must
+  // not confirm a write that must not happen. Rejected records are
+  // skipped and their errors returned; only validated marks are written.
+  bulkUpdateMarks: (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => { marks: MarkRecord[] | null; errors: string[] };
   addExam: (name: string, category: Exam['category'], nameBn?: string, details?: Partial<Exam>) => { exam: Exam | null; exams: Exam[]; error?: string };
   updateExam: (exam: Exam) => { exam: Exam; exams: Exam[]; error?: string };
   archiveExam: (id: string) => void;
@@ -6275,18 +6278,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const exam = exams.find(e => e.id === markData.examId);
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
 
-    const { mark } = buildUpsertMarkPayload(markData, existing, sub, exSub, exam, actor);
-    const finalMark = mark || ({ ...markData, id: generateId() } as MarkRecord);
+    const { mark, error } = buildUpsertMarkPayload(markData, existing, sub, exSub, exam, actor);
+    // A rejected record is skipped, never saved raw — the caller shows `error`.
+    if (!mark) return { error: error || 'Invalid mark record' };
 
     setMarks(prev => {
-      const idx = prev.findIndex(m => m.studentId === finalMark.studentId && m.subjectId === finalMark.subjectId && m.examId === finalMark.examId);
+      const idx = prev.findIndex(m => m.studentId === mark.studentId && m.subjectId === mark.subjectId && m.examId === mark.examId);
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = finalMark;
+        next[idx] = mark;
         return next;
       }
-      return [...prev, finalMark];
+      return [...prev, mark];
     });
+    return {};
   };
 
   const bulkUpdateMarks = (newMarks: (Omit<MarkRecord, 'id'> & { id?: string })[]) => {
@@ -6300,7 +6305,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // (only an explicit false closes).
     for (const nm of newMarks) {
       const ex = exams.find(e => e.id === nm.examId);
-      if (!isMarkEntryAllowedForExam(ex, markEntryEnabled)) return null;
+      if (!isMarkEntryAllowedForExam(ex, markEntryEnabled)) return { marks: null, errors: [] };
     }
 
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
@@ -6313,6 +6318,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const marksMap = new Map<string, MarkRecord>();
     marks.forEach(m => marksMap.set(`${m.studentId}-${m.subjectId}-${m.examId}`, m));
 
+    // Rejected records are skipped and their errors collected — never
+    // written raw. Only validated marks reach the map.
+    const errors: string[] = [];
+    let writtenCount = 0;
     newMarks.forEach(newData => {
       const key = `${newData.studentId}-${newData.subjectId}-${newData.examId}`;
       const existing = marksMap.get(key);
@@ -6320,25 +6329,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const exSub = examSubjectAssignments.find(es => es.examId === newData.examId && es.subjectId === newData.subjectId);
       const exam = exams.find(e => e.id === newData.examId);
 
-      const { mark } = buildUpsertMarkPayload(newData, existing, sub, exSub, exam, actor);
-      const finalMark = mark || (existing ? { ...existing, ...newData } : { ...newData, id: generateId() } as MarkRecord);
-      marksMap.set(key, finalMark);
+      const { mark, error } = buildUpsertMarkPayload(newData, existing, sub, exSub, exam, actor);
+      if (!mark) {
+        errors.push(error || 'Invalid mark record');
+        return;
+      }
+      writtenCount++;
+      marksMap.set(key, mark);
     });
 
     const mergedMarks = Array.from(marksMap.values());
     setMarks(mergedMarks);
 
-    if (authUser && newMarks.length > 0) {
+    if (authUser && writtenCount > 0) {
       recordMarksAuditEvent({
         action: 'MARKS_UPDATED',
         examId: newMarks[0].examId,
         subjectId: newMarks[0].subjectId,
         classId: newMarks[0].classId,
-        count: newMarks.length,
+        count: writtenCount,
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'teacher' }
       });
     }
-    return mergedMarks;
+    return { marks: mergedMarks, errors };
   };
 
   // Exam handlers
