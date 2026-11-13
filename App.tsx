@@ -244,6 +244,7 @@ const AppContent = () => {
       // roles whose menu item was visible and whose module would have
       // rendered: teacher → staff_assignments/staff_analytics,
       // accountant → staff_payroll.
+      case 'staff':
       case 'user_roles':
         return isAdmin || hasPermission('roles.view') || hasPermission('users.view') || hasPermission('teachers.view') || currentUser?.role === 'principal';
       case 'staff_roles':
@@ -563,6 +564,7 @@ const AppContent = () => {
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('finance.view') || hasPermission('fees.view')) 
           ? <FinanceManager initialTab="fee-settings" onNavigateTab={(tab) => setActiveTab(tab)} /> 
           : <AccessRestrictedView moduleName={language === 'bn' ? 'ফি কাঠামো ও রেট চার্ট' : 'Fee Structure & Rates'} onGoToResults={() => setActiveTab('dashboard')} />;
+      case 'staff':
       case 'user_roles':
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('roles.view') || hasPermission('users.view') || hasPermission('teachers.view')) 
           ? <StaffManager initialSubTab="directory" onNavigateTab={(tab) => setActiveTab(tab)} /> 
@@ -705,6 +707,7 @@ const AppContent = () => {
     sync_exam_attendance: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
     attendance_reports: { bn: 'হাজিরা তথ্য', en: 'Attendance data' },
     fee_structure: { bn: 'ফি কাঠামো', en: 'Fee structure' },
+    staff: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
     user_roles: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
     staff_roles: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
     staff_assignments: { bn: 'স্টাফ তথ্য', en: 'Staff data' },
