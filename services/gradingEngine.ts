@@ -5,6 +5,7 @@
  */
 
 import { GradingSystem, DEFAULT_GRADING_SYSTEM, MarkRecord, Subject, ExamSubjectAssignment } from '../types';
+import { calculateGrade } from './utils';
 
 export interface SubjectGradingResult {
   obtained: number;
@@ -137,7 +138,15 @@ export function getGradeFromGPA(
 }
 
 /**
- * Evaluates full exam result for a student across all subjects
+ * Evaluates full exam result for a student across all subjects.
+ *
+ * GPA math follows the display engine (services/utils.ts
+ * calculateTotalGPA) exactly, so promotion can no longer contradict the
+ * result card: core subjects average; the first optional subject adds
+ * only its grade point above 2.0 to the core sum; the result is capped
+ * at 5.0. isFourthSubject has no rule in the display engine, so it is
+ * ignored here too — whether a 4th subject should be optional-like is
+ * an open question for the principal, not something to invent here.
  */
 export function calculateStudentExamSummary(
   studentId: string,
@@ -150,44 +159,66 @@ export function calculateStudentExamSummary(
   let totalFullMarks = 0;
   let failedSubjectCount = 0;
   let absentCount = 0;
-  const gradePoints: number[] = [];
+  let totalGPA = 0;
+  let coreCount = 0;
+  let optionalHandled = false;
 
   examSubjects.forEach(sub => {
     const subjectId = 'subjectId' in sub ? sub.subjectId : sub.id;
     const fullMarks = sub.fullMarks || 100;
     const passMarks = sub.passMarks !== undefined ? sub.passMarks : 33;
     const isOptional = 'isOptional' in sub ? !!sub.isOptional : false;
-    const isFourthSubject = 'isFourthSubject' in sub ? !!sub.isFourthSubject : false;
+    // Component pass marks: a Subject carries hasCQ/hasMCQ flags; an
+    // assignment carries only the component full marks, so a present
+    // (> 0) component stands in for the flag there.
+    const hasCQ = (sub as Subject).hasCQ !== undefined
+      ? !!(sub as Subject).hasCQ
+      : ((sub as ExamSubjectAssignment).cqFullMarks ?? 0) > 0;
+    const hasMCQ = (sub as Subject).hasMCQ !== undefined
+      ? !!(sub as Subject).hasMCQ
+      : ((sub as ExamSubjectAssignment).mcqFullMarks ?? 0) > 0;
+    const cqPassMarks = sub.cqPassMarks ?? 0;
+    const mcqPassMarks = sub.mcqPassMarks ?? 0;
 
     const markRecord = marks.find(m => m.studentId === studentId && m.subjectId === subjectId);
     const isAbsent = markRecord ? !!markRecord.isAbsent : true;
     const obtained = markRecord && !isAbsent ? markRecord.obtained || 0 : 0;
 
     const percentage = calculatePercentage(obtained, fullMarks);
-    const grade = calculateSubjectGrade(obtained, fullMarks, gradingSystem, isAbsent, passMarks);
-    const gradePoint = calculateSubjectGradePoint(obtained, fullMarks, gradingSystem, isAbsent, passMarks);
-    const isPassed = !isAbsent && obtained >= passMarks && grade !== 'F';
+    const { grade, gpa: gradePoint } = calculateGrade(obtained, fullMarks);
+
+    // Same pass checks as the display engine: absent fails; a CQ/MCQ
+    // component below its pass mark fails; otherwise the subject total
+    // below pass marks fails. No record at all fails (unless pass
+    // marks are 0 and there are no components).
+    let isPassed = false;
+    if (markRecord) {
+      isPassed = !isAbsent
+        && !(hasCQ && (markRecord.obtainedCQ ?? 0) < cqPassMarks)
+        && !(hasMCQ && (markRecord.obtainedMCQ ?? 0) < mcqPassMarks)
+        && ((hasCQ || hasMCQ) || obtained >= passMarks);
+    } else if (passMarks <= 0 && !hasCQ && !hasMCQ) {
+      isPassed = true;
+    }
 
     if (isAbsent) {
       absentCount++;
     }
 
-    if (!isPassed && !isOptional && !isFourthSubject) {
-      failedSubjectCount++;
-    }
-
-    totalObtained += obtained;
-    totalFullMarks += fullMarks;
-
-    // Core subjects count directly towards GPA calculation
-    if (!isFourthSubject) {
-      gradePoints.push(gradePoint);
-    } else {
-      // Fourth subject: marks above 2.0 (standard 4th subject GPA policy)
-      const bonusGP = Math.max(0, gradePoint - 2.0);
-      if (bonusGP > 0) {
-        gradePoints.push(bonusGP);
-      }
+    if (!isOptional) {
+      coreCount++;
+      totalGPA += isPassed ? gradePoint : 0;
+      totalObtained += obtained;
+      totalFullMarks += fullMarks;
+      if (!isPassed) failedSubjectCount++;
+    } else if (!optionalHandled) {
+      // First optional only: its excess over 2.0 joins the core sum
+      // and it can never fail the student. Later optionals are
+      // ignored, exactly as in the display engine.
+      optionalHandled = true;
+      totalObtained += obtained;
+      totalFullMarks += fullMarks;
+      if (gradePoint > 2.0) totalGPA += gradePoint - 2.0;
     }
 
     subjectResults[subjectId] = {
@@ -204,7 +235,8 @@ export function calculateStudentExamSummary(
   const totalSubjects = examSubjects.length;
   const isAllAbsent = totalSubjects > 0 && absentCount === totalSubjects;
   const hasFailed = failedSubjectCount > 0 || isAllAbsent;
-  const gpa = calculateGPA(gradePoints, hasFailed);
+  const rawGPA = coreCount > 0 ? totalGPA / coreCount : 0;
+  const gpa = hasFailed ? 0.0 : Math.min(5.0, Math.round(rawGPA * 100) / 100);
   const overallGrade = hasFailed ? 'F' : getGradeFromGPA(gpa, gradingSystem);
   const overallPercentage = calculatePercentage(totalObtained, totalFullMarks);
 
