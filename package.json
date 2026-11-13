@@ -16,6 +16,7 @@
     "test:exam": "tsx scripts/test-exam-backup-restore.ts",
     "test:student": "tsx scripts/test-student-foundation.ts",
     "test:student-save-loss": "tsx scripts/verify-student-save-data-loss.ts",
+    "test:fee-totals": "tsx scripts/verify-fee-totals.ts",
     "test:job1-notices-split": "tsx scripts/verify-job1-notices-split.ts",
     "test:api-admin-500": "tsx scripts/verify-api-admin-500.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",

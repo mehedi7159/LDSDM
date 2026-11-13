@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
-import { calculateClassDuesSummary, calculateFeeAging, academicYearFallbackStartMonth } from '../services/studentDuesService';
+import { calculateTotalDues, calculateFeeAging, academicYearFallbackStartMonth } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 
 /**
@@ -109,10 +109,25 @@ export const MadrasaReports: React.FC = () => {
   }, [transactions, todayIso, isBn]);
   const last7Max = Math.max(1, ...last7.map(d => d.amount));
 
-  // ---------- THIS MONTH ----------
+  // Dateless students accrue from the current academic year's January
+  // (approved 2 Nov 2026); a real admission/created/paid start always wins.
+  // Shared by the dues header below and the Highest Dues list.
+  const agingFallbackStart = useMemo(
+    () => academicYearFallbackStartMonth(academicYears, monthPrefix),
+    [academicYears, monthPrefix]
+  );
+
+  // ---------- DUES: THE ONE SHARED TOTAL ----------
+  // calculateTotalDues: this month's unpaid + every finished month's
+  // unpaid, same student set / month / feeTypes as the dashboard, the
+  // finance header and the fee page. (The old call was current-month
+  // only, without feeTypes, over a looser student set — so the header
+  // disagreed with the dashboard.)
   const duesSummary = useMemo(
-    () => calculateClassDuesSummary(activeStudents, feeStructures, transactions),
-    [activeStudents, feeStructures, transactions]
+    () => calculateTotalDues(
+      activeStudents.filter(s => s.status === 'Active' && !s.isFormer),
+      feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart),
+    [activeStudents, feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart]
   );
 
   // ---------- ALERTS (Pragya-inspired, LDSDM-adapted, read-only) ----------
@@ -274,11 +289,6 @@ export const MadrasaReports: React.FC = () => {
   // yet, so it is excluded — matching the fee-due month rule.
   // Dateless students accrue from the current academic year's January
   // (approved 2 Nov 2026); a real admission/created/paid start always wins.
-  const agingFallbackStart = useMemo(
-    () => academicYearFallbackStartMonth(academicYears, monthPrefix),
-    [academicYears, monthPrefix]
-  );
-
   const topDues = useMemo(
     () => activeStudents
       .map(student => ({
@@ -350,10 +360,12 @@ export const MadrasaReports: React.FC = () => {
   }, [classLevels, activeStudents, exams, marks, subjects]);
   const classDues = useMemo(() => {
     return classLevels.map(cls => {
-      const summary = calculateClassDuesSummary(activeStudents.filter(s => s.classLevel === cls), feeStructures, transactions);
+      const summary = calculateTotalDues(
+        activeStudents.filter(s => s.classLevel === cls && s.status === 'Active' && !s.isFormer),
+        feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart);
       return { name: cls, totalDue: summary.totalDue, dueCount: summary.dueStudentsCount };
     }).sort((a, b) => b.totalDue - a.totalDue);
-  }, [classLevels, activeStudents, feeStructures, transactions]);
+  }, [classLevels, activeStudents, feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart]);
   const classDueMax = Math.max(1, ...classDues.map(c => c.totalDue));
 
   const dateLabel = now.toLocaleDateString(isBn ? 'bn-BD' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });

@@ -359,3 +359,80 @@ export function calculateFeeAging(
     byMonth
   };
 }
+
+// ---------------------------------------------------------------------------
+// ONE shared dues total (fee-totals fix, Nov 2026 — 7 Nov audit §14).
+// Definition: মোট বকেয়া = চলতি মাসের বাকি + শেষ হওয়া সব মাসের বকেয়া
+// (this month's unpaid balance + every finished month's unpaid balance).
+// A finished month enters only after it ends (calculateFeeAging); the
+// current month is the amount still to collect now. Monthly expected
+// comes from the one hook (monthlyExpectedFor); exam / admission /
+// session / book / registration / form-fillup never enter it, and a
+// missing fee structure means expected 0 — never an invented ৳700.
+// The dashboard, the finance header, the fee-page cards and the reports
+// header all call this one function with the same student set, month,
+// feeTypes and aging fallback, so they show the same number.
+// ---------------------------------------------------------------------------
+
+/** Local (device-timezone) YYYY-MM — one definition of "this month", so
+ * the dashboard, finance header, fee page and reports never disagree by
+ * month (the old UTC default differs from the local month before 06:00
+ * on the 1st in Dhaka). */
+export function localMonthStr(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export interface TotalDueEntry {
+  profile: StudentDueProfile; // current-month profile
+  aging: FeeAging; // finished-months aging as of the target month
+  totalDue: number; // profile.dueThisMonth + aging.totalAged
+}
+
+export interface TotalDuesSummary {
+  totalDue: number; // current-month due + aged due, over all students
+  currentMonthDue: number;
+  agedDue: number;
+  totalExpected: number; // target month's expected monthly fees
+  totalPaid: number; // target month's recorded payments
+  totalStudents: number;
+  dueStudentsCount: number; // students with totalDue > 0
+  paidStudentsCount: number; // students with nothing due this month
+  profiles: StudentDueProfile[]; // current-month profiles (as before)
+  entries: TotalDueEntry[]; // per-student combined totals
+}
+
+export function calculateTotalDues(
+  students: Student[],
+  feeStructures: ClassFeeStructure[],
+  transactions: FinanceTransaction[],
+  targetMonth?: string,
+  feeTypes?: FeeTypeDef[],
+  fallbackStartMonth?: string
+): TotalDuesSummary {
+  // Same month into both halves. The UTC default is kept here so the
+  // inner functions behave exactly as their other callers expect; the
+  // four headline call sites pass localMonthStr() explicitly.
+  const month = targetMonth || new Date().toISOString().slice(0, 7);
+  const summary = calculateClassDuesSummary(students, feeStructures, transactions, month, feeTypes);
+  let agedDue = 0;
+  let dueStudentsCount = 0;
+  const entries: TotalDueEntry[] = summary.profiles.map(profile => {
+    const aging = calculateFeeAging(profile.student, feeStructures, transactions, month, feeTypes, fallbackStartMonth);
+    const totalDue = profile.dueThisMonth + aging.totalAged;
+    agedDue += aging.totalAged;
+    if (totalDue > 0) dueStudentsCount += 1;
+    return { profile, aging, totalDue };
+  });
+  return {
+    totalDue: summary.totalDue + agedDue,
+    currentMonthDue: summary.totalDue,
+    agedDue,
+    totalExpected: summary.totalExpected,
+    totalPaid: summary.totalPaid,
+    totalStudents: students.length,
+    dueStudentsCount,
+    paidStudentsCount: summary.paidStudentsCount,
+    profiles: summary.profiles,
+    entries,
+  };
+}

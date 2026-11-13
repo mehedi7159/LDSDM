@@ -25,6 +25,10 @@ interface DuesItem {
   monthlyExpected: number;
   paidThisMonth: number;
   dueThisMonth: number;
+  // Combined total (this month + finished months) from the ONE shared dues
+  // total — the printed "মোট বকেয়া" must match the fee-page header.
+  // Falls back to dueThisMonth for callers that only pass current-month dues.
+  totalDue?: number;
   behaviorBadge: string;
   behaviorLabelBn: string;
   behaviorLabelEn: string;
@@ -61,11 +65,12 @@ export const DuesPrintModal: React.FC<DuesPrintModalProps> = ({
   const printContentRef = useRef<HTMLDivElement>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  // Totals
+  // Totals — the due column is the combined per-student total, so the
+  // printed total matches the fee-page header (same shared function).
   const totalStudents = dueList.length;
   const totalExpected = dueList.reduce((sum, item) => sum + item.monthlyExpected, 0);
   const totalPaid = dueList.reduce((sum, item) => sum + item.paidThisMonth, 0);
-  const totalDue = dueList.reduce((sum, item) => sum + item.dueThisMonth, 0);
+  const totalDue = dueList.reduce((sum, item) => sum + (item.totalDue ?? item.dueThisMonth), 0);
 
   const handlePrint = () => {
     window.print();
@@ -271,7 +276,8 @@ export const DuesPrintModal: React.FC<DuesPrintModalProps> = ({
                   ) : (
                     dueList.map((item, idx) => {
                       const s = item.student;
-                      const hasDue = item.dueThisMonth > 0;
+                      const due = item.totalDue ?? item.dueThisMonth;
+                      const hasDue = due > 0;
                       return (
                         <tr key={s.id} className={idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}>
                           <td className="py-2 px-2.5 border-r border-slate-200 text-center font-mono font-semibold">
@@ -296,7 +302,7 @@ export const DuesPrintModal: React.FC<DuesPrintModalProps> = ({
                           <td className="py-2 px-3 text-right font-mono font-black">
                             {hasDue ? (
                               <span className="text-rose-700">
-                                ৳{isBn ? formatBanglaNumber(item.dueThisMonth) : item.dueThisMonth.toLocaleString()}
+                                ৳{isBn ? formatBanglaNumber(due) : due.toLocaleString()}
                               </span>
                             ) : (
                               <span className="text-emerald-600 font-bold text-[11px]">পরিশোধিত</span>

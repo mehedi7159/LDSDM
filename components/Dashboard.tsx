@@ -67,7 +67,7 @@ import { DashboardDailyOverview } from './DashboardDailyOverview';
 import { MadrasaReports } from './MadrasaReports';
 import { SectionCard } from './ui/SectionCard';
 import { ProgressBar } from './ui/ProgressBar';
-import { calculateClassDuesSummary, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
+import { calculateTotalDues, localMonthStr, academicYearFallbackStartMonth, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
 import { getAdmissionApplications } from '../services/admissionApplicationsService';
 import { Phone, MessageCircle, LayoutDashboard, UserPlus } from 'lucide-react';
 
@@ -428,6 +428,7 @@ export const Dashboard = () => {
     schoolProfile,
     transactions = [],
     feeStructures = [],
+    feeTypes = [],
     notices = [],
     staffLeaves = [],
     dailyStudentAttendance = [],
@@ -873,10 +874,14 @@ export const Dashboard = () => {
     const totalPendingMarks = marksPendingExams.reduce((sum, m) => sum + (m.pendingMarks || 0), 0);
     const readyToFinalizeExams = (examEvaluationMatrix || []).filter(m => !m.isFinalized && m.expectedMarks > 0 && m.progress >= 100);
 
-    // 3. Fee dues follow-up — the same calculator Finance and the staff
-    //    mobile app use (studentDuesService).
+    // 3. Fee dues follow-up — the ONE shared dues total (calculateTotalDues):
+    //    this month's unpaid + every finished month's unpaid, same student
+    //    set / month / feeTypes as Finance, the fee page and Reports.
+    //    The follow-up list itself stays current-month (the reminder text
+    //    is about this month's fee).
     const activeStudents = (students || []).filter(s => s && s.status === 'Active' && !s.isFormer);
-    const duesSummary = calculateClassDuesSummary(activeStudents, feeStructures, transactions);
+    const month = localMonthStr();
+    const duesSummary = calculateTotalDues(activeStudents, feeStructures, transactions, month, feeTypes, academicYearFallbackStartMonth(academicYears, month));
     const dueProfiles = (duesSummary.profiles || [])
       .filter(p => p.dueThisMonth > 0)
       .sort((a, b) => b.dueThisMonth - a.dueThisMonth);
@@ -918,7 +923,7 @@ export const Dashboard = () => {
     // activeView is a deliberate dep: admission applications live outside
     // React state (canonical local store), so re-read them on view switches.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classes, students, dailyStudentAttendance, examEvaluationMatrix, feeStructures, transactions, staffLeaves, activeView]);
+  }, [classes, students, dailyStudentAttendance, examEvaluationMatrix, feeStructures, feeTypes, academicYears, transactions, staffLeaves, activeView]);
 
   // WhatsApp fee-reminder link — the same pattern as StaffMobileApp.
   const duesWhatsappLink = (profile: StudentDueProfile) => {
