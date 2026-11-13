@@ -427,7 +427,7 @@ export const ExamManager = () => {
 
   const handleFinalizeConfirm = (exam: Exam) => {
     const relevantAssignments = examSubjectAssignments.filter(es => es.examId === exam.id && es.status === 'ACTIVE');
-    const validation = validateExamFinalization(exam, relevantAssignments, marks, students);
+    const validation = validateExamFinalization(exam, relevantAssignments, marks, students, subjects);
     if (!validation.isValid) {
       showToast({
         type: 'error',

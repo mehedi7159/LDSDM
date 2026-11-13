@@ -221,6 +221,32 @@ export function buildArchiveExamSubjectPayload(
 // MARK RECORD BUILDERS & BATCH ENTRY
 // -------------------------------------------------------------
 
+/**
+ * One effective subject for marks work: the exam assignment when one
+ * exists, else the subject. ExamManager copies the subject's marks
+ * into the assignment at schedule time, so the two diverge when the
+ * subject is edited afterwards — MarksEntry and buildUpsertMarkPayload
+ * must both read this, or they validate against different limits.
+ */
+export function resolveEffectiveSubject(
+  subject?: Subject,
+  examSubject?: ExamSubjectAssignment
+): Subject | undefined {
+  if (!subject) return undefined;
+  if (!examSubject) return subject;
+  return {
+    ...subject,
+    fullMarks: examSubject.fullMarks ?? subject.fullMarks,
+    passMarks: examSubject.passMarks ?? subject.passMarks,
+    cqMarks: examSubject.cqFullMarks ?? subject.cqMarks,
+    cqPassMarks: examSubject.cqPassMarks ?? subject.cqPassMarks,
+    mcqMarks: examSubject.mcqFullMarks ?? subject.mcqMarks,
+    mcqPassMarks: examSubject.mcqPassMarks ?? subject.mcqPassMarks,
+    practicalMarks: examSubject.practicalFullMarks ?? subject.practicalMarks,
+    practicalPassMarks: examSubject.practicalPassMarks ?? subject.practicalPassMarks
+  };
+}
+
 export function buildUpsertMarkPayload(
   input: (Omit<Partial<MarkRecord>, 'id'> & { studentId: string; subjectId: string; examId: string; id?: string }) | (Omit<MarkRecord, 'id'> & { id?: string }),
   existingMark?: MarkRecord,

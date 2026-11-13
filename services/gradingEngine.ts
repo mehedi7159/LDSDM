@@ -73,8 +73,11 @@ export function calculateSubjectGrade(
   }
 
   const percentage = calculatePercentage(obtained, fullMarks);
-  const matched = gradingSystem.find(g => percentage >= g.min && percentage <= g.max);
-  return matched ? matched.grade : (percentage >= 80 ? 'A+' : 'F');
+  // Same >= min descending scan as utils.calculateGrade: the bands
+  // are integers, so a fractional percentage between bands (79.33%)
+  // must fall into the band below it, not through to 'F'.
+  const matched = gradingSystem.find(g => percentage >= g.min);
+  return matched ? matched.grade : 'F';
 }
 
 /**
@@ -96,8 +99,9 @@ export function calculateSubjectGradePoint(
   }
 
   const percentage = calculatePercentage(obtained, fullMarks);
-  const matched = gradingSystem.find(g => percentage >= g.min && percentage <= g.max);
-  return matched ? matched.gpa : (percentage >= 80 ? 5.0 : 0.0);
+  // Same >= min descending scan as utils.calculateGrade (see above).
+  const matched = gradingSystem.find(g => percentage >= g.min);
+  return matched ? matched.gpa : 0.0;
 }
 
 /**

@@ -177,7 +177,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
 
       const fullMarks = sub.fullMarks > 0 ? sub.fullMarks : 100;
       const obtained = m.obtained || 0;
-      const percentage = (obtained / fullMarks) * 100;
+      const percentage = Math.min(100, (obtained / fullMarks) * 100); // display-only cap: stored over-full marks must not show >100%
 
       // Check Fail Criteria
       let isFail = false;

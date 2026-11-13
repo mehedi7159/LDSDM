@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
+import { calculateSubjectGrade } from '../services/gradingEngine';
 import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
 import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
 import { resolveGuardianChildren } from '../services/guardianScope';
@@ -228,6 +229,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     subjects = [],
     marks = [],
     exams = [],
+    examSubjectAssignments = [],
     transactions = [],
     feeStructures = [],
     feeTypes = [],
@@ -783,6 +785,19 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   }, [subjects, selectedClass]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => classSubjects[0]?.id || '');
 
+  // The selected subject's own scale — the exam assignment first (the
+  // exam's copy of the subject's marks), else the subject. Never 100.
+  const selectedSubject = useMemo(
+    () => subjects.find(s => s.id === selectedSubjectId),
+    [subjects, selectedSubjectId],
+  );
+  const selectedSubjectAssignment = useMemo(
+    () => examSubjectAssignments.find(es => es.examId === selectedExamId && es.subjectId === selectedSubjectId),
+    [examSubjectAssignments, selectedExamId, selectedSubjectId],
+  );
+  const selectedFullMarks = selectedSubjectAssignment?.fullMarks ?? selectedSubject?.fullMarks ?? 100;
+  const selectedPassMarks = selectedSubjectAssignment?.passMarks ?? selectedSubject?.passMarks ?? 33;
+
   useEffect(() => {
     if (classSubjects.length > 0 && !classSubjects.some(s => s.id === selectedSubjectId)) {
       setSelectedSubjectId(classSubjects[0].id);
@@ -793,6 +808,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // it when the teacher moves to another exam/subject.
   useEffect(() => {
     setMarksClosedNotice(null);
+    setMarksRejectedNotice(null);
   }, [selectedExamId, selectedSubjectId]);
 
   const [marksInputMap, setMarksInputMap] = useState<Record<string, string>>({});
@@ -829,12 +845,24 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     if (!selectedExamId || !selectedSubjectId) return;
     if (marksSaving) return;
+    // The subject's own scale (see selectedFullMarks above) — never
+    // 100: a 50-mark subject must refuse 80, a 150-mark subject must
+    // keep 90 as 90.
+    const fullMarks = selectedFullMarks;
+    const passMarks = selectedPassMarks;
     const markRecordsToUpdate: (Omit<MarkRecord, 'id'> & { id?: string })[] = [];
+    const rejected: string[] = [];
 
     classStudents.forEach(st => {
       const val = marksInputMap[st.id];
       if (val !== undefined && val !== '') {
-        const numVal = Math.min(100, Math.max(0, Number(val) || 0));
+        const numVal = Number(val);
+        // Never clamp: a value outside 0..fullMarks is refused and
+        // named, not silently squeezed into range.
+        if (isNaN(numVal) || numVal < 0 || numVal > fullMarks) {
+          rejected.push(`${st.name} (${val})`);
+          return;
+        }
         const existing = marks.find(m => m.studentId === st.id && m.subjectId === selectedSubjectId && m.examId === selectedExamId);
         markRecordsToUpdate.push({
           id: existing?.id,
@@ -842,12 +870,22 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           subjectId: selectedSubjectId,
           examId: selectedExamId,
           obtained: numVal,
-          total: 100,
-          grade: numVal >= 80 ? 'A+' : numVal >= 70 ? 'A' : numVal >= 60 ? 'A-' : numVal >= 50 ? 'B' : numVal >= 40 ? 'C' : numVal >= 33 ? 'D' : 'F',
-          gradePoint: numVal >= 80 ? 5 : numVal >= 70 ? 4 : numVal >= 60 ? 3.5 : numVal >= 50 ? 3 : numVal >= 40 ? 2 : numVal >= 33 ? 1 : 0
+          total: fullMarks,
+          fullMarks,
+          passMarks
+          // No grade/gradePoint here: buildUpsertMarkPayload computes
+          // them from fullMarks, so the 100-scale bands cannot leak in.
         });
       }
     });
+
+    if (rejected.length > 0) {
+      setMarksRejectedNotice(isEn
+        ? `${rejected.length} mark(s) not saved — full marks ${fullMarks}: ${rejected.join(', ')}`
+        : `${rejected.length}টি নম্বর সংরক্ষণ হয়নি — পূর্ণমান ${fullMarks}: ${rejected.join(', ')}`);
+    } else {
+      setMarksRejectedNotice(null);
+    }
 
     if (markRecordsToUpdate.length > 0) {
       // bulkUpdateMarks returns marks null when the exam is closed by
@@ -3387,7 +3425,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-[#5b6478] dark:text-slate-400">শিক্ষার্থী ({toBn(classStudents.length)} জন)</span>
-                  <span className="text-[11px] text-[#8a93a8]">পূর্ণমান: {toBn(100)}</span>
+                  <span className="text-[11px] text-[#8a93a8]">পূর্ণমান: {toBn(selectedFullMarks)}</span>
                 </div>
 
                 {classStudents.map(st => {
@@ -3395,7 +3433,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   const numVal = Number(currentVal);
                   const existingMark = marks.find(m => m.studentId === st.id && m.subjectId === selectedSubjectId && m.examId === selectedExamId);
                   const grade = currentVal !== ''
-                    ? (numVal >= 80 ? 'A+' : numVal >= 70 ? 'A' : numVal >= 60 ? 'A-' : numVal >= 50 ? 'B' : numVal >= 40 ? 'C' : numVal >= 33 ? 'D' : 'F')
+                    ? calculateSubjectGrade(numVal, selectedFullMarks, undefined, false, selectedPassMarks)
                     : '—';
                   return (
                     <div key={st.id} className={`${cardCls} p-3.5 flex items-center justify-between gap-3`}>
@@ -3449,8 +3487,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 </div>
               )}
 
-              {/* Rejected rows (over-full, finalized/locked): skipped, not
-                  saved — the valid rows above still saved. */}
+              {/* Rejected rows (out-of-range, over-full, finalized/locked):
+                  skipped, not saved — the valid rows still saved. */}
               {marksRejectedNotice && (
                 <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
                   <span>{marksRejectedNotice}</span>

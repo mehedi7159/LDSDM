@@ -62,6 +62,7 @@ import {
 } from 'recharts';
 import { calculateTotalGPA } from '../services/utils';
 import { calcPassRate } from '../services/gradingEngine';
+import { classNamesMatch } from '../services/classNames';
 import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
@@ -565,9 +566,9 @@ export const Dashboard = () => {
         : (classes || []).map(c => c.name);
 
       const classBreakdown = relevantClassNames.map(clsName => {
-        const clsStudents = activeStudents.filter(s => s && s.classLevel === clsName);
+        const clsStudents = activeStudents.filter(s => s && classNamesMatch(s.classLevel, clsName));
         const clsSubjects = (subjects || []).filter(s => {
-          if (!s || s.classLevel !== clsName) return false;
+          if (!s || !classNamesMatch(s.classLevel, clsName)) return false;
           if (s.examIds && s.examIds.length > 0 && !s.examIds.includes(exam.id)) return false;
           return true;
         });
@@ -683,7 +684,7 @@ export const Dashboard = () => {
 
     const effectiveTargetStudents = selectedClass === 'All'
       ? activeStudents
-      : activeStudents.filter(s => s && s.classLevel === selectedClass);
+      : activeStudents.filter(s => s && classNamesMatch(s.classLevel, selectedClass));
 
     const effectiveExamId = selectedExamId === 'All' 
       ? (yearExams[0]?.id || '') 
@@ -703,7 +704,7 @@ export const Dashboard = () => {
 
         if (!hasMarks) return;
 
-        const classSubjectsInThisClass = (subjects || []).filter(s => s && s.classLevel === student.classLevel);
+        const classSubjectsInThisClass = (subjects || []).filter(s => s && classNamesMatch(s.classLevel, student.classLevel));
         const subjectsAssignedToThisExam = selectedExamId === 'All'
           ? classSubjectsInThisClass
           : classSubjectsInThisClass.filter(s => s.examIds && s.examIds.includes(effectiveExamId));
@@ -756,8 +757,8 @@ export const Dashboard = () => {
 
     // Build Class Summary Cards
     const cards = (classes || []).map(cls => {
-      const clsStudents = activeStudents.filter(s => s && s.classLevel === cls.name);
-      const clsPerf = performers.filter(s => s && s.classLevel === cls.name);
+      const clsStudents = activeStudents.filter(s => s && classNamesMatch(s.classLevel, cls.name));
+      const clsPerf = performers.filter(s => s && classNamesMatch(s.classLevel, cls.name));
       const clsEvaluated = clsPerf.length;
       const clsPassed = clsPerf.filter(s => !s.isFail).length;
       const clsPassRate = calcPassRate(clsPassed, clsEvaluated);
