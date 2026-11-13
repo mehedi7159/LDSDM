@@ -23,7 +23,8 @@
     "test:academic-assignments": "tsx scripts/test-academic-assignments.ts",
     "test:exam-marks": "tsx scripts/test-exam-marks-foundation.ts",
     "test:promotion": "tsx scripts/test-class-promotion.ts",
-    "test:rbac-multirole": "tsx scripts/test-rbac-multirole.ts"
+    "test:rbac-multirole": "tsx scripts/test-rbac-multirole.ts",
+    "test:portal-idcard-lookup": "tsx scripts/verify-portal-idcard-lookup.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
