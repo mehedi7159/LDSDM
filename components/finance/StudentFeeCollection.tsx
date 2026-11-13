@@ -42,6 +42,9 @@ import {
   Student, 
   SchoolClass 
 } from '../../types';
+import type { FeeTypeDef } from '../../services/feeTypes';
+import type { AcademicYear } from '../../types/academic';
+import { calculateTotalDues, academicYearFallbackStartMonth } from '../../services/studentDuesService';
 import { formatBanglaNumber, generateVoucherNo, amountToBengaliWords } from '../../services/utils';
 import { feeCloudFailureMessage, FEE_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { Button } from '../ui/Button';
@@ -58,6 +61,8 @@ interface StudentFeeCollectionProps {
   students: Student[];
   classes: SchoolClass[];
   feeStructures: ClassFeeStructure[];
+  feeTypes?: FeeTypeDef[];
+  academicYears?: AcademicYear[];
   transactions: FinanceTransaction[];
   language: 'en' | 'bn';
   onAddTransaction: (tx: Omit<FinanceTransaction, 'id' | 'createdAt'>) => FinanceTransaction;
@@ -81,6 +86,8 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   students,
   classes,
   feeStructures,
+  feeTypes = [],
+  academicYears = [],
   transactions,
   language,
   onAddTransaction,
@@ -176,9 +183,11 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   const currentMonthStr = feeMonth;
   const todayStr = feeDate;
 
-  // Active Students List
+  // Active Students List — the canonical set (status 'Active', not
+  // former), exactly as the dashboard, finance header and reports filter
+  // it. A status-less or former student is counted nowhere in dues.
   const activeStudents = useMemo(() => {
-    return students.filter(s => s.status === 'Active' || !s.status);
+    return students.filter(s => s.status === 'Active' && !s.isFormer);
   }, [students]);
 
   // Current fee structure for selected class
@@ -252,32 +261,39 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
 
   // =========================================================================
   // 1. ADVANCED STUDENT DUE & BEHAVIORAL PROFILING CALCULATION
+  //    — the ONE shared dues total (calculateTotalDues): this month's
+  //    unpaid + every finished month's unpaid. The old inline math
+  //    invented ৳700 for a missing fee structure, ignored fee
+  //    arrangements and per-student overrides, always added boarding,
+  //    and matched payments by internal id only — that is why this page
+  //    disagreed with the dashboard and the header. Behavior labels
+  //    still describe THIS month's payment; the displayed due is the
+  //    combined total (dueThisMonth + agedDue).
   // =========================================================================
-  const studentFeeProfiles = useMemo(() => {
-    // Map of student payments in current month
-    const currentMonthPaidMap: Record<string, number> = {};
-    const totalLifetimePaidMap: Record<string, number> = {};
-    const transactionCountMap: Record<string, number> = {};
+  const duesSummary = useMemo(() => {
+    const fallback = academicYearFallbackStartMonth(academicYears, currentMonthStr);
+    return calculateTotalDues(activeStudents, feeStructures, transactions, currentMonthStr, feeTypes, fallback);
+  }, [activeStudents, feeStructures, transactions, currentMonthStr, feeTypes, academicYears]);
 
+  const studentFeeProfiles = useMemo(() => {
+    // Payment counts (any INCOME tx for the student, id or studentId) —
+    // only for the behavior label (a student who ever paid is not chronic).
+    const transactionCountMap: Record<string, number> = {};
     transactions.forEach(tx => {
       if (tx.type === 'INCOME' && tx.studentId) {
-        totalLifetimePaidMap[tx.studentId] = (totalLifetimePaidMap[tx.studentId] || 0) + tx.amount;
         transactionCountMap[tx.studentId] = (transactionCountMap[tx.studentId] || 0) + 1;
-
-        if (tx.feeMonth === currentMonthStr || (tx.date && tx.date.startsWith(currentMonthStr))) {
-          currentMonthPaidMap[tx.studentId] = (currentMonthPaidMap[tx.studentId] || 0) + tx.amount;
-        }
       }
     });
 
-    return activeStudents.map(student => {
-      const struct = feeStructures.find(f => f.classLevel === student.classLevel);
-      const monthlyExpected = (struct?.monthlyTuition || 700) + (struct?.boardingFee || 0);
-      const paidThisMonth = currentMonthPaidMap[student.id] || 0;
-      const totalPaidAllTime = totalLifetimePaidMap[student.id] || 0;
-      const countTx = transactionCountMap[student.id] || 0;
+    return duesSummary.entries.map(({ profile, aging, totalDue }) => {
+      const student = profile.student;
+      const monthlyExpected = profile.monthlyExpected;
+      const paidThisMonth = profile.paidThisMonth;
+      const dueThisMonth = profile.dueThisMonth;
+      const totalPaidAllTime = profile.totalPaidLifetime;
+      const countTx = (transactionCountMap[student.id] || 0)
+        + (student.studentId && student.studentId !== student.id ? (transactionCountMap[student.studentId] || 0) : 0);
 
-      const dueThisMonth = Math.max(0, monthlyExpected - paidThisMonth);
       const hasPaidFull = paidThisMonth >= monthlyExpected;
       const hasPaidPartial = paidThisMonth > 0 && paidThisMonth < monthlyExpected;
 
@@ -320,6 +336,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         paidThisMonth,
         dueThisMonth,
         totalPaidAllTime,
+        agedDue: aging.totalAged,
+        agedMonths: aging.byMonth.length,
+        totalDue,
         behavior,
         behaviorLabelBn,
         behaviorLabelEn,
@@ -328,43 +347,32 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         hasPaidFull,
       };
     });
-  }, [activeStudents, feeStructures, transactions, currentMonthStr]);
+  }, [duesSummary, transactions]);
 
-  // Aggregate Stats across all students
+  // Aggregate Stats — read straight off the ONE shared dues total, so the
+  // header cards can never disagree with the dashboard or the header KPI.
+  // totalDueFees is the combined total (this month + aged); the split is
+  // shown under the card. Collection rate stays this month's.
   const aggregateMetrics = useMemo(() => {
-    let totalExpectedFees = 0;
-    let totalCollectedFees = 0;
-    let totalDueFees = 0;
-    let totalPaidStudentsCount = 0;
-    let totalDueStudentsCount = 0;
-    let chronicDefaulterCount = 0;
+    const chronicDefaulterCount = studentFeeProfiles.filter(p => p.behavior === 'CHRONIC_DUE').length;
 
-    studentFeeProfiles.forEach(p => {
-      totalExpectedFees += p.monthlyExpected;
-      totalCollectedFees += p.paidThisMonth;
-      totalDueFees += p.dueThisMonth;
-
-      if (p.hasPaidFull) totalPaidStudentsCount++;
-      else totalDueStudentsCount++;
-
-      if (p.behavior === 'CHRONIC_DUE') chronicDefaulterCount++;
-    });
-
-    const collectionRate = totalExpectedFees > 0 
-      ? Math.round((totalCollectedFees / totalExpectedFees) * 100) 
+    const collectionRate = duesSummary.totalExpected > 0
+      ? Math.round((duesSummary.totalPaid / duesSummary.totalExpected) * 100)
       : 0;
 
     return {
-      totalExpectedFees,
-      totalCollectedFees,
-      totalDueFees,
-      totalPaidStudentsCount,
-      totalDueStudentsCount,
+      totalExpectedFees: duesSummary.totalExpected,
+      totalCollectedFees: duesSummary.totalPaid,
+      totalDueFees: duesSummary.totalDue,
+      currentMonthDueFees: duesSummary.currentMonthDue,
+      agedDueFees: duesSummary.agedDue,
+      totalPaidStudentsCount: duesSummary.paidStudentsCount,
+      totalDueStudentsCount: duesSummary.dueStudentsCount,
       chronicDefaulterCount,
       collectionRate,
       activeStudentCount: activeStudents.length,
     };
-  }, [studentFeeProfiles, activeStudents]);
+  }, [duesSummary, studentFeeProfiles, activeStudents]);
 
   // =========================================================================
   // 2. TEACHER SALARY BRIDGE & LIQUIDITY RUNWAY CALCULATION
@@ -448,6 +456,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       classMap[cName].students += 1;
       classMap[cName].expected += p.monthlyExpected;
       classMap[cName].collected += p.paidThisMonth;
+      // Current-month slice only (expected − collected = due, and the rate
+      // is this month's): the header total adds the aged backlog on top,
+      // shown there as the চলতি + পুরনো split.
       classMap[cName].due += p.dueThisMonth;
     });
 
@@ -495,7 +506,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   const filteredDueList = useMemo(() => {
     return studentFeeProfiles.filter(item => {
       if (dueClassFilter !== 'ALL' && item.student.classLevel !== dueClassFilter) return false;
-      if (dueBehaviorFilter === 'DUE_ONLY' && item.dueThisMonth <= 0) return false;
+      if (dueBehaviorFilter === 'DUE_ONLY' && item.totalDue <= 0) return false;
       if (dueBehaviorFilter === 'REGULAR' && item.behavior !== 'REGULAR') return false;
       if (dueBehaviorFilter === 'CHRONIC' && item.behavior !== 'CHRONIC_DUE') return false;
 
@@ -596,16 +607,16 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     showToast(isBn ? 'তাগাদা মেসেজ ক্লিপবোর্ডে কপি হয়েছে!' : 'Reminder notice copied to clipboard!');
   };
 
-  // WhatsApp reminder for a dues-directory row: finished-month dues + current
-  // month due combined, so the message never says ৳0 for a current-month-only defaulter.
+  // WhatsApp reminder for a dues-directory row: the ONE shared dues total
+  // (this month + finished months), so the message never says ৳0 for a
+  // student who owes only old months.
   const duesWhatsappLink = (item: typeof studentFeeProfiles[0]) => {
     const s = item.student;
     const phone = String(s.guardianPhone || '').replace(/[^0-9]/g, '');
     if (!phone) return null;
     const intl = phone.startsWith('880') ? phone : '880' + phone.replace(/^0/, '');
-    const hist = dueHistoryById.get(s.id);
-    const totalMonths = (hist?.dueMonths || 0) + (item.dueThisMonth > 0 ? 1 : 0);
-    const totalAmount = (hist?.dueAmount || 0) + item.dueThisMonth;
+    const totalMonths = item.agedMonths + (item.dueThisMonth > 0 ? 1 : 0);
+    const totalAmount = item.totalDue;
     if (totalMonths === 0) return null;
     const msg = `সম্মানিত অভিভাবক, আপনার সন্তান ${s.nameBn || s.name} (শ্রেণি: ${s.classLevel})-এর ${totalMonths} মাসের ফি বাবদ মোট ৳${totalAmount.toLocaleString()} বকেয়া রয়েছে। অনুগ্রহ করে দ্রুত পরিশোধ করবেন। ধন্যবাদ।`;
     return `https://wa.me/${intl}?text=${encodeURIComponent(msg)}`;
@@ -828,6 +839,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {isBn ? 'প্রদেয় মোট বাজেট:' : 'Total Expected:'} <strong className="text-slate-800 dark:text-slate-100 font-mono">৳{isBn ? formatBanglaNumber(aggregateMetrics.totalExpectedFees) : aggregateMetrics.totalExpectedFees.toLocaleString()}</strong>
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {isBn ? `চলতি মাস ৳${formatBanglaNumber(aggregateMetrics.currentMonthDueFees)} + পুরনো ৳${formatBanglaNumber(aggregateMetrics.agedDueFees)}` : `This month ৳${aggregateMetrics.currentMonthDueFees.toLocaleString()} + old ৳${aggregateMetrics.agedDueFees.toLocaleString()}`}
             </p>
           </div>
 

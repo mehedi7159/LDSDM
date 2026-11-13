@@ -39,7 +39,7 @@ import { VoucherPrintModal } from './finance/VoucherPrintModal';
 import { HighImpactSummaryCards } from './finance/HighImpactSummaryCards';
 import { FinanceReportView } from './FinanceReportView';
 import { formatNumber } from '../services/utils';
-import { calculateSingleStudentDue } from '../services/studentDuesService';
+import { calculateTotalDues, localMonthStr, academicYearFallbackStartMonth } from '../services/studentDuesService';
 
 interface FinanceManagerProps {
   initialTab?: FinanceTab;
@@ -56,6 +56,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     classes = [], 
     transactions = [], 
     feeStructures = [], 
+    academicYears = [],
     addTransaction, 
     updateTransaction, 
     deleteTransaction, 
@@ -125,17 +126,17 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
     const netBalance = totalIncome - totalExpense;
 
-    // Pending dues — computed by the ONE canonical dues service (the same
-    // calculation the fee-collection screen and the staff mobile app use:
-    // class fee structure − this month's recorded payments). This replaces
-    // the old placeholder formula (per-student monthlyFee × 0.35) which was
-    // disconnected from both the fee structures and the transaction ledger.
-    let totalDues = 0;
-    students.forEach(st => {
-      if (st.status === 'Active' && !st.isFormer) {
-        totalDues += calculateSingleStudentDue(st, feeStructures, transactions, undefined, feeTypes).dueThisMonth;
-      }
-    });
+    // Pending dues — the ONE shared dues total (calculateTotalDues): this
+    // month's unpaid + every finished month's unpaid, same student set /
+    // month / feeTypes as the dashboard, fee page and reports. (The old
+    // per-student current-month loop was the same math for the current
+    // month only — the aged backlog was missing, so the header disagreed
+    // with the fee page and the reports.)
+    const month = localMonthStr();
+    const totalDues = calculateTotalDues(
+      students.filter(st => st.status === 'Active' && !st.isFormer),
+      feeStructures, transactions, month, feeTypes,
+      academicYearFallbackStartMonth(academicYears, month)).totalDue;
 
     return {
       todayIncome,
@@ -145,7 +146,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       totalDues: Math.round(totalDues),
       totalTransactions: transactions.length
     };
-  }, [transactions, students, feeStructures, feeTypes]);
+  }, [transactions, students, feeStructures, feeTypes, academicYears]);
 
   const navTabs: { 
     id: FinanceTab; 
@@ -284,7 +285,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'বকেয়া ফি (সম্ভাব্য)' : 'Pending Dues'}</div>
+            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'বকেয়া ফি' : 'Pending Dues'}</div>
             <div className="text-xl font-black text-amber-300 mt-0.5">৳{formatNumber(kpis.totalDues, language)}</div>
             <div className="text-[10px] text-amber-200 font-medium">{isBn ? 'তাগাদা অ্যালার্ট' : 'Dues Alert'}</div>
           </div>
@@ -381,6 +382,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             students={students}
             classes={classes}
             feeStructures={feeStructures}
+            feeTypes={feeTypes}
+            academicYears={academicYears}
             transactions={transactions}
             language={language}
             onAddTransaction={addTransaction}
