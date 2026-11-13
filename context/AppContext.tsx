@@ -22,6 +22,7 @@ import {
   StaffLeaveRecord
 } from '../types';
 import { recordPromotionAuditEvent } from '../services/promotionService';
+import { planTrashRestore } from '../services/trashRestore';
 import type { 
   CustomRole, 
   InstitutionMember, 
@@ -443,7 +444,7 @@ interface AppContextType extends AppState {
   deleteNotice: (id: string) => void;
   setNotices: (notices: NoticeItem[]) => void;
   togglePinNotice: (id: string) => void;
-  restoreFromTrash: (trashId: string) => void;
+  restoreFromTrash: (trashId: string) => { success: boolean; message?: string; pairedRestored?: boolean };
   permanentlyDeleteTrashItem: (trashId: string) => void;
   restoreAllFromTrash: () => void;
   emptyTrash: () => void;
@@ -6583,9 +6584,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setFeeTypes(types);
   };
 
-  const restoreFromTrash = (trashId: string) => {
+  const restoreFromTrash = (trashId: string): { success: boolean; message?: string; pairedRestored?: boolean } => {
     const item = trashBin.find(t => t.id === trashId);
-    if (!item) return;
+    if (!item) return { success: false };
 
     const trashFieldByType: Record<string, string> = {
       student: 'students',
@@ -6598,27 +6599,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       user: 'users',
       notice: 'notices',
     };
-    if (item.type === 'student') {
-      setStudents(prev => [...prev, item.data]);
-    } else if (item.type === 'subject') {
-      setSubjects(prev => [...prev, item.data]);
-    } else if (item.type === 'exam') {
-      setExams(prev => [...prev, item.data]);
-    } else if (item.type === 'class') {
-      setClasses(prev => [...prev, item.data]);
-    } else if (item.type === 'transaction') {
-      setTransactions(prev => [item.data, ...prev]);
-    } else if (item.type === 'section') {
-      // Phase 1 fix: sections were dropped from trash without being
-      // restored anywhere (no branch existed) — now they restore.
-      setSections(prev => [...prev, item.data]);
-    } else if (item.type === 'teacher') {
-      setTeachers(prev => [...prev, item.data]);
-    } else if (item.type === 'user') {
-      setUsers(prev => [...prev, item.data]);
-    } else if (item.type === 'notice') {
-      setNotices(prev => [...prev, item.data]);
-    } else if (item.type === 'member_application') {
+    if (item.type === 'member_application') {
       // Phase 2: a rejected application is a RECORD in the bin, not a
       // one-click restore — its member doc lives in the members
       // subcollection, not main_store, so bringing an applicant back
@@ -6626,20 +6607,60 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // BEFORE the trash removal below, so a restore click here can
       // never silently delete the record (the Recycle Bin hides the
       // restore button for this type).
-      return;
+      return { success: false };
     }
 
-    setTrashBin(prev => prev.filter(t => t.id !== trashId));
+    // Paired restore + duplicate check (services/trashRestore): a
+    // teacher and its login were trashed as two bin items — restore
+    // both in one plan, or neither when a live record already holds
+    // the same id/code/email/studentId.
+    const plan = planTrashRestore(trashBin, item, {
+      students, teachers, users, subjects, exams, classes, sections, transactions, notices,
+    });
+    if (plan.clash) return { success: false, message: plan.clash };
+
+    for (const entry of plan.toRestore) {
+      if (entry.type === 'student') {
+        setStudents(prev => [...prev, entry.data]);
+      } else if (entry.type === 'subject') {
+        setSubjects(prev => [...prev, entry.data]);
+      } else if (entry.type === 'exam') {
+        setExams(prev => [...prev, entry.data]);
+      } else if (entry.type === 'class') {
+        setClasses(prev => [...prev, entry.data]);
+      } else if (entry.type === 'transaction') {
+        setTransactions(prev => [entry.data, ...prev]);
+      } else if (entry.type === 'section') {
+        // Phase 1 fix: sections were dropped from trash without being
+        // restored anywhere (no branch existed) — now they restore.
+        setSections(prev => [...prev, entry.data]);
+      } else if (entry.type === 'teacher') {
+        setTeachers(prev => [...prev, entry.data]);
+      } else if (entry.type === 'user') {
+        setUsers(prev => [...prev, entry.data]);
+      } else if (entry.type === 'notice') {
+        setNotices(prev => [...prev, entry.data]);
+      }
+    }
+
+    const restoreIds = plan.toRestore.map(t => t.id);
+    setTrashBin(prev => prev.filter(t => !restoreIds.includes(t.id)));
     // Phase 1: the restore travels through the trash-op writer — the
     // trash removal is computed from CURRENT cloud trash (never a
     // stale local list) and the record is unioned back in the SAME
     // write, so a restore can never leave a record in neither place.
-    const restoreField = trashFieldByType[item.type];
+    // A paired teacher/login restore travels in this ONE call.
+    const upserts: Record<string, any[]> = {};
+    for (const entry of plan.toRestore) {
+      const field = trashFieldByType[entry.type];
+      if (field) (upserts[field] || (upserts[field] = [])).push(entry.data);
+    }
     void confirmTrashOpCloudSync(
-      [trashId],
-      restoreField ? { [restoreField]: [item.data] } : {},
+      restoreIds,
+      upserts,
       TRASH_CLOUD_FAILURE_MESSAGE
     );
+    return { success: true, pairedRestored: plan.paired };
   };
 
   const permanentlyDeleteTrashItem = (trashId: string) => {
