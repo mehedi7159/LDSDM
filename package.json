@@ -18,6 +18,7 @@
     "test:student-save-loss": "tsx scripts/verify-student-save-data-loss.ts",
     "test:job1-notices-split": "tsx scripts/verify-job1-notices-split.ts",
     "test:api-admin-500": "tsx scripts/verify-api-admin-500.ts",
+    "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
     "test:academic": "tsx scripts/test-academic-foundation.ts",
     "test:academic-assignments": "tsx scripts/test-academic-assignments.ts",
     "test:exam-marks": "tsx scripts/test-exam-marks-foundation.ts",

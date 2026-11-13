@@ -42,6 +42,25 @@ export function generateStudentId(): string {
 }
 
 /**
+ * Next free studentId for a preferred one: the preferred ID passes
+ * through when free, otherwise the next free number up (2026174 ->
+ * 2026175 -> ...). Only resolves the ID of the student being created —
+ * never rewrites an existing student's ID.
+ */
+export function resolveUniqueStudentId(preferred: string, existingStudentIds: Array<string | undefined>): string {
+  const taken = new Set(existingStudentIds.filter(Boolean));
+  if (!taken.has(preferred)) return preferred;
+  if (/^\d+$/.test(preferred)) {
+    let next = Number(preferred) + 1;
+    while (taken.has(String(next))) next++;
+    return String(next);
+  }
+  let suffix = 2;
+  while (taken.has(`${preferred}-${suffix}`)) suffix++;
+  return `${preferred}-${suffix}`;
+}
+
+/**
  * Normalize any student object (legacy or new) to the standard Student model.
  * Guarantees stable ID, consistent status, and backward compatibility.
  */
@@ -241,7 +260,8 @@ function stripUndefinedValues<T extends object>(record: T): T {
 export function buildCreateStudentPayload(
   input: Omit<Student, 'id'>,
   institutionId: string = CANONICAL_PRIMARY_INSTITUTION_ID,
-  actor?: { uid: string; email: string }
+  actor?: { uid: string; email: string },
+  existingStudentIds: Array<string | undefined> = []
 ): { student: Student; error?: string } {
   // Validate required fields
   const validation = validateStudent(input, { isNewRegistration: true });
@@ -257,6 +277,10 @@ export function buildCreateStudentPayload(
 
   const student: Student = stripUndefinedValues({
     ...input,
+    // Save-time guard: a requested studentId that is already taken
+    // resolves to the next free one, so a duplicate can never be saved
+    // even if a caller passes one in directly.
+    studentId: input.studentId ? resolveUniqueStudentId(String(input.studentId), existingStudentIds) : input.studentId,
     id: stableId,
     institutionId: input.institutionId || institutionId,
     status,

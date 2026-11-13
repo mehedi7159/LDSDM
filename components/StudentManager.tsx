@@ -52,7 +52,7 @@ import {
 import type { FeeDiscountType } from '../types/student';
 import { amountFor, isFeeTypeEnabled } from '../services/feeTypes';
 import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE } from '../services/cloudConfirm';
-import { recordStudentAuditEvent } from '../services/studentService';
+import { recordStudentAuditEvent, resolveUniqueStudentId } from '../services/studentService';
 import { StudentProfileModal } from './StudentProfileModal';
 import { AccessRestrictedView } from './AccessRestrictedView';
 import { ClassPromotionModal } from './ClassPromotionModal';
@@ -347,7 +347,13 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       : 'Active';
 
     const cleanRoll = formData.roll?.trim() || '';
-    const autoStudentId = formData.studentId?.trim() || `${new Date().getFullYear()}${cleanRoll ? cleanRoll.padStart(3, '0') : String(students.length + 1).padStart(3, '0')}`;
+    // Auto ID (year+roll, or year+count when no roll): resolve against
+    // every other student's ID, so a new admission never reuses one —
+    // the student's own ID does not count when editing.
+    const autoStudentId = resolveUniqueStudentId(
+      formData.studentId?.trim() || `${new Date().getFullYear()}${cleanRoll ? cleanRoll.padStart(3, '0') : String(students.length + 1).padStart(3, '0')}`,
+      students.filter(s => s.id !== editingId).map(s => s.studentId)
+    );
 
     const dataToSave = {
       ...formData,
