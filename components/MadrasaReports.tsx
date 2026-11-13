@@ -8,6 +8,7 @@ import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
 import { calculateTotalDues, calculateFeeAging, academicYearFallbackStartMonth } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
+import { calcPassRate } from '../services/gradingEngine';
 
 /**
  * MadrasaReports — the Dashboard Overview's report center.
@@ -316,7 +317,7 @@ export const MadrasaReports: React.FC = () => {
       return {
         exam,
         appeared: rows.length,
-        passRate: Math.round((passed / rows.length) * 100),
+        passRate: calcPassRate(passed, rows.length),
         avgGpa: rows.reduce((s, r) => s + (r.gpa || 0), 0) / rows.length
       };
     } catch {
@@ -352,7 +353,7 @@ export const MadrasaReports: React.FC = () => {
         if (appeared.length === 0) return { name: cls, appeared: 0, passRate: null as number | null };
         const clsSubjects = subjects.filter(s => s.classLevel === cls);
         const passed = appeared.filter(st => !calculateTotalGPA(clsSubjects, marks, st.id, exam.id, st.group, exams).isFail).length;
-        return { name: cls, appeared: appeared.length, passRate: Math.round((passed / appeared.length) * 100) };
+        return { name: cls, appeared: appeared.length, passRate: calcPassRate(passed, appeared.length) };
       }).sort((a, b) => (b.passRate ?? -1) - (a.passRate ?? -1));
     } catch {
       return [];

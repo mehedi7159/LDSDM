@@ -31,6 +31,18 @@ export interface StudentExamSummaryResult {
 }
 
 /**
+ * The one pass-rate calculation for every page (dashboard, exam results,
+ * reports): passed / evaluated students, 1 decimal. A student counts as
+ * evaluated once they have at least one mark in the exam; 0 evaluated
+ * is 0%, never 100%. Pass/fail itself stays with calculateTotalGPA
+ * (no marks = fail) — this only unifies the rate.
+ */
+export function calcPassRate(passed: number, evaluated: number): number {
+  if (!evaluated || evaluated <= 0) return 0;
+  return Number(((passed / evaluated) * 100).toFixed(1));
+}
+
+/**
  * Normalizes mark to 100 percentage scale for grade evaluation
  */
 export function calculatePercentage(obtained: number, fullMarks: number): number {

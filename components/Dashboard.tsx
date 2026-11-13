@@ -61,6 +61,7 @@ import {
   Cell 
 } from 'recharts';
 import { calculateTotalGPA } from '../services/utils';
+import { calcPassRate } from '../services/gradingEngine';
 import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
@@ -747,7 +748,7 @@ export const Dashboard = () => {
     }
 
     const totalEvaluated = passed + failed;
-    const passRate = totalEvaluated > 0 ? Number(((passed / totalEvaluated) * 100).toFixed(1)) : 0;
+    const passRate = calcPassRate(passed, totalEvaluated);
     const overallAverageGpa = totalEvaluated > 0 
       ? Number((performers.reduce((sum, s) => sum + s.gpa, 0) / totalEvaluated).toFixed(2)) 
       : 0;
@@ -759,7 +760,7 @@ export const Dashboard = () => {
       const clsPerf = performers.filter(s => s && s.classLevel === cls.name);
       const clsEvaluated = clsPerf.length;
       const clsPassed = clsPerf.filter(s => !s.isFail).length;
-      const clsPassRate = clsEvaluated > 0 ? Math.round((clsPassed / clsEvaluated) * 100) : 0;
+      const clsPassRate = calcPassRate(clsPassed, clsEvaluated);
       const clsAvgGpa = clsEvaluated > 0 
         ? Number((clsPerf.reduce((sum, s) => sum + s.gpa, 0) / clsEvaluated).toFixed(2)) 
         : 0;

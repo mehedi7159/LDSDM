@@ -32,6 +32,7 @@ import {
   FileText
 } from 'lucide-react';
 import { formatNumber, calculateTotalGPA, calculateGrade } from '../../services/utils';
+import { calcPassRate } from '../../services/gradingEngine';
 import { ExamManager } from '../ExamManager';
 import { MarksEntry } from '../MarksEntry';
 // Phase 5: the marksheet/result sub-views are the heaviest files in this
@@ -108,7 +109,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
         totalExamsCount,
         activeExamName: isBn ? 'কোনো সক্রিয় পরীক্ষা নেই' : 'No active exam',
         totalMarksEntries,
-        passRate: '0.0',
+        passRate: 0,
         gpa5Count: 0,
         evaluatedStudentsCount: 0
       };
@@ -132,9 +133,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
     });
 
     const evaluatedStudentsCount = activeStudentIds.length;
-    const passRate = evaluatedStudentsCount > 0 
-      ? ((passCount / evaluatedStudentsCount) * 100).toFixed(1) 
-      : '100.0';
+    const passRate = calcPassRate(passCount, evaluatedStudentsCount);
 
     return {
       totalExamsCount,
@@ -228,13 +227,19 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
     const classBreakdown = classes.map(cls => {
       const clsStudents = students.filter(s => s.classLevel === cls.name && s.status === 'Active' && !s.isFormer);
       const clsSubjects = subjects.filter(s => s.classLevel === cls.name);
-      
+
+      // Pass rate counts only evaluated students (at least 1 mark in this
+      // exam); a student with no marks is not evaluated, not a pass or a fail.
+      const evaluatedStudents = clsStudents.filter(st =>
+        marks.some(m => m.studentId === st.id && m.examId === examObj.id)
+      );
+
       let pass = 0;
       let fail = 0;
       let gpa5 = 0;
       let totalMarksAccum = 0;
 
-      clsStudents.forEach(st => {
+      evaluatedStudents.forEach(st => {
         const res = calculateTotalGPA(clsSubjects, marks, st.id, examObj.id, st.group, exams);
         if (res.isFail) {
           fail++;
@@ -246,7 +251,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       });
 
       const total = clsStudents.length;
-      const rate = total > 0 ? ((pass / total) * 100).toFixed(1) : '0.0';
+      const rate = calcPassRate(pass, evaluatedStudents.length);
       const avgMarks = total > 0 ? (totalMarksAccum / total).toFixed(1) : '0';
 
       return {
@@ -255,7 +260,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
         pass,
         fail,
         gpa5,
-        passRate: parseFloat(rate),
+        passRate: rate,
         avgMarks
       };
     });
