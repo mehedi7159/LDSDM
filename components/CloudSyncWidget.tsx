@@ -46,6 +46,7 @@ import { RestorePreviewModal } from './ui/RestorePreview';
 import { db } from '../services/firebase';
 import { doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { formatSafeDate, formatSafeTime } from '../services/utils';
+import type { PendingPayloadItem } from '../services/payloadQueue';
 
 export const CloudSyncWidget: React.FC = () => {
   const { 
@@ -85,6 +86,9 @@ export const CloudSyncWidget: React.FC = () => {
 
   // Confirmation dialogs state
   const [confirmPullOpen, setConfirmPullOpen] = useState(false);
+  // Pending-payload Discard confirms first: the payload is the only
+  // copy of data that has not reached the cloud yet.
+  const [confirmDiscardPayload, setConfirmDiscardPayload] = useState<PendingPayloadItem | null>(null);
   const [cloudPreview, setCloudPreview] = useState<{ snap: any; preview: RestorePreview } | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selectedDeleteSnapshotId, setSelectedDeleteSnapshotId] = useState<string | null>(null);
@@ -309,6 +313,16 @@ export const CloudSyncWidget: React.FC = () => {
 
   const cloudLastKnownGoodId = cloudSnapshots.find((s) => isLastKnownGoodSnapshot(s))?.id;
 
+  // One label for a pending payload, shared by the queue list and the
+  // Discard confirm dialog — field + record count, so the user sees
+  // exactly what they are about to throw away.
+  const pendingPayloadLabel = (item: PendingPayloadItem): string =>
+    item.op === 'delete'
+      ? (language === 'bn' ? `মোছা: ${(item.removals || []).map(r => r.field).join(', ')}` : `Delete: ${(item.removals || []).map(r => r.field).join(', ')}`)
+      : item.op === 'trashOp'
+        ? (language === 'bn' ? 'ট্র্যাশ অপারেশন' : 'Trash operation')
+        : (language === 'bn' ? `${item.field} — ${(item.records || []).length}টি রেকর্ড` : `${item.field} — ${(item.records || []).length} record(s)`);
+
   return (
     <div className="space-y-6">
       {/* Real-time sync notification toast */}
@@ -361,15 +375,11 @@ export const CloudSyncWidget: React.FC = () => {
             {pendingPayloads.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 text-[11px] text-amber-900 dark:text-amber-200">
                 <span className="font-semibold truncate">
-                  {item.op === 'delete'
-                    ? (language === 'bn' ? `মোছা: ${(item.removals || []).map(r => r.field).join(', ')}` : `Delete: ${(item.removals || []).map(r => r.field).join(', ')}`)
-                    : item.op === 'trashOp'
-                      ? (language === 'bn' ? 'ট্র্যাশ অপারেশন' : 'Trash operation')
-                      : (language === 'bn' ? `${item.field} — ${(item.records || []).length}টি রেকর্ড` : `${item.field} — ${(item.records || []).length} record(s)`)}
+                  {pendingPayloadLabel(item)}
                 </span>
                 <button
                   type="button"
-                  onClick={() => discardPendingPayload(item.id)}
+                  onClick={() => setConfirmDiscardPayload(item)}
                   className="text-amber-700 dark:text-amber-300 hover:text-rose-700 underline shrink-0 cursor-pointer"
                   title={language === 'bn' ? 'এই অপেক্ষমাণ তথ্য ইচ্ছাকৃতভাবে বাদ দিন' : 'Deliberately discard this queued payload'}
                 >
@@ -881,6 +891,23 @@ export const CloudSyncWidget: React.FC = () => {
         title={language === 'bn' ? 'স্ন্যাপশট ডিলিট করবেন?' : 'Delete Snapshot?'}
         message={language === 'bn' ? 'এই ব্যাকআপ ফাইলটি ক্লাউড থেকে মুছে ফেলা হবে।' : 'This snapshot backup will be permanently deleted.'}
         confirmLabel={language === 'bn' ? 'ডিলিট করুন' : 'Delete'}
+        cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        variant="danger"
+      />
+
+      {/* Confirmation Dialog: Discard Pending Payload — the payload is
+          the only copy of data that has not reached the cloud yet. */}
+      <ConfirmDialog
+        isOpen={!!confirmDiscardPayload}
+        onClose={() => setConfirmDiscardPayload(null)}
+        onConfirm={() => {
+          if (confirmDiscardPayload) discardPendingPayload(confirmDiscardPayload.id);
+          setConfirmDiscardPayload(null);
+        }}
+        title={language === 'bn' ? 'এই অপেক্ষমাণ তথ্য বাদ দেবেন?' : 'Discard this pending data?'}
+        message={language === 'bn' ? 'এই অপেক্ষমাণ তথ্য cloud-এ যায়নি — বাদ দিলে আর ফিরে পাওয়া যাবে না' : 'This pending data has not reached the cloud yet — once discarded, it cannot be recovered'}
+        highlightText={confirmDiscardPayload ? pendingPayloadLabel(confirmDiscardPayload) : undefined}
+        confirmLabel={language === 'bn' ? 'হ্যাঁ, বাদ দিন' : 'Yes, Discard'}
         cancelLabel={language === 'bn' ? 'বাতিল' : 'Cancel'}
         variant="danger"
       />

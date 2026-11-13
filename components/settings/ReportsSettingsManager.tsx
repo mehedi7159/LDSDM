@@ -83,6 +83,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
     marks = [],
     transactions = [],
     trashBin = [],
+    users = [],
     isAdmin,
     isSuperAdmin,
     isOwnerAdmin,
@@ -95,6 +96,12 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
 
   const { showToast } = useTheme();
   const isBn = language === 'bn';
+  // One entry per tile in the Diagnostics Record Count Matrix below —
+  // the header counts the tiles rendered, so a new collection cannot
+  // leave the header text stale again.
+  const diagnosticTileCollections = [
+    students, teachers, classes, subjects, exams, marks, transactions, trashBin, notices, users,
+  ];
   const [activeTab, setActiveTab] = useState<ReportsSettingsSubTab>(initialSubTab);
 
   // Sync internal state when external initialSubTab changes
@@ -608,6 +615,12 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                 else if (tab === 'marks' || tab === 'results') onNavigateTab ? onNavigateTab('results') : setActiveTab('admin_reports');
                 else if (tab === 'finance') onNavigateTab ? onNavigateTab('finance') : setActiveTab('admin_reports');
                 else if (tab === 'notices') setActiveTab('notices');
+                // 'web_results' is the internal results tab (ExamResultsManager) —
+                // 'public_web_results' is the public portal manager, not this.
+                else if (tab === 'academic_reports') onNavigateTab ? onNavigateTab('academic_reports') : setActiveTab('admin_reports');
+                else if (tab === 'attendance') onNavigateTab ? onNavigateTab('attendance') : setActiveTab('admin_reports');
+                else if (tab === 'web_results') onNavigateTab ? onNavigateTab('web_results') : setActiveTab('admin_reports');
+                else showToast({ type: 'error', message: isBn ? 'এই মডিউল খোলা যায়নি' : 'This module could not be opened' });
               }} 
             />
           ) : (
@@ -1239,8 +1252,8 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {isBn 
-                  ? '৯টি মূল কালেকশনের রেকর্ড সংখ্যা।'
-                  : 'Record counts across all 9 core collections.'}
+                  ? `${formatNumber(diagnosticTileCollections.length, language)}টি মূল কালেকশনের রেকর্ড সংখ্যা।`
+                  : `Record counts across all ${diagnosticTileCollections.length} core collections.`}
               </p>
             </div>
 
@@ -1331,6 +1344,24 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </div>
               <div className="text-3xl font-black text-slate-900 dark:text-white">
                 {formatNumber(trashBin.length, language)}
+              </div>
+            </div>
+
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
+              <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase">{isBn ? 'নোটিশ' : 'Notices'}</span>
+              </div>
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
+                {formatNumber(notices.length, language)}
+              </div>
+            </div>
+
+ <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80">
+              <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase">{isBn ? 'লগইন অ্যাকাউন্ট' : 'Users'}</span>
+              </div>
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
+                {formatNumber(users.length, language)}
               </div>
             </div>
 

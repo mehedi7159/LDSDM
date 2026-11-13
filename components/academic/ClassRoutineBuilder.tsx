@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 
 export const ClassRoutineBuilder: React.FC = () => {
-  const { classes, subjects, teachers, language, confirmScheduleCloudSync, isRecordUnconfirmed } = useApp();
+  const { classes, subjects, teachers, language, schoolProfile, confirmScheduleCloudSync, isRecordUnconfirmed } = useApp();
   const isBn = language === 'bn';
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -453,7 +453,7 @@ export const ClassRoutineBuilder: React.FC = () => {
                     : `Teacher Timetable`)}
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {isBn ? 'শিক্ষাবর্ষ: ২০২৬ • মাদ্রাসা ও শিক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম' : 'Academic Year: 2026'}
+              {isBn ? `শিক্ষাবর্ষ: ${schoolProfile.academicYear || '—'} • মাদ্রাসা ও শিক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম` : `Academic Year: ${schoolProfile.academicYear || '—'}`}
             </p>
           </div>
           <div className="text-[11px] text-slate-400 dark:text-slate-500 hidden print:block">
@@ -520,8 +520,8 @@ export const ClassRoutineBuilder: React.FC = () => {
                               )}
                             </div>
 
-                            {/* Action buttons (hidden on print) */}
-                            <div className="flex items-center justify-end gap-1 mt-2 pt-1 border-t border-teal-100/80 opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
+                            {/* Action buttons (hidden on print) — always visible on touch screens (no hover there) */}
+                            <div className="flex items-center justify-end gap-1 mt-2 pt-1 border-t border-teal-100/80 opacity-0 max-md:opacity-100 focus-within:opacity-100 group-hover:opacity-100 transition-opacity print:hidden">
                               <button
                                 type="button"
                                 onClick={() => handleOpenEdit(match)}
