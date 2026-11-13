@@ -404,15 +404,53 @@ export const formatBanglaNumber = (num: number | string | undefined | null): str
 };
 
 /**
- * Generates an auto-incrementing voucher / receipt number
+ * Generates an auto-incrementing voucher / receipt number.
+ *
+ * Next serial = max(existing serial for this prefix+year) + 1 — never
+ * length + 1, so deleting a transaction can never free its number for
+ * reuse (or collide with a live one). Rows with no voucher number at
+ * all (legacy data) count as the floor instead, so the old count+1
+ * behaviour survives exactly where no numbers exist yet.
  */
 export const generateVoucherNo = (type: 'INCOME' | 'EXPENSE', existingData: any[] | number = 0): string => {
   const prefix = type === 'INCOME' ? 'MR' : 'DV';
   const year = new Date().getFullYear();
-  const count = typeof existingData === 'number' ? existingData : (Array.isArray(existingData) ? existingData.length : 0);
-  const serial = String(count + 1).padStart(4, '0');
+  if (typeof existingData === 'number') {
+    return `${prefix}-${year}-${String(existingData + 1).padStart(4, '0')}`;
+  }
+  const list = Array.isArray(existingData) ? existingData : [];
+  let maxSerial = 0;
+  let unnumbered = 0;
+  for (const item of list) {
+    const m = /^([A-Z]{2})-(\d{4})-(\d+)$/.exec(String(item?.voucherNo || ''));
+    if (!m) { unnumbered += 1; continue; }
+    if (m[1] === prefix && Number(m[2]) === year) maxSerial = Math.max(maxSerial, Number(m[3]));
+  }
+  const serial = String(Math.max(maxSerial, unnumbered) + 1).padStart(4, '0');
   return `${prefix}-${year}-${serial}`;
 };
+
+/**
+ * A voucher number no live or trashed transaction already uses: when the
+ * requested number collides (e.g. it was generated from the live list
+ * alone but a trashed transaction holds it), regenerate from the
+ * combined list until it is free. A missing/empty number is left alone.
+ */
+export function ensureUniqueVoucherNo(
+  voucherNo: string,
+  type: 'INCOME' | 'EXPENSE',
+  transactions: Array<{ voucherNo?: string }>,
+  trashedTransactions: Array<{ voucherNo?: string }> = []
+): string {
+  const used = new Set<string>();
+  for (const tx of transactions) if (tx.voucherNo) used.add(tx.voucherNo);
+  for (const tx of trashedTransactions) if (tx.voucherNo) used.add(tx.voucherNo);
+  let next = voucherNo;
+  while (next && used.has(next)) {
+    next = generateVoucherNo(type, [...transactions, ...trashedTransactions]);
+  }
+  return next;
+}
 
 /**
  * Safely parse any date value (ISO string, number, Firestore Timestamp, Date object)

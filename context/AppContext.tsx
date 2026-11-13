@@ -44,7 +44,7 @@ import {
   deleteInstitutionMembers,
   approveInstitutionMember
 } from '../services/rbac';
-import { generateId, deriveRoleFromDesignation } from '../services/utils';
+import { generateId, ensureUniqueVoucherNo, deriveRoleFromDesignation } from '../services/utils';
 import { signInGateForStatus } from '../services/staffRole';
 import {
   normalizeRoleKey,
@@ -6507,8 +6507,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const addTransaction = (txData: Omit<FinanceTransaction, 'id' | 'createdAt'>): FinanceTransaction => {
+    // A voucher number must stay unique even after its transaction was
+    // deleted: the trash still holds the number, so regenerate on
+    // collision instead of re-using it.
+    const trashedTransactions = trashBin
+      .filter(t => t.type === 'transaction')
+      .map(t => t.data as FinanceTransaction);
     const newTx: FinanceTransaction = {
       ...txData,
+      voucherNo: ensureUniqueVoucherNo(txData.voucherNo, txData.type, transactions, trashedTransactions),
       id: generateId(),
       createdAt: new Date().toISOString()
     };

@@ -51,6 +51,7 @@ import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DuesPrintModal } from './DuesPrintModal';
 import { computeDueHistory, monthShort, monthFull, type DueHistory } from '../../services/studentDuesHistory';
+import { amountFor } from '../../services/feeTypes';
 import { paymentMethodLabel, PAYMENT_METHOD_ORDER } from '../../services/paymentMethod';
 import { SegmentedControl } from '../ui/SegmentedControl';
 
@@ -203,6 +204,33 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   }, [feeStructures, selectedClass]);
 
   // Fee Heads in Collection Wizard
+  // New vs continuing (feeTypes.ts): admission is new-only, session is
+  // yearly continuing-only. New = admitted in the current calendar year;
+  // a missing admission date counts as continuing (dateless students are
+  // treated as old everywhere else, e.g. the aging fallback).
+  const isNewStudent = (s: Student | null): boolean => {
+    if (!s) return false;
+    return (s.admissionDate || '').slice(0, 4) === String(new Date().getFullYear());
+  };
+
+  // Sync the form's fee heads from a class structure, gating the
+  // one-time heads on the selected student's new/continuing status.
+  const syncFeeItemsForStudent = (s: Student) => {
+    const str = feeStructures.find(f => f.classLevel === s.classLevel);
+    if (!str) return;
+    const isNew = isNewStudent(s);
+    const sessionAmount = amountFor(str, 'session');
+    const admissionAmount = str.admissionFee || 0;
+    setFeeItems(prev => ({
+      ...prev,
+      tuition: { ...prev.tuition, amount: str.monthlyTuition, enabled: true },
+      boarding: { ...prev.boarding, amount: str.boardingFee || 0, enabled: Boolean(str.boardingFee) },
+      admission: { ...prev.admission, amount: admissionAmount, enabled: isNew && admissionAmount > 0 },
+      book: { ...prev.book, amount: str.bookFee || 0 },
+      session: { ...prev.session, amount: sessionAmount, enabled: !isNew && sessionAmount > 0 },
+    }));
+  };
+
   const [feeItems, setFeeItems] = useState<{
     tuition: { enabled: boolean; amount: number };
     boarding: { enabled: boolean; amount: number };
@@ -211,14 +239,19 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     session: { enabled: boolean; amount: number };
     other: { enabled: boolean; amount: number; label: string };
     waiver: number;
-  }>({
-    tuition: { enabled: true, amount: 700 },
-    boarding: { enabled: false, amount: 2600 },
-    admission: { enabled: false, amount: 1500 },
-    book: { enabled: false, amount: 800 },
-    session: { enabled: false, amount: 500 },
-    other: { enabled: false, amount: 0, label: 'বিবিধ' },
-    waiver: 0,
+  }>(() => {
+    // No hardcoded session fee: Fee Setup (amounts.session) is the source;
+    // 0 means no session fee set for the class.
+    const first = feeStructures.find(f => f.classLevel === selectedClass);
+    return {
+      tuition: { enabled: true, amount: 700 },
+      boarding: { enabled: false, amount: 2600 },
+      admission: { enabled: false, amount: 1500 },
+      book: { enabled: false, amount: 800 },
+      session: { enabled: false, amount: first ? amountFor(first, 'session') : 0 },
+      other: { enabled: false, amount: 0, label: 'বিবিধ' },
+      waiver: 0,
+    };
   });
 
   // Handle Class Switch in Form
@@ -234,6 +267,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         boarding: { ...prev.boarding, amount: str.boardingFee || 0 },
         admission: { ...prev.admission, amount: str.admissionFee || 0 },
         book: { ...prev.book, amount: str.bookFee || 0 },
+        session: { ...prev.session, amount: amountFor(str, 'session') },
       }));
     }
   };
@@ -396,33 +430,42 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       }
     });
 
-    // Monthly Teacher Salary Payroll Obligation
-    // If recorded this month or last month, use that; otherwise estimate based on reasonable benchmark
-    const monthlySalaryObligation = Math.max(teacherSalariesPaidThisMonth, lastMonthTeacherSalaries, 65000);
+    // Monthly Teacher Salary Payroll Obligation — recorded salaries only.
+    // No invented figure: when neither this month nor last month has a
+    // salary record, the obligation is unknown (null) and the coverage /
+    // readiness verdict is suppressed instead of measured against ৳65,000.
+    const hasSalaryRecord = teacherSalariesPaidThisMonth > 0 || lastMonthTeacherSalaries > 0;
+    const monthlySalaryObligation = hasSalaryRecord
+      ? Math.max(teacherSalariesPaidThisMonth, lastMonthTeacherSalaries)
+      : null;
     const studentFeeInflow = aggregateMetrics.totalCollectedFees;
 
-    // Coverage Ratio (%)
-    const coverageRatio = monthlySalaryObligation > 0 
+    // Coverage Ratio (%) — null when the obligation is unknown.
+    const coverageRatio = monthlySalaryObligation
       ? Math.min(100, Math.round((studentFeeInflow / monthlySalaryObligation) * 100))
-      : 100;
+      : null;
 
     // Remaining required student fees to safely disburse all teacher salaries
-    const salaryGap = Math.max(0, monthlySalaryObligation - studentFeeInflow);
-    const salarySurplus = Math.max(0, studentFeeInflow - monthlySalaryObligation);
+    const salaryGap = monthlySalaryObligation ? Math.max(0, monthlySalaryObligation - studentFeeInflow) : null;
+    const salarySurplus = monthlySalaryObligation ? Math.max(0, studentFeeInflow - monthlySalaryObligation) : null;
 
     // Readiness Status
-    let readinessStatus: 'READY' | 'PARTIAL' | 'CRITICAL' = 'CRITICAL';
-    let readinessTitleBn = 'বেতন প্রদানে ঘাটতি (বকেয়া আদায় জরুরি)';
-    let readinessBadgeColor = 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700';
+    let readinessStatus: 'READY' | 'PARTIAL' | 'CRITICAL' | 'UNKNOWN' = 'UNKNOWN';
+    let readinessTitleBn = 'বেতন নির্ধারণ নেই';
+    let readinessBadgeColor = 'bg-slate-100 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700';
 
-    if (coverageRatio >= 100) {
+    if (coverageRatio !== null && coverageRatio >= 100) {
       readinessStatus = 'READY';
       readinessTitleBn = '১০০% উস্তাদ বেতন সম্পূর্ণ সুরক্ষিত ও প্রস্তুত';
       readinessBadgeColor = 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700';
-    } else if (coverageRatio >= 60) {
+    } else if (coverageRatio !== null && coverageRatio >= 60) {
       readinessStatus = 'PARTIAL';
       readinessTitleBn = 'আংশিক বেতন প্রদানের সক্ষমতা তৈরি হয়েছে';
       readinessBadgeColor = 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700';
+    } else if (coverageRatio !== null) {
+      readinessStatus = 'CRITICAL';
+      readinessTitleBn = 'বেতন প্রদানে ঘাটতি (বকেয়া আদায় জরুরি)';
+      readinessBadgeColor = 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700';
     }
 
     return {
@@ -546,9 +589,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             ...prev,
             tuition: { ...prev.tuition, enabled: true, amount: currentStructure.monthlyTuition },
             boarding: { ...prev.boarding, enabled: Boolean(currentStructure.boardingFee), amount: currentStructure.boardingFee || 0 },
-            admission: { ...prev.admission, enabled: Boolean(currentStructure.admissionFee), amount: currentStructure.admissionFee || 0 },
+            admission: { ...prev.admission, enabled: Boolean(currentStructure.admissionFee) && (!selectedStudent || isNewStudent(selectedStudent)), amount: currentStructure.admissionFee || 0 },
             book: { ...prev.book, enabled: Boolean(currentStructure.bookFee), amount: currentStructure.bookFee || 0 },
-            session: { ...prev.session, enabled: false, amount: 0 },
+            session: { ...prev.session, enabled: !!selectedStudent && !isNewStudent(selectedStudent) && amountFor(currentStructure, 'session') > 0, amount: amountFor(currentStructure, 'session') },
           };
         case 'TUITION_ONLY':
           return {
@@ -573,7 +616,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             ...prev,
             tuition: { ...prev.tuition, enabled: false },
             boarding: { ...prev.boarding, enabled: false },
-            admission: { ...prev.admission, enabled: true, amount: currentStructure.admissionFee || 1500 },
+            admission: { ...prev.admission, enabled: !selectedStudent || isNewStudent(selectedStudent), amount: currentStructure.admissionFee || 1500 },
             book: { ...prev.book, enabled: true, amount: currentStructure.bookFee || 800 },
             session: { ...prev.session, enabled: false },
           };
@@ -588,14 +631,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     setSelectedClass(student.classLevel);
     setSelectedStudentId(student.id);
     setActiveSubTab('collect');
-    const str = feeStructures.find(f => f.classLevel === student.classLevel);
-    if (str) {
-      setFeeItems(prev => ({
-        ...prev,
-        tuition: { ...prev.tuition, amount: str.monthlyTuition, enabled: true },
-        boarding: { ...prev.boarding, amount: str.boardingFee || 0, enabled: Boolean(str.boardingFee) },
-      }));
-    }
+    syncFeeItemsForStudent(student);
     showToast(isBn ? `${student.nameBn || student.name}-এর ফি গ্রহণের ফর্ম লোড হয়েছে` : `Loaded fee form for ${student.name}`);
   };
 
@@ -864,28 +900,32 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
               {isBn ? 'উস্তাদ বেতন কভারেজ' : 'Teacher Salary Bridge'}
             </span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              salaryBridgeMetrics.coverageRatio >= 100 
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
-                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              salaryBridgeMetrics.coverageRatio === null
+                ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                : salaryBridgeMetrics.coverageRatio >= 100
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
             }`}>
-              {salaryBridgeMetrics.coverageRatio}% {isBn ? 'সুরক্ষিত' : 'Covered'}
+              {salaryBridgeMetrics.coverageRatio === null ? '—' : `${salaryBridgeMetrics.coverageRatio}% ${isBn ? 'সুরক্ষিত' : 'Covered'}`}
             </span>
           </div>
 
           <div className="my-2.5">
             <div className="text-xl sm:text-2xl font-black text-white flex items-baseline gap-1">
-              <span className="text-amber-400">{salaryBridgeMetrics.coverageRatio >= 100 ? '✅' : '⏳'}</span>
+              <span className="text-amber-400">{salaryBridgeMetrics.coverageRatio === null ? '—' : salaryBridgeMetrics.coverageRatio >= 100 ? '✅' : '⏳'}</span>
               <span className="text-xs sm:text-sm font-bold text-slate-200">{salaryBridgeMetrics.readinessTitleBn}</span>
             </div>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              {salaryBridgeMetrics.salaryGap > 0 
-                ? (isBn ? `বেতন ছাড়তে আরও প্রয়োজন ৳${formatBanglaNumber(salaryBridgeMetrics.salaryGap)}` : `Need ৳${salaryBridgeMetrics.salaryGap.toLocaleString()} more for salary`)
-                : (isBn ? `উদ্বৃত্ত তহবিল সংরক্ষিত আছে ৳${formatBanglaNumber(salaryBridgeMetrics.salarySurplus)}` : `Surplus ৳${salaryBridgeMetrics.salarySurplus.toLocaleString()}`)}
+              {salaryBridgeMetrics.salaryGap === null
+                ? (isBn ? 'বেতন নির্ধারণ নেই — এই/গত মাসে বেতনের রেকর্ড নেই।' : 'No salary set — no salary record for this or last month.')
+                : salaryBridgeMetrics.salaryGap > 0 
+                  ? (isBn ? `বেতন ছাড়তে আরও প্রয়োজন ৳${formatBanglaNumber(salaryBridgeMetrics.salaryGap)}` : `Need ৳${salaryBridgeMetrics.salaryGap.toLocaleString()} more for salary`)
+                  : (isBn ? `উদ্বৃত্ত তহবিল সংরক্ষিত আছে ৳${formatBanglaNumber(salaryBridgeMetrics.salarySurplus)}` : `Surplus ৳${salaryBridgeMetrics.salarySurplus.toLocaleString()}`)}
             </p>
           </div>
 
           <div className="pt-2 border-t border-slate-700/80 flex items-center justify-between text-xs text-slate-300">
-            <span>{isBn ? 'মাসিক বেতন বাজেট:' : 'Salary Obligation:'} <strong className="text-amber-300 font-mono">৳{isBn ? formatBanglaNumber(salaryBridgeMetrics.monthlySalaryObligation) : salaryBridgeMetrics.monthlySalaryObligation.toLocaleString()}</strong></span>
+            <span>{isBn ? 'মাসিক বেতন বাজেট:' : 'Salary Obligation:'} <strong className="text-amber-300 font-mono">{salaryBridgeMetrics.monthlySalaryObligation === null ? '—' : `৳${isBn ? formatBanglaNumber(salaryBridgeMetrics.monthlySalaryObligation) : salaryBridgeMetrics.monthlySalaryObligation.toLocaleString()}`}</strong></span>
             <button
               onClick={() => setActiveSubTab('salary-bridge')}
               className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-0.5"
@@ -989,7 +1029,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             <Scale className={`w-4 h-4 ${activeSubTab === 'salary-bridge' ? 'text-amber-400' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>{isBn ? 'বেতন ব্রিজ' : 'Salary Bridge'}</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300">
-              {salaryBridgeMetrics.coverageRatio}%
+              {salaryBridgeMetrics.coverageRatio === null ? '—' : `${salaryBridgeMetrics.coverageRatio}%`}
             </span>
           </button>
 
@@ -1090,7 +1130,11 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   </label>
                   <select
                     value={selectedStudentId}
-                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedStudentId(e.target.value);
+                      const picked = activeStudents.find(s => s.id === e.target.value);
+                      if (picked) syncFeeItemsForStudent(picked);
+                    }}
                     className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   >
                     <option value="">{isBn ? '-- ছাত্র নির্বাচন করুন --' : '-- Select Student --'}</option>
@@ -1670,14 +1714,14 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold text-slate-300">
                   <span>{isBn ? 'বেতন কভারেজ প্রোগ্রেস:' : 'Coverage Progress:'}</span>
-                  <span className="font-mono text-amber-400 text-sm">{salaryBridgeMetrics.coverageRatio}%</span>
+                  <span className="font-mono text-amber-400 text-sm">{salaryBridgeMetrics.coverageRatio === null ? '—' : `${salaryBridgeMetrics.coverageRatio}%`}</span>
                 </div>
                 <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden p-0.5">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      salaryBridgeMetrics.coverageRatio >= 100 ? 'bg-emerald-400' : 'bg-amber-400'
+                      (salaryBridgeMetrics.coverageRatio ?? 0) >= 100 ? 'bg-emerald-400' : 'bg-amber-400'
                     }`}
-                    style={{ width: `${Math.min(100, salaryBridgeMetrics.coverageRatio)}%` }}
+                    style={{ width: `${Math.min(100, salaryBridgeMetrics.coverageRatio ?? 0)}%` }}
                   />
                 </div>
               </div>
@@ -1687,7 +1731,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
                   <span className="text-[11px] text-slate-300 block">{isBn ? 'মোট উস্তাদ বেতন বাজেট' : 'Monthly Salary Budget'}</span>
                   <span className="text-lg font-black text-white font-mono">
-                    ৳ {isBn ? formatBanglaNumber(salaryBridgeMetrics.monthlySalaryObligation) : salaryBridgeMetrics.monthlySalaryObligation.toLocaleString()}
+                    {salaryBridgeMetrics.monthlySalaryObligation === null ? '—' : `৳ ${isBn ? formatBanglaNumber(salaryBridgeMetrics.monthlySalaryObligation) : salaryBridgeMetrics.monthlySalaryObligation.toLocaleString()}`}
                   </span>
                 </div>
 
@@ -1701,7 +1745,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
                   <span className="text-[11px] text-amber-300 block">{isBn ? 'বেতন পরিশোধে আরও প্রয়োজন' : 'Remaining Gap to Collect'}</span>
                   <span className="text-lg font-black text-amber-400 font-mono">
-                    ৳ {isBn ? formatBanglaNumber(salaryBridgeMetrics.salaryGap) : salaryBridgeMetrics.salaryGap.toLocaleString()}
+                    {salaryBridgeMetrics.salaryGap === null ? '—' : `৳ ${isBn ? formatBanglaNumber(salaryBridgeMetrics.salaryGap) : salaryBridgeMetrics.salaryGap.toLocaleString()}`}
                   </span>
                 </div>
               </div>
