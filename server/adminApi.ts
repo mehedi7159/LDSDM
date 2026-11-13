@@ -21,7 +21,7 @@
  * (server/firebaseRestAuth.ts, node:crypto + fetch only). Behaviour,
  * codes, and response shapes are unchanged.
  */
-import { SUPER_ADMIN_EMAIL } from './serverConfig';
+import { SUPER_ADMIN_EMAIL } from './serverConfig.js';
 import type { IncomingMessage, ServerResponse } from 'http';
 import {
   TokenVerificationError,
@@ -31,7 +31,7 @@ import {
   verifyFirebaseIdToken,
   lookupUserByUid,
   updateRestUser,
-} from './firebaseRestAuth';
+} from './firebaseRestAuth.js';
 
 const PRIMARY_OWNER_EMAIL = SUPER_ADMIN_EMAIL;
 

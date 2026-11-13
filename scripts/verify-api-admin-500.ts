@@ -17,7 +17,9 @@
  * Covers:
  *  - Static: walking the import graph from both api/admin handlers, no
  *    file in the graph contains `import.meta` (code, not comments), no
- *    import in the graph uses a `.ts` extension, and the graph never
+ *    import in the graph uses a `.ts` extension, every relative import
+ *    in the graph uses an explicit `.js` extension (the ESM-safe
+ *    invariant — see the follow-up note below), and the graph never
  *    reaches services/appConfig.ts (the import.meta source).
  *  - Server config: server/serverConfig.ts exports SUPER_ADMIN_EMAIL
  *    from process.env only (no import.meta), with the same historical
@@ -27,6 +29,21 @@
  *  - Runtime: the whole chain compiles to CommonJS with tsc and loads
  *    under plain node, and both handlers answer a GET with 405 and a
  *    POST with no idToken with 400 (no network, no Firebase needed).
+ *  - Runtime (ESM): the same chain compiles to ESM with tsc and loads
+ *    under plain node as ESM, answering 405/400 the same way.
+ *
+ * FOLLOW-UP (13 Nov 2026): Fix #1 removed import.meta from the chain,
+ * but live still returned 500 FUNCTION_INVOCATION_FAILED on every
+ * method, including GET. Reproduced locally: compiling the chain to
+ * ESM with tsc (the shape Vercel produces for a "type": "module"
+ * package) and loading it under plain node fails with
+ * ERR_MODULE_NOT_FOUND — Node's ESM loader cannot resolve extensionless
+ * relative imports ('./serverConfig', '../../server/adminApi'). The
+ * CommonJS test passed because require() resolves extensionless
+ * imports, so it could not see this. The fix is explicit `.js`
+ * extensions on every relative import in the chain (the standard
+ * ESM-compatible convention; TypeScript, esbuild and tsc --module
+ * commonjs all resolve './x.js' to x.ts / the compiled x.js).
  *
  * Live 500 cannot be verified locally — that needs a Vercel deploy plus
  * Function Logs after push.
@@ -68,7 +85,10 @@ function stripComments(src: string): string {
 function resolveRelative(fromFile: string, spec: string): string | null {
   if (!spec.startsWith('.')) return null;
   const base = path.resolve(path.dirname(path.join(repoRoot, fromFile)), spec);
-  for (const cand of [base, `${base}.ts`, path.join(base, 'index.ts')]) {
+  const cands = [base, `${base}.ts`, path.join(base, 'index.ts')];
+  // ESM-style '.js' specifier refers to the .ts source (tsc/esbuild resolve it).
+  if (spec.endsWith('.js')) cands.push(base.replace(/\.js$/, '.ts'));
+  for (const cand of cands) {
     if (fs.existsSync(cand) && fs.statSync(cand).isFile()) return path.relative(repoRoot, cand);
   }
   return null;
@@ -122,6 +142,15 @@ check('no .ts extension imports anywhere in the reachable chain', () => {
   );
 });
 
+check('every relative import in the reachable chain uses an explicit .js extension (ESM-safe)', () => {
+  const bad = graph.imports.filter((i) => i.spec.startsWith('.') && !i.spec.endsWith('.js'));
+  assert.deepStrictEqual(
+    bad,
+    [],
+    bad.map((i) => `${i.file} -> ${i.spec}`).join(', ')
+  );
+});
+
 check('chain never reaches services/appConfig.ts (the import.meta source)', () => {
   assert.ok(!graph.files.includes('services/appConfig.ts'), 'services/appConfig.ts must not be reachable from the handlers');
 });
@@ -136,12 +165,12 @@ check('server/serverConfig.ts exports SUPER_ADMIN_EMAIL from process.env, no imp
   assert.ok(src.includes('mehedihasansagor26@gmail.com'), 'must keep the historical fallback address');
 });
 
-check('both handler modules import the owner email from ./serverConfig', () => {
+check('both handler modules import the owner email from ./serverConfig.js', () => {
   for (const f of ['server/adminApi.ts', 'server/staffPasswordApi.ts']) {
     const src = readSource(f);
     assert.ok(
-      src.includes("from './serverConfig'"),
-      `${f} must import SUPER_ADMIN_EMAIL from ./serverConfig`
+      src.includes("from './serverConfig.js'"),
+      `${f} must import SUPER_ADMIN_EMAIL from ./serverConfig.js`
     );
     assert.ok(!src.includes('services/appConfig'), `${f} must not import services/appConfig`);
   }
@@ -227,6 +256,36 @@ async function call(handler, method, emitEnd) {
         );
         execFileSync('node', [runner], { cwd: tmp, stdio: 'pipe', encoding: 'utf8' });
       });
+    }
+    // ESM stage: the follow-up bug. tsc --module commonjs hides it
+    // (require() resolves extensionless imports), but a tsc --module
+    // esnext build — the shape Vercel produces for a "type": "module"
+    // package — fails at load with ERR_MODULE_NOT_FOUND on extensionless
+    // relative imports. This stage must stay green alongside the CJS one.
+    if (failed === 0) {
+      console.log('--- Runtime (ESM): chain compiles to ESM and loads under plain node ---');
+      const tmpEsm = fs.mkdtempSync(path.join(os.tmpdir(), 'ldsdm-verify-api-admin-500-esm-'));
+      try {
+        check('tsc compiles the reachable chain to ESM', () => {
+          execFileSync(
+            'npx',
+            ['tsc', ...graph.files, '--module', 'esnext', '--target', 'es2022', '--moduleResolution', 'bundler', '--esModuleInterop', '--skipLibCheck', '--outDir', tmpEsm],
+            { cwd: repoRoot, stdio: 'pipe', encoding: 'utf8' }
+          );
+        });
+        if (failed === 0) {
+          check('both compiled handlers load as ESM under plain node and answer GET with 405, POST without idToken with 400', () => {
+            const runner = path.join(tmpEsm, 'runner.mjs');
+            fs.writeFileSync(
+              runner,
+              `import assert from 'node:assert';\nimport { EventEmitter } from 'node:events';\nfunction mockRes() {\n  const res = { statusCode: 0, headers: {}, body: '' };\n  res.setHeader = (k, v) => { res.headers[k] = v; };\n  res.end = (b) => { res.body = b || ''; };\n  return res;\n}\nasync function call(handler, method, emitEnd) {\n  const req = new EventEmitter();\n  req.method = method;\n  const res = mockRes();\n  const done = new Promise((resolve) => { const origEnd = res.end; res.end = (b) => { origEnd(b); resolve(); }; });\n  await handler(req, res);\n  if (emitEnd) req.emit('end');\n  await done;\n  return res;\n}\nfor (const rel of ['api/admin/bootstrap-owner.js', 'api/admin/sync-staff-password.js']) {\n  const handler = (await import('./' + rel)).default;\n  assert.strictEqual(typeof handler, 'function', rel + ' must default-export a handler');\n  const get = await call(handler, 'GET', false);\n  assert.strictEqual(get.statusCode, 405, rel + ' GET must be 405, got ' + get.statusCode);\n  const post = await call(handler, 'POST', true);\n  assert.strictEqual(post.statusCode, 400, rel + ' POST without idToken must be 400, got ' + post.statusCode);\n  assert.ok(JSON.parse(post.body).code === 'ID_TOKEN_REQUIRED', rel + ' POST body must be ID_TOKEN_REQUIRED');\n}\nconsole.log('both handlers loaded as ESM and answered 405/400 as specified');\n`
+            );
+            execFileSync('node', [runner], { cwd: tmpEsm, stdio: 'pipe', encoding: 'utf8' });
+          });
+        }
+      } finally {
+        fs.rmSync(tmpEsm, { recursive: true, force: true });
+      }
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

@@ -12,6 +12,6 @@
  * Without a key the endpoint still responds, using its built-in heuristic
  * engine — exactly like the dev/server behaviour.
  */
-import { handleAiAdvisorApi } from '../../server/aiAssistantApi.ts';
+import { handleAiAdvisorApi } from '../../server/aiAssistantApi.js';
 
 export default handleAiAdvisorApi;
