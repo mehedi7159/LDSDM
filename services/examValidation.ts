@@ -82,6 +82,25 @@ export function validateExam(
     }
   }
 
+  // 6. Contribution percentages: the weighted parts must sum to ≤ 100.
+  // Above that, getConsolidatedMark clamps the current exam's weight to
+  // 0 while contributor weights stay unnormalized — the current exam's
+  // marks would silently stop counting. (Latent: no contributions UI
+  // exists in the app today; this guards the data path at save time.)
+  if (data.contributions && data.contributions.length > 0) {
+    let contributionSum = 0;
+    for (const c of data.contributions) {
+      if (typeof c.percentage !== 'number' || isNaN(c.percentage) || c.percentage < 0 || c.percentage > 100) {
+        errors.contributions = 'প্রতিটি অবদানের শতাংশ ০ থেকে ১০০ এর মধ্যে হতে হবে (Each contribution percentage must be 0-100)';
+        break;
+      }
+      contributionSum += c.percentage;
+    }
+    if (!errors.contributions && contributionSum > 100) {
+      errors.contributions = `অবদানের মোট শতাংশ ${contributionSum} — ১০০ এর বেশি হতে পারবে না (Contribution percentages must sum to 100 or less, got ${contributionSum})`;
+    }
+  }
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors
@@ -190,6 +209,17 @@ export function validateExamSubjectAssignment(
   }
   if (data.practicalFullMarks !== undefined && (data.practicalFullMarks < 0 || data.practicalFullMarks > fullMarks)) {
     errors.practicalFullMarks = 'ব্যবহারিক পূর্ণমান সঠিক নয় (Invalid practical full marks)';
+  }
+
+  // Component sum: same rule as subjects — present components must add
+  // up to full marks (CQ 70 + MCQ 30 + Practical 25 = 125 vs 100 is
+  // not a valid schedule).
+  const hasComponents = data.cqFullMarks !== undefined || data.mcqFullMarks !== undefined || data.practicalFullMarks !== undefined;
+  if (hasComponents) {
+    const componentSum = (data.cqFullMarks ?? 0) + (data.mcqFullMarks ?? 0) + (data.practicalFullMarks ?? 0);
+    if (componentSum !== fullMarks) {
+      errors.componentSum = `উপাদানগুলোর যোগফল ${componentSum}, কিন্তু পূর্ণমান ${fullMarks} (CQ ${data.cqFullMarks ?? 0} + MCQ ${data.mcqFullMarks ?? 0} + ব্যবহারিক ${data.practicalFullMarks ?? 0}) — যোগফল পূর্ণমানের সমান হতে হবে (Component marks must sum to full marks: ${componentSum} ≠ ${fullMarks})`;
+    }
   }
 
   return {
@@ -325,7 +355,8 @@ export function validateExamFinalization(
   exam: Exam,
   examSubjects: ExamSubjectAssignment[],
   marks: MarkRecord[],
-  students: Student[]
+  students: Student[],
+  subjects: Subject[] = []
 ): AcademicValidationResult {
   const errors: Record<string, string> = {};
 
@@ -350,9 +381,57 @@ export function validateExamFinalization(
     errors.negativeMarks = 'পরীক্ষার নম্বরে ঋণাত্মক মান রয়েছে, সংশোধন করুন (Negative mark values detected)';
   }
 
-  const hasExcessive = examMarks.some(m => !m.isAbsent && m.fullMarks && m.obtained > m.fullMarks);
+  // Total/component excess against the ASSIGNMENT's full marks (the
+  // exam's copy), falling back to the stored record value only when
+  // there is no assignment — a stored fullMarks of 100 must not hide
+  // an 80 against an assignment full of 70.
+  const assignmentBySubject = new Map(examSubjects.map(es => [es.subjectId, es]));
+  const hasExcessive = examMarks.some(m => {
+    if (m.isAbsent) return false;
+    const es = assignmentBySubject.get(m.subjectId);
+    if (m.obtained > (es?.fullMarks ?? m.fullMarks ?? 100)) return true;
+    if (m.obtainedCQ !== undefined && es?.cqFullMarks !== undefined && m.obtainedCQ > es.cqFullMarks) return true;
+    if (m.obtainedMCQ !== undefined && es?.mcqFullMarks !== undefined && m.obtainedMCQ > es.mcqFullMarks) return true;
+    if (m.obtainedPractical !== undefined && es?.practicalFullMarks !== undefined && m.obtainedPractical > es.practicalFullMarks) return true;
+    return false;
+  });
   if (hasExcessive) {
     errors.excessiveMarks = 'পূর্ণমানের চেয়ে বেশি প্রাপ্ত নম্বর পাওয়া গেছে (Marks exceeding full marks detected)';
+  }
+
+  // Absent students must not carry obtained marks.
+  const hasAbsentContradiction = examMarks.some(m => m.isAbsent && (
+    (m.obtained || 0) > 0 || (m.obtainedCQ || 0) > 0 || (m.obtainedMCQ || 0) > 0 || (m.obtainedPractical || 0) > 0
+  ));
+  if (hasAbsentContradiction) {
+    errors.absentContradiction = 'অনুপস্থিত শিক্ষার্থীর প্রাপ্ত নম্বর রয়েছে, সংশোধন করুন (Absent student has obtained marks)';
+  }
+
+  // Completeness: every active student in the exam's classes needs a
+  // mark for every scheduled subject that applies to their group.
+  // Missing entries block finalization — a half-marked exam must not
+  // be finalized by accident.
+  const classIds = new Set(examSubjects.map(es => es.classId));
+  const scopedStudents = students.filter(s =>
+    s.status === 'Active' && !s.isFormer &&
+    (classIds.has(s.classLevel) || (s.classId !== undefined && classIds.has(s.classId)))
+  );
+  const subjectById = new Map(subjects.map(s => [s.id, s]));
+  let unmarkedPairs = 0;
+  const unmarkedStudentIds = new Set<string>();
+  for (const st of scopedStudents) {
+    for (const es of examSubjects) {
+      const sub = subjectById.get(es.subjectId);
+      if (sub && sub.group && sub.group !== 'All' && sub.group !== st.group) continue;
+      const hasMark = examMarks.some(m => m.studentId === st.id && m.subjectId === es.subjectId);
+      if (!hasMark) {
+        unmarkedPairs++;
+        unmarkedStudentIds.add(st.id);
+      }
+    }
+  }
+  if (unmarkedPairs > 0) {
+    errors.incompleteMarks = `${unmarkedStudentIds.size} জন শিক্ষার্থীর মোট ${unmarkedPairs}টি বিষয়ে নম্বর বাকি রয়েছে — চূড়ান্ত করার আগে নম্বর দিন (Marks missing for ${unmarkedStudentIds.size} student(s) across ${unmarkedPairs} subject entries)`;
   }
 
   return {

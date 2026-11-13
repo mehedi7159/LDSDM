@@ -38,6 +38,7 @@ import {
   SmsGatewayConfig
 } from '../services/smsNotificationService';
 import { formatNumber } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
 
 interface ResultSmsNotificationModalProps {
   isOpen: boolean;
@@ -113,7 +114,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
   // Filter students for the selected class
   const classStudents = useMemo(() => {
     return students
-      .filter(s => s.classLevel === classLevel && s.status === 'Active' && !s.isFormer)
+      .filter(s => classNamesMatch(s.classLevel, classLevel) && s.status === 'Active' && !s.isFormer)
       .sort((a, b) => {
         const rollA = parseInt(a.roll || '0', 10);
         const rollB = parseInt(b.roll || '0', 10);
@@ -123,7 +124,7 @@ export const ResultSmsNotificationModal: React.FC<ResultSmsNotificationModalProp
 
   // Filter subjects for the class
   const classSubjects = useMemo(() => {
-    return subjects.filter(s => s.classLevel === classLevel);
+    return subjects.filter(s => classNamesMatch(s.classLevel, classLevel));
   }, [subjects, classLevel]);
 
   // Generate SMS Data items for all class students

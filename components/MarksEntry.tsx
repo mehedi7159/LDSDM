@@ -1,13 +1,15 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
 import { MARKS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { CheckCircle2, Loader2, Sparkles, AlertTriangle, Lock, UserCheck, ShieldAlert, Save, Users, UserPlus, BookOpen, Plus, Award, AlertCircle, Printer } from 'lucide-react';
 import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
 import { calculateSubjectGrade, calculateSubjectGradePoint } from '../services/gradingEngine';
+import { resolveEffectiveSubject } from '../services/examService';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 
@@ -109,6 +111,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     subjects, 
     marks, 
     exams, 
+    examSubjectAssignments,
     classes, 
     bulkUpdateMarks, 
     confirmMarksCloudSync,
@@ -164,7 +167,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     return userScope.classes.includes(cls.id) || userScope.classes.includes(cls.name);
   });
 
-  const classSubjectsInThisClass = subjects.filter(s => s.classLevel === selectedClass);
+  const classSubjectsInThisClass = subjects.filter(s => classNamesMatch(s.classLevel, selectedClass));
   const subjectsAssignedToThisExam = classSubjectsInThisClass.filter(s => s.examIds && s.examIds.includes(selectedExamId));
   const anySubjectAssignedToThisExam = subjectsAssignedToThisExam.length > 0;
 
@@ -199,6 +202,19 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
   const currentExam = exams.find(e => e.id === selectedExamId);
+  // One source for marks limits: the exam assignment when one exists,
+  // else the subject — the same source buildUpsertMarkPayload uses, so
+  // this screen can no longer accept a mark the builder then refuses
+  // (or refuse one the builder would accept). The header below shows
+  // the assignment's full marks when one exists.
+  const currentAssignment = useMemo(
+    () => examSubjectAssignments.find(es => es.examId === selectedExamId && es.subjectId === selectedSubjectId),
+    [examSubjectAssignments, selectedExamId, selectedSubjectId],
+  );
+  const effectiveSubject = useMemo(
+    () => resolveEffectiveSubject(currentSubject, currentAssignment),
+    [currentSubject, currentAssignment],
+  );
   const isExamLocked = !isOwnerAdmin && (currentExam?.status === 'FINALIZED' || currentExam?.status === 'ARCHIVED');
 
   // Admin mark-entry switches (Nov 2026): global OFF or this exam's
@@ -210,7 +226,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   const isEntryDisabled = isExamLocked || isEntryClosedByAdmin;
 
   const enrolledStudents = students
-    .filter(s => s.classLevel === selectedClass && s.status === 'Active' && !s.isFormer)
+    .filter(s => classNamesMatch(s.classLevel, selectedClass) && s.status === 'Active' && !s.isFormer)
     .filter(s => {
       if (!currentSubject || !currentSubject.group || currentSubject.group === 'All') return true;
       return s.group === currentSubject.group;
@@ -237,7 +253,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       saveTimeoutRef.current = null;
     }
     
-    if (!currentSubject || !selectedExamId || isExamLocked) return 'idle';
+    if (!effectiveSubject || !selectedExamId || isExamLocked) return 'idle';
     const studentIds = Object.keys(pendingUpdatesRef.current);
     if (studentIds.length === 0) return 'idle';
 
@@ -257,7 +273,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       const markData = pendingUpdatesRef.current[studentId];
       if (!markData) return;
       
-      const validation = validateStudentMark(markData, currentSubject, language);
+      const validation = validateStudentMark(markData, effectiveSubject, language);
       if (!validation.isValid) {
         remainingPending[studentId] = markData;
         return;
@@ -270,7 +286,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
       updates.push({
         studentId,
-        subjectId: currentSubject.id,
+        subjectId: effectiveSubject.id,
         examId: selectedExamId,
         obtained,
         obtainedCQ: cq,
@@ -278,9 +294,9 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
         obtainedPractical: practical,
         isAbsent: markData.isAbsent,
         absentReason: markData.absentReason,
-        total: currentSubject.fullMarks,
-        fullMarks: currentSubject.fullMarks,
-        passMarks: currentSubject.passMarks
+        total: effectiveSubject.fullMarks,
+        fullMarks: effectiveSubject.fullMarks,
+        passMarks: effectiveSubject.passMarks
       });
     });
 
@@ -352,7 +368,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     }
     setSaveStatus(nextMarks ? 'saving' : 'saved');
     return 'saved';
-  }, [currentSubject, selectedExamId, bulkUpdateMarks, confirmMarksCloudSync, language, isExamLocked, isEntryClosedByAdmin]);
+  }, [effectiveSubject, selectedExamId, bulkUpdateMarks, confirmMarksCloudSync, language, isExamLocked, isEntryClosedByAdmin]);
 
   // Retry re-confirms the last failed marks list (never re-saves).
   const retryMarksCloudSync = async () => {
@@ -440,7 +456,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
 
       pendingUpdatesRef.current[studentId] = updated;
 
-      const validation = validateStudentMark(updated, currentSubject, language);
+      const validation = validateStudentMark(updated, effectiveSubject, language);
       if (!validation.isValid) {
         setSaveStatus('error');
         // Invalid marks show a message, not just a red border — the
@@ -688,24 +704,24 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                   
                   {currentSubject?.hasCQ && (
                     <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-28">
-                      CQ ({currentSubject.cqMarks})
+                      CQ ({effectiveSubject?.cqMarks})
                     </th>
                   )}
 
                   {currentSubject?.hasMCQ && (
                     <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-28">
-                      MCQ ({currentSubject.mcqMarks})
+                      MCQ ({effectiveSubject?.mcqMarks})
                     </th>
                   )}
 
                   {currentSubject?.hasPractical && (
                     <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-28">
-                      ব্যবহারিক ({currentSubject.practicalMarks})
+                      ব্যবহারিক ({effectiveSubject?.practicalMarks})
                     </th>
                   )}
 
                   <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-32">
-                    মোট নম্বর ({currentSubject?.fullMarks || 100})
+                    মোট নম্বর ({effectiveSubject?.fullMarks || 100})
                   </th>
 
                   <th className="px-3 py-3 font-bold text-gray-700 dark:text-slate-200 text-xs text-center w-24">গ্রেড / GPA</th>
@@ -737,7 +753,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                 ) : (
                 enrolledStudents.map((student, idx) => {
                   const mark = localMarks[student.id] || { obtained: '', cq: '', mcq: '', practical: '', isAbsent: false };
-                  const validation = validateStudentMark(mark, currentSubject, language);
+                  const validation = validateStudentMark(mark, effectiveSubject, language);
                   const isAbsent = mark.isAbsent;
                   // Row's saved record — its amber badge shows when the
                   // background cloud confirm failed and the payload is
@@ -750,8 +766,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                     : undefined;
                   
                   const numObtained = mark.obtained === '' ? 0 : Number(mark.obtained);
-                  const grade = calculateSubjectGrade(numObtained, currentSubject?.fullMarks, undefined, isAbsent, currentSubject?.passMarks);
-                  const gradePoint = calculateSubjectGradePoint(numObtained, currentSubject?.fullMarks, undefined, isAbsent, currentSubject?.passMarks);
+                  const grade = calculateSubjectGrade(numObtained, effectiveSubject?.fullMarks, undefined, isAbsent, effectiveSubject?.passMarks);
+                  const gradePoint = calculateSubjectGradePoint(numObtained, effectiveSubject?.fullMarks, undefined, isAbsent, effectiveSubject?.passMarks);
 
                   return (
                     <tr key={student.id} className={idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-gray-50/40'}>

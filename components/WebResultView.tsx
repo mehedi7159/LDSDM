@@ -21,6 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, getConsolidatedMark, getAutoRemark } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
 import { Exam, SchoolClass, Student, Subject } from '../types';
 
 export const WebResultView: React.FC = () => {
@@ -78,13 +79,13 @@ export const WebResultView: React.FC = () => {
   // Active students in the selected class
   const classStudents = useMemo(() => {
     return (students || [])
-      .filter(s => (s.class === selectedClass || s.classLevel === selectedClass) && s.status?.toLowerCase() === 'active' && !s.isFormer)
+      .filter(s => (s.class === selectedClass || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
       .sort((a, b) => (Number(a.roll) || 0) - (Number(b.roll) || 0));
   }, [students, selectedClass]);
 
   // Subjects for the selected class & exam
   const classSubjects = useMemo(() => {
-    const subsInClass = (subjects || []).filter(s => s.classLevel === selectedClass);
+    const subsInClass = (subjects || []).filter(s => classNamesMatch(s.classLevel, selectedClass));
     if (!selectedExam) return subsInClass;
     const subsInExam = subsInClass.filter(s => s.examIds && s.examIds.includes(selectedExam.id));
     return subsInExam.length > 0 ? subsInExam : subsInClass;

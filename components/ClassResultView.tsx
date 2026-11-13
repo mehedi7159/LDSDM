@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Exam } from '../types';
-import { calculateTotalGPA, formatNumber, shortenSubjectName, toBengali } from '../services/utils';
+import { calculateTotalGPA, formatNumber, getConsolidatedMark, shortenSubjectName, toBengali } from '../services/utils';
 
 interface Props {
   exam: Exam;
@@ -212,7 +212,11 @@ export const ClassResultView: React.FC<Props> = ({ exam, classLevel }) => {
                                       );
                                   }
 
-                                  const mark = marks.find(m => m.studentId === student.id && m.subjectId === sub.id && m.examId === exam.id);
+                                  // Same consolidated mark the row GPA/total
+                                  // already use — a contribution-weighted
+                                  // exam must show its weighted value in
+                                  // the cell, not the raw mark.
+                                  const mark = getConsolidatedMark(student.id, sub.id, exam.id, exams, marks);
                                   const val = mark ? mark.obtained : 0;
                                   const isTotalFail = mark ? (mark.isAbsent || val < sub.passMarks) : (sub.passMarks > 0);
                                   

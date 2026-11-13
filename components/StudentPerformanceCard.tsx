@@ -169,7 +169,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
 
       // Compute total possible full marks for student's subjects
       const fullMarksPossible = studentClassSubjects.reduce((sum, sub) => sum + (sub.fullMarks || 100), 0);
-      const marksPercentage = fullMarksPossible > 0 ? (gpaResult.totalMarks / fullMarksPossible) * 100 : 0;
+      const marksPercentage = fullMarksPossible > 0 ? Math.min(100, (gpaResult.totalMarks / fullMarksPossible) * 100) : 0; // display-only cap, same reason
 
       // Remark and Attendance
       const remarkRecord = remarks.find(r => r.studentId === currentStudent.id && r.examId === exam.id);
@@ -309,7 +309,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
       const subMarks = activeExamRecords.map(rec => {
         const mark = marks.find(m => m.studentId === currentStudent.id && m.subjectId === sub.id && m.examId === rec.exam.id);
         const obtained = mark ? mark.obtained : 0;
-        const percent = Math.round((obtained / (sub.fullMarks || 100)) * 100);
+        const percent = Math.min(100, Math.round((obtained / (sub.fullMarks || 100)) * 100)); // display-only cap: stored over-full marks must not show >100%
         const { grade, gpa } = calculateGrade(obtained, sub.fullMarks);
         const isPass = obtained >= (sub.passMarks || 33);
 

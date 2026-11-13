@@ -107,6 +107,17 @@ export function validateSubject(
     }
   }
 
+  // 6b. Component sum: present components must add up to full marks —
+  // CQ 70 + MCQ 30 + Practical 25 = 125 against full 100 is a data
+  // error waiting to happen at marks-entry time.
+  const componentSum =
+    (data.hasCQ ? Number(data.cqMarks || 0) : 0) +
+    (data.hasMCQ ? Number(data.mcqMarks || 0) : 0) +
+    (data.hasPractical ? Number(data.practicalMarks || 0) : 0);
+  if ((data.hasCQ || data.hasMCQ || data.hasPractical) && componentSum !== fullMarks) {
+    errors.componentSum = `উপাদানগুলোর যোগফল ${componentSum}, কিন্তু পূর্ণমান ${fullMarks} (CQ ${data.hasCQ ? Number(data.cqMarks || 0) : 0} + MCQ ${data.hasMCQ ? Number(data.mcqMarks || 0) : 0} + ব্যবহারিক ${data.hasPractical ? Number(data.practicalMarks || 0) : 0}) — যোগফল পূর্ণমানের সমান হতে হবে (Component marks must sum to full marks: ${componentSum} ≠ ${fullMarks})`;
+  }
+
   // 7. Status validation
   if (data.status && !VALID_ENTITY_STATUSES.has(data.status)) {
     errors.status = 'অবৈধ বিষয় স্ট্যাটাস (Invalid subject status)';
