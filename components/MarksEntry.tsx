@@ -291,17 +291,26 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
     // যায়নি' badge, and the banner offers Retry. 'saved' is set only
     // when the background confirm actually succeeds.
     let nextMarks: MarkRecord[] | null = null;
+    let rejectedErrors: string[] = [];
     if (updates.length > 0) {
       setSaveStatus('saving');
-      nextMarks = bulkUpdateMarks(updates);
+      const result = bulkUpdateMarks(updates);
+      nextMarks = result.marks;
+      rejectedErrors = result.errors;
     }
 
     pendingUpdatesRef.current = remainingPending;
-    const hadInvalid = Object.keys(remainingPending).length > 0;
+    const hadInvalid = Object.keys(remainingPending).length > 0 || rejectedErrors.length > 0;
     if (hadInvalid) {
+      // Rejected rows (over-full, finalized/locked, absent-with-marks)
+      // were skipped, not saved — name the reason instead of a bare red border.
       setInvalidMarksMessage(language === 'bn'
-        ? 'কিছু নম্বর অবৈধ — লাল ঘরের নম্বর ঠিক করুন। অবৈধ নম্বর সংরক্ষণ হয়নি।'
-        : 'Some marks are invalid — fix the highlighted fields. Invalid marks were not saved.');
+        ? (rejectedErrors.length > 0
+          ? `${rejectedErrors.length}টি নম্বর সংরক্ষণ হয়নি — ${rejectedErrors[0]}`
+          : 'কিছু নম্বর অবৈধ — লাল ঘরের নম্বর ঠিক করুন। অবৈধ নম্বর সংরক্ষণ হয়নি।')
+        : (rejectedErrors.length > 0
+          ? `${rejectedErrors.length} mark(s) were not saved — ${rejectedErrors[0]}`
+          : 'Some marks are invalid — fix the highlighted fields. Invalid marks were not saved.'));
     } else {
       setInvalidMarksMessage(null);
     }
