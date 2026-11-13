@@ -21,8 +21,9 @@ import {
   CreditCard
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, formatBanglaNumber, toBengali } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
 import { resolveGuardianChildren } from '../services/guardianScope';
-import { dailyAttendanceService } from '../services/dailyAttendanceService';
+import { calculateStudentAttendanceForExamFromRecords } from '../services/dailyAttendanceService';
 import { calculateSingleStudentDue } from '../services/studentDuesService';
 import { VerifiedResultModal } from './VerifiedResultModal';
 
@@ -57,6 +58,7 @@ export const GuardianPortal: React.FC = () => {
     transactions,
     feeStructures,
     feeTypes = [],
+    dailyStudentAttendance = [],
     logoutUser,
     language
   } = useApp();
@@ -89,7 +91,7 @@ export const GuardianPortal: React.FC = () => {
   // Calculate results for the student
   const resultData = useMemo(() => {
     if (!linkedStudent || !selectedExam) return null;
-    const studentSubjects = subjects.filter(s => s.classLevel === linkedStudent.classLevel);
+    const studentSubjects = subjects.filter(s => classNamesMatch(s.classLevel, linkedStudent.classLevel));
     const studentMarks = marks.filter(m => m.studentId === linkedStudent.id && m.examId === selectedExam.id);
     const gpaSummary = calculateTotalGPA(studentSubjects, marks, linkedStudent.id, selectedExam.id, linkedStudent.group, exams);
 
@@ -120,10 +122,13 @@ export const GuardianPortal: React.FC = () => {
   // for this student; a child with no records gets the no-record
   // state, never an invented rate (the old tab hard-coded
   // 220 days / 212 present / 96.4% for every guardian).
+  // Master audit F6: computed from the REACTIVE context array, not
+  // the service singleton — the singleton never re-renders this memo,
+  // so the tab went stale after cloud hydration.
   const attendanceSummary = useMemo(() => {
     if (!linkedStudent) return null;
-    return dailyAttendanceService.calculateStudentAttendanceForExam(linkedStudent.id);
-  }, [linkedStudent]);
+    return calculateStudentAttendanceForExamFromRecords(dailyStudentAttendance, linkedStudent.id);
+  }, [linkedStudent, dailyStudentAttendance]);
 
   // Unlinked guardian account: an honest empty state — NEVER another
   // student's data and never the full directory as a fallback.

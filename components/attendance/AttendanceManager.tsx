@@ -26,6 +26,7 @@ import { DailyAttendanceHub } from './DailyAttendanceHub';
 import { MonthlyAttendanceRegisterSheet } from './MonthlyAttendanceRegisterSheet';
 import { AttendanceReportView } from '../AttendanceReportView';
 import { BulkAttendanceImportModal } from '../BulkAttendanceImportModal';
+import { AccessRestrictedView } from '../AccessRestrictedView';
 
 export type AttendanceSubTab = 
   | 'students'
@@ -51,9 +52,16 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
     exams = [],
     dailyStudentAttendance = [],
     dailyStaffAttendance = [],
+    hasPermission,
     language
   } = useApp();
   const isBn = language === 'bn';
+
+  // Master audit F1: staff attendance is admin-only (principal's
+  // 25-Oct-2026 rule). The Staff tab is hidden without the separate
+  // 'staff.attendance.manage' key — a teacher's student-attendance
+  // grant can never open it.
+  const canManageStaffAttendance = hasPermission('staff.attendance.manage');
 
   const [activeTab, setActiveTab] = useState<AttendanceSubTab>(initialSubTab);
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -239,7 +247,7 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
 
       {/* Sub-Navigation Tabs */}
       <div className="flex flex-wrap border-b border-slate-200 bg-white rounded-2xl p-1.5 gap-1">
-        {tabs.map(t => {
+        {tabs.filter(t => t.id !== 'staff' || canManageStaffAttendance).map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
 
@@ -275,7 +283,9 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
         )}
 
         {activeTab === 'staff' && (
-          <DailyAttendanceHub initialMode="staff" hideTopSwitcher={true} onNavigateTab={onNavigateTab} />
+          canManageStaffAttendance
+            ? <DailyAttendanceHub initialMode="staff" hideTopSwitcher={true} onNavigateTab={onNavigateTab} />
+            : <AccessRestrictedView moduleName={isBn ? 'শিক্ষক-কর্মচারীর উপস্থিতি' : 'Staff Attendance'} onGoToResults={() => setActiveTab('students')} />
         )}
 
         {activeTab === 'absentees' && (

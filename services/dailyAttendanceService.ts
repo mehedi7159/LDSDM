@@ -61,6 +61,17 @@ const STORAGE_KEY_STAFF = 'madrasah_daily_staff_attendance';
 // Logic here is byte-identical to the original method bodies.
 // ---------------------------------------------------------------------------
 
+/** Friday is the madrasa weekly holiday (same rule the register
+ * applies when it skips Friday columns): no Friday is ever a working
+ * day. Parsed as a civil date, never via UTC midnight, so the
+ * weekday cannot shift with the device timezone. */
+export function isFridayDate(dateStr: string): boolean {
+  if (!dateStr) return false;
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return false;
+  return new Date(parts[0], parts[1] - 1, parts[2]).getDay() === 5;
+}
+
 /** Same predicate as getRecordsByDateAndClass, over any record list. */
 export function filterStudentRecordsByDateAndClass(
   records: DailyStudentAttendanceRecord[],
@@ -86,6 +97,7 @@ export function calculateStudentAttendanceForExamFromRecords(
 } {
   const filtered = (records || []).filter(r => {
     if (r.studentId !== studentId) return false;
+    if (isFridayDate(r.date)) return false; // Friday is never a working day
     if (startDate && r.date < startDate) return false;
     if (endDate && r.date > endDate) return false;
     return true;
@@ -121,7 +133,7 @@ export function getStudentMonthlySummaryFromRecords(
 } {
   const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
   const filtered = (records || []).filter(
-    r => r.studentId === studentId && r.date.startsWith(monthPrefix)
+    r => r.studentId === studentId && r.date.startsWith(monthPrefix) && !isFridayDate(r.date)
   );
 
   const workingDays = filtered.length;
@@ -394,6 +406,9 @@ export function summarizeStudentRecords(
   date: string,
   classLevel?: string
 ): DayAttendanceSummary {
+  // A Friday date has no working day at all, even if records were
+  // saved for it before the Friday block existed.
+  if (isFridayDate(date)) return { date, totalStudents: 0, presentCount: 0, absentCount: 0, lateCount: 0, leaveCount: 0, attendancePercentage: 0 };
   const filtered = (records || []).filter(
     r => r.date === date && (!classLevel || classLevel === 'All' || r.classLevel === classLevel)
   );
@@ -413,6 +428,8 @@ export function summarizeStaffRecords(
   records: DailyStaffAttendanceRecord[],
   date: string
 ): { total: number; present: number } {
+  // Friday is never a working day (see summarizeStudentRecords).
+  if (isFridayDate(date)) return { total: 0, present: 0 };
   const filtered = (records || []).filter(r => r.date === date);
   return {
     total: filtered.length,

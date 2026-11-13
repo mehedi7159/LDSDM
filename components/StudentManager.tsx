@@ -379,7 +379,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     let nextStudents: Student[];
     let savedStudentId: string;
     if (editingId) {
-      let res: { student: Student; students: Student[] };
+      let res: { student: Student; students: Student[]; error?: string };
       try {
         res = updateStudent({ ...dataToSave, id: editingId });
       } catch (e) {
@@ -388,6 +388,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         // a false success for an edit that never applied.
         console.error('Student edit refused:', e);
         setError(language === 'bn' ? 'ছাত্রটি এই ডিভাইসের তালিকায় পাওয়া যায়নি — এডিট সংরক্ষণ হয়নি। তালিকা রিফ্রেশ করে আবার চেষ্টা করুন।' : 'Student not found in this device list — edit not saved. Refresh the list and try again.');
+        return;
+      }
+      // Master audit F2: a builder-refused edit saves nothing — show
+      // the error in the modal instead of a false success.
+      if (res.error) {
+        setError(res.error);
         return;
       }
       nextStudents = res.students;
@@ -405,6 +411,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       }
     } else {
       const res = addStudent(dataToSave);
+      // Master audit F2: a builder-refused add saves nothing — show
+      // the error in the modal instead of a false success.
+      if (res.error || !res.student) {
+        setError(res.error || (language === 'bn' ? 'শিক্ষার্থীর তথ্য সঠিক নয় — সংরক্ষণ হয়নি।' : 'Invalid student data — not saved.'));
+        return;
+      }
       nextStudents = res.students;
       savedStudentId = res.student.id;
       if (authUser) {

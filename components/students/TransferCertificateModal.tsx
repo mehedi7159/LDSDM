@@ -117,7 +117,7 @@ export const TransferCertificateModal: React.FC<TransferCertificateModalProps> =
     });
     if (saved.student.status !== 'Former') {
       // The builder refused the update — nothing was saved.
-      setTcIssueError(language === 'bn' ? 'ছাড়পত্র সংরক্ষণ হয়নি — শিক্ষার্থীর তথ্য যাচাই করুন।' : 'TC was not saved — check the student record.');
+      setTcIssueError(saved.error || (language === 'bn' ? 'ছাড়পত্র সংরক্ষণ হয়নি — শিক্ষার্থীর তথ্য যাচাই করুন।' : 'TC was not saved — check the student record.'));
       return;
     }
     setTcIssueError(null);

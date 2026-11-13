@@ -235,6 +235,32 @@ export function findStudentById(students: Student[], id: string): Student | unde
   return students.find(s => s.id === id || s.studentId === id);
 }
 
+const BENGALI_DIGITS = '০১২৩৪৫৬৭৮৯';
+
+/**
+ * Bengali digits → ASCII ('১' → '1'); every other character is kept.
+ * Number('১') is NaN, so any numeric use of a roll/id must pass
+ * through here first.
+ */
+export function toAsciiDigits(value: string | number | null | undefined): string {
+  return String(value ?? '').replace(/[০-৯]/g, d => String(BENGALI_DIGITS.indexOf(d)));
+}
+
+/**
+ * Next free roll in a class: max numeric roll + 1, ASCII digits.
+ * Bengali-digit rolls count at their numeric value ('১' = 1), so a
+ * class whose only rolls are '১' starts the next enrolment at 2;
+ * non-numeric rolls are ignored. Matches on classLevel or the legacy
+ * `class` field.
+ */
+export function nextFreeRoll(students: Student[], classLevel: string): string {
+  const rolls = (students || [])
+    .filter(s => s.classLevel === classLevel || (s as any).class === classLevel)
+    .map(s => Number(toAsciiDigits(s.roll ?? s.rollNumber ?? '')))
+    .filter(n => Number.isFinite(n) && n > 0);
+  return String((rolls.length ? Math.max(...rolls) : 0) + 1);
+}
+
 /**
  * Firestore rejects explicit `undefined` field values in setDoc
  * ('Unsupported field value: undefined') — the ENTIRE field write throws.

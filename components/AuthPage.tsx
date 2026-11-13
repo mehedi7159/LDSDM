@@ -28,6 +28,7 @@ import { useTheme } from '../context/ThemeContext';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { calculateTotalGPA, calculateGrade, getConsolidatedMark } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
 
 interface AuthPageProps {
   initialView?: 'gateway' | 'results' | 'login';
@@ -175,8 +176,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   const studentResultData = React.useMemo(() => {
     if (!searchedStudent || !activeExam) return null;
 
-    const studentClassSubjects = subjects.filter(s => 
-      s.classLevel === searchedStudent.class || s.classLevel === searchedStudent.classLevel
+    const studentClassSubjects = subjects.filter(s =>
+      classNamesMatch(s.classLevel, searchedStudent.class) || classNamesMatch(s.classLevel, searchedStudent.classLevel)
     );
 
     const relevantSubjects = studentClassSubjects.filter(s => 

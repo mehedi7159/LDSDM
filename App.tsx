@@ -536,7 +536,11 @@ const AppContent = () => {
           ? <AttendanceManager initialSubTab="students" onNavigateTab={(tab) => setActiveTab(tab)} /> 
           : <AccessRestrictedView moduleName={t('attendance')} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'staff_attendance':
-        return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('attendance.view') || hasPermission('attendance.create'))
+        // Master audit F1: staff attendance is admin-only (principal's
+        // 25-Oct-2026 rule). The separate 'staff.attendance.manage' key
+        // sits outside the 'attendance.*' wildcard, so a teacher's
+        // student-attendance grant can never open this route.
+        return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('staff.attendance.manage'))
           ? <AttendanceManager initialSubTab="staff" onNavigateTab={(tab) => setActiveTab(tab)} />
           : <AccessRestrictedView moduleName={language === 'bn' ? 'শিক্ষক-কর্মচারীর উপস্থিতি' : 'Staff Attendance'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'absent_students':

@@ -18,6 +18,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, formatBanglaNumber, shortenSubjectName } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
 import { ResultVerificationQR } from './ResultVerificationQR';
 import { VerifiedResultModal } from './VerifiedResultModal';
 
@@ -48,7 +49,7 @@ export const PublicResultSearch: React.FC<PublicResultSearchProps> = ({ onBackTo
     const found = students.find(s => {
       const matchId = (s.studentId && s.studentId.toLowerCase() === query) || (s.id && s.id.toLowerCase() === query);
       const matchRoll = s.roll && String(s.roll).trim() === query;
-      const matchClass = selectedClass === 'All' || !selectedClass || s.classLevel === selectedClass;
+      const matchClass = selectedClass === 'All' || !selectedClass || classNamesMatch(s.classLevel, selectedClass);
       return (matchId || matchRoll) && matchClass;
     }) || students.find(s => {
       // Fallback matching just roll or ID without class filter

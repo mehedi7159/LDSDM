@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student, Exam } from '../types';
 import { formatNumber } from '../services/utils';
+import { classNamesMatch } from '../services/classNames';
 import { 
   CreditCard, 
   Printer, 
@@ -40,7 +41,7 @@ export const StudentIDCardGenerator: React.FC = () => {
   // Students in selected class
   const classStudents = useMemo(() => {
     return (students || [])
-      .filter(s => (s.class === selectedClass || s.classLevel === selectedClass) && s.status?.toLowerCase() === 'active' && !s.isFormer)
+.filter(s => (classNamesMatch(s.class, selectedClass) || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
       .sort((a, b) => (Number(a.roll) || 0) - (Number(b.roll) || 0));
   }, [students, selectedClass]);
 

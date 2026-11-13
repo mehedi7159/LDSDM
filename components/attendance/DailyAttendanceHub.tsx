@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { 
-  dailyAttendanceService, 
-  DailyStudentAttendanceRecord, 
+import {
+  dailyAttendanceService,
+  isFridayDate,
+  DailyStudentAttendanceRecord,
   DailyStaffAttendanceRecord,
-  AttendanceStatus 
+  AttendanceStatus
 } from '../../services/dailyAttendanceService';
 import { formatNumber, formatSafeDate } from '../../services/utils';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
@@ -57,6 +58,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     teachers = [], 
     dailyStudentAttendance = [],
     dailyStaffAttendance = [],
+    hasPermission,
     confirmAttendanceCloudSync,
     confirmStaffAttendanceCloudSync,
     isRecordUnconfirmed,
@@ -77,6 +79,23 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     }
   }, [initialMode]);
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  // Master audit F5: Friday is the weekly holiday — the picker refuses
+  // it and the saves refuse it too (a Friday can still be the initial
+  // date when the Hub opens on a Friday). One message, shown by the
+  // date picker, so the admin sees why nothing saved.
+  const [fridayNotice, setFridayNotice] = useState<string | null>(() =>
+    isFridayDate(new Date().toISOString().split('T')[0])
+      ? 'শুক্রবার সাপ্তাহিক ছুটি — এই দিনে হাজিরা নেওয়া হয় না।'
+      : null
+  );
+  const handleDateChange = (value: string) => {
+    if (isFridayDate(value)) {
+      setFridayNotice('শুক্রবার সাপ্তাহিক ছুটি — এই দিনে হাজিরা নেওয়া হয় না।');
+      return;
+    }
+    setFridayNotice(null);
+    setSelectedDate(value);
+  };
   const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.name || '১ম শ্রেণি');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -171,6 +190,10 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
   // Load staff attendance for selectedDate
   // Step 3: same editor-state protection as the student map above.
+  // Master audit F1: ONLY already-saved records load into the map.
+  // An unmarked teacher gets no entry — the old code pre-filled every
+  // unmarked teacher as PRESENT, so one Save recorded the whole staff
+  // present without anyone marking them.
   useEffect(() => {
     const records = savedStaffRecords;
     const newStaffMap: Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string }> = {};
@@ -183,13 +206,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           inTime: existing.inTime,
           outTime: existing.outTime,
           note: existing.note
-        };
-      } else {
-        newStaffMap[teacher.id] = {
-          status: 'PRESENT',
-          inTime: '08:15 AM',
-          outTime: '04:00 PM',
-          note: ''
         };
       }
     });
@@ -235,6 +251,13 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   // write succeeds, otherwise the error state shows and the confirm
   // queue keeps the records for retry.
   const handleSaveStudentAttendance = async () => {
+    // Master audit F5: Friday is never a working day.
+    if (isFridayDate(selectedDate)) {
+      setFridayNotice('শুক্রবার সাপ্তাহিক ছুটি — এই দিনে হাজিরা নেওয়া হয় না।');
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 5000);
+      return;
+    }
     setSaveStatus('saving');
     const recordsToSave: DailyStudentAttendanceRecord[] = classStudents.map(student => {
       const current = attendanceMap[student.id] || { status: 'PRESENT' };
@@ -271,20 +294,45 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   // 'saved to cloud'. The 'সংরক্ষিত হয়েছে' note appears only after
   // the background confirm actually succeeds.
   const handleSaveStaffAttendance = () => {
+    // Master audit F1: staff attendance is admin-only (principal's
+    // 25-Oct-2026 rule). Re-checked here, not just at the route/tab —
+    // the Hub is also embedded from StaffManager, so the save itself
+    // must refuse a non-admin.
+    if (!hasPermission('staff.attendance.manage')) {
+      setStaffSaveError(isBn ? 'স্টাফ হাজিরা শুধু অ্যাডমিন সংরক্ষণ করতে পারেন।' : 'Only an admin can save staff attendance.');
+      return;
+    }
+    // Master audit F5: Friday is never a working day.
+    if (isFridayDate(selectedDate)) {
+      setFridayNotice('শুক্রবার সাপ্তাহিক ছুটি — এই দিনে হাজিরা নেওয়া হয় না।');
+      setStaffSaveError('শুক্রবার সাপ্তাহিক ছুটি — এই দিনে হাজিরা নেওয়া হয় না।');
+      return;
+    }
     if (staffSaveInFlightRef.current || staffSyncing) return;
     staffSaveInFlightRef.current = true;
     setStaffSaving(true);
     setStaffSaveError(null);
     setStaffSavedJustNow(false);
-    const recordsToSave: DailyStaffAttendanceRecord[] = teachers.map(teacher => {
-      const current = staffAttendanceMap[teacher.id] || { status: 'PRESENT' };
+    // ONLY teachers the admin explicitly marked (a map entry) are
+    // saved. An unmarked teacher is never defaulted to PRESENT.
+    const markedTeachers = teachers.filter(teacher => staffAttendanceMap[teacher.id]);
+    if (markedTeachers.length === 0) {
+      staffSaveInFlightRef.current = false;
+      setStaffSaving(false);
+      setStaffSaveError(isBn ? 'কাউকে চিহ্নিত করা হয়নি — সংরক্ষণের আগে অন্তত একজন শিক্ষক/কর্মীর হাজিরা চিহ্নিত করুন।' : 'Nobody is marked — mark at least one staff member before saving.');
+      return;
+    }
+    const recordsToSave: DailyStaffAttendanceRecord[] = markedTeachers.map(teacher => {
+      const current = staffAttendanceMap[teacher.id];
       return {
         id: `${selectedDate}_${teacher.id}`,
         date: selectedDate,
         staffId: teacher.id,
         staffName: teacher.name,
         designation: teacher.designation || 'শিক্ষক',
-        status: current.status,
+        // An entry with no status (e.g. only a time/note was typed)
+        // means the admin touched the row — count it present.
+        status: current.status || 'PRESENT',
         inTime: current.inTime,
         outTime: current.outTime,
         note: current.note
@@ -656,12 +704,15 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           {/* Date Picker */}
           <div className="w-44 shrink-0">
             <label className="text-[11px] font-bold text-slate-500 block mb-1">{isBn ? 'তারিখ' : 'Date'}</label>
-            <input 
+            <input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => handleDateChange(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500"
             />
+            {fridayNotice && (
+              <p className="text-[11px] font-bold text-amber-700 mt-1">{fridayNotice}</p>
+            )}
           </div>
 
           {/* Class Selector (for Students mode) */}
@@ -974,7 +1025,10 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {teachers.map(teacher => {
-                  const current = staffAttendanceMap[teacher.id] || { status: 'PRESENT' };
+                  // Master audit F1: an unmarked teacher has no entry, so
+                  // no status button is highlighted — the row must not
+                  // look PRESENT before anyone marks it.
+                  const current: { status?: AttendanceStatus; inTime?: string; outTime?: string; note?: string } = staffAttendanceMap[teacher.id] || {};
                   const currentStatus = current.status;
 
                   return (
