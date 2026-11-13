@@ -23,15 +23,25 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
   const [confirmPermanentItem, setConfirmPermanentItem] = useState<{ id: string; name: string } | null>(null);
   const [confirmRestoreItem, setConfirmRestoreItem] = useState<{ id: string; name: string } | null>(null);
   const [confirmRestoreAllOpen, setConfirmRestoreAllOpen] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'info'; text: string } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'info' | 'error'; text: string } | null>(null);
   const restorableCount = trashBin.filter(t => t.type !== 'member_application').length;
 
   const handleRestoreItemConfirm = () => {
     if (!confirmRestoreItem) return;
-    restoreFromTrash(confirmRestoreItem.id);
+    const result = restoreFromTrash(confirmRestoreItem.id);
+    if (!result.success) {
+      // Duplicate identifier: nothing was restored — show which
+      // record keeps it instead of claiming success.
+      setStatusMessage({
+        type: 'error',
+        text: result.message || 'এই আইটেমটি ফিরিয়ে আনা যায়নি।'
+      });
+      setConfirmRestoreItem(null);
+      return;
+    }
     setStatusMessage({
       type: 'success',
-      text: `"${confirmRestoreItem.name}" সফলভাবে রিসাইকেল বিন থেকে পুনরুদ্ধার করা হয়েছে!`
+      text: `"${confirmRestoreItem.name}" সফলভাবে রিসাইকেল বিন থেকে পুনরুদ্ধার করা হয়েছে!${result.pairedRestored ? ' সংশ্লিষ্ট রেকর্ডটিও (শিক্ষক/লগইন) ফিরিয়ে আনা হয়েছে।' : ''}`
     });
     setConfirmRestoreItem(null);
   };
@@ -100,7 +110,7 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
       </div>
 
       {statusMessage && (
-        <div className={`mt-4 px-3.5 py-2.5 rounded-xl text-xs font-semibold border ${statusMessage.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800'}`}>
+        <div className={`mt-4 px-3.5 py-2.5 rounded-xl text-xs font-semibold border ${statusMessage.type === 'error' ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800' : statusMessage.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800'}`}>
           {statusMessage.text}
         </div>
       )}
