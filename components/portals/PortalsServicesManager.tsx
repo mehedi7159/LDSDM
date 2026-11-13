@@ -803,7 +803,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                             {isBn && st.nameBn ? st.nameBn : st.name}
                           </p>
                           <p className={`text-[10px] ${isSelected ? 'text-teal-100' : 'text-slate-400 dark:text-slate-500'}`}>
-                            {st.classLevel} • {st.studentId || st.id.slice(0, 8)}
+                            {st.classLevel} • {st.studentId || '—'}
                           </p>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { NoticeItem, NoticeCategory, NoticePriority, NoticeTarget } from '../types';
 import {
   Megaphone,
@@ -28,9 +29,14 @@ interface DashboardNoticeWidgetProps {
 }
 
 export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ onNavigateToNotices }) => {
-  const { notices = [], addNotice, confirmNoticesCloudSync, isRecordUnconfirmed, isAdmin, isSuperAdmin, authUser, language, classes = [] } = useApp();
+  const { notices = [], addNotice, confirmNoticesCloudSync, isRecordUnconfirmed, isAdmin, isSuperAdmin, authUser, language, mode, classes = [] } = useApp();
+  const { showToast } = useTheme();
   const isOwnerAdmin = isSuperAdmin || (authUser?.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
   const canManage = isOwnerAdmin || isAdmin;
+  // Viewer Mode (read-only session, e.g. admin claim missing): the
+  // new-notice button stays visible so the refusal is explained with a
+  // message instead of failing silently — the modal never opens here.
+  const isViewerMode = mode === 'viewer';
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'urgent' | 'diary' | 'holiday'>('all');
   const [selectedNoticeForModal, setSelectedNoticeForModal] = useState<NoticeItem | null>(null);
@@ -83,6 +89,21 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
     (result.rawMessage?.includes('timed out')
       ? (language === 'bn' ? 'সময় শেষ হয়েছে — ইন্টারনেট ধীর, সংরক্ষণ শেষ হয়নি। ভালো নেটে আবার চেষ্টা করুন।' : 'Timed out — slow internet, the save did not finish. Try again on a better connection.')
       : (result.message || NOTICES_CLOUD_FAILURE_MESSAGE));
+
+  // Viewer Mode: a new notice cannot be added in a read-only session.
+  // Refuse with a clear message (same toast ExamManager uses for a
+  // refused save) instead of failing silently.
+  const handleNewNoticeClick = () => {
+    if (isViewerMode) {
+      showToast({
+        type: 'error',
+        title: language === 'bn' ? 'নোটিশ যোগ করা যাবে না' : 'Cannot add a notice',
+        message: language === 'bn' ? 'ভিউয়ার মোডে নোটিশ যোগ করা যাবে না। আপনি এখন শুধু দেখার মোডে আছেন — নোটিশ দিতে অ্যাডমিন অ্যাক্সেস প্রয়োজন।' : 'Notices cannot be added in Viewer Mode. You are in read-only mode — admin access is required to post a notice.'
+      });
+      return;
+    }
+    setIsComposeModalOpen(true);
+  };
 
   const handleCreateNotice = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,9 +212,9 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
 
         {/* Buttons */}
         <div className="flex items-center gap-2 shrink-0">
-          {canManage && (
+          {(canManage || isViewerMode) && (
             <button
-              onClick={() => setIsComposeModalOpen(true)}
+              onClick={handleNewNoticeClick}
               className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus size={14} />

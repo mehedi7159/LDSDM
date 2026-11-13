@@ -4751,6 +4751,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         )
       ];
       setUsers(nextUsers);
+      // Same optimistic queue as teachers above: without this, a
+      // close mid-confirm loses the login record until the person
+      // logs in and it self-heals. Confirm success clears this
+      // field exactly as before; replay logic is untouched.
+      queuePendingPayload({ field: 'users', op: 'upsert', records: [userObj], updatedBy: confirmActorName() });
+      refreshPendingPayloads();
 
       if (authUser) {
         recordTeacherAuditEvent({
@@ -6018,6 +6024,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return u;
     });
     setUsers(nextUsers);
+    // Same optimistic queue as the teachers record above (and as
+    // addTeacher): without this, a close mid-confirm loses the login
+    // edit while the staff edit replays from its queue. Confirm
+    // success clears this field exactly as before.
+    const changedUsers = nextUsers.filter(u => u.id === teacher.id || (cleanEmail && u.email?.toLowerCase() === cleanEmail) || (cleanPhone && u.phone === cleanPhone));
+    if (changedUsers.length > 0) {
+      queuePendingPayload({ field: 'users', op: 'upsert', records: changedUsers, updatedBy: confirmActorName() });
+      refreshPendingPayloads();
+    }
 
     // Update in institution members
     const memberData: InstitutionMember = {
