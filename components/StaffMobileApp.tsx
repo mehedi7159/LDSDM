@@ -209,6 +209,12 @@ const bnMonthLabel = (yyyyMm: string): string => {
   return `${BN_MONTH_SHORT[m - 1]} ${y}`;
 };
 
+// Local wall-clock month (YYYY-MM). toISOString() is UTC, so it reads a
+// day ahead after midnight local at a month boundary — never use it for
+// the fee month.
+const localMonthStr = (d = new Date()): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
 export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, renderModuleContent }) => {
   const {
     authUser,
@@ -917,7 +923,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     if (!examFeeVisible) return [];
     return students.filter(s => s.status === 'Active' && !s.isFormer && s.classLevel === selectedClass);
   }, [examFeeVisible, students, selectedClass]);
-  const examFeePaidKeys = useMemo(() => paidExamFeeKeys(transactions), [transactions]);
+  const examFeePaidKeys = useMemo(() => paidExamFeeKeys(transactions, exams), [transactions, exams]);
   const examFeePaidCount = useMemo(
     () => (selectedExamForFee ? examFeeRows.filter(st => examFeePaidKeys.has(examFeePaidKey(selectedExamForFee.id, st.id))).length : 0),
     [examFeeRows, examFeePaidKeys, selectedExamForFee]
@@ -2090,6 +2096,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [feeSearchQuery, setFeeSearchQuery] = useState('');
   const [feeStudentId, setFeeStudentId] = useState<string | null>(null);
   const [feeAmount, setFeeAmount] = useState('');
+  // Double-submit guard (mirrors examFeeCollecting below): set before
+  // addTransaction, cleared only after the cloud confirm settles.
+  const [feeCollecting, setFeeCollecting] = useState(false);
+  // Fee month for this collection: picked by the collector, defaulting
+  // to the current LOCAL month (not UTC). Reset on each student pick.
+  const [feeCollectMonth, setFeeCollectMonth] = useState<string>(() => localMonthStr());
+  // Inline form error (e.g. amount <= 0) — shown above the collect button.
+  const [feeFormError, setFeeFormError] = useState<string | null>(null);
   const [feeMethod, setFeeMethod] = useState<PaymentMethod>('CASH');
   const [feeRefNo, setFeeRefNo] = useState('');
   const [feeNote, setFeeNote] = useState('');
@@ -2132,6 +2146,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const handleSelectFeeStudent = (profile: StudentDueProfile) => {
     setFeeStudentId(profile.student.id);
     setFeeAmount(profile.dueThisMonth > 0 ? String(profile.dueThisMonth) : '');
+    setFeeCollectMonth(localMonthStr());
+    setFeeFormError(null);
     setFeeRefNo('');
     setFeeNote('');
     setLastReceipt(null);
@@ -2139,11 +2155,21 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   const handleCollectFee = async () => {
     if (!canCollectFees || !selectedFeeProfile || typeof addTransaction !== 'function') return;
+    if (feeCollecting) return;
+    // Never collect a month that is already paid: dueThisMonth is the
+    // current month's remaining due (this form only ever collects the
+    // current month). A student with no monthly fee set (expected 0)
+    // has no "already paid" state, so the guard does not block them.
+    if (selectedFeeProfile.monthlyExpected > 0 && selectedFeeProfile.dueThisMonth <= 0) return;
     const st = selectedFeeProfile.student;
     const amount = Number(feeAmount) || 0;
-    if (amount <= 0) return;
+    if (amount <= 0) {
+      setFeeFormError(isEn ? 'Amount must be greater than 0.' : 'টাকার পরিমাণ ০-এর বেশি হতে হবে।');
+      return;
+    }
+    setFeeCollecting(true);
 
-    const feeMonth = new Date().toISOString().slice(0, 7); // YYYY-MM — same key the dues service uses
+    const feeMonth = feeCollectMonth; // YYYY-MM — same key the dues service uses
     const todayStr = new Date().toISOString().split('T')[0];
     const collector = authUser?.displayName || currentMember?.displayName || currentUser?.name || '';
 
@@ -2178,14 +2204,18 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     // ONLY after the awaited cloud confirmation. On failure the receipt
     // still opens (the guardian needs the paper) but is marked local-only
     // with a retry action — never presented as deposited.
-    const feeResult = await confirmFeeCloudSync([created, ...transactions], feeCloudFailureMessage(created.voucherNo));
-    setLastReceipt({ tx: created, remainingDue: remaining, cloudConfirmed: feeResult.success });
-    if (feeResult.success) {
-      setFeeCloudFailure(null);
-      setSaveSuccessNotice(isEn ? `✓ Receipt ${created.voucherNo} saved!` : `✓ রসিদ নং ${created.voucherNo} সংরক্ষিত হয়েছে!`);
-      setTimeout(() => setSaveSuccessNotice(null), 3500);
-    } else {
-      setFeeCloudFailure(feeResult.message || feeCloudFailureMessage(created.voucherNo));
+    try {
+      const feeResult = await confirmFeeCloudSync([created, ...transactions], feeCloudFailureMessage(created.voucherNo));
+      setLastReceipt({ tx: created, remainingDue: remaining, cloudConfirmed: feeResult.success });
+      if (feeResult.success) {
+        setFeeCloudFailure(null);
+        setSaveSuccessNotice(isEn ? `✓ Receipt ${created.voucherNo} saved!` : `✓ রসিদ নং ${created.voucherNo} সংরক্ষিত হয়েছে!`);
+        setTimeout(() => setSaveSuccessNotice(null), 3500);
+      } else {
+        setFeeCloudFailure(feeResult.message || feeCloudFailureMessage(created.voucherNo));
+      }
+    } finally {
+      setFeeCollecting(false);
     }
   };
 
@@ -3887,13 +3917,26 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
                   <div className={`${cardCls} p-4 space-y-3.5`}>
                     <div>
+                      <label className="text-[11px] text-[#8a93a8] font-semibold block mb-1.5">{isEn ? 'Fee month' : 'ফি মাস'}</label>
+                      <select
+                        value={feeCollectMonth}
+                        onChange={e => setFeeCollectMonth(e.target.value)}
+                        className="w-full py-3 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-violet-400 cursor-pointer"
+                      >
+                        {feeMonthOptions.map(m => (
+                          <option key={m} value={m}>{bnMonthLabel(m)}{m === localMonthStr() ? (isEn ? ' (current)' : ' (চলতি)') : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
                       <label className="text-[11px] text-[#8a93a8] font-semibold block mb-1.5">{isEn ? 'Amount (৳)' : 'টাকার পরিমাণ (৳)'}</label>
                       <input
                         type="number"
                         min="0"
                         inputMode="numeric"
                         value={feeAmount}
-                        onChange={e => setFeeAmount(e.target.value)}
+                        onChange={e => { setFeeAmount(e.target.value); setFeeFormError(null); }}
                         placeholder="০"
                         className="w-full py-3 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-base font-black focus:outline-none focus:ring-2 focus:ring-violet-400"
                       />
@@ -3952,15 +3995,21 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     </div>
                   </div>
 
+                  {feeFormError && (
+                    <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                      {feeFormError}
+                    </div>
+                  )}
+
                   {canCollectFees && (
                     <div className="sticky bottom-[84px] z-30 pt-1">
                       <button
                         onClick={handleCollectFee}
-                        disabled={!feeAmount || Number(feeAmount) <= 0}
+                        disabled={!feeAmount || Number(feeAmount) <= 0 || feeCollecting}
                         className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Receipt size={17} />
-                        <span>{isEn ? 'Collect fee & save receipt' : 'ফি গ্রহণ করে রসিদ সংরক্ষণ করুন'}</span>
+                        <span>{feeCollecting ? (isEn ? 'Collecting…' : 'আদায় হচ্ছে…') : (isEn ? 'Collect fee & save receipt' : 'ফি গ্রহণ করে রসিদ সংরক্ষণ করুন')}</span>
                       </button>
                     </div>
                   )}

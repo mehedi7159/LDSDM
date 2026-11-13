@@ -251,7 +251,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   // entry for that level) must be listed.
   const pendingExamFees = useMemo(() => {
     if (!currentStudent) return [];
-    const paidKeys = paidExamFeeKeys(transactions);
+    const paidKeys = paidExamFeeKeys(transactions, exams);
     const classKeys = new Set<string>([studentClass]);
     for (const c of classes) {
       if (c.name === studentClass || c.nameBn === studentClass) classKeys.add(c.id);
