@@ -1,4 +1,5 @@
 import type { FinanceTransaction, Student } from '../types';
+import { isTuitionPayment } from './studentDuesService';
 
 /**
  * Month-wise dues history for the Dues Directory (Pragya-inspired month grid,
@@ -82,7 +83,7 @@ export function computeDueHistory(
   const admMonth = (student.admissionDate || '').slice(0, 7);
   const paidByMonth = new Map<string, number>();
   for (const tx of transactions) {
-    if (tx.type !== 'INCOME' || tx.studentId !== student.id) continue;
+    if (tx.type !== 'INCOME' || tx.studentId !== student.id || !isTuitionPayment(tx)) continue;
     const m = normalizeFeeMonth(tx);
     paidByMonth.set(m, (paidByMonth.get(m) || 0) + (Number(tx.amount) || 0));
   }
