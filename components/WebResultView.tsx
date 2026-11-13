@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, getConsolidatedMark, getAutoRemark } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
+import { toAsciiDigits } from '../services/studentService';
 import { Exam, SchoolClass, Student, Subject } from '../types';
 
 export const WebResultView: React.FC = () => {
@@ -80,7 +81,8 @@ export const WebResultView: React.FC = () => {
   const classStudents = useMemo(() => {
     return (students || [])
 .filter(s => (classNamesMatch(s.class, selectedClass) || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
-      .sort((a, b) => (Number(a.roll) || 0) - (Number(b.roll) || 0));
+      // Master audit F11: Number('১') is NaN — normalize first.
+      .sort((a, b) => (Number(toAsciiDigits(a.roll)) || 0) - (Number(toAsciiDigits(b.roll)) || 0));
   }, [students, selectedClass]);
 
   // Subjects for the selected class & exam
@@ -235,11 +237,12 @@ export const WebResultView: React.FC = () => {
   const searchedStudents = useMemo(() => {
     if (!studentSearchQuery.trim()) return classStudents;
     const q = studentSearchQuery.toLowerCase();
-    return classStudents.filter(s => 
-      s.name.toLowerCase().includes(q) || 
+    return classStudents.filter(s =>
+      s.name.toLowerCase().includes(q) ||
       (s.nameBn && s.nameBn.includes(q)) ||
-      (s.studentId || '').toLowerCase().includes(q) ||
-      String(s.roll || '').includes(q)
+      toAsciiDigits(s.studentId || '').toLowerCase().includes(toAsciiDigits(q)) ||
+      // Master audit F11: search '1' must find roll '১'.
+      toAsciiDigits(String(s.roll || '')).includes(toAsciiDigits(q))
     );
   }, [classStudents, studentSearchQuery]);
 

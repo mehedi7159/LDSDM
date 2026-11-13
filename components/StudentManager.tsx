@@ -52,7 +52,7 @@ import {
 import type { FeeDiscountType } from '../types/student';
 import { amountFor, isFeeTypeEnabled } from '../services/feeTypes';
 import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE } from '../services/cloudConfirm';
-import { recordStudentAuditEvent, resolveUniqueStudentId } from '../services/studentService';
+import { recordStudentAuditEvent, resolveUniqueStudentId, toAsciiDigits } from '../services/studentService';
 import { StudentProfileModal } from './StudentProfileModal';
 import { AccessRestrictedView } from './AccessRestrictedView';
 import { ClassPromotionModal } from './ClassPromotionModal';
@@ -346,7 +346,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       ? 'Inactive' 
       : 'Active';
 
-    const cleanRoll = formData.roll?.trim() || '';
+    const cleanRoll = toAsciiDigits(formData.roll?.trim() || '');
     // Auto ID (year+roll, or year+count when no roll): resolve against
     // every other student's ID, so a new admission never reuses one —
     // the student's own ID does not count when editing.
@@ -721,12 +721,15 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       const matchesClass = filterClass === 'All' || s.classLevel === filterClass;
       const term = searchTerm.toLowerCase().trim();
       if (!term) return matchesClass;
+      // Master audit F11: search '1' must find roll '১' (and a typed
+      // Bengali query must find an ASCII roll) — compare ASCII digits.
+      const asciiTerm = toAsciiDigits(term);
       return matchesClass && (
-        (s.name && s.name.toLowerCase().includes(term)) || 
+        (s.name && s.name.toLowerCase().includes(term)) ||
         (s.nameBn && s.nameBn.includes(term)) ||
-        (s.studentId && String(s.studentId).toLowerCase().includes(term)) ||
-        (s.roll != null && String(s.roll).toLowerCase().includes(term)) ||
-        (s.rollNumber != null && String(s.rollNumber).toLowerCase().includes(term)) ||
+        (s.studentId && toAsciiDigits(String(s.studentId)).toLowerCase().includes(asciiTerm)) ||
+        (s.roll != null && toAsciiDigits(String(s.roll)).toLowerCase().includes(asciiTerm)) ||
+        (s.rollNumber != null && toAsciiDigits(String(s.rollNumber)).toLowerCase().includes(asciiTerm)) ||
         (s.guardianPhone != null && String(s.guardianPhone).includes(term)) ||
         (s.fatherName && s.fatherName.toLowerCase().includes(term)) ||
         (s.fatherNameBn && s.fatherNameBn.includes(term))
@@ -735,8 +738,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     .sort((a, b) => {
       let comparison = 0;
       if (sortBy === 'roll') {
-        const rollA = parseInt(a.roll || a.rollNumber || '0', 10) || 0;
-        const rollB = parseInt(b.roll || b.rollNumber || '0', 10) || 0;
+        // Master audit F11: parseInt('১') is NaN — normalize first.
+        const rollA = parseInt(toAsciiDigits(a.roll || a.rollNumber || '0'), 10) || 0;
+        const rollB = parseInt(toAsciiDigits(b.roll || b.rollNumber || '0'), 10) || 0;
         comparison = rollA - rollB;
       } else if (sortBy === 'classLevel') {
         comparison = a.classLevel.localeCompare(b.classLevel);

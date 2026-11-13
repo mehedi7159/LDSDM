@@ -35,6 +35,7 @@ import {
   Area 
 } from 'recharts';
 import { calculateTotalGPA, calculateGrade } from '../services/utils';
+import { toAsciiDigits } from '../services/studentService';
 import { Student, Exam, Subject, MarkRecord } from '../types';
 
 interface StudentPerformanceCardProps {
@@ -110,12 +111,14 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
       const nameMatches = (s.name && s.name.toLowerCase().includes(q)) || (s.nameBn && s.nameBn.includes(q));
-      const idMatches = s.studentId && String(s.studentId).toLowerCase().includes(q);
-      const rollMatches = s.roll != null && String(s.roll).toLowerCase().includes(q);
+      const idMatches = s.studentId && toAsciiDigits(String(s.studentId)).toLowerCase().includes(toAsciiDigits(q));
+      // Master audit F11: search '1' must find roll '১'.
+      const rollMatches = s.roll != null && toAsciiDigits(String(s.roll)).toLowerCase().includes(toAsciiDigits(q));
       return nameMatches || idMatches || rollMatches;
     }).sort((a, b) => {
-      const rollA = parseInt(a.roll || '999', 10);
-      const rollB = parseInt(b.roll || '999', 10);
+      // Master audit F11: parseInt('১') is NaN — normalize first.
+      const rollA = parseInt(toAsciiDigits(a.roll || '999'), 10);
+      const rollB = parseInt(toAsciiDigits(b.roll || '999'), 10);
       return rollA - rollB;
     });
   }, [students, selectedClassFilter, searchQuery]);

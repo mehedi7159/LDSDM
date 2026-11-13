@@ -70,6 +70,7 @@ import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { buildPublicPortalData } from '../services/publicPortal';
 import {
   dailyAttendanceService,
+  validateRemarkAttendance,
   DailyStudentAttendanceRecord,
   DailyStaffAttendanceRecord
 } from '../services/dailyAttendanceService';
@@ -528,12 +529,15 @@ const defaultClasses: SchoolClass[] = [
   { id: '2', name: 'Class 1', order: 2 },
   { id: '3', name: 'Class 2', order: 3 },
   { id: '4', name: 'Class 3', order: 4 },
-  { id: '5', name: 'Class 5', order: 5 },
-  { id: '6', name: 'Class 6', order: 6 },
-  { id: '7', name: 'Class 7', order: 7 },
-  { id: '8', name: 'Class 8', order: 8 },
-  { id: '9', name: 'Class 9', order: 9 },
-  { id: '10', name: 'Class 10', order: 10 },
+  // Master audit F9: Class 4 was missing from the ladder (live data
+  // has Class 4 students). No Nursery/KG: the ladder starts at Play.
+  { id: '5', name: 'Class 4', order: 5 },
+  { id: '6', name: 'Class 5', order: 6 },
+  { id: '7', name: 'Class 6', order: 7 },
+  { id: '8', name: 'Class 7', order: 8 },
+  { id: '9', name: 'Class 8', order: 9 },
+  { id: '10', name: 'Class 9', order: 10 },
+  { id: '11', name: 'Class 10', order: 11 },
 ];
 
 const defaultAppUsers: AppUser[] = [
@@ -6702,6 +6706,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const updateRemark = (studentId: string, examId: string, data: Partial<RemarkRecord>) => {
     setRemarks(prev => {
       const existing = prev.find(r => r.studentId === studentId && r.examId === examId);
+      // Master audit F10 backstop: never persist an impossible triple
+      // (present + absent > working days, or any negative). The Hub
+      // validates visibly before it ever calls here; this only guards
+      // other callers. Remark-text-only updates are untouched, and a
+      // numeric update is judged on the merged triple.
+      const touchesNumbers =
+        data.workingDays !== undefined || data.totalPresent !== undefined || data.totalAbsent !== undefined;
+      if (touchesNumbers) {
+        const merged = { ...(existing || { workingDays: undefined, totalPresent: undefined, totalAbsent: undefined }), ...data };
+        if (validateRemarkAttendance(merged.workingDays, merged.totalPresent, merged.totalAbsent)) {
+          console.warn('[updateRemark] refused impossible attendance triple for', studentId, examId);
+          return prev;
+        }
+      }
       if (existing) {
         return prev.map(r => r.studentId === studentId && r.examId === examId ? { ...r, ...data } : r);
       } else {

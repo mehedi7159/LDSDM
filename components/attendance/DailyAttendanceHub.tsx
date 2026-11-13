@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import {
   dailyAttendanceService,
   isFridayDate,
+  validateRemarkAttendance,
+  cappedAttendanceRate,
   DailyStudentAttendanceRecord,
   DailyStaffAttendanceRecord,
   AttendanceStatus
@@ -402,6 +404,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
   // Remarks Table State & Auto-save for Exam Rollup / Fine-Tuning
   const [localRemarksData, setLocalRemarksData] = useState<Record<string, { workingDays?: number; totalPresent?: number; totalAbsent?: number; remark?: string }>>({});
+  // Master audit F10: studentId -> why this student's triple cannot
+  // be saved (shown above the remarks table until fixed).
+  const [remarksWarnings, setRemarksWarnings] = useState<Record<string, string>>({});
   const pendingRemarksRef = useRef<Record<string, any>>({});
   const remarksSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [remarksSaveStatus, setRemarksSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
@@ -436,6 +441,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     studentIds.forEach(studentId => {
       const data = pendingRemarksRef.current[studentId];
       if (data) {
+        // Master audit F10: re-validate at flush time — an invalid
+        // triple is never handed to updateRemark, even if it was
+        // queued before the warning state existed.
+        const problem = validateRemarkAttendance(data.workingDays, data.totalPresent, data.totalAbsent);
+        if (problem) {
+          setRemarksWarnings(w => ({ ...w, [studentId]: problem }));
+          return;
+        }
         updateRemark(studentId, selectedExamId, {
           workingDays: data.workingDays,
           totalPresent: data.totalPresent,
@@ -455,6 +468,24 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       const current = prev[studentId] || {};
       const parsed = field === 'remark' ? value : (value === '' ? undefined : Number(value));
       const updated = { ...current, [field]: parsed };
+      // Master audit F10: an impossible triple (present + absent >
+      // working days, or any negative) is warned about and NEVER
+      // queued for save — it must not silently land on the marksheet.
+      // The typed value stays visible so the admin can fix it.
+      if (field !== 'remark') {
+        const problem = validateRemarkAttendance(updated.workingDays, updated.totalPresent, updated.totalAbsent);
+        if (problem) {
+          setRemarksWarnings(w => ({ ...w, [studentId]: problem }));
+          delete pendingRemarksRef.current[studentId];
+          return { ...prev, [studentId]: updated };
+        }
+        setRemarksWarnings(w => {
+          if (!(studentId in w)) return w;
+          const next = { ...w };
+          delete next[studentId];
+          return next;
+        });
+      }
       pendingRemarksRef.current[studentId] = updated;
 
       if (remarksSaveTimeoutRef.current) clearTimeout(remarksSaveTimeoutRef.current);
@@ -1310,6 +1341,21 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               </div>
             </div>
 
+            {/* Master audit F10: impossible triples are warned here and
+                never saved — fix the numbers and the warning clears. */}
+            {Object.keys(remarksWarnings).length > 0 && (
+              <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs font-semibold space-y-1">
+                {Object.entries(remarksWarnings).map(([studentId, problem]) => {
+                  const st = classStudents.find(s => s.id === studentId);
+                  return (
+                    <p key={studentId}>
+                      {st ? `${st.nameBn || st.name} (রোল ${st.roll || st.rollNumber || '-'})` : ''}: {problem} সংরক্ষণ হয়নি — ঠিক করে আবার লিখুন।
+                    </p>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
@@ -1336,7 +1382,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                       const data = localRemarksData[student.id] || {};
                       const workingDays = Number(data.workingDays) || 0;
                       const present = Number(data.totalPresent) || 0;
-                      const rate = workingDays > 0 ? Math.round((present / workingDays) * 100) : 0;
+                      // Master audit F10: rate is capped at 100% — an
+                      // impossible triple must never print over 100%.
+                      const rate = cappedAttendanceRate(present, workingDays);
 
                       return (
                         <tr key={student.id} className="hover:bg-slate-50/80 transition-colors">

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { formatNumber } from '../services/utils';
+import { toAsciiDigits } from '../services/studentService';
 
 interface BulkAttendanceImportModalProps {
   isOpen: boolean;
@@ -70,8 +71,9 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
     return students
       .filter(s => s.classLevel === selectedClass && s.status === 'Active' && !s.isFormer)
       .sort((a, b) => {
-        const rollA = parseInt(a.roll || '0', 10);
-        const rollB = parseInt(b.roll || '0', 10);
+        // Master audit F11: parseInt('১') is NaN — normalize first.
+        const rollA = parseInt(toAsciiDigits(a.roll || '0'), 10);
+        const rollB = parseInt(toAsciiDigits(b.roll || '0'), 10);
         if (!isNaN(rollA) && !isNaN(rollB) && rollA !== rollB) return rollA - rollB;
         return a.name.localeCompare(b.name);
       });
@@ -85,11 +87,12 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
     const clean = identifier.trim().toLowerCase();
     
     // Match by studentId
-    let found = classStudents.find(s => s.studentId && s.studentId.toLowerCase() === clean);
+    let found = classStudents.find(s => s.studentId && toAsciiDigits(s.studentId).toLowerCase() === toAsciiDigits(clean));
     if (found) return found;
 
     // Match by roll
-    found = classStudents.find(s => s.roll != null && String(s.roll).toLowerCase() === clean);
+    found = classStudents.find(s => s.roll != null && toAsciiDigits(String(s.roll)).toLowerCase() === toAsciiDigits(clean));
+    if (found) return found;
     if (found) return found;
 
     // Match by exact name
@@ -97,11 +100,11 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
     if (found) return found;
 
     // Match partial numeric ID
-    const num = parseInt(clean, 10);
+    const num = parseInt(toAsciiDigits(clean), 10);
     if (!isNaN(num)) {
       found = classStudents.find(s => {
-        const sRoll = parseInt(s.roll || '-1', 10);
-        const sId = parseInt(s.studentId || '-1', 10);
+        const sRoll = parseInt(toAsciiDigits(s.roll || '-1'), 10);
+        const sId = parseInt(toAsciiDigits(s.studentId || '-1'), 10);
         return sRoll === num || sId === num;
       });
     }
