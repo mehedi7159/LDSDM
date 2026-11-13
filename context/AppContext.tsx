@@ -4482,7 +4482,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const addStudent = (student: Omit<Student, 'id'>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { student: newStudent } = buildCreateStudentPayload(student, 'inst_madrasah_primary', actor);
+    const { student: newStudent } = buildCreateStudentPayload(student, 'inst_madrasah_primary', actor, students.map(s => s.studentId));
     const finalStudent = newStudent || ({ ...student, id: generateId() } as Student);
     // Truthful-save Step 2: compute the next list once, set it, and
     // return it — the caller passes it to confirmStudentsCloudSync, so

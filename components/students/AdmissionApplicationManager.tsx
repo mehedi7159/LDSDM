@@ -15,6 +15,7 @@ import { Button } from '../ui/Button';
 import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { useTheme } from '../../context/ThemeContext';
 import { RETRY_LABEL, STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
+import { resolveUniqueStudentId } from '../../services/studentService';
 import {
   FileText,
   Plus,
@@ -45,7 +46,7 @@ export type AdmissionApplication = OfficeAdmissionApplication;
 export const AdmissionApplicationManager: React.FC<{
   onEnrollStudent?: (app: AdmissionApplication) => void;
 }> = ({ onEnrollStudent }) => {
-  const { classes, addStudent, confirmStudentsCloudSync, isRecordUnconfirmed, language } = useApp();
+  const { classes, students, addStudent, confirmStudentsCloudSync, isRecordUnconfirmed, language } = useApp();
   const { showToast } = useTheme();
   const isBn = language === 'bn';
 
@@ -214,7 +215,12 @@ export const AdmissionApplicationManager: React.FC<{
     try {
       // 1. Add as active enrolled student (local apply, at once)
       const currentYear = new Date().getFullYear();
-      const autoStudentId = `${currentYear}${Math.floor(100 + Math.random() * 900)}`;
+      // Random 3 digits collide easily (only 900 values) — resolve
+      // against every existing student ID before enrolling.
+      const autoStudentId = resolveUniqueStudentId(
+        `${currentYear}${Math.floor(100 + Math.random() * 900)}`,
+        students.map(s => s.studentId)
+      );
 
       const added = addStudent({
         name: app.applicantName,
@@ -262,7 +268,7 @@ export const AdmissionApplicationManager: React.FC<{
             [app.id]: {
               students: added.students,
               studentId: added.student.id,
-              studentNo: autoStudentId,
+              studentNo: added.student.studentId,
               applicantName: app.applicantNameBn || app.applicantName,
               message: confirmErrorMessage(result)
             }
@@ -270,7 +276,7 @@ export const AdmissionApplicationManager: React.FC<{
           showToast({ type: 'error', message: confirmErrorMessage(result) });
           return;
         }
-        markEnrolledApproved(app, autoStudentId);
+        markEnrolledApproved(app, added.student.studentId);
       }).catch((err) => {
         console.error('Background admission enrol cloud confirm failed:', err);
         enrollingRef.current.delete(app.id);
@@ -280,7 +286,7 @@ export const AdmissionApplicationManager: React.FC<{
           [app.id]: {
             students: added.students,
             studentId: added.student.id,
-            studentNo: autoStudentId,
+            studentNo: added.student.studentId,
             applicantName: app.applicantNameBn || app.applicantName,
             message: STUDENTS_CLOUD_FAILURE_MESSAGE
           }
