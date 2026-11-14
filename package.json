@@ -35,7 +35,7 @@
     "test:rbac-multirole": "tsx scripts/test-rbac-multirole.ts",
     "test:portal-idcard-lookup": "tsx scripts/verify-portal-idcard-lookup.ts",
     "test:users-queue-at-add": "tsx scripts/verify-users-queue-at-add.ts",
-    "test:pwa-update-banner": "tsx scripts/verify-pwa-update-banner.ts"
+    "test:pwa-reload-button": "tsx scripts/verify-pwa-reload-button.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
