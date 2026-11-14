@@ -34,7 +34,8 @@
     "test:promotion": "tsx scripts/test-class-promotion.ts",
     "test:rbac-multirole": "tsx scripts/test-rbac-multirole.ts",
     "test:portal-idcard-lookup": "tsx scripts/verify-portal-idcard-lookup.ts",
-    "test:users-queue-at-add": "tsx scripts/verify-users-queue-at-add.ts"
+    "test:users-queue-at-add": "tsx scripts/verify-users-queue-at-add.ts",
+    "test:pwa-update-banner": "tsx scripts/verify-pwa-update-banner.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
