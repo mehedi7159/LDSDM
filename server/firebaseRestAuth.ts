@@ -30,7 +30,7 @@ import fs from 'fs';
 import path from 'path';
 import { createSign, createVerify } from 'node:crypto';
 
-export const DEFAULT_PROJECT_ID = 'gen-lang-client-0692995380';
+export const DEFAULT_PROJECT_ID = 'ldsdmms';
 const CERTS_URL =
   'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
