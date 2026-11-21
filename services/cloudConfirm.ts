@@ -649,6 +649,55 @@ export async function writeClassesRecordsToCollection(field: ClassesSplitField, 
   }
 }
 
+/**
+ * Job 4 (academic split): the new home of subjects + exams + the four
+ * assignment lists. One collection per field, paths built from
+ * CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded — same shape as
+ * Job 2's schedule collections and Job 3's classes collections.
+ * subjects + exams are TRIPWIRE_FIELDS: the collection writes below
+ * are setDoc merge per record, so they can never shrink a list — a
+ * shrink only ever happens through writeDeleteFieldsToCloud, where
+ * the SAME assertTripwire runs before any doc is deleted.
+ */
+export type AcademicSplitField = 'subjects' | 'exams' | 'examSubjectAssignments' | 'classSubjectAssignments' | 'teacherSubjectAssignments' | 'classTeacherAssignments';
+
+export function academicCollectionRef(field: AcademicSplitField) {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, field);
+}
+
+export function subjectsCollectionRef() {
+  return academicCollectionRef('subjects');
+}
+
+export function examsCollectionRef() {
+  return academicCollectionRef('exams');
+}
+
+export function examSubjectAssignmentsCollectionRef() {
+  return academicCollectionRef('examSubjectAssignments');
+}
+
+export function classSubjectAssignmentsCollectionRef() {
+  return academicCollectionRef('classSubjectAssignments');
+}
+
+export function teacherSubjectAssignmentsCollectionRef() {
+  return academicCollectionRef('teacherSubjectAssignments');
+}
+
+export function classTeacherAssignmentsCollectionRef() {
+  return academicCollectionRef('classTeacherAssignments');
+}
+
+/** Write academic records into their new collection (setDoc merge by id). */
+export async function writeAcademicRecordsToCollection(field: AcademicSplitField, records: any[]): Promise<void> {
+  const col = academicCollectionRef(field);
+  for (const r of records || []) {
+    if (!r || !r.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(r.id)), stripUndefinedRecord(r), { merge: true });
+  }
+}
+
 /** Delete class/section/year docs from their new collection (missing docs are a no-op). */
 export async function deleteClassesRecordsFromCollection(field: ClassesSplitField, ids: string[]): Promise<void> {
   const col = classesCollectionRef(field);
@@ -658,9 +707,26 @@ export async function deleteClassesRecordsFromCollection(field: ClassesSplitFiel
   }
 }
 
+/** Delete academic docs from their new collection (missing docs are a no-op). */
+export async function deleteAcademicRecordsFromCollection(field: AcademicSplitField, ids: string[]): Promise<void> {
+  const col = academicCollectionRef(field);
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
 /** Read all docs of one classes field from its new collection (empty array when none). */
 export async function readClassesFieldFromCollection(field: ClassesSplitField): Promise<any[]> {
   const snap = await getDocs(classesCollectionRef(field));
+  return snap.docs.map((d) => {
+    const data = d.data() as any;
+    return { ...data, id: data.id || d.id };
+  });
+}
+/** Read all docs of one academic field from its new collection (empty array when none). */
+export async function readAcademicFieldFromCollection(field: AcademicSplitField): Promise<any[]> {
+  const snap = await getDocs(academicCollectionRef(field));
   return snap.docs.map((d) => {
     const data = d.data() as any;
     return { ...data, id: data.id || d.id };
@@ -736,35 +802,92 @@ export async function writeExamsFieldToCloud(
   exams: Exam[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('exams', exams as any, updatedBy), CONFIRM_TIMEOUT_MS, 'exams cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = exams || [];
+    if (list.length > 0) {
+      // Job 4 dual-write: same id assertion as the main_store leg,
+      // then the new collection first. A failure anywhere fails the
+      // whole write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('exams', list as any, fieldKeyFn('exams'));
+      await writeAcademicRecordsToCollection('exams', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ exams }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'exams cloud confirm');
 }
 
 export async function writeExamSubjectAssignmentsFieldToCloud(
   assignments: ExamSubjectAssignment[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('examSubjectAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'exam subject assignments cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = assignments || [];
+    if (list.length > 0) {
+      // Job 4 dual-write: same shape as exams above.
+      assertUpsertRecords('examSubjectAssignments', list as any, fieldKeyFn('examSubjectAssignments'));
+      await writeAcademicRecordsToCollection('examSubjectAssignments', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ examSubjectAssignments: assignments }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'exam subject assignments cloud confirm');
 }
 
 export async function writeClassSubjectAssignmentsFieldToCloud(
   assignments: ClassSubjectAssignment[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('classSubjectAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'class subject assignments cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = assignments || [];
+    if (list.length > 0) {
+      // Job 4 dual-write: same shape as exams above.
+      assertUpsertRecords('classSubjectAssignments', list as any, fieldKeyFn('classSubjectAssignments'));
+      await writeAcademicRecordsToCollection('classSubjectAssignments', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ classSubjectAssignments: assignments }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'class subject assignments cloud confirm');
 }
 
 export async function writeTeacherSubjectAssignmentsFieldToCloud(
   assignments: TeacherSubjectAssignment[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('teacherSubjectAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'teacher subject assignments cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = assignments || [];
+    if (list.length > 0) {
+      // Job 4 dual-write: same shape as exams above.
+      assertUpsertRecords('teacherSubjectAssignments', list as any, fieldKeyFn('teacherSubjectAssignments'));
+      await writeAcademicRecordsToCollection('teacherSubjectAssignments', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ teacherSubjectAssignments: assignments }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'teacher subject assignments cloud confirm');
 }
 
 export async function writeClassTeacherAssignmentsFieldToCloud(
   assignments: ClassTeacherAssignment[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('classTeacherAssignments', assignments as any, updatedBy), CONFIRM_TIMEOUT_MS, 'class teacher assignments cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = assignments || [];
+    if (list.length > 0) {
+      // Job 4 dual-write: same shape as exams above.
+      assertUpsertRecords('classTeacherAssignments', list as any, fieldKeyFn('classTeacherAssignments'));
+      await writeAcademicRecordsToCollection('classTeacherAssignments', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ classTeacherAssignments: assignments }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'class teacher assignments cloud confirm');
 }
 
 export async function writePromotionHistoryFieldToCloud(
@@ -785,7 +908,20 @@ export async function writeSubjectsFieldToCloud(
   subjects: Subject[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('subjects', subjects as any, updatedBy), CONFIRM_TIMEOUT_MS, 'subjects cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = subjects || [];
+    if (list.length > 0) {
+      // Job 4 dual-write: same shape as exams above. subjects is a
+      // tripwire field, but this leg only ever ADDS/updates docs
+      // (setDoc merge) — it can never shrink the collection.
+      assertUpsertRecords('subjects', list as any, fieldKeyFn('subjects'));
+      await writeAcademicRecordsToCollection('subjects', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ subjects }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'subjects cloud confirm');
 }
 
 export async function writeClassesFieldToCloud(
@@ -909,25 +1045,6 @@ export async function writeDeleteFieldsToCloud(
     const cleanTrash = (trashEntries || []).filter((t) => t && t.id);
     if (cleanRemovals.length === 0 && cleanTrash.length === 0) return;
     validateDeleteOp(cleanRemovals, cleanTrash);
-    // Job 1 (notices split): notices also live in the new collection —
-    // delete their docs there too, so a deleted notice can never be
-    // resurrected by the notices feed. deleteDoc of a missing doc
-    // succeeds, so a retry replays this idempotently.
-    for (const removal of cleanRemovals) {
-      if (removal.field === 'notices') {
-        await deleteNoticesFromCollection(removal.ids);
-      } else if (removal.field === 'classRoutines' || removal.field === 'syllabusItems' || removal.field === 'calendarEvents') {
-        // Job 2 (schedule split): schedule records also live in the new
-        // collections — delete their docs there too, so a deleted
-        // routine can never be resurrected by a schedule feed.
-        await deleteScheduleRecordsFromCollection(removal.field as ScheduleSplitField, removal.ids);
-      } else if (removal.field === 'classes' || removal.field === 'sections' || removal.field === 'academicYears') {
-        // Job 3 (classes split): class/section/year records also live
-        // in the new collections — delete their docs there too, so a
-        // deleted class can never be resurrected by a classes feed.
-        await deleteClassesRecordsFromCollection(removal.field as ClassesSplitField, removal.ids);
-      }
-    }
     const ref = doc(db, 'institution', 'main_store');
     const snap = await getDoc(ref);
     const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
@@ -950,9 +1067,38 @@ export async function writeDeleteFieldsToCloud(
     // the only normal write site that shrinks protected lists, so the
     // check lives here — a shrink beyond the same-write trash growth
     // throws before setDoc. Restores never reach this writer.
+    // Job 4: the check runs BEFORE any new-collection doc is deleted
+    // (it used to run after) — subjects + exams are tripwire fields,
+    // so a refused shrink must delete nothing anywhere, not even in
+    // a collection the read-switch already treats as the source.
     const oldTrashSize = ((data.trashBin as { id: string }[] | undefined) || []).length;
     const newTrashSize = cleanTrash.length > 0 ? (payload.trashBin as { id: string }[]).length : oldTrashSize;
     assertTripwire(oldSizes, newSizes, oldTrashSize, newTrashSize);
+    // Job 1 (notices split): notices also live in the new collection —
+    // delete their docs there too, so a deleted notice can never be
+    // resurrected by the notices feed. deleteDoc of a missing doc
+    // succeeds, so a retry replays this idempotently.
+    for (const removal of cleanRemovals) {
+      if (removal.field === 'notices') {
+        await deleteNoticesFromCollection(removal.ids);
+      } else if (removal.field === 'classRoutines' || removal.field === 'syllabusItems' || removal.field === 'calendarEvents') {
+        // Job 2 (schedule split): schedule records also live in the new
+        // collections — delete their docs there too, so a deleted
+        // routine can never be resurrected by a schedule feed.
+        await deleteScheduleRecordsFromCollection(removal.field as ScheduleSplitField, removal.ids);
+      } else if (removal.field === 'classes' || removal.field === 'sections' || removal.field === 'academicYears') {
+        // Job 3 (classes split): class/section/year records also live
+        // in the new collections — delete their docs there too, so a
+        // deleted class can never be resurrected by a classes feed.
+        await deleteClassesRecordsFromCollection(removal.field as ClassesSplitField, removal.ids);
+      } else if (removal.field === 'subjects' || removal.field === 'exams' || removal.field === 'examSubjectAssignments' || removal.field === 'classSubjectAssignments' || removal.field === 'teacherSubjectAssignments' || removal.field === 'classTeacherAssignments') {
+        // Job 4 (academic split): academic records also live in the
+        // new collections — delete their docs there too, so a deleted
+        // subject/exam/assignment can never be resurrected by an
+        // academic feed.
+        await deleteAcademicRecordsFromCollection(removal.field as AcademicSplitField, removal.ids);
+      }
+    }
     await setDoc(ref, payload, { merge: true });
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'delete cloud confirm');
@@ -1016,6 +1162,10 @@ export async function writeTrashOpToCloud(
         // otherwise the restore would stay invisible until a
         // main_store read.
         await writeClassesRecordsToCollection(field as ClassesSplitField, liveRecords);
+      } else if (field === 'subjects' || field === 'exams' || field === 'examSubjectAssignments' || field === 'classSubjectAssignments' || field === 'teacherSubjectAssignments' || field === 'classTeacherAssignments') {
+        // Job 4: same for a restored academic record — otherwise the
+        // restore would stay invisible until a main_store read.
+        await writeAcademicRecordsToCollection(field as AcademicSplitField, liveRecords);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a
