@@ -1,6 +1,7 @@
 /**
  * Database split — one-time backfills (Job 1: notices, 10 Nov 2026;
- * Job 2: classRoutines + syllabusItems + calendarEvents, 21 Nov 2026).
+ * Job 2: classRoutines + syllabusItems + calendarEvents, 21 Nov 2026;
+ * Job 3: classes + sections + academicYears, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -12,11 +13,12 @@
  *
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
- * holds the records (see AppContext startNoticesFeed / startScheduleFeeds).
+ * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
+ * / startClassesFeeds).
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, stripUndefinedRecord, type ScheduleSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
 import type { NoticeItem } from '../types';
@@ -90,16 +92,20 @@ export function scheduleBackfillPlan(records: any[]): { docs: any[]; skipped: nu
 /**
  * Job 2 — one-time backfill for one schedule field: copy main_store
  * records into the field's new collection (doc id = record id).
+ * Job 3 reuses it for classes, sections and academicYears — the plan
+ * step (scheduleBackfillPlan) and the batching are field-agnostic.
  * Returns counts. Throws on Firestore failure so the caller can retry.
  */
-export async function migrateFieldToCollection(field: ScheduleSplitField, records: any[]): Promise<{ written: number; skipped: number }> {
+export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField, records: any[]): Promise<{ written: number; skipped: number }> {
   const { docs, skipped } = scheduleBackfillPlan(records);
   if (docs.length > 0) {
     // Same id assertion as every confirmed writer — a bad record fails
     // the backfill loudly instead of being silently dropped.
     assertUpsertRecords(field, docs as any, fieldKeyFn(field));
   }
-  const col = scheduleCollectionRef(field);
+  const col = (field === 'classes' || field === 'sections' || field === 'academicYears')
+    ? classesCollectionRef(field as ClassesSplitField)
+    : scheduleCollectionRef(field as ScheduleSplitField);
   for (let i = 0; i < docs.length; i += 500) {
     const batch = writeBatch(db);
     for (const r of docs.slice(i, i + 500)) {
