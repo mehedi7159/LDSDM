@@ -7,6 +7,7 @@
  * classTeacherAssignments, 21 Nov 2026).
  * Job 5: feeTypes + feeStructures, 21 Nov 2026).
  * Job 6: remarks, 21 Nov 2026).
+ * Job 7: promotionHistory, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -19,11 +20,11 @@
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
  * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
- * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed).
+ * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed).
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
 import type { NoticeItem, RemarkRecord } from '../types';
@@ -131,9 +132,10 @@ export function remarksBackfillPlan(records: RemarkRecord[]): { docs: RemarkReco
  * plan step dedupes by that key instead of by id.
  * Job 6 reuses it for 'remarks' (same shape, one field — doc id =
  * studentId__examId instead of an id field).
+ * Job 7 reuses it for 'promotionHistory' (same shape, one field).
  * Returns counts. Throws on Firestore failure so the caller can retry.
  */
-export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks', records: any[]): Promise<{ written: number; skipped: number }> {
+export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory', records: any[]): Promise<{ written: number; skipped: number }> {
   const isFeesField = field === 'feeTypes' || field === 'feeStructures';
   const { docs, skipped } = field === 'remarks' ? remarksBackfillPlan(records) : isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
   if (docs.length > 0) {
@@ -141,7 +143,8 @@ export async function migrateFieldToCollection(field: ScheduleSplitField | Class
     // the backfill loudly instead of being silently dropped.
     assertUpsertRecords(field, docs as any, fieldKeyFn(field), field === 'remarks' ? 'studentId+examId' : 'id');
   }
-  const col = field === 'remarks' ? remarksCollectionRef()
+  const col = field === 'promotionHistory' ? promotionHistoryCollectionRef()
+    : field === 'remarks' ? remarksCollectionRef()
     : isFeesField ? feesCollectionRef(field as FeesSplitField)
     : (field === 'classes' || field === 'sections' || field === 'academicYears')
       ? classesCollectionRef(field as ClassesSplitField)

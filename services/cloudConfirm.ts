@@ -954,11 +954,60 @@ export async function writeClassTeacherAssignmentsFieldToCloud(
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'class teacher assignments cloud confirm');
 }
 
+/**
+ * Job 7 (promotionHistory split): the new home of promotion history.
+ * The path is built from CANONICAL_PRIMARY_INSTITUTION_ID, never
+ * hardcoded — same shape as Job 1's notices collection.
+ */
+export function promotionHistoryCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'promotionHistory');
+}
+
+/** Read all promotion history docs from the new collection (empty array when none). */
+export async function readPromotionHistoryFromCollection(): Promise<PromotionHistoryRecord[]> {
+  const snap = await getDocs(promotionHistoryCollectionRef());
+  return snap.docs.map((d) => {
+    const data = d.data() as PromotionHistoryRecord;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
+/** Write promotion history docs into the new collection (setDoc merge by id). */
+export async function writePromotionHistoryToCollection(records: PromotionHistoryRecord[]): Promise<void> {
+  const col = promotionHistoryCollectionRef();
+  for (const r of records || []) {
+    if (!r || !r.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(r.id)), stripUndefinedRecord(r), { merge: true });
+  }
+}
+
+/** Delete promotion history docs from the new collection (missing docs are a no-op). */
+export async function deletePromotionHistoryFromCollection(ids: string[]): Promise<void> {
+  const col = promotionHistoryCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
 export async function writePromotionHistoryFieldToCloud(
   records: PromotionHistoryRecord[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('promotionHistory', records as any, updatedBy), CONFIRM_TIMEOUT_MS, 'promotion history cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = records || [];
+    if (list.length > 0) {
+      // Job 7 dual-write: same id assertion as the main_store leg, then
+      // the new collection first. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('promotionHistory', list as any, fieldKeyFn('promotionHistory'));
+      await writePromotionHistoryToCollection(list);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ promotionHistory: records }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'promotion history cloud confirm');
 }
 
 /**
@@ -1226,6 +1275,11 @@ export async function writeDeleteFieldsToCloud(
         // can never be resurrected by the remarks feed. Ids here are
         // studentId__examId keys, which are the collection doc ids.
         await deleteRemarksFromCollection(removal.ids);
+      } else if (removal.field === 'promotionHistory') {
+        // Job 7 (promotionHistory split): history records also live in
+        // the new collection — delete their docs there too, so a
+        // cleared record can never be resurrected by the promotion feed.
+        await deletePromotionHistoryFromCollection(removal.ids);
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1303,6 +1357,10 @@ export async function writeTrashOpToCloud(
         // Job 6: same for a restored remark — otherwise the restore
         // would stay invisible until a main_store read.
         await writeRemarksToCollection(liveRecords as RemarkRecord[]);
+      } else if (field === 'promotionHistory') {
+        // Job 7: same for a restored promotion record — otherwise the
+        // restore would stay invisible until a main_store read.
+        await writePromotionHistoryToCollection(liveRecords as PromotionHistoryRecord[]);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a
