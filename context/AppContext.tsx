@@ -115,6 +115,8 @@ import {
   writeNoticesFieldToCloud,
   noticesCollectionRef,
   readNoticesFromCollection,
+  marksCollectionRef,
+  readMarksFromCollection,
   scheduleCollectionRef,
   classesCollectionRef,
   academicCollectionRef,
@@ -2222,6 +2224,25 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // for this, so sync never starts on half-loaded transactions state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedTransactionsCollectionRef = useRef(false);
+  // Job 11 (marks split): same shape as Job 1, one field —
+  // once the marks collection feed has delivered docs it is the
+  // read source; main_store stays the fallback until then.
+  const marksFromCollectionRef = useRef(false);
+  // Job 11: guards the one-time marks backfill against concurrent feed events.
+  const marksBackfillInFlightRef = useRef(false);
+  // Job 11: ids already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledMarkIdsRef = useRef<Set<string>>(new Set());
+  // Job 11: the last docs the marks collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionMarksRef = useRef<MarkRecord[]>([]);
+  // Job 11: whether the marks feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on it.
+  const marksFeedSettledRef = useRef(false);
+  // Job 11: true once the marks feed has settled — auto-sync waits
+  // for this, so sync never starts on half-loaded marks state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedMarksCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -3014,6 +3035,56 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (stragglers.length > 0) void backfillTransactionsOnce(stragglers);
     }
   };
+
+  // Job 11 one-time backfill: copy main_store marks into their new
+  // collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillMarksOnce = async (source?: MarkRecord[]) => {
+    if (marksBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['marks'] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledMarkIdsRef.current.has(String(r.id)));
+    if (pending.length === 0) return;
+    marksBackfillInFlightRef.current = true;
+    try {
+      await migrateFieldToCollection('marks', pending);
+      pending.forEach((r) => backfilledMarkIdsRef.current.add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Marks backfill notice:', err?.message || err);
+    } finally {
+      marksBackfillInFlightRef.current = false;
+    }
+  };
+
+  // Job 11: marks from a remote snapshot. A collection feed's own
+  // snapshots always apply (its handler decides when an empty
+  // snapshot is real — see startMarksFeed); main_store applies only
+  // while the marks collection feed has not taken over. After
+  // takeover, a main_store list only rescues stragglers (written by
+  // a stale pre-split tab, which only writes main_store) into the
+  // collection — the feed then delivers them. Demo-mark- records are
+  // filtered here exactly as before.
+  const applyMarksFieldFromRemote = (records: MarkRecord[], opts: { fromMarksCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
+    const cleanMarks = (records || []).filter((m) => !m.id?.startsWith('demo-mark-'));
+    if (opts?.fromMarksCollection || !marksFromCollectionRef.current) {
+      setMarks(cleanMarks);
+      lastConfirmedRef.current['marks'] = cleanMarks;
+      snapshotApplied['marks'] = cleanMarks;
+      try { localStorage.setItem('marks', JSON.stringify(cleanMarks)); } catch {}
+      // Job 11: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded).
+      if (!opts?.fromMarksCollection) void backfillMarksOnce();
+    } else {
+      const colIds = new Set((lastCollectionMarksRef.current || []).map((r) => String(r.id)));
+      const stragglers = cleanMarks.filter((r) => !colIds.has(String(r.id)));
+      if (stragglers.length > 0) void backfillMarksOnce(stragglers);
+    }
+  };
+
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
@@ -3033,7 +3104,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // leaves collection feed.
   // opts.fromTransactionsCollection marks data that came from a Job 10
   // transactions collection feed.
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean }) => {
+  // opts.fromMarksCollection marks data that came from the Job 11
+  // marks collection feed (not from a main_store snapshot).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -3086,11 +3159,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('markEntryEnabled', JSON.stringify(data.markEntryEnabled)); } catch {}
     }
     if (data.marks && Array.isArray(data.marks)) {
-      const cleanMarks = data.marks.filter(m => !m.id?.startsWith('demo-mark-'));
-      setMarks(cleanMarks);
-      lastConfirmedRef.current['marks'] = cleanMarks;
-      snapshotApplied['marks'] = cleanMarks;
-      try { localStorage.setItem('marks', JSON.stringify(cleanMarks)); } catch {}
+      applyMarksFieldFromRemote(data.marks, opts, snapshotApplied);
     }
     if (data.remarks && Array.isArray(data.remarks)) {
       // Job 6: main_store remarks apply only while the collection feed
@@ -3394,6 +3463,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let promotionHistoryUnsubscribe: (() => void) | null = null;
     let leavesUnsubscribe: (() => void) | null = null;
     let transactionsUnsubscribe: (() => void) | null = null;
+    let marksUnsubscribe: (() => void) | null = null;
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -3458,6 +3528,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
     };
 
+    const stopMarksFeed = () => {
+      if (marksUnsubscribe) {
+        try { marksUnsubscribe(); } catch {}
+        marksUnsubscribe = null;
+      }
+    };
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
@@ -3472,6 +3548,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopPromotionHistoryFeed();
       stopLeavesFeed();
       stopTransactionsFeed();
+      stopMarksFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -3980,6 +4057,68 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 11 read-switch: the marks collection feed. Once it delivers
+    // docs covering every confirmed main_store mark it becomes the
+    // read source (marksFromCollectionRef); an empty snapshot before
+    // that means the backfill has not run yet, so main_store marks
+    // stay in place (fallback) and the backfill runs. An empty
+    // snapshot AFTER docs existed means every mark was deleted — that
+    // empty list applies for real. AFTER takeover, every non-empty
+    // snapshot applies — a mark changed on another device must appear
+    // without a reload — the completeness gate only guards the FIRST
+    // takeover, never later snapshots (the Job 3 / Job 5 bug: their
+    // feed handlers only applied at takeover). A feed error only
+    // settles the auto-sync guard; main_store keeps showing.
+    const markMarksFeedSettled = () => {
+      marksFeedSettledRef.current = true;
+      hasLoadedMarksCollectionRef.current = true;
+    };
+
+    const startMarksFeed = () => {
+      if (cancelled) return;
+      stopMarksFeed();
+      marksUnsubscribe = onSnapshot(
+        marksCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as MarkRecord;
+            return { ...data, id: (data as any).id || d.id };
+          });
+          lastCollectionMarksRef.current = docs;
+          markMarksFeedSettled();
+          if (docs.length > 0) {
+            // Take over only when the collection holds every mark the
+            // confirmed main_store list knows — a partial collection
+            // (backfill still running, 6 batches for 2,601 records)
+            // must not hide the rest. Queued local marks survive via
+            // preserveQueuedPayloads, so the check uses the
+            // confirmed list, not local state. Once taken over,
+            // later snapshots apply as-is (see the comment above).
+            const knownIds = new Set(((lastConfirmedRef.current['marks'] || []) as MarkRecord[]).map((r) => String(r.id)));
+            const colIds = new Set(docs.map((d) => String(d.id)));
+            const complete = [...knownIds].every((id) => colIds.has(id));
+            if (marksFromCollectionRef.current || complete) {
+              marksFromCollectionRef.current = true;
+              applyRemoteData({ marks: docs }, { fromMarksCollection: true });
+            } else {
+              void backfillMarksOnce();
+            }
+          } else if (marksFromCollectionRef.current) {
+            applyRemoteData({ marks: [] }, { fromMarksCollection: true });
+          } else {
+            void backfillMarksOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Marks collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store marks keep showing.
+          markMarksFeedSettled();
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -4004,6 +4143,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startLeavesFeed();
       // Job 10: same for the transactions collection.
       startTransactionsFeed();
+      // Job 11: same for the marks collection.
+      startMarksFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -4244,6 +4385,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // saves bypass this (confirmFeeCloudSync writes directly), and
     // queued payloads preserve anything edited meanwhile.
     if (!hasLoadedTransactionsCollectionRef.current) return;
+    // Job 11: never auto-sync until the marks collection has
+    // delivered its first snapshot (or errored) — otherwise sync
+    // could start on half-loaded marks state. Explicit marks saves
+    // bypass this (confirmMarksCloudSync writes directly), and
+    // queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedMarksCollectionRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -4254,6 +4401,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // may predate the main feed, so re-check before any write.
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedLeavesCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedTransactionsCollectionRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedMarksCollectionRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
@@ -4787,7 +4935,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       } catch (colErr: any) {
         console.warn('Remarks collection read notice (portal keeps main_store remarks):', colErr?.message || colErr);
       }
-      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments, remarks }));
+      // Job 11: the portal's marks come from the new collection only
+      // when it covers the fresh main_store marks exactly (same id
+      // set) — otherwise main_store marks stay the source. A partial
+      // backfill (6 batches for 2,601 marks) must never drop portal
+      // marks, and a collection read failure also falls back, never
+      // breaks the rebuild. Same records either way, so the portal
+      // output does not change.
+      let marks = (data as any).marks;
+      try {
+        const colMarks = await readMarksFromCollection();
+        const mainMarkIds = ((data as any).marks || []).map((m: any) => String(m.id));
+        const colMarkIds = new Set(colMarks.map((m) => String(m.id)));
+        if (colMarks.length === mainMarkIds.length && mainMarkIds.every((id) => colMarkIds.has(id))) marks = colMarks;
+      } catch (colErr: any) {
+        console.warn('Marks collection read notice (portal keeps main_store marks):', colErr?.message || colErr);
+      }
+      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments, remarks, marks }));
     } catch (pubErr: any) {
       console.warn('Public portal rebuild notice:', pubErr?.message || pubErr);
     }

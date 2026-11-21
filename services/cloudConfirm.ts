@@ -65,7 +65,7 @@
  * auto-sync itself is replaced by a diff/union propagator in
  * AppContext — no writer in this module can shrink a list.
  */
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { CANONICAL_PRIMARY_INSTITUTION_ID } from './dataAdapter';
 import type { DailyStudentAttendanceRecord, DailyStaffAttendanceRecord } from './dailyAttendanceService';
@@ -433,15 +433,70 @@ export async function writeTransactionsFieldToCloud(
 // union never drops a record. A record without an id is skipped by
 // mergeRecordsById — that invariant is what the verify script pins.
 
+/**
+ * Job 11 (marks split): the new home of marks. One collection, path
+ * built from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded —
+ * same shape as Job 1's notices collection.
+ */
+export function marksCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'marks');
+}
+
+/** Read all mark docs from the new collection (empty array when none). */
+export async function readMarksFromCollection(): Promise<MarkRecord[]> {
+  const snap = await getDocs(marksCollectionRef());
+  return snap.docs.map((d) => {
+    const data = d.data() as MarkRecord;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
+/**
+ * Write mark docs into the new collection (setDoc merge by id).
+ * Batched 500 at a time (Firestore limit): the full marks list is
+ * 2,601 docs, and a sequential setDoc loop over it would blow the
+ * 40 s confirm timeout — same batch shape as the backfill.
+ */
+export async function writeMarksToCollection(marks: MarkRecord[]): Promise<void> {
+  const col = marksCollectionRef();
+  const list = marks || [];
+  for (let i = 0; i < list.length; i += 500) {
+    const batch = writeBatch(db);
+    for (const m of list.slice(i, i + 500)) {
+      if (!m || !m.id) continue; // id assertion happens in the caller
+      batch.set(doc(col, String(m.id)), stripUndefinedRecord(m), { merge: true });
+    }
+    await batch.commit();
+  }
+}
+
+/** Delete mark docs from the new collection (missing docs are a no-op). */
+export async function deleteMarksFromCollection(ids: string[]): Promise<void> {
+  const col = marksCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
 export async function writeMarksFieldToCloud(
   marks: MarkRecord[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(
-    writeFieldToCloud('marks', marks, updatedBy),
-    CONFIRM_TIMEOUT_MS,
-    'marks cloud confirm'
-  );
+  const write = async (): Promise<void> => {
+    const list = marks || [];
+    if (list.length > 0) {
+      // Job 11 dual-write: same id assertion as the main_store leg, then
+      // the new collection first. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('marks', list as any, fieldKeyFn('marks'));
+      await writeMarksToCollection(list);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldToCloud('marks', marks, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'marks cloud confirm');
 }
 
 export async function writeStudentsFieldToCloud(
@@ -1327,6 +1382,7 @@ export async function writeDeleteFieldsToCloud(
     // so a refused shrink must delete nothing anywhere, not even in
     // a collection the read-switch already treats as the source.
     // Job 10: transactions is a tripwire field too.
+    // Job 11: marks is a tripwire field too.
     const oldTrashSize = ((data.trashBin as { id: string }[] | undefined) || []).length;
     const newTrashSize = cleanTrash.length > 0 ? (payload.trashBin as { id: string }[]).length : oldTrashSize;
     assertTripwire(oldSizes, newSizes, oldTrashSize, newTrashSize);
@@ -1382,6 +1438,11 @@ export async function writeDeleteFieldsToCloud(
         // deleted transaction can never be resurrected by the
         // transactions feed.
         await deleteTransactionsFromCollection(removal.ids);
+      } else if (removal.field === 'marks') {
+        // Job 11 (marks split): mark records also live in the new
+        // collection — delete their docs there too, so a deleted mark
+        // can never be resurrected by the marks feed.
+        await deleteMarksFromCollection(removal.ids);
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1471,6 +1532,10 @@ export async function writeTrashOpToCloud(
         // Job 10: same for a restored transaction — otherwise the
         // restore would stay invisible until a main_store read.
         await writeTransactionsToCollection(liveRecords as FinanceTransaction[]);
+      } else if (field === 'marks') {
+        // Job 11: same for a restored mark record — otherwise the
+        // restore would stay invisible until a main_store read.
+        await writeMarksToCollection(liveRecords as MarkRecord[]);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a

@@ -10,6 +10,7 @@
  * Job 7: promotionHistory, 21 Nov 2026).
  * Job 8: staffLeaves, 21 Nov 2026).
  * Job 10: transactions, 21 Nov 2026).
+ * Job 11: marks, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -22,11 +23,11 @@
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
  * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
- * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed).
+ * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed / startMarksFeed).
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, marksCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
 import type { NoticeItem, RemarkRecord } from '../types';
@@ -141,9 +142,11 @@ export function remarksBackfillPlan(records: RemarkRecord[]): { docs: RemarkReco
  * the collection differs.
  * Job 10 extends it to transactions: same idempotent batch copy,
  * only the collection differs.
- * Returns counts. Throws on Firestore failure so the caller can retry.
+ * Job 11 reuses it for 'marks' (same shape, one field — the biggest
+ * 2,601 records = 6 batches of 500). Returns counts. Throws on
+ * Firestore failure so the caller can retry.
  */
-export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory' | 'staffLeaves' | 'transactions', records: any[]): Promise<{ written: number; skipped: number }> {
+export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory' | 'staffLeaves' | 'transactions' | 'marks', records: any[]): Promise<{ written: number; skipped: number }> {
   const isFeesField = field === 'feeTypes' || field === 'feeStructures';
   const { docs, skipped } = field === 'remarks' ? remarksBackfillPlan(records) : isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
   if (docs.length > 0) {
@@ -151,7 +154,8 @@ export async function migrateFieldToCollection(field: ScheduleSplitField | Class
     // the backfill loudly instead of being silently dropped.
     assertUpsertRecords(field, docs as any, fieldKeyFn(field), field === 'remarks' ? 'studentId+examId' : 'id');
   }
-  const col = field === 'staffLeaves' ? staffLeavesCollectionRef()
+  const col = field === 'marks' ? marksCollectionRef()
+    : field === 'staffLeaves' ? staffLeavesCollectionRef()
     : field === 'transactions' ? transactionsCollectionRef()
     : field === 'promotionHistory' ? promotionHistoryCollectionRef()
     : field === 'remarks' ? remarksCollectionRef()
@@ -163,16 +167,30 @@ export async function migrateFieldToCollection(field: ScheduleSplitField | Class
         : scheduleCollectionRef(field as ScheduleSplitField);
   const keyFn = fieldKeyFn(field);
   for (let i = 0; i < docs.length; i += 500) {
-    const batch = writeBatch(db);
-    for (const r of docs.slice(i, i + 500)) {
-      if (field === 'remarks') {
-        // Remarks have no id field — doc id is studentId__examId.
-        batch.set(doc(col, keyFn(r)), stripUndefinedRecord(r), { merge: true });
-      } else {
-        batch.set(doc(col, String(fieldKeyFn(field)(r))), stripUndefinedRecord(r), { merge: true });
+    const chunk = docs.slice(i, i + 500);
+    // Job 11: one failed batch is retried alone (up to 3 attempts,
+    // fresh batch each time) — the other batches are already
+    // committed, so a retry never replays the whole backfill.
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const batch = writeBatch(db);
+        for (const r of chunk) {
+          if (field === 'remarks') {
+            // Remarks have no id field — doc id is studentId__examId.
+            batch.set(doc(col, keyFn(r)), stripUndefinedRecord(r), { merge: true });
+          } else {
+            batch.set(doc(col, String(fieldKeyFn(field)(r))), stripUndefinedRecord(r), { merge: true });
+          }
+        }
+        await batch.commit();
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
       }
     }
-    await batch.commit();
+    if (lastErr) throw lastErr;
   }
   return { written: docs.length, skipped };
 }
