@@ -125,6 +125,7 @@ import {
   promotionHistoryCollectionRef,
   writeScheduleFieldsToCloud,
   staffLeavesCollectionRef,
+  transactionsCollectionRef,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
   writeFeeTypesFieldToCloud,
@@ -2204,6 +2205,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // this, so sync never starts on half-loaded leaves state. Login
   // verdict and manual force-push do NOT wait on it.
   const hasLoadedLeavesCollectionRef = useRef(false);
+  // Job 10 (transactions split): same shape as Job 1, for the one
+  // transactions field — once the transactions collection feed has
+  // delivered docs it is the read source for transactions; main_store
+  // stays the fallback until then.
+  const transactionsFromCollectionRef = useRef(false);
+  // Job 10: guards the one-time transactions backfill against concurrent feed events.
+  const transactionsBackfillInFlightRef = useRef(false);
+  // Job 10: ids already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledTransactionIdsRef = useRef<Set<string>>(new Set());
+  // Job 10: the last docs the transactions collection feed delivered —
+  // the straggler check compares main_store transactions against this set.
+  const lastCollectionTransactionsRef = useRef<FinanceTransaction[]>([]);
+  // Job 10: true once the transactions feed has settled — auto-sync waits
+  // for this, so sync never starts on half-loaded transactions state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedTransactionsCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2589,6 +2607,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   // Job 8 one-time backfill: copy main_store staffLeaves into the new
   // collection. Source is the CONFIRMED main_store list
+  // Job 10 one-time backfill: copy main_store transactions into the
+  // new collection. Source is the CONFIRMED main_store list
   // (lastConfirmedRef) — never local state, which may still hold a
   // record deleted on another device. Idempotent by id (the
   // backfilled-ids set skips already-copied records), so repeat runs
@@ -2610,6 +2630,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 10 one-time backfill: copy main_store transactions into the
+  // new collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillTransactionsOnce = async (source?: FinanceTransaction[]) => {
+    if (transactionsBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['transactions'] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledTransactionIdsRef.current.has(String(r.id)));
+    if (pending.length === 0) return;
+    transactionsBackfillInFlightRef.current = true;
+    try {
+      await migrateFieldToCollection('transactions', pending);
+      pending.forEach((r) => backfilledTransactionIdsRef.current.add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Transactions backfill notice:', err?.message || err);
+    } finally {
+      transactionsBackfillInFlightRef.current = false;
+    }
+  };
   // Job 2: one schedule field from a remote snapshot. A collection
   // feed's own snapshots always apply (its handler decides when an
   // empty snapshot is real — see startScheduleFeeds); main_store
@@ -2942,6 +2984,36 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 10: transactions from a remote snapshot. A collection feed's
+  // own snapshots always apply (its handler decides when an empty
+  // snapshot is real — see startTransactionsFeed); main_store applies
+  // only while the transactions collection feed has not taken over.
+  // After takeover, a main_store list only rescues stragglers (written
+  // by a stale pre-split tab, which only writes main_store) into the
+  // collection — the feed then delivers them. Demo tx-init- records
+  // are filtered here exactly as before; the exam-fee linkage (examId)
+  // is applied as-is — the transaction carrying it stays the single
+  // source of truth that the exam fee is paid.
+  const applyTransactionsFieldFromRemote = (records: FinanceTransaction[], opts: { fromTransactionsCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
+    const cleanTransactions = (records || []).filter((t) => !t.id?.startsWith('tx-init-'));
+    if (opts?.fromTransactionsCollection || !transactionsFromCollectionRef.current) {
+      setTransactions(cleanTransactions);
+      lastConfirmedRef.current['transactions'] = cleanTransactions;
+      snapshotApplied['transactions'] = cleanTransactions;
+      try { localStorage.setItem('madrasha_transactions', JSON.stringify(cleanTransactions)); } catch {}
+      // Job 10: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded). Raw records,
+      // demo tx-init- included: the plan's backfill copies as-is and
+      // the read filter drops them, so the raw count check (main_store
+      // length = collection docs) holds.
+      if (!opts?.fromTransactionsCollection) void backfillTransactionsOnce(records);
+    } else {
+      const colIds = new Set((lastCollectionTransactionsRef.current || []).map((r) => String(r.id)));
+      const stragglers = (cleanTransactions || []).filter((r) => !colIds.has(String(r.id)));
+      if (stragglers.length > 0) void backfillTransactionsOnce(stragglers);
+    }
+  };
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
@@ -2959,7 +3031,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // Job 7 promotion collection feed (not from a main_store snapshot).
   // opts.fromStaffLeavesCollection marks data that came from a Job 8
   // leaves collection feed.
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean }) => {
+  // opts.fromTransactionsCollection marks data that came from a Job 10
+  // transactions collection feed.
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -3053,11 +3127,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       applyClassesFieldFromRemote('sections', data.sections, opts, snapshotApplied);
     }
     if (data.transactions && Array.isArray(data.transactions)) {
-      const cleanTransactions = data.transactions.filter(t => !t.id?.startsWith('tx-init-'));
-      setTransactions(cleanTransactions);
-      lastConfirmedRef.current['transactions'] = cleanTransactions;
-      snapshotApplied['transactions'] = cleanTransactions;
-      try { localStorage.setItem('madrasha_transactions', JSON.stringify(cleanTransactions)); } catch {}
+      applyTransactionsFieldFromRemote(data.transactions, opts, snapshotApplied);
     }
     if (data.feeStructures && Array.isArray(data.feeStructures)) {
       applyFeesFieldFromRemote('feeStructures', data.feeStructures, opts, snapshotApplied);
@@ -3323,6 +3393,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let remarksUnsubscribe: (() => void) | null = null;
     let promotionHistoryUnsubscribe: (() => void) | null = null;
     let leavesUnsubscribe: (() => void) | null = null;
+    let transactionsUnsubscribe: (() => void) | null = null;
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -3380,6 +3451,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
     };
 
+    const stopTransactionsFeed = () => {
+      if (transactionsUnsubscribe) {
+        try { transactionsUnsubscribe(); } catch {}
+        transactionsUnsubscribe = null;
+      }
+    };
+
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
@@ -3393,6 +3471,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopRemarksFeed();
       stopPromotionHistoryFeed();
       stopLeavesFeed();
+      stopTransactionsFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -3839,6 +3918,68 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 10 read-switch: the transactions collection feed. Once it
+    // delivers docs covering every confirmed main_store transaction it
+    // becomes the read source (transactionsFromCollectionRef); an empty
+    // snapshot before that means the backfill has not run yet, so
+    // main_store transactions stay in place (fallback) and the
+    // backfill runs. An empty snapshot AFTER docs existed means every
+    // transaction was deleted — that empty list applies for real. A
+    // feed error only settles the auto-sync guard; main_store keeps
+    // showing. AFTER takeover, every non-empty snapshot applies — a
+    // fee collected on another device must appear without a reload —
+    // the completeness gate only guards the FIRST takeover, never
+    // later snapshots (the Job 3/Job 5 bug: their feed handlers only
+    // applied at takeover).
+    const markTransactionsFeedSettled = () => {
+      hasLoadedTransactionsCollectionRef.current = true;
+    };
+
+    const startTransactionsFeed = () => {
+      if (cancelled) return;
+      stopTransactionsFeed();
+      transactionsUnsubscribe = onSnapshot(
+        transactionsCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as FinanceTransaction;
+            return { ...data, id: (data as any).id || d.id };
+          });
+          lastCollectionTransactionsRef.current = docs;
+          markTransactionsFeedSettled();
+          if (docs.length > 0) {
+            // Take over only when the collection holds every
+            // transaction the confirmed main_store list knows — a
+            // partial collection (backfill still running) must not
+            // hide the rest. Queued local transactions survive via
+            // preserveQueuedPayloads, so the check uses the
+            // confirmed list, not local state. Once taken over,
+            // later snapshots apply as-is (see the comment above).
+            const knownIds = new Set(((lastConfirmedRef.current['transactions'] || []) as FinanceTransaction[]).map((r) => String(r.id)));
+            const colIds = new Set(docs.map((d) => String(d.id)));
+            const complete = [...knownIds].every((id) => colIds.has(id));
+            if (transactionsFromCollectionRef.current || complete) {
+              transactionsFromCollectionRef.current = true;
+              applyRemoteData({ transactions: docs }, { fromTransactionsCollection: true });
+            } else {
+              void backfillTransactionsOnce();
+            }
+          } else if (transactionsFromCollectionRef.current) {
+            applyRemoteData({ transactions: [] }, { fromTransactionsCollection: true });
+          } else {
+            void backfillTransactionsOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Transactions collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store transactions keep showing.
+          markTransactionsFeedSettled();
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -3861,6 +4002,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startPromotionHistoryFeed();
       // Job 8: same for the staffLeaves collection.
       startLeavesFeed();
+      // Job 10: same for the transactions collection.
+      startTransactionsFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -4095,6 +4238,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // bypass this (confirmLeavesCloudSync writes directly), and
     // queued payloads preserve anything edited meanwhile.
     if (!hasLoadedLeavesCollectionRef.current) return;
+    // Job 10: never auto-sync until the transactions collection has
+    // delivered its first snapshot (or errored) — otherwise sync
+    // could start on half-loaded transactions state. Explicit fee
+    // saves bypass this (confirmFeeCloudSync writes directly), and
+    // queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedTransactionsCollectionRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -4104,6 +4253,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedLeavesCollectionRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedTransactionsCollectionRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
