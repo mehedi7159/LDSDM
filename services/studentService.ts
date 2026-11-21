@@ -46,14 +46,24 @@ export function generateStudentId(): string {
  * through when free, otherwise the next free number up (2026174 ->
  * 2026175 -> ...). Only resolves the ID of the student being created —
  * never rewrites an existing student's ID.
+ *
+ * Fix (17–19 Nov 2026 audits): `trashedStudentIds` counts the bin too
+ * (Fix #15 pattern for teacher codes). A trashed student restores with
+ * its original ID, so an ID held in the bin is still taken — a new
+ * enrolment that reused it (2026175 went to a real student on 19 Nov)
+ * would collide on restore. Only a permanent delete frees the ID.
  */
-export function resolveUniqueStudentId(preferred: string, existingStudentIds: Array<string | undefined>): string {
+export function resolveUniqueStudentId(
+  preferred: string,
+  existingStudentIds: Array<string | undefined>,
+  trashedStudentIds: Array<string | undefined> = []
+): string {
   // RC audit 2026-11-13: a Bengali-digit ID ('2026১০১') must never be
   // stored as-is — it renders mixed-script and never collides with its
   // ASCII twin. Normalize both sides once, here, so every mint path
   // (StudentManager auto-ID, admission, create builder) mints ASCII.
   const asciiPreferred = toAsciiDigits(preferred);
-  const taken = new Set(existingStudentIds.filter(Boolean).map(id => toAsciiDigits(String(id))));
+  const taken = new Set([...existingStudentIds, ...trashedStudentIds].filter(Boolean).map(id => toAsciiDigits(String(id))));
   if (!taken.has(asciiPreferred)) return asciiPreferred;
   if (/^\d+$/.test(asciiPreferred)) {
     let next = Number(asciiPreferred) + 1;
@@ -293,7 +303,8 @@ export function buildCreateStudentPayload(
   input: Omit<Student, 'id'>,
   institutionId: string = CANONICAL_PRIMARY_INSTITUTION_ID,
   actor?: { uid: string; email: string },
-  existingStudentIds: Array<string | undefined> = []
+  existingStudentIds: Array<string | undefined> = [],
+  trashedStudentIds: Array<string | undefined> = []
 ): { student: Student; error?: string } {
   // Validate required fields
   const validation = validateStudent(input, { isNewRegistration: true });
@@ -320,7 +331,7 @@ export function buildCreateStudentPayload(
     // Save-time guard: a requested studentId that is already taken
     // resolves to the next free one, so a duplicate can never be saved
     // even if a caller passes one in directly.
-    studentId: input.studentId ? resolveUniqueStudentId(String(input.studentId), existingStudentIds) : input.studentId,
+    studentId: input.studentId ? resolveUniqueStudentId(String(input.studentId), existingStudentIds, trashedStudentIds) : input.studentId,
     id: stableId,
     institutionId: input.institutionId || institutionId,
     status,

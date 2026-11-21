@@ -48,7 +48,8 @@ import {
   formatSafeDate, 
   formatSafeDateTime, 
   toBengali,
-  shortenSubjectName
+  shortenSubjectName,
+  getStudentRoll
 } from '../../services/utils';
 import { dispatchSmsViaGateway, SmsGatewayConfig } from '../../services/smsNotificationService';
 import {
@@ -157,7 +158,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
       const matchQuery = !q || 
         (s.name || '').toLowerCase().includes(q) ||
         (s.nameBn || '').toLowerCase().includes(q) ||
-        (s.roll || '').toLowerCase().includes(q) ||
+        getStudentRoll(s).toLowerCase().includes(q) ||
         (s.studentId || '').toLowerCase().includes(q) ||
         (s.guardianPhone || '').includes(q);
       return matchClass && matchQuery;
@@ -335,10 +336,10 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
 
     const found = students.find(s => {
       const matchClass = !qrQueryClass || qrQueryClass === 'all' || s.classLevel === qrQueryClass;
-      const matchRoll = s.roll && String(s.roll).trim() === q;
+      const matchRoll = getStudentRoll(s) === q;
       const matchId = (s.studentId && s.studentId.toLowerCase() === q) || s.id.toLowerCase() === q;
       return matchClass && (matchRoll || matchId);
-    }) || students.find(s => (s.studentId && s.studentId.toLowerCase() === q) || String(s.roll) === q);
+    }) || students.find(s => (s.studentId && s.studentId.toLowerCase() === q) || getStudentRoll(s) === q);
 
     setSearchedStudent(found || null);
   };
@@ -394,7 +395,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         phone: (s.guardianPhone || '').trim(),
         message: smsText
           .split('{STUDENT_NAME}').join(s.nameBn || s.name || '')
-          .split('{ROLL}').join(s.roll || '')
+          .split('{ROLL}').join(getStudentRoll(s))
           .split('{MADRASAH_NAME}').join(schoolProfile.nameBn || schoolProfile.name || '')
       }));
 
@@ -804,7 +805,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
                           isSelected ? 'bg-white/20 dark:bg-slate-900/20 text-white' : 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300'
                         }`}>
-                          {st.roll || '—'}
+                          {getStudentRoll(st) || '—'}
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-xs truncate">
@@ -846,7 +847,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                             )}
                           </div>
                           <p className="text-xs text-teal-100 mt-0.5">
-                            {isBn ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-white">{activeStudent.classLevel}</span> | {isBn ? 'রোল:' : 'Roll:'} <span className="font-bold text-white">{formatNumber(activeStudent.roll || '—', language)}</span> | ID: <span className="font-mono text-white">{activeStudent.studentId || '—'}</span>
+                            {isBn ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-white">{activeStudent.classLevel}</span> | {isBn ? 'রোল:' : 'Roll:'} <span className="font-bold text-white">{formatNumber(getStudentRoll(activeStudent) || '—', language)}</span> | ID: <span className="font-mono text-white">{activeStudent.studentId || '—'}</span>
                           </p>
                           <p className="text-[11px] text-teal-200/90 mt-1 flex items-center gap-2">
                             <span>{isBn ? 'পিতা:' : 'Father:'} {activeStudent.fatherName || '—'}</span>
@@ -1370,7 +1371,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                         {isBn && searchedStudent.nameBn ? searchedStudent.nameBn : searchedStudent.name}
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {isBn ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-slate-800 dark:text-slate-100">{searchedStudent.classLevel}</span> | {isBn ? 'রোল:' : 'Roll:'} <span className="font-bold text-slate-800 dark:text-slate-100">{searchedStudent.roll}</span>
+                        {isBn ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-slate-800 dark:text-slate-100">{searchedStudent.classLevel}</span> | {isBn ? 'রোল:' : 'Roll:'} <span className="font-bold text-slate-800 dark:text-slate-100">{getStudentRoll(searchedStudent)}</span>
                       </p>
                     </div>
                   </div>
@@ -1771,7 +1772,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       <tr key={st.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50/50">
                         <td className="py-3 px-4">
                           <p className="font-bold text-slate-900 dark:text-white">{isBn && st.nameBn ? st.nameBn : st.name}</p>
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500">{st.classLevel} • রোল: {st.roll}</p>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500">{st.classLevel} • রোল: {getStudentRoll(st)}</p>
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-200">
                           {cfg.roomNo} - {cfg.bedNo}
@@ -1907,7 +1908,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                       <tr key={ben.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50/50">
                         <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                           {st ? (isBn && st.nameBn ? st.nameBn : st.name) : 'শিক্ষার্থী'}
-                          <p className="text-[11px] font-normal text-slate-400 dark:text-slate-500">{st?.classLevel} • রোল: {st?.roll}</p>
+                          <p className="text-[11px] font-normal text-slate-400 dark:text-slate-500">{st?.classLevel} • রোল: {getStudentRoll(st)}</p>
                         </td>
                         <td className="py-3 px-4">
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300">

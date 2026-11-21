@@ -15,7 +15,9 @@
  * anything, the live lists are checked for the same id / employee
  * code / email / studentId, and on a clash NOTHING is restored and
  * the plan carries a message asking which record keeps the
- * identifier.
+ * identifier. EXCEPTION (student-id-counts-trash fix, Nov 2026): a
+ * student whose studentId is held by a DIFFERENT live student
+ * restores with a new free ID instead of blocking — see case (7).
  *
  * Run: npx tsx scripts/verify-trash-restore-paired.ts
  */
@@ -82,14 +84,22 @@ const emptyLive = { students: [], teachers: [], users: [], subjects: [], exams: 
   eq('(6) email clash (case-insensitive) restores nothing', plan.toRestore.length, 0);
   check('(6) clash names the email', (plan.clash || '').toLowerCase().includes('karim@example.com'));
 }
-// (7) A live student holding the same studentId blocks the restore.
+// (7) A live student holding the same studentId NO LONGER blocks the
+// restore (changed by the student-id-counts-trash fix, Nov 2026): the
+// trashed student comes back with a NEW free ID — the live record
+// keeps its ID — because blocking left the trashed record
+// unrestorable forever once its ID was reused by a new enrolment
+// (19 Nov: trashed TEST 2026175 is live on real student আ আব্দুল্লাহ).
+// Same-`id`-already-live still blocks (case 10 covers the teacher
+// side; the student same-id case is (11) in verify-student-id-trash).
 {
   const stu = { id: 's1', studentId: '2026174', name: 'Abu Bakr' };
   const bin = [binItem('b1', 'student', stu)];
   const live = { ...emptyLive, students: [{ id: 's9', studentId: '2026174' }] };
   const plan = planTrashRestore(bin, bin[0], live);
-  eq('(7) studentId clash restores nothing', plan.toRestore.length, 0);
-  check('(7) clash names the studentId', (plan.clash || '').includes('2026174'));
+  eq('(7) studentId taken by another live student: still restores', plan.toRestore.length, 1);
+  check('(7) no clash on reassignment', plan.clash === null);
+  eq('(7) reassigned to the next free ID', plan.reassignedStudentId?.newStudentId, '2026175');
 }
 // (8) A clash on the PAIRED login blocks both — atomic.
 {

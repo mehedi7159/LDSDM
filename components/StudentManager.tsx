@@ -107,6 +107,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     authContext,
     hasPermission,
     isSuperAdmin,
+    trashBin = [],
     setActiveTab: setNavTab
   } = useApp();
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -352,7 +353,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     // the student's own ID does not count when editing.
     const autoStudentId = resolveUniqueStudentId(
       formData.studentId?.trim() || `${new Date().getFullYear()}${cleanRoll ? cleanRoll.padStart(3, '0') : String(students.length + 1).padStart(3, '0')}`,
-      students.filter(s => s.id !== editingId).map(s => s.studentId)
+      students.filter(s => s.id !== editingId).map(s => s.studentId),
+      trashBin.filter(t => t.type === 'student').map(t => t.data?.studentId)
     );
 
     const dataToSave = {

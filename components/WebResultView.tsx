@@ -20,7 +20,7 @@ import {
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
-import { calculateTotalGPA, calculateGrade, getConsolidatedMark, getAutoRemark } from '../services/utils';
+import { calculateTotalGPA, calculateGrade, getConsolidatedMark, getAutoRemark, getStudentRoll } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
 import { toAsciiDigits } from '../services/studentService';
 import { Exam, SchoolClass, Student, Subject } from '../types';
@@ -82,7 +82,7 @@ export const WebResultView: React.FC = () => {
     return (students || [])
 .filter(s => (classNamesMatch(s.class, selectedClass) || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
       // Master audit F11: Number('১') is NaN — normalize first.
-      .sort((a, b) => (Number(toAsciiDigits(a.roll)) || 0) - (Number(toAsciiDigits(b.roll)) || 0));
+      .sort((a, b) => (Number(toAsciiDigits(getStudentRoll(a))) || 0) - (Number(toAsciiDigits(getStudentRoll(b))) || 0));
   }, [students, selectedClass]);
 
   // Subjects for the selected class & exam
@@ -226,7 +226,7 @@ export const WebResultView: React.FC = () => {
         const s = item.student;
         const matchName = s.name.toLowerCase().includes(q) || (s.nameBn && s.nameBn.includes(q));
         const matchId = (s.studentId || '').toLowerCase().includes(q);
-        const matchRoll = String(s.roll || '').includes(q);
+        const matchRoll = getStudentRoll(s).includes(q);
         if (!matchName && !matchId && !matchRoll) return false;
       }
       return true;
@@ -242,7 +242,7 @@ export const WebResultView: React.FC = () => {
       (s.nameBn && s.nameBn.includes(q)) ||
       toAsciiDigits(s.studentId || '').toLowerCase().includes(toAsciiDigits(q)) ||
       // Master audit F11: search '1' must find roll '১'.
-      toAsciiDigits(String(s.roll || '')).includes(toAsciiDigits(q))
+      toAsciiDigits(getStudentRoll(s)).includes(toAsciiDigits(q))
     );
   }, [classStudents, studentSearchQuery]);
 
@@ -369,7 +369,7 @@ export const WebResultView: React.FC = () => {
               >
                 {searchedStudents.map(s => (
                   <option key={s.id} value={s.id}>
-                    রোল {toBanglaDigits(s.roll)} - {s.name} ({s.studentId})
+                    রোল {toBanglaDigits(getStudentRoll(s))} - {s.name} ({s.studentId})
                   </option>
                 ))}
               </select>
@@ -398,7 +398,7 @@ export const WebResultView: React.FC = () => {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1 font-medium">
-                        <span>{language === 'bn' ? 'রোল:' : 'Roll:'} <strong className="text-slate-800 font-mono">{toBanglaDigits(activeStudentResult.student.roll)}</strong></span>
+                        <span>{language === 'bn' ? 'রোল:' : 'Roll:'} <strong className="text-slate-800 font-mono">{toBanglaDigits(getStudentRoll(activeStudentResult.student))}</strong></span>
                         <span>•</span>
                         <span>{language === 'bn' ? 'আইডি:' : 'ID:'} <strong className="text-slate-800 font-mono">{activeStudentResult.student.studentId}</strong></span>
                         <span>•</span>
@@ -724,7 +724,7 @@ export const WebResultView: React.FC = () => {
                           )}
                         </td>
                         <td className="py-3 px-4 font-mono font-semibold text-slate-600">{item.student.studentId}</td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">{toBanglaDigits(item.student.roll)}</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">{toBanglaDigits(getStudentRoll(item.student))}</td>
                         <td className="py-3 px-4 font-bold text-slate-900">
                           {item.student.name}
                           {item.student.nameBn && (

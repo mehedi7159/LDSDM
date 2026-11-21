@@ -222,6 +222,20 @@ export const formatNumber = (num: number | string | undefined | null, lang: Lang
     return String(num);
 };
 
+/**
+ * Single source of truth for a student's roll number (Nov 2026 roll
+ * audit). Records carry TWO roll fields — legacy `roll` and
+ * standardized `rollNumber` — and readers split three ways (roll only,
+ * rollNumber only, roll || rollNumber), so one student showed "রোল: ০"
+ * on the ID card and "—" in the portal. Every display, sort and search
+ * must read through this: legacy `roll` wins, then `rollNumber`, else
+ * '' — never invent a roll; a missing roll stays missing for data repair.
+ */
+export const getStudentRoll = (s: { roll?: string | number | null; rollNumber?: string | number | null } | null | undefined): string => {
+  const raw = s?.roll || s?.rollNumber || '';
+  return String(raw).trim();
+};
+
 export const getAutoRemark = (gpa: number, isFail: boolean, failCount: number, lang: Language): string => {
     const t = (translations as Record<string, typeof translations['en']>)[lang] || translations['en'];
     if (isFail) {
