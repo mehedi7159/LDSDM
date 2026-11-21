@@ -31,6 +31,7 @@
     "test:job9-attendance-split": "tsx scripts/verify-job9-attendance-split.ts",
     "test:api-admin-500": "tsx scripts/verify-api-admin-500.ts",
     "test:grant-admin": "tsx scripts/verify-grant-admin.ts",
+    "test:login-password-check": "tsx scripts/verify-login-password-check.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
     "test:blank-marksheet-play": "tsx scripts/verify-blank-marksheet-play.ts",
     "test:pass-rate": "tsx scripts/verify-pass-rate.ts",

@@ -5842,12 +5842,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
 
       if (member) {
-        // Google-only members have no password: the check below skips
-        // password-less records, so deny explicitly before it.
+        // Google-only members have no password: deny with the specific message.
         if (isGoogleOnlyAccount(member)) {
           return { success: false, error: GOOGLE_PASSWORD_LOGIN_DENIED };
         }
-        if (member.password && member.password !== password) {
+        // Firebase is the only password check: a record with no stored
+        // password cannot prove the password, so deny it outright.
+        if (!member.password || member.password !== password) {
           return { success: false, error: 'ভুল পাসওয়ার্ড প্রদান করা হয়েছে।' };
         }
 
@@ -5954,7 +5955,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (isGoogleOnlyAccount(foundUser)) {
         return { success: false, error: GOOGLE_PASSWORD_LOGIN_DENIED };
       }
-      if (foundUser.password && foundUser.password !== password) {
+      // Firebase is the only password check: a record with no stored
+      // password cannot prove the password, so deny it outright.
+      if (!foundUser.password || foundUser.password !== password) {
         return { success: false, error: 'ভুল পাসওয়ার্ড প্রদান করা হয়েছে।' };
       }
       if (foundUser.status === 'blocked') {
