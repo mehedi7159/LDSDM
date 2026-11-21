@@ -13,6 +13,7 @@ import {
   Calendar, 
   Sparkles, 
   CheckCircle2, 
+  Loader2,
   XCircle, 
   BarChart3, 
   PieChart as PieIcon, 
@@ -459,6 +460,13 @@ export const Dashboard = () => {
   // Top-level dashboard split (owner directive): 'overview' = whole-madrasa
   // monitoring + reports; 'action' = AI Master advisor + live to-do list.
   const [activeView, setActiveView] = useState<'overview' | 'action'>('overview');
+  // "আজকের করণীয়" mount load (16–17 Nov audit): the actionData memo
+  // below only re-reads the non-React admission store when activeView
+  // changes, so the first paint could stay blank until a tab click.
+  // The tick forces one fresh recompute right after mount; the flag
+  // drives the loading row (and gates the all-clear message).
+  const [todayTasksRefreshTick, setTodayTasksRefreshTick] = useState(0);
+  const [todayTasksLoaded, setTodayTasksLoaded] = useState(false);
   const [activeSectionTab, setActiveSectionTab] = useState<'overview' | 'student' | 'subjects' | 'merit'>('overview');
   const [meritSearchQuery, setMeritSearchQuery] = useState<string>('');
   const [dashboardMode, setDashboardMode] = useState<string>(() => {
@@ -469,6 +477,15 @@ export const Dashboard = () => {
   // the dashboard mounts, so approvals never wait silently.
   useEffect(() => {
     refreshPendingMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "আজকের করণীয়" loads on mount: recompute the action data once
+  // after mount (tick is a dep of the actionData memo) and mark it
+  // loaded, so the card never sits blank waiting for a tab click.
+  useEffect(() => {
+    setTodayTasksRefreshTick(t => t + 1);
+    setTodayTasksLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -924,8 +941,10 @@ export const Dashboard = () => {
     };
     // activeView is a deliberate dep: admission applications live outside
     // React state (canonical local store), so re-read them on view switches.
+    // todayTasksRefreshTick is a deliberate dep too: the mount effect bumps
+    // it once so the first paint recomputes instead of waiting for a click.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classes, students, dailyStudentAttendance, examEvaluationMatrix, feeStructures, feeTypes, academicYears, transactions, staffLeaves, activeView]);
+  }, [classes, students, dailyStudentAttendance, examEvaluationMatrix, feeStructures, feeTypes, academicYears, transactions, staffLeaves, activeView, todayTasksRefreshTick]);
 
   // WhatsApp fee-reminder link — the same pattern as StaffMobileApp.
   const duesWhatsappLink = (profile: StudentDueProfile) => {
@@ -1313,6 +1332,13 @@ export const Dashboard = () => {
             </span>
           ) : undefined}
         >
+          {!todayTasksLoaded && (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm font-semibold text-slate-400">
+              <Loader2 size={18} className="animate-spin" />
+              <span>{language === 'bn' ? 'আজকের করণীয় লোড হচ্ছে…' : 'Loading today’s tasks…'}</span>
+            </div>
+          )}
+
           {actionData.attendancePendingClasses.length > 0 && (
             <ActionRow
               icon={UserCheck}
@@ -1402,7 +1428,7 @@ export const Dashboard = () => {
             />
           )}
 
-          {actionData.badgeCount === 0 && (
+          {todayTasksLoaded && actionData.badgeCount === 0 && (
             <div className="text-center py-8 text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
               <CheckCircle2 size={18} />
               <span>{language === 'bn' ? 'সব কাজ সম্পন্ন — আজ আর কিছু বাকি নেই।' : 'All clear — nothing pending today.'}</span>

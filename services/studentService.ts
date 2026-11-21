@@ -48,16 +48,21 @@ export function generateStudentId(): string {
  * never rewrites an existing student's ID.
  */
 export function resolveUniqueStudentId(preferred: string, existingStudentIds: Array<string | undefined>): string {
-  const taken = new Set(existingStudentIds.filter(Boolean));
-  if (!taken.has(preferred)) return preferred;
-  if (/^\d+$/.test(preferred)) {
-    let next = Number(preferred) + 1;
+  // RC audit 2026-11-13: a Bengali-digit ID ('2026১০১') must never be
+  // stored as-is — it renders mixed-script and never collides with its
+  // ASCII twin. Normalize both sides once, here, so every mint path
+  // (StudentManager auto-ID, admission, create builder) mints ASCII.
+  const asciiPreferred = toAsciiDigits(preferred);
+  const taken = new Set(existingStudentIds.filter(Boolean).map(id => toAsciiDigits(String(id))));
+  if (!taken.has(asciiPreferred)) return asciiPreferred;
+  if (/^\d+$/.test(asciiPreferred)) {
+    let next = Number(asciiPreferred) + 1;
     while (taken.has(String(next))) next++;
     return String(next);
   }
   let suffix = 2;
-  while (taken.has(`${preferred}-${suffix}`)) suffix++;
-  return `${preferred}-${suffix}`;
+  while (taken.has(`${asciiPreferred}-${suffix}`)) suffix++;
+  return `${asciiPreferred}-${suffix}`;
 }
 
 /**
