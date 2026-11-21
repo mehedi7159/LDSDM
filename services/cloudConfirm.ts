@@ -818,16 +818,30 @@ export async function writeTrashOpToCloud(
     const existingTrash = (data.trashBin as { id: string }[] | undefined) || [];
     const idSet = new Set(ids);
     payload.trashBin = existingTrash.filter((t) => !t.id || !idSet.has(String(t.id)));
+    // RC (13 Nov 2026 live audit): tombstone guard — a restore
+    // replayed after its record was trashed again (stale queued
+    // payload, another tab, in-flight confirm) must not resurrect
+    // it. The record's OWN trash entry is removed by THIS call, so
+    // it never blocks its own restore; any OTHER trash entry for
+    // the same record does.
+    const trashedDataIds = new Set<string>();
+    existingTrash.forEach((t: any) => {
+      if (t?.id && !idSet.has(String(t.id)) && t?.data?.id) trashedDataIds.add(String(t.data.id));
+    });
+    const writtenFields: [string, Record<string, any>[]][] = [];
     for (const [field, records] of upsertFields) {
       const keyFn = fieldKeyFn(field);
       assertUpsertRecords(field, records, keyFn);
+      const liveRecords = records.filter((r) => !trashedDataIds.has(keyFn(r)));
+      if (liveRecords.length === 0) continue;
       const existing = data[field] as Record<string, any>[] | undefined;
-      payload[field] = mergeRecordsByKey(existing || [], records, keyFn).map(stripUndefinedRecord);
+      payload[field] = mergeRecordsByKey(existing || [], liveRecords, keyFn).map(stripUndefinedRecord);
+      writtenFields.push([field, liveRecords]);
       // Job 1: a restored notice must also return to the new collection,
       // which is now the read source — otherwise the restore would stay
       // invisible until a main_store read.
       if (field === 'notices') {
-        await writeNoticesToCollection(records as NoticeItem[]);
+        await writeNoticesToCollection(liveRecords as NoticeItem[]);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a
@@ -837,7 +851,7 @@ export async function writeTrashOpToCloud(
     {
       const trashOldSizes: Record<string, number> = {};
       const trashNewSizes: Record<string, number> = {};
-      for (const [field] of upsertFields) {
+      for (const [field] of writtenFields) {
         trashOldSizes[field] = ((data[field] as any[] | undefined) || []).length;
         trashNewSizes[field] = (payload[field] as any[]).length;
       }

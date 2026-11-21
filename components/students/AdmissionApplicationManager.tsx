@@ -46,7 +46,7 @@ export type AdmissionApplication = OfficeAdmissionApplication;
 export const AdmissionApplicationManager: React.FC<{
   onEnrollStudent?: (app: AdmissionApplication) => void;
 }> = ({ onEnrollStudent }) => {
-  const { classes, students, addStudent, confirmStudentsCloudSync, isRecordUnconfirmed, language } = useApp();
+  const { classes, students, trashBin = [], addStudent, confirmStudentsCloudSync, isRecordUnconfirmed, language } = useApp();
   const { showToast } = useTheme();
   const isBn = language === 'bn';
 
@@ -219,7 +219,8 @@ export const AdmissionApplicationManager: React.FC<{
       // against every existing student ID before enrolling.
       const autoStudentId = resolveUniqueStudentId(
         `${currentYear}${Math.floor(100 + Math.random() * 900)}`,
-        students.map(s => s.studentId)
+        students.map(s => s.studentId),
+        trashBin.filter(t => t.type === 'student').map(t => t.data?.studentId)
       );
       // Master audit F3: every approved applicant used to get roll '১'.
       // Next free roll in the target class (max numeric roll + 1,

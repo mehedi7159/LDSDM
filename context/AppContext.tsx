@@ -22,7 +22,7 @@ import {
   StaffLeaveRecord
 } from '../types';
 import { recordPromotionAuditEvent } from '../services/promotionService';
-import { planTrashRestore } from '../services/trashRestore';
+import { planTrashRestore, dedupeTrashEntries } from '../services/trashRestore';
 import type { 
   CustomRole, 
   InstitutionMember, 
@@ -175,6 +175,7 @@ import {
   hasQueuedUpsertForField,
   fieldKeyFn,
   pruneQueueAgainstRemoteData,
+  voidQueuedRestoreUpsertsForKeys,
   type PendingPayloadItem,
 } from '../services/payloadQueue';
 import {
@@ -1721,10 +1722,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       t.id === userId ||
       (email !== '' && (t.email || '').toLowerCase() === email)
     );
-    const trashEntries = [
+    const trashEntries = dedupeTrashEntries(trashBin, [
       ...removedUserRecords.map(u => ({ id: generateId(), type: 'user', data: u, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'user_delete' })),
       ...removedTeacherRecords.map(t => ({ id: generateId(), type: 'teacher', data: t, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'user_delete' })),
-    ];
+    ]);
     if (trashEntries.length > 0) {
       setTrashBin(prev => [...trashEntries, ...prev]);
     }
@@ -4490,7 +4491,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const addStudent = (student: Omit<Student, 'id'>) => {
     const actor = authUser ? { uid: authUser.uid, email: authUser.email || '' } : undefined;
-    const { student: newStudent, error } = buildCreateStudentPayload(student, 'inst_madrasah_primary', actor, students.map(s => s.studentId));
+    const { student: newStudent, error } = buildCreateStudentPayload(student, 'inst_madrasah_primary', actor, students.map(s => s.studentId), trashBin.filter(t => t.type === 'student').map(t => t.data?.studentId));
     // 7 Nov 2026 Job 2 pattern (like addClass/addSubject): a builder
     // error used to fall through to a raw fallback that saved the
     // record unvalidated. Refuse instead — nothing is saved, the
@@ -4855,10 +4856,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // trash entry).
     const removedTeacherIds = teachers.filter(matches).map(t => t.id);
     const removedUserIds = users.filter(matches).map(u => u.id);
-    const trashEntries = [
+    const trashEntries = dedupeTrashEntries(trashBin, [
       ...teachers.filter(matches).map(t => ({ id: generateId(), type: 'teacher', data: t, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'staff_delete' })),
       ...users.filter(matches).map(u => ({ id: generateId(), type: 'user', data: u, deletedAt: new Date().toLocaleString(), deletedBy: confirmActorName(), reason: 'staff_delete' })),
-    ];
+    ]);
     if (trashEntries.length > 0) {
       setTrashBin(prev => [...trashEntries, ...prev]);
     }
@@ -5729,6 +5730,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     retryInFlightRef.current = true;
     setIsRetryingConfirms(true);
     let lastError: { message: string; timestamp: string; field?: string } | null = null;
+
+    // RC (13 Nov 2026 live audit): never replay a restore for a
+    // record that is trashed RIGHT NOW — a later delete superseded
+    // the queued restore, and replaying it would resurrect the
+    // record (and strip its trash entry) without anyone asking.
+    const trashedNow = new Set<string>();
+    (trashBinRef.current || []).forEach((t) => {
+      if (t?.data?.id) trashedNow.add(String(t.data.id));
+    });
+    if (trashedNow.size > 0) voidQueuedRestoreUpsertsForKeys(Array.from(trashedNow));
 
     try {
       const fieldWriter: Record<string, (records: any[], actor: string) => Promise<void>> = {
@@ -6620,8 +6631,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (plan.clash) return { success: false, message: plan.clash };
 
     for (const entry of plan.toRestore) {
+      // A trashed student whose ID is now live on another student comes
+      // back with the plan's new free ID (live record keeps its ID).
+      const restoredData = entry.type === 'student' && plan.reassignedStudentId?.trashId === entry.id
+        ? { ...entry.data, studentId: plan.reassignedStudentId.newStudentId }
+        : entry.data;
       if (entry.type === 'student') {
-        setStudents(prev => [...prev, entry.data]);
+        setStudents(prev => [...prev, restoredData]);
       } else if (entry.type === 'subject') {
         setSubjects(prev => [...prev, entry.data]);
       } else if (entry.type === 'exam') {
@@ -6653,17 +6669,35 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const upserts: Record<string, any[]> = {};
     for (const entry of plan.toRestore) {
       const field = trashFieldByType[entry.type];
-      if (field) (upserts[field] || (upserts[field] = [])).push(entry.data);
+      // Same reassigned ID as the local restore above — the cloud copy
+      // must carry the new ID too, or the next sync would bring the
+      // duplicate back.
+      const upsertData = entry.type === 'student' && plan.reassignedStudentId?.trashId === entry.id
+        ? { ...entry.data, studentId: plan.reassignedStudentId.newStudentId }
+        : entry.data;
+      if (field) (upserts[field] || (upserts[field] = [])).push(upsertData);
     }
     void confirmTrashOpCloudSync(
       restoreIds,
       upserts,
       TRASH_CLOUD_FAILURE_MESSAGE
     );
-    return { success: true, pairedRestored: plan.paired };
+    return {
+      success: true,
+      pairedRestored: plan.paired,
+      message: plan.reassignedStudentId
+        ? `পুরনো আইডিটি অন্য শিক্ষার্থীর নামে আছে, তাই নতুন আইডি ${plan.reassignedStudentId.newStudentId} দেওয়া হয়েছে।`
+        : undefined,
+    };
   };
 
   const permanentlyDeleteTrashItem = (trashId: string) => {
+    const item = trashBin.find(t => t.id === trashId);
+    // RC (13 Nov 2026 live audit): a permanent delete is the user's
+    // "this record must never come back" — cancel any queued restore
+    // upsert for the same record FIRST, or the next retry replays it
+    // and the record resurrects once its trash entry is gone.
+    if (item?.data?.id) voidQueuedRestoreUpsertsForKeys([String(item.data.id)]);
     setTrashBin(prev => prev.filter(t => t.id !== trashId));
     // Phase 1: permanent deletes travel through the trash-op writer
     // (named id, computed against current cloud trash).
@@ -6717,6 +6751,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // ConfirmDialog) — this action itself just empties the bin.
   const emptyTrash = () => {
     const allTrashIds = trashBin.map(t => t.id);
+    // RC: same as permanentlyDeleteTrashItem, for every record.
+    const dataIds = trashBin.map(t => t.data?.id).filter(Boolean).map(String);
+    if (dataIds.length > 0) voidQueuedRestoreUpsertsForKeys(dataIds);
     setTrashBin([]);
     // Phase 1: emptying travels through the trash-op writer (named
     // ids, computed against current cloud trash — newer entries added

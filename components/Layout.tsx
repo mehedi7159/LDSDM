@@ -402,9 +402,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         menu.targetTab.toLowerCase().includes(q)
       ) return true;
       // The nested Profile submenu has no group of its own: a search for
-      // it must still surface the Student Management group.
+      // it must still surface the Student Management group. Same for the
+      // ID-card generator: it lives only in that group's flyout, so a
+      // search for 'আইডি কার্ড' must surface the group too.
       if (menu.id === 'students') {
-        return ['প্রোফাইল', 'profile', 'student_profile'].some(t => t.includes(q));
+        return ['প্রোফাইল', 'profile', 'student_profile', 'আইডি কার্ড', 'id card', 'id cards', 'student_id_cards'].some(t => t.includes(q));
       }
       return false;
     });
@@ -701,6 +703,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             label: language === 'bn' ? 'প্রোফাইল' : 'Profile',
             active: activeTab === 'student_profile',
             onSelect: () => handleTabClick('student_profile'),
+          },
+          {
+            key: 'student_id_cards',
+            icon: CreditCard,
+            label: language === 'bn' ? 'আইডি কার্ড' : 'ID Cards',
+            active: activeTab === 'student_id_cards',
+            onSelect: () => handleTabClick('student_id_cards'),
           },
         ]}
       />

@@ -246,6 +246,67 @@ export function clearPendingPayloadsForField(field: string): void {
 }
 
 /**
+ * RC (13 Nov 2026 live audit): a queued restore is tombstone-blind.
+ * A trashOp entry carries records to upsert back; nothing ever voided
+ * them when the same record was trashed again or permanently deleted
+ * — so the next retry/snapshot replayed the restore and the record
+ * resurrected with the trash entry gone. Strip the upsert records
+ * whose key is in `keys`; returns null when the entry has nothing
+ * left to do (no removals, no upserts).
+ */
+export function stripTrashOpUpsertsForKeys(
+  item: PendingPayloadItem,
+  keys: Set<string>
+): PendingPayloadItem | null {
+  if (item.op !== 'trashOp' || !item.upserts) return item;
+  let removed = 0;
+  const upserts: Record<string, Record<string, any>[]> = {};
+  for (const [field, recs] of Object.entries(item.upserts)) {
+    const keyFn = fieldKeyFn(field);
+    const kept = (recs || []).filter((r) => {
+      const drop = keys.has(keyFn(r));
+      if (drop) removed++;
+      return !drop;
+    });
+    if (kept.length > 0) upserts[field] = kept;
+  }
+  if (removed === 0) return item;
+  const removeLeft = item.removeTrashIds || [];
+  if (Object.keys(upserts).length === 0 && removeLeft.length === 0) return null;
+  return { ...item, upserts };
+}
+
+/**
+ * Cancel queued restore upserts for the named record keys, in the
+ * stored queue. A permanent delete (or a re-trash) is the user's
+ * "this record must never come back" — the queued restore for the
+ * same record must die with it, not replay on the next retry.
+ * Returns true when the queue changed.
+ */
+export function voidQueuedRestoreUpsertsForKeys(keys: string[]): boolean {
+  const keySet = new Set((keys || []).filter(Boolean).map(String));
+  if (keySet.size === 0) return false;
+  const items = readPendingPayloads();
+  let changed = false;
+  const next: PendingPayloadItem[] = [];
+  for (const item of items) {
+    if (item.op !== 'trashOp') {
+      next.push(item);
+      continue;
+    }
+    const stripped = stripTrashOpUpsertsForKeys(item, keySet);
+    if (stripped === null) {
+      changed = true;
+      continue;
+    }
+    if (stripped !== item) changed = true;
+    next.push(stripped);
+  }
+  if (changed) writePendingPayloads(next);
+  return changed;
+}
+
+/**
  * After a successful write covering these keys, drop them from the
  * queued deltas for the field; entries left empty are removed.
  */
@@ -486,6 +547,22 @@ export function pruneQueueAgainstRemoteData(data: Record<string, any>): boolean 
       }
       if (allRemovalsConfirmed) {
         changed = true;
+        continue;
+      }
+    } else if (item.op === 'trashOp') {
+      // RC: trashOp entries were never pruned at all — a failed
+      // restore's upserts survived forever and replayed on every
+      // retry/snapshot. Void the upserts for records that sit in the
+      // remote trashBin (trashed again after the restore was queued);
+      // drop the entry when nothing is left to do.
+      const stripped = stripTrashOpUpsertsForKeys(item, trashedIds);
+      if (stripped === null) {
+        changed = true;
+        continue;
+      }
+      if (stripped !== item) {
+        changed = true;
+        next.push(stripped);
         continue;
       }
     }

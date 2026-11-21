@@ -41,7 +41,7 @@ export const RecycleBinPanel: React.FC<{ onClose?: () => void }> = ({ onClose })
     }
     setStatusMessage({
       type: 'success',
-      text: `"${confirmRestoreItem.name}" সফলভাবে রিসাইকেল বিন থেকে পুনরুদ্ধার করা হয়েছে!${result.pairedRestored ? ' সংশ্লিষ্ট রেকর্ডটিও (শিক্ষক/লগইন) ফিরিয়ে আনা হয়েছে।' : ''}`
+      text: `"${confirmRestoreItem.name}" সফলভাবে রিসাইকেল বিন থেকে পুনরুদ্ধার করা হয়েছে!${result.pairedRestored ? ' সংশ্লিষ্ট রেকর্ডটিও (শিক্ষক/লগইন) ফিরিয়ে আনা হয়েছে।' : ''}${result.message ? ` ${result.message}` : ''}`
     });
     setConfirmRestoreItem(null);
   };

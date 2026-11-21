@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student, Exam } from '../types';
-import { formatNumber } from '../services/utils';
+import { formatNumber, getStudentRoll } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
 import { defaultIdCardValidity } from '../services/academicYearService';
 import { toAsciiDigits } from '../services/studentService';
@@ -47,7 +47,7 @@ export const StudentIDCardGenerator: React.FC = () => {
     return (students || [])
 .filter(s => (classNamesMatch(s.class, selectedClass) || classNamesMatch(s.classLevel, selectedClass)) && s.status?.toLowerCase() === 'active' && !s.isFormer)
       // Master audit F11: Number('১') is NaN — normalize first.
-      .sort((a, b) => (Number(toAsciiDigits(a.roll)) || 0) - (Number(toAsciiDigits(b.roll)) || 0));
+      .sort((a, b) => (Number(toAsciiDigits(getStudentRoll(a))) || 0) - (Number(toAsciiDigits(getStudentRoll(b))) || 0));
   }, [students, selectedClass]);
 
   // Filtered by student search or selection
@@ -62,7 +62,7 @@ export const StudentIDCardGenerator: React.FC = () => {
         s.name.toLowerCase().includes(q) ||
         (s.nameBn && s.nameBn.includes(q)) ||
         (s.studentId && toAsciiDigits(s.studentId).toLowerCase().includes(toAsciiDigits(q))) ||
-        toAsciiDigits(String(s.roll || '')).includes(toAsciiDigits(q))
+        toAsciiDigits(getStudentRoll(s)).includes(toAsciiDigits(q))
       );
     }
     return list;
@@ -192,7 +192,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                 </option>
                 {classStudents.map(s => (
                   <option key={s.id} value={s.id}>
-                    রোল {s.roll} - {s.name}
+                    রোল {getStudentRoll(s)} - {s.name}
                   </option>
                 ))}
               </select>
@@ -270,7 +270,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                         
                         <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 pt-1 text-[11px]">
                           <div><span className="text-slate-400 font-semibold">শ্রেণি:</span> <strong>{student.classLevel}</strong></div>
-                          <div><span className="text-slate-400 font-semibold">রোল:</span> <strong className="font-mono text-indigo-700">{student.roll}</strong></div>
+                          <div><span className="text-slate-400 font-semibold">রোল:</span> <strong className="font-mono text-indigo-700">{getStudentRoll(student)}</strong></div>
                           <div className="col-span-2"><span className="text-slate-400 font-semibold">আইডি:</span> <strong className="font-mono">{student.studentId}</strong></div>
                           {student.bloodGroup && (
                             <div className="col-span-2 flex items-center gap-1 text-rose-600 font-bold">
@@ -326,7 +326,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-b border-slate-200 text-xs">
                       <div><span className="text-slate-400 font-semibold">নাম:</span> <strong className="block text-slate-900 text-sm font-bold">{student.name}</strong></div>
                       <div><span className="text-slate-400 font-semibold">শ্রেণি:</span> <strong className="block text-slate-900 font-bold">{student.classLevel}</strong></div>
-                      <div><span className="text-slate-400 font-semibold">রোল:</span> <strong className="block text-indigo-700 font-black text-sm font-mono">{student.roll}</strong></div>
+                      <div><span className="text-slate-400 font-semibold">রোল:</span> <strong className="block text-indigo-700 font-black text-sm font-mono">{getStudentRoll(student)}</strong></div>
                       <div><span className="text-slate-400 font-semibold">আইডি:</span> <strong className="block text-slate-900 font-bold font-mono">{student.studentId}</strong></div>
                     </div>
 
@@ -375,7 +375,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                     </div>
 
                     <div className="py-8 text-sm leading-loose text-slate-800 text-justify font-bangla">
-                      এই মর্মে প্রত্যয়ন করা যাচ্ছে যে, <strong className="text-indigo-900 text-base">{student.name}</strong>, পিতা: <strong>{student.fatherName || '—'}</strong>, মাতা: <strong>{student.motherName || '—'}</strong>, রোল: <strong>{student.roll}</strong>, শিক্ষার্থী আইডি: <strong>{student.studentId}</strong>, অত্র প্রতিষ্ঠানের <strong>{student.classLevel}</strong> শ্রেণির একজন নিয়মিত শিক্ষার্থী ছিলেন। অত্র মাদ্রাসায় অধ্যয়নকালে তিনি উত্তম চরিত্রের অধিকারী ছিলেন এবং প্রতিষ্ঠানের কোনো নিয়ম-শৃঙ্খলা ভঙ্গ করেননি। 
+                      এই মর্মে প্রত্যয়ন করা যাচ্ছে যে, <strong className="text-indigo-900 text-base">{student.name}</strong>, পিতা: <strong>{student.fatherName || '—'}</strong>, মাতা: <strong>{student.motherName || '—'}</strong>, রোল: <strong>{getStudentRoll(student)}</strong>, শিক্ষার্থী আইডি: <strong>{student.studentId}</strong>, অত্র প্রতিষ্ঠানের <strong>{student.classLevel}</strong> শ্রেণির একজন নিয়মিত শিক্ষার্থী ছিলেন। অত্র মাদ্রাসায় অধ্যয়নকালে তিনি উত্তম চরিত্রের অধিকারী ছিলেন এবং প্রতিষ্ঠানের কোনো নিয়ম-শৃঙ্খলা ভঙ্গ করেননি। 
                       <p className="mt-4">আমি তার ইহলৌকিক ও পরলৌকিক জীবনের সর্বাঙ্গীন উন্নতি ও সাফল্য কামনা করি।</p>
                     </div>
 
