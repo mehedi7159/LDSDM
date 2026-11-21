@@ -961,11 +961,63 @@ export async function writePromotionHistoryFieldToCloud(
   await withTimeout(writeFieldToCloud('promotionHistory', records as any, updatedBy), CONFIRM_TIMEOUT_MS, 'promotion history cloud confirm');
 }
 
+/**
+ * Job 6 (remarks split): the new home of remarks. The path is built
+ * from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded — same shape
+ * as Job 1's notices collection. RemarkRecord has NO id field — the
+ * doc id is studentId__examId (fieldKeyFn('remarks')).
+ */
+export function remarksCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'remarks');
+}
+
+/** Read all remark docs from the new collection (empty array when none). */
+export async function readRemarksFromCollection(): Promise<RemarkRecord[]> {
+  const snap = await getDocs(remarksCollectionRef());
+  return snap.docs.map((d) => {
+    const data = d.data() as RemarkRecord;
+    return { ...data, studentId: data.studentId || d.id.split('__')[0], examId: data.examId || d.id.split('__')[1] };
+  });
+}
+
+/** Write remark docs into the new collection (setDoc merge by studentId__examId). */
+export async function writeRemarksToCollection(remarks: RemarkRecord[]): Promise<void> {
+  const col = remarksCollectionRef();
+  const keyFn = fieldKeyFn('remarks'); // studentId__examId
+  for (const r of remarks || []) {
+    const key = r ? keyFn(r as any) : '';
+    if (!key) continue; // key assertion happens in the caller
+    await setDoc(doc(col, key), stripUndefinedRecord(r), { merge: true });
+  }
+}
+
+/** Delete remark docs from the new collection (missing docs are a no-op). */
+export async function deleteRemarksFromCollection(ids: string[]): Promise<void> {
+  const col = remarksCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
 export async function writeRemarksFieldToCloud(
   remarks: RemarkRecord[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(writeFieldToCloud('remarks', remarks as any, updatedBy), CONFIRM_TIMEOUT_MS, 'remarks cloud confirm');
+  const write = async (): Promise<void> => {
+    const list = remarks || [];
+    if (list.length > 0) {
+      // Job 6 dual-write: same key assertion as the main_store leg, then
+      // the new collection first. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('remarks', list as any, fieldKeyFn('remarks'), 'studentId+examId');
+      await writeRemarksToCollection(list);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ remarks }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'remarks cloud confirm');
 }
 
 export async function writeSubjectsFieldToCloud(
@@ -1168,6 +1220,12 @@ export async function writeDeleteFieldsToCloud(
         // Removal ids are field keys: id for feeTypes, classLevel for
         // feeStructures.
         await deleteFeeRecordsFromCollection(removal.field as FeesSplitField, removal.ids);
+      } else if (removal.field === 'remarks') {
+        // Job 6 (remarks split): remarks also live in the new
+        // collection — delete their docs there too, so a deleted remark
+        // can never be resurrected by the remarks feed. Ids here are
+        // studentId__examId keys, which are the collection doc ids.
+        await deleteRemarksFromCollection(removal.ids);
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1241,6 +1299,10 @@ export async function writeTrashOpToCloud(
         // Job 5: same for a restored fee record — otherwise the
         // restore would stay invisible until a main_store read.
         await writeFeeRecordsToCollection(field as FeesSplitField, liveRecords);
+      } else if (field === 'remarks') {
+        // Job 6: same for a restored remark — otherwise the restore
+        // would stay invisible until a main_store read.
+        await writeRemarksToCollection(liveRecords as RemarkRecord[]);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a

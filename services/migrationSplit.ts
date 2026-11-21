@@ -6,6 +6,7 @@
  * classSubjectAssignments + teacherSubjectAssignments +
  * classTeacherAssignments, 21 Nov 2026).
  * Job 5: feeTypes + feeStructures, 21 Nov 2026).
+ * Job 6: remarks, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -18,14 +19,14 @@
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
  * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
- * / startClassesFeeds / startAcademicFeeds / startFeesFeeds).
+ * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed).
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
-import type { NoticeItem } from '../types';
+import type { NoticeItem, RemarkRecord } from '../types';
 
 /**
  * Pure plan step: which docs a notices backfill would write. Dedupe by
@@ -94,6 +95,32 @@ export function scheduleBackfillPlan(records: any[]): { docs: any[]; skipped: nu
 }
 
 /**
+ * Job 6 — pure plan step for remarks: which docs a backfill would
+ * write. RemarkRecord has NO id field — the key is studentId__examId
+ * (fieldKeyFn('remarks')). Dedupe by that key (first copy wins), skip
+ * records missing studentId or examId. Testable without Firestore.
+ * Counts are RAW: docs + skipped always equals the main_store array
+ * length, so the plan's count check (array length = new collection
+ * doc count) holds whenever keys are distinct.
+ */
+export function remarksBackfillPlan(records: RemarkRecord[]): { docs: RemarkRecord[]; skipped: number } {
+  const seen = new Set<string>();
+  const docs: RemarkRecord[] = [];
+  let skipped = 0;
+  const keyFn = fieldKeyFn('remarks');
+  for (const r of records || []) {
+    const key = r ? keyFn(r as any) : '';
+    if (!key || seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    docs.push(r);
+  }
+  return { docs, skipped };
+}
+
+/**
  * Job 2 — one-time backfill for one schedule field: copy main_store
  * records into the field's new collection (doc id = record id).
  * Job 3 reuses it for classes, sections and academicYears, and Job 4
@@ -102,26 +129,35 @@ export function scheduleBackfillPlan(records: any[]): { docs: any[]; skipped: nu
  * Job 5 reuses it for feeTypes + feeStructures — the doc id is the
  * field key (id for feeTypes, classLevel for feeStructures), so the
  * plan step dedupes by that key instead of by id.
+ * Job 6 reuses it for 'remarks' (same shape, one field — doc id =
+ * studentId__examId instead of an id field).
  * Returns counts. Throws on Firestore failure so the caller can retry.
  */
-export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField, records: any[]): Promise<{ written: number; skipped: number }> {
+export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks', records: any[]): Promise<{ written: number; skipped: number }> {
   const isFeesField = field === 'feeTypes' || field === 'feeStructures';
-  const { docs, skipped } = isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
+  const { docs, skipped } = field === 'remarks' ? remarksBackfillPlan(records) : isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
   if (docs.length > 0) {
     // Same id assertion as every confirmed writer — a bad record fails
     // the backfill loudly instead of being silently dropped.
-    assertUpsertRecords(field, docs as any, fieldKeyFn(field));
+    assertUpsertRecords(field, docs as any, fieldKeyFn(field), field === 'remarks' ? 'studentId+examId' : 'id');
   }
-  const col = isFeesField ? feesCollectionRef(field as FeesSplitField)
+  const col = field === 'remarks' ? remarksCollectionRef()
+    : isFeesField ? feesCollectionRef(field as FeesSplitField)
     : (field === 'classes' || field === 'sections' || field === 'academicYears')
       ? classesCollectionRef(field as ClassesSplitField)
       : (field === 'subjects' || field === 'exams' || field === 'examSubjectAssignments' || field === 'classSubjectAssignments' || field === 'teacherSubjectAssignments' || field === 'classTeacherAssignments')
         ? academicCollectionRef(field as AcademicSplitField)
         : scheduleCollectionRef(field as ScheduleSplitField);
+  const keyFn = fieldKeyFn(field);
   for (let i = 0; i < docs.length; i += 500) {
     const batch = writeBatch(db);
     for (const r of docs.slice(i, i + 500)) {
-      batch.set(doc(col, String(fieldKeyFn(field)(r))), stripUndefinedRecord(r), { merge: true });
+      if (field === 'remarks') {
+        // Remarks have no id field — doc id is studentId__examId.
+        batch.set(doc(col, keyFn(r)), stripUndefinedRecord(r), { merge: true });
+      } else {
+        batch.set(doc(col, String(fieldKeyFn(field)(r))), stripUndefinedRecord(r), { merge: true });
+      }
     }
     await batch.commit();
   }
