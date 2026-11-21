@@ -74,6 +74,26 @@ export function findPairedTrashItem(trashBin: TrashItem[], item: TrashItem): Tra
   return findPairedTrashItems(trashBin, item)[0] || null;
 }
 
+/**
+ * Job 13 (trash split): the ids one trash list hides — each entry's own
+ * id AND the deleted record's id. applyRemoteData builds this over the
+ * remote trash list + local state; the same set hides a record whose
+ * collection deleteDoc failed (plan §6 Job 13 point 2 — the doc stays,
+ * the filter hides it). Pure — unit-tested in
+ * scripts/verify-job13-trash-split.ts.
+ */
+export function collectTrashedIds(...bins: (TrashItem[] | undefined)[]): Set<string> {
+  const ids = new Set<string>();
+  for (const bin of bins || []) {
+    if (!Array.isArray(bin)) continue;
+    for (const t of bin) {
+      if (t?.id) ids.add(String(t.id));
+      if ((t as any)?.data?.id) ids.add(String((t as any).data.id));
+    }
+  }
+  return ids;
+}
+
 // Drop trash entries whose record is already in the bin (same type +
 // same data id). Every delete mints fresh trash ids (generateId), so
 // without this a re-trashed record stacks duplicate bin items — the
