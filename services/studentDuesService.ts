@@ -259,6 +259,41 @@ export function academicYearFallbackStartMonth(
   return `${year}-01`;
 }
 
+/**
+ * ONE shared aging-start rule (21 Nov 2026): the first month a student's
+ * dues can accrue from — admissionDate first, then record creation, then
+ * the earliest month the student ever paid for, and only then the
+ * caller-supplied academic-year fallback (Jan of the current academic
+ * year, approved 2 Nov 2026, for students with no date at all). Months
+ * before the start month never enter aging. A fallback at/after asOf is
+ * ignored, so a dateless student in a future-dated academic year stays
+ * empty instead of showing a current-month due. Returns null when no
+ * start can be resolved at all.
+ *
+ * calculateFeeAging, the Reports 3+ dues alert and the fee-history grid
+ * all use this — the alert used to guard on admissionDate only, so a
+ * student with no admissionDate counted all 12 finished months as due
+ * and a brand-new student landed in "৩ মাস+ বকেয়া" on day one.
+ */
+export function resolveAgingStartMonth(
+  student: Student,
+  paidMonths: string[],
+  fallbackStartMonth?: string,
+  asOfMonth?: string
+): string | null {
+  const adm = (student.admissionDate || '').slice(0, 7);
+  if (YYYY_MM.test(adm)) return adm;
+  const created = (student.createdAt || '').slice(0, 7);
+  if (YYYY_MM.test(created)) return created;
+  const paid = (paidMonths || []).filter(m => YYYY_MM.test(m)).sort();
+  if (paid.length > 0) return paid[0];
+  const asOf = asOfMonth || new Date().toISOString().slice(0, 7);
+  if (fallbackStartMonth && YYYY_MM.test(fallbackStartMonth) && fallbackStartMonth < asOf) {
+    return fallbackStartMonth;
+  }
+  return null;
+}
+
 export function calculateFeeAging(
   student: Student,
   feeStructures: ClassFeeStructure[],
@@ -282,28 +317,14 @@ export function calculateFeeAging(
     tx.type === 'INCOME' && tx.studentId && (tx.studentId === student.id || tx.studentId === student.studentId)
     && isTuitionPayment(tx));
 
-  // Start month: admission date first, then record creation, then the
-  // earliest month the student ever paid for (feeMonth, else tx date),
-  // and only then the caller-supplied academic-year fallback (Jan of
-  // the current academic year, for students with no date at all).
+  // Start month — the one shared rule (resolveAgingStartMonth).
   // Months before the start month never enter aging.
-  let start: string | null = null;
-  const adm = (student.admissionDate || '').slice(0, 7);
-  const created = (student.createdAt || '').slice(0, 7);
-  if (YYYY_MM.test(adm)) start = adm;
-  else if (YYYY_MM.test(created)) start = created;
-  if (!start) {
-    const paidMonths = myTx
-      .map(tx => (tx.feeMonth || (tx.date || '').slice(0, 7)))
-      .filter(m => YYYY_MM.test(m));
-    if (paidMonths.length > 0) start = paidMonths.sort()[0];
-  }
-  // A fallback at/after asOf is ignored: it must never produce months,
-  // so a dateless student in a future-dated academic year stays empty
-  // (the pre-fallback behavior) instead of showing a current-month due.
-  if (!start && fallbackStartMonth && YYYY_MM.test(fallbackStartMonth) && fallbackStartMonth < asOf) {
-    start = fallbackStartMonth;
-  }
+  const start = resolveAgingStartMonth(
+    student,
+    myTx.map(tx => (tx.feeMonth || (tx.date || '').slice(0, 7))),
+    fallbackStartMonth,
+    asOf
+  );
   if (!start) return empty;
 
   // Finished months only: start .. month before asOf. The current

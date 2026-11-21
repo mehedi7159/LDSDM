@@ -304,10 +304,17 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
   //    still describe THIS month's payment; the displayed due is the
   //    combined total (dueThisMonth + agedDue).
   // =========================================================================
+  // Aging fallback start, shared by the summary above and the 12-month
+  // history grid below, so both count from the same first month.
+  const agingFallbackStart = useMemo(
+    () => academicYearFallbackStartMonth(academicYears, currentMonthStr),
+    [academicYears, currentMonthStr]
+  );
+
   const duesSummary = useMemo(() => {
-    const fallback = academicYearFallbackStartMonth(academicYears, currentMonthStr);
+    const fallback = agingFallbackStart;
     return calculateTotalDues(activeStudents, feeStructures, transactions, currentMonthStr, feeTypes, fallback);
-  }, [activeStudents, feeStructures, transactions, currentMonthStr, feeTypes, academicYears]);
+  }, [activeStudents, feeStructures, transactions, currentMonthStr, feeTypes, agingFallbackStart]);
 
   const studentFeeProfiles = useMemo(() => {
     // Payment counts (any INCOME tx for the student, id or studentId) —
@@ -573,10 +580,13 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     const asOf = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const map = new Map<string, DueHistory>();
     for (const item of filteredDueList) {
-      map.set(item.student.id, computeDueHistory(item.student, transactions, item.monthlyExpected, asOf));
+      // The fallback start keeps the grid on the shared window: without
+      // it a dateless student showed 12 months / ৳18,000 here while the
+      // shared total said 10 months / ৳15,000 (21 Nov 2026 audit).
+      map.set(item.student.id, computeDueHistory(item.student, transactions, item.monthlyExpected, asOf, 12, agingFallbackStart));
     }
     return map;
-  }, [filteredDueList, transactions]);
+  }, [filteredDueList, transactions, agingFallbackStart]);
 
   // =========================================================================
   // QUICK PRESETS & SUBMIT HANDLERS
@@ -635,10 +645,13 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     showToast(isBn ? `${student.nameBn || student.name}-এর ফি গ্রহণের ফর্ম লোড হয়েছে` : `Loaded fee form for ${student.name}`);
   };
 
-  // Copy Reminder SMS to clipboard
+  // Copy Reminder SMS to clipboard — the ONE shared dues total (this
+  // month + finished months) with its month count, so the message never
+  // says ৳0 for a student who owes only old months.
   const handleCopyReminderSMS = (item: typeof studentFeeProfiles[0]) => {
     const s = item.student;
-    const msg = `সম্মানিত অভিভাবক, আপনার সন্তান ${s.nameBn || s.name} (শ্রেণি: ${s.classLevel})-এর ${feeMonth} মাসের ফি বাবদ ৳${item.dueThisMonth.toLocaleString()} বকেয়া রয়েছে। মাদ্রাসার পরিচালনা ও উস্তাদদের বেতন নিয়মিত রাখতে দ্রুত ফি পরিশোধের অনুরোধ করা হচ্ছে। ধন্যবাদ।`;
+    const totalMonths = item.agedMonths + (item.dueThisMonth > 0 ? 1 : 0);
+    const msg = `সম্মানিত অভিভাবক, আপনার সন্তান ${s.nameBn || s.name} (শ্রেণি: ${s.classLevel})-এর ${totalMonths} মাসের ফি বাবদ মোট ৳${item.totalDue.toLocaleString()} বকেয়া রয়েছে। মাদ্রাসার পরিচালনা ও উস্তাদদের বেতন নিয়মিত রাখতে দ্রুত ফি পরিশোধের অনুরোধ করা হচ্ছে। ধন্যবাদ।`;
     navigator.clipboard.writeText(msg);
     showToast(isBn ? 'তাগাদা মেসেজ ক্লিপবোর্ডে কপি হয়েছে!' : 'Reminder notice copied to clipboard!');
   };
@@ -1509,7 +1522,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   <th className="py-3 px-3 text-center">পেমেন্ট প্যাটার্ন</th>
                   <th className="py-3 px-3 text-right">প্রদেয় ফি</th>
                   <th className="py-3 px-3 text-right">পরিশোধিত</th>
-                  <th className="py-3 px-3 text-right">চলতি বকেয়া</th>
+                  <th className="py-3 px-3 text-right">মোট বকেয়া</th>
                   <th className="py-3 px-3 text-center">অ্যাকশন</th>
                 </tr>
               </thead>
@@ -1523,7 +1536,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 ) : (
                   filteredDueList.map(item => {
                     const s = item.student;
-                    const hasDue = item.dueThisMonth > 0;
+                    // Shared total: a student owing only old months still has dues.
+                    const hasDue = item.totalDue > 0;
+                    const dueMonthCount = item.agedMonths + (item.dueThisMonth > 0 ? 1 : 0);
                     const hist = dueHistoryById.get(s.id);
                     const waLink = duesWhatsappLink(item);
                     return (
@@ -1555,8 +1570,13 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                         </td>
                         <td className="py-3 px-3 text-right font-mono font-black">
                           {hasDue ? (
-                            <span className="text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800">
-                              ৳{isBn ? formatBanglaNumber(item.dueThisMonth) : item.dueThisMonth.toLocaleString()}
+                            <span className="inline-block text-right">
+                              <span className="text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+                                ৳{isBn ? formatBanglaNumber(item.totalDue) : item.totalDue.toLocaleString()}
+                              </span>
+                              <span className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                                {isBn ? `${formatBanglaNumber(dueMonthCount)} মাসের বকেয়া` : `${dueMonthCount}-month due`}
+                              </span>
                             </span>
                           ) : (
                             <span className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -1633,7 +1653,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                                 {hist.months.map(cell => (
                                   <div
                                     key={cell.month}
-                                    title={`${monthFull(cell.month)} ${cell.month.split('-')[0]}: ${cell.status === 'paid' ? (isBn ? 'পরিশোধিত' : 'Paid') : cell.status === 'partial' ? (isBn ? `আংশিক ৳${formatBanglaNumber(cell.paid)}` : `Partial ৳${cell.paid.toLocaleString()}`) : cell.status === 'unpaid' ? (isBn ? 'বাকি' : 'Due') : (isBn ? 'ভর্তির আগের মাস' : 'Before admission')}`}
+                                    title={`${monthFull(cell.month)} ${cell.month.split('-')[0]}: ${cell.status === 'paid' ? (isBn ? 'পরিশোধিত' : 'Paid') : cell.status === 'partial' ? (isBn ? `আংশিক ৳${formatBanglaNumber(cell.paid)}` : `Partial ৳${cell.paid.toLocaleString()}`) : cell.status === 'unpaid' ? (isBn ? 'বাকি' : 'Due') : (isBn ? 'হিসাবের শুরুর আগের মাস' : 'Before the counted start')}`}
                                     className={`rounded-lg border px-1 py-1.5 text-center ${
                                       cell.status === 'paid'
                                         ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
@@ -1652,7 +1672,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                                 ))}
                               </div>
                               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                {isBn ? 'সবুজ = পরিশোধিত · হলুদ = আংশিক · লাল = বাকি · ধূসর = ভর্তির আগের মাস' : 'Green = paid · Amber = partial · Red = due · Grey = before admission'}
+                                {isBn ? 'সবুজ = পরিশোধিত · হলুদ = আংশিক · লাল = বাকি · ধূসর = হিসাবের শুরুর আগের মাস' : 'Green = paid · Amber = partial · Red = due · Grey = before the counted start'}
                               </div>
                             </div>
                           </td>

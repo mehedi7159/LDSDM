@@ -24,7 +24,7 @@ import { calculateTotalGPA, calculateGrade, formatBanglaNumber, toBengali } from
 import { classNamesMatch } from '../services/classNames';
 import { resolveGuardianChildren } from '../services/guardianScope';
 import { calculateStudentAttendanceForExamFromRecords } from '../services/dailyAttendanceService';
-import { calculateSingleStudentDue } from '../services/studentDuesService';
+import { calculateSingleStudentDue, calculateFeeAging, localMonthStr, academicYearFallbackStartMonth } from '../services/studentDuesService';
 import { VerifiedResultModal } from './VerifiedResultModal';
 
 type GuardianPortalTab = 'results' | 'attendance' | 'fees';
@@ -58,6 +58,7 @@ export const GuardianPortal: React.FC = () => {
     transactions,
     feeStructures,
     feeTypes = [],
+    academicYears = [],
     dailyStudentAttendance = [],
     logoutUser,
     language
@@ -105,17 +106,26 @@ export const GuardianPortal: React.FC = () => {
   // Fee summary for the selected child — the canonical dues service
   // (the same figures the office and the mobile app show), replacing
   // the old ad-hoc "monthly tuition x 10 months, default 800" estimate.
+  // The tab used to show the current month only (dueThisMonth); the
+  // shared total (dueThisMonth + finished months, with its month count)
+  // is shown beside it, so the guardian sees the same figure as the
+  // office (21 Nov 2026 audit: portal said one month, office said the
+  // total). The month is the shared local month, not UTC.
   const feeSummary = useMemo(() => {
-    if (!linkedStudent) return { paid: 0, due: 0, monthlyExpected: 0, transactions: [] as typeof transactions };
+    if (!linkedStudent) return { paid: 0, due: 0, totalDue: 0, dueMonthCount: 0, monthlyExpected: 0, transactions: [] as typeof transactions };
     const studentTx = transactions.filter(t => t.studentId === linkedStudent.id || (t.studentCode && t.studentCode === linkedStudent.studentId));
-    const profile = calculateSingleStudentDue(linkedStudent, feeStructures, transactions, undefined, feeTypes);
+    const month = localMonthStr();
+    const profile = calculateSingleStudentDue(linkedStudent, feeStructures, transactions, month, feeTypes);
+    const aging = calculateFeeAging(linkedStudent, feeStructures, transactions, month, feeTypes, academicYearFallbackStartMonth(academicYears, month));
     return {
       paid: profile.totalPaidLifetime,
       due: profile.dueThisMonth,
+      totalDue: profile.dueThisMonth + aging.totalAged,
+      dueMonthCount: (profile.dueThisMonth > 0 ? 1 : 0) + aging.byMonth.length,
       monthlyExpected: profile.monthlyExpected,
       transactions: studentTx
     };
-  }, [linkedStudent, transactions, feeStructures]);
+  }, [linkedStudent, transactions, feeStructures, feeTypes, academicYears]);
 
   // Attendance for the selected child — RECORDED days only (the
   // honest-zero rule): figures come from the daily attendance records
@@ -414,6 +424,16 @@ export const GuardianPortal: React.FC = () => {
                   ৳ {formatBanglaNumber(feeSummary.due)}
                 </span>
                 <span className="text-[11px] text-amber-700 mt-1 block">নিয়মিত বেতন পরিশোধে সহযোগিতা করুন</span>
+              </div>
+
+              {/* Shared total — the same figure the office sees (current
+                  month + finished months), with its month count. */}
+              <div className="bg-rose-50 border border-rose-200 p-5 rounded-3xl sm:col-span-2">
+                <span className="text-xs font-bold text-rose-800 block">মোট বকেয়া</span>
+                <span className="text-3xl font-black text-rose-900 font-mono mt-1 block">
+                  ৳ {formatBanglaNumber(feeSummary.totalDue)}
+                </span>
+                <span className="text-[11px] text-rose-700 mt-1 block">{feeSummary.dueMonthCount > 0 ? `${formatBanglaNumber(feeSummary.dueMonthCount)} মাসের বকেয়া` : 'কোনো বকেয়া নেই'}</span>
               </div>
             </div>
 
