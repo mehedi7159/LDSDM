@@ -25,6 +25,7 @@
     "test:notice-button-viewer": "tsx scripts/verify-notice-button-viewer.ts",
     "test:guardian-portal-ids": "tsx scripts/verify-guardian-portal-ids.ts",
     "test:backup-snapshot-count": "tsx scripts/verify-backup-snapshot-count.ts",
+    "test:snapshot-fetch-failure": "tsx scripts/verify-snapshot-fetch-failure.ts",
     "test:mobile-nav-routing": "tsx scripts/verify-mobile-nav-routing.ts",
     "test:more-sheet-staff-alias": "tsx scripts/verify-more-sheet-staff-alias.ts",
     "test:teacher-add-subject": "tsx scripts/verify-teacher-add-subject-field.ts",
@@ -34,8 +35,13 @@
     "test:promotion": "tsx scripts/test-class-promotion.ts",
     "test:rbac-multirole": "tsx scripts/test-rbac-multirole.ts",
     "test:portal-idcard-lookup": "tsx scripts/verify-portal-idcard-lookup.ts",
+    "test:rc-students-report": "tsx scripts/verify-rc-students-report.ts",
+    "test:rc-students-studentid-ascii": "tsx scripts/verify-rc-students-studentid-ascii.ts",
     "test:users-queue-at-add": "tsx scripts/verify-users-queue-at-add.ts",
-    "test:pwa-reload-button": "tsx scripts/verify-pwa-reload-button.ts"
+    "test:users-queue-at-add": "tsx scripts/verify-users-queue-at-add.ts",
+    "test:pwa-reload-button": "tsx scripts/verify-pwa-reload-button.ts",
+    "test:cloud-push-toast": "tsx scripts/verify-cloud-push-toast.ts",
+    "test:today-tasks-load-on-mount": "tsx scripts/verify-today-tasks-load-on-mount.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

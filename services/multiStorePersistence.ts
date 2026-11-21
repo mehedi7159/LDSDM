@@ -1495,7 +1495,7 @@ export async function fetchFirestoreCloudSnapshotsPage(
     return { items: page, hasMore, lastCreatedAt: page.length > 0 ? page[page.length - 1].createdAt : null };
   } catch (err) {
     console.warn('[Cloud Snapshots] Fetch page error:', err);
-    return { items: [], hasMore: false, lastCreatedAt: null };
+    throw err; // Never return an empty page: callers would show "0 snapshots" for a failed fetch.
   }
 }
 

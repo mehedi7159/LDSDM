@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { classNamesMatch, canonicalClassName } from '../services/classNames';
 import { 
   UserX, 
   Download, 
@@ -49,12 +50,12 @@ export const StudentReportView: React.FC = () => {
   const filteredStudents = useMemo(() => {
     return (students || []).filter(s => {
       if (!s) return false;
-      if (selectedClass !== 'all' && s.class !== selectedClass) return false;
+      if (selectedClass !== 'all' && !classNamesMatch(s.classLevel, selectedClass)) return false;
       if (selectedResidential !== 'all') {
         const isRes = s.isResidential ? 'residential' : 'non_residential';
         if (isRes !== selectedResidential) return false;
       }
-      if (selectedStatus !== 'all' && s.status !== selectedStatus) return false;
+      if (selectedStatus !== 'all' && s.status?.toLowerCase() !== selectedStatus) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = (s.name || '').toLowerCase().includes(q);
@@ -77,17 +78,20 @@ export const StudentReportView: React.FC = () => {
   const residentialCount = safeStudents.filter(s => s.isResidential).length;
   const nonResidentialCount = totalCount - residentialCount;
 
-  // Class distribution chart data
+  // Class distribution chart data — Student has no `class` field,
+  // only `classLevel` (often the Bangla spelling, e.g. 'শিশু'), so
+  // count by canonical English name or every class reads 0.
   const classDistribution = useMemo(() => {
     const counts: Record<string, number> = {};
     (students || []).forEach(s => {
-      if (s?.class) {
-        counts[s.class] = (counts[s.class] || 0) + 1;
+      const key = canonicalClassName(s?.classLevel);
+      if (key) {
+        counts[key] = (counts[key] || 0) + 1;
       }
     });
     return (classes || []).map(c => ({
       name: language === 'bn' ? (c.nameBn || c.name) : c.name,
-      count: counts[c.name] || 0
+      count: counts[canonicalClassName(c.name)] || 0
     }));
   }, [students, classes, language]);
 
@@ -118,7 +122,7 @@ export const StudentReportView: React.FC = () => {
       s.studentId,
       s.roll,
       `"${s.name}"`,
-      `"${s.class}"`,
+      `"${s.classLevel}"`,
       s.status,
       s.isResidential ? 'Residential' : 'Non-Residential',
       s.guardianPhone || '',
@@ -367,7 +371,7 @@ export const StudentReportView: React.FC = () => {
                       <span className="font-bold text-slate-900 dark:text-white block">{s.name}</span>
                       {s.fatherName && <span className="text-[10px] text-slate-400 dark:text-slate-500">{s.fatherName}</span>}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-indigo-700 dark:text-indigo-400">{s.class}</td>
+                    <td className="py-3 px-4 font-semibold text-indigo-700 dark:text-indigo-400">{s.classLevel}</td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-100">{toBanglaDigits(s.roll)}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${

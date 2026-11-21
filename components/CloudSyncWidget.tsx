@@ -136,9 +136,15 @@ export const CloudSyncWidget: React.FC = () => {
     setIsSyncingAction(true);
     try {
       await forcePushToCloud();
-      setSyncNotification(language === 'bn' 
-        ? 'সফলভাবে ক্লাউডে সমস্ত ডাটা সংরক্ষিত ও ব্যাকআপ তৈরি হয়েছে!' 
-        : 'Successfully pushed all records and saved cloud snapshot!');
+      // Truthful message: a manual push saves the live data to the cloud
+      // (main_store) — it does NOT create a versioned cloud snapshot
+      // (cloud_snapshots). The old text claimed a backup was made, so
+      // the snapshots list still read 0 after a "successful backup".
+      // A snapshot is made only by the "Save Cloud Snapshot" button
+      // (or automatically before a restore).
+      setSyncNotification(language === 'bn'
+        ? 'সফলভাবে ক্লাউডে সমস্ত ডাটা সংরক্ষিত হয়েছে!'
+        : 'Successfully pushed all records to the cloud!');
       setTimeout(() => setSyncNotification(null), 3500);
     } catch (err: any) {
       setSyncNotification(language === 'bn' ? ('ক্লাউড সিঙ্ক সমস্যা: ' + (err?.message || 'কানেকশন চেক করুন')) : 'Cloud sync failed.');
