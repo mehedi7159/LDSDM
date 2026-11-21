@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
-import { calculateTotalDues, calculateFeeAging, academicYearFallbackStartMonth, isTuitionPayment } from '../services/studentDuesService';
+import { calculateTotalDues, topDueEntries, academicYearFallbackStartMonth, isTuitionPayment } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 import { calcPassRate } from '../services/gradingEngine';
 
@@ -285,21 +285,16 @@ export const MadrasaReports: React.FC = () => {
   // Highest Dues = TOTAL dues, not one month: the canonical aging total
   // over all finished months (a month's fee becomes due only after that
   // month ends), honoring the fee-arrangement payable via the shared
-  // monthlyExpectedFor hook (feeTypes threaded, same pattern as the
-  // other dues call sites). The current (unfinished) month is not due
-  // yet, so it is excluded — matching the fee-due month rule.
-  // Dateless students accrue from the current academic year's January
-  // (approved 2 Nov 2026); a real admission/created/paid start always wins.
+  // Top debtors — the ONE shared dues total (calculateTotalDues
+  // entries: current month + finished months), via the shared
+  // topDueEntries helper. This list used to map each student to
+  // calculateFeeAging(...).totalAged — finished months only — while
+  // the Dashboard করণীয় card showed the current month only, so the
+  // same 5 students showed ৳15,000 here and ৳1,500 there
+  // (20 Nov 2026 audit). Both cards now read the same entries.
   const topDues = useMemo(
-    () => activeStudents
-      .map(student => ({
-        student,
-        totalDue: calculateFeeAging(student, feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart).totalAged,
-      }))
-      .filter(p => p.totalDue > 0)
-      .sort((a, b) => b.totalDue - a.totalDue)
-      .slice(0, 5),
-    [activeStudents, feeStructures, transactions, monthPrefix, feeTypes, agingFallbackStart]
+    () => topDueEntries(duesSummary.entries),
+    [duesSummary]
   );
 
   const latestExamSummary = useMemo(() => {
@@ -707,16 +702,17 @@ export const MadrasaReports: React.FC = () => {
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'সর্বোচ্চ বকেয়া' : 'Highest Dues'}</h4>
             </div>
             <div className="space-y-2">
-              {topDues.map(p => {
-                const phone = String(p.student.guardianPhone || '').replace(/[^0-9]/g, '');
+              {topDues.map(e => {
+                const st = e.profile.student;
+                const phone = String(st.guardianPhone || '').replace(/[^0-9]/g, '');
                 const waPhone = phone.startsWith('0') ? `880${phone.slice(1)}` : phone;
                 return (
-                  <div key={p.student.id} className="flex items-center gap-2 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                  <div key={st.id} className="flex items-center gap-2 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{isBn ? p.student.nameBn || p.student.name : p.student.name}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{p.student.classLevel} · {isBn ? 'রোল' : 'Roll'} {num(Number(p.student.roll) || 0)}</div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{isBn ? st.nameBn || st.name : st.name}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{st.classLevel} · {isBn ? 'রোল' : 'Roll'} {num(Number(st.roll) || 0)} · {isBn ? `${num(e.dueMonthCount)} মাসের বকেয়া` : `${e.dueMonthCount}-month due`}</div>
                     </div>
-                    <span className="text-xs font-black text-rose-600 dark:text-rose-300 shrink-0">{money(p.totalDue)}</span>
+                    <span className="text-xs font-black text-rose-600 dark:text-rose-300 shrink-0">{money(e.totalDue)}</span>
                     {phone && (
                       <span className="flex gap-1 shrink-0">
                         <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noreferrer" className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center" aria-label="WhatsApp">

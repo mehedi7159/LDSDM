@@ -407,6 +407,11 @@ export interface TotalDueEntry {
   profile: StudentDueProfile; // current-month profile
   aging: FeeAging; // finished-months aging as of the target month
   totalDue: number; // profile.dueThisMonth + aging.totalAged
+  // How many months the totalDue covers: finished months still owed
+  // (aging.byMonth) + the current month when it is still owed. Shown
+  // beside the amount so "৳16,500" reads as "১১ মাসের বকেয়া", never
+  // as one month's fee.
+  dueMonthCount: number;
 }
 
 export interface TotalDuesSummary {
@@ -442,7 +447,12 @@ export function calculateTotalDues(
     const totalDue = profile.dueThisMonth + aging.totalAged;
     agedDue += aging.totalAged;
     if (totalDue > 0) dueStudentsCount += 1;
-    return { profile, aging, totalDue };
+    return {
+      profile,
+      aging,
+      totalDue,
+      dueMonthCount: (profile.dueThisMonth > 0 ? 1 : 0) + aging.byMonth.length,
+    };
   });
   return {
     totalDue: summary.totalDue + agedDue,
@@ -456,4 +466,21 @@ export function calculateTotalDues(
     profiles: summary.profiles,
     entries,
   };
+}
+
+/**
+ * The top debtors, from the ONE shared dues total: the entries of
+ * calculateTotalDues, largest totalDue first. Both top-dues cards
+ * (Dashboard's করণীয় card and MadrasaReports' Overview list) read
+ * through this helper, so they can never disagree again — the old
+ * split was one card on finished-months-only (totalAged) and the
+ * other on the current month only (dueThisMonth).
+ */
+export function topDueEntries(entries: TotalDueEntry[], count = 5): TotalDueEntry[] {
+  // filter() returns a new array, so the sort below never mutates the
+  // caller's (memoized) entries.
+  return (entries || [])
+    .filter(e => e.totalDue > 0)
+    .sort((a, b) => b.totalDue - a.totalDue)
+    .slice(0, count);
 }

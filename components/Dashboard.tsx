@@ -70,7 +70,7 @@ import { DashboardDailyOverview } from './DashboardDailyOverview';
 import { MadrasaReports } from './MadrasaReports';
 import { SectionCard } from './ui/SectionCard';
 import { ProgressBar } from './ui/ProgressBar';
-import { calculateTotalDues, localMonthStr, academicYearFallbackStartMonth, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
+import { calculateTotalDues, topDueEntries, localMonthStr, academicYearFallbackStartMonth, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
 import { getAdmissionApplications } from '../services/admissionApplicationsService';
 import { Phone, MessageCircle, LayoutDashboard, UserPlus } from 'lucide-react';
 
@@ -897,7 +897,11 @@ export const Dashboard = () => {
     //    this month's unpaid + every finished month's unpaid, same student
     //    set / month / feeTypes as Finance, the fee page and Reports.
     //    The follow-up list itself stays current-month (the reminder text
-    //    is about this month's fee).
+    //    is about this month's fee). The top-5 card, though, shows the
+    //    SHARED total (topDueEntries on the summary's entries) — it used
+    //    to show the current month only, while the Overview list showed
+    //    finished months only, so the same 5 students showed ৳1,500 in
+    //    one place and ৳15,000 in the other (20 Nov 2026 audit).
     const activeStudents = (students || []).filter(s => s && s.status === 'Active' && !s.isFormer);
     const month = localMonthStr();
     const duesSummary = calculateTotalDues(activeStudents, feeStructures, transactions, month, feeTypes, academicYearFallbackStartMonth(academicYears, month));
@@ -934,7 +938,7 @@ export const Dashboard = () => {
       readyToFinalizeExams,
       duesSummary,
       dueProfiles,
-      topDueProfiles: dueProfiles.slice(0, 5),
+      topDueProfiles: topDueEntries(duesSummary.entries),
       pendingAdmissions,
       pendingLeaves,
       badgeCount
@@ -1450,7 +1454,8 @@ export const Dashboard = () => {
               </span>
             }
           >
-            {actionData.topDueProfiles.map(p => {
+            {actionData.topDueProfiles.map(e => {
+              const p = e.profile;
               const waLink = duesWhatsappLink(p);
               const rawPhone = String(p.student.guardianPhone || '').replace(/[^0-9]/g, '');
               return (
@@ -1463,12 +1468,12 @@ export const Dashboard = () => {
                       {language === 'bn' ? p.student.nameBn || p.student.name : p.student.name}
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      {p.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(p.student.roll || '-', language)}
+                      {p.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(p.student.roll || '-', language)} • {language === 'bn' ? `${toBanglaDigits(e.dueMonthCount, language)} মাসের বকেয়া` : `${e.dueMonthCount}-month due`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="font-black text-rose-600 dark:text-rose-300">
-                      ৳{toBanglaDigits(p.dueThisMonth.toLocaleString(), language)}
+                      ৳{toBanglaDigits(e.totalDue.toLocaleString(), language)}
                     </span>
                     {rawPhone && (
                       <a

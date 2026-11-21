@@ -371,6 +371,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             transactions={transactions}
             students={students}
             feeStructures={feeStructures}
+            feeTypes={feeTypes}
+            academicYears={academicYears}
             language={language}
             onNavigateTab={(t) => setActiveTab(t as FinanceTab)}
             onOpenReceipt={openVoucher}

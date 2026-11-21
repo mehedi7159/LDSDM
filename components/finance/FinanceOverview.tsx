@@ -22,11 +22,15 @@ import { FUND_METAS, FinanceTab } from './types';
 import { Button } from '../ui/Button';
 import { FinanceBudgetDonutCharts } from './FinanceBudgetDonutCharts';
 import { HighImpactSummaryCards } from './HighImpactSummaryCards';
+import type { FeeTypeDef } from '../../services/feeTypes';
+import type { AcademicYear } from '../../types/academic';
 
 interface FinanceOverviewProps {
   transactions: FinanceTransaction[];
   students?: Student[];
   feeStructures?: ClassFeeStructure[];
+  feeTypes?: FeeTypeDef[];
+  academicYears?: AcademicYear[];
   language: 'en' | 'bn';
   onNavigateTab: (tab: FinanceTab) => void;
   onOpenReceipt: (tx: FinanceTransaction) => void;
@@ -36,6 +40,8 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
   transactions,
   students = [],
   feeStructures = [],
+  feeTypes = [],
+  academicYears = [],
   language,
   onNavigateTab,
   onOpenReceipt,
@@ -149,6 +155,8 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
         transactions={transactions}
         students={students}
         feeStructures={feeStructures}
+        feeTypes={feeTypes}
+        academicYears={academicYears}
         language={language}
         onQuickCollectFee={() => onNavigateTab('student-fee')}
       />

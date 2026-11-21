@@ -37,6 +37,7 @@ const AttendanceManager = lazyWithRetry(() => import('./components/attendance/At
 const ExamResultsManager = lazyWithRetry(() => import('./components/examination/ExamResultsManager').then(m => ({ default: m.ExamResultsManager })));
 const StaffManager = lazyWithRetry(() => import('./components/staff/StaffManager').then(m => ({ default: m.StaffManager })));
 const ReportsSettingsManager = lazyWithRetry(() => import('./components/settings/ReportsSettingsManager').then(m => ({ default: m.ReportsSettingsManager })));
+import type { ReportsSettingsSubTab } from './components/settings/ReportsSettingsManager';
 const PortalsServicesManager = lazyWithRetry(() => import('./components/portals/PortalsServicesManager').then(m => ({ default: m.PortalsServicesManager })));
 const GuardianPortal = lazyWithRetry(() => import('./components/GuardianPortal').then(m => ({ default: m.GuardianPortal })));
 const StudentReportView = lazyWithRetry(() => import('./components/StudentReportView').then(m => ({ default: m.StudentReportView })));
@@ -98,6 +99,22 @@ const AppContent = () => {
   // compact StudentProfileModal ('বিস্তারিত প্রোফাইল'). Passed to the staff
   // student_profile tab only; the portal call site never receives it.
   const [profileStudentId, setProfileStudentId] = useState<string | undefined>(undefined);
+
+  // Sidebar §10 shortcut: which Settings sub-tab to open. Null = the
+  // default profile sub-tab. Set ONLY by the §10 shortcut (Layout's
+  // onOpenSettingsSubTab); a plain Settings visit resets it to null,
+  // so the shortcut cannot leak into later visits. This is routing
+  // only — no permission gate is changed: the principal already opens
+  // this same backup centre via Settings > Backup.
+  const [settingsSubTab, setSettingsSubTab] = useState<ReportsSettingsSubTab | null>(null);
+  const handleLayoutTabChange = (tab: string) => {
+    if (tab === 'settings') setSettingsSubTab(null);
+    setActiveTab(tab);
+  };
+  const openSettingsSubTab = (subTab: string) => {
+    setActiveTab('settings');
+    setSettingsSubTab(subTab as ReportsSettingsSubTab);
+  };
 
   // Clear a stale modal-requested id when leaving the profile tab, so a
   // later entry via another path (e.g. WebResultView's localStorage id)
@@ -598,7 +615,7 @@ const AppContent = () => {
           : <AccessRestrictedView moduleName={language === 'bn' ? 'জনবল অ্যানালিটিক্স ও রিপোর্ট' : 'HR Analytics & Census'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'settings': 
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('institution.settings.view')) 
-          ? <ReportsSettingsManager initialSubTab="profile" onNavigateTab={(tab) => setActiveTab(tab)} /> 
+          ? <ReportsSettingsManager initialSubTab={settingsSubTab ?? 'profile'} onNavigateTab={(tab) => setActiveTab(tab)} /> 
           : <AccessRestrictedView moduleName={t('settings')} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'branding_settings': 
         return (isOwnerAdmin || isAdmin || isSuperAdmin || hasPermission('institution.settings.view')) 
@@ -874,7 +891,7 @@ const AppContent = () => {
                 </div>
               </div>
             ) : (
-              <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+              <Layout activeTab={activeTab} setActiveTab={handleLayoutTabChange} onOpenSettingsSubTab={openSettingsSubTab} activeSettingsSubTab={settingsSubTab ?? undefined}>
                 <Suspense fallback={<TabLoadingFallback />}>
                   {renderContent()}
                 </Suspense>
@@ -884,7 +901,7 @@ const AppContent = () => {
         </>
       ) : (
         /* Full Admin & Principal Desktop/Mobile Layout */
-        <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+        <Layout activeTab={activeTab} setActiveTab={handleLayoutTabChange} onOpenSettingsSubTab={openSettingsSubTab} activeSettingsSubTab={settingsSubTab ?? undefined}>
           <Suspense fallback={<TabLoadingFallback />}>
             {renderContent()}
           </Suspense>
