@@ -586,6 +586,57 @@ export async function readScheduleFieldFromCollection(field: ScheduleSplitField)
   });
 }
 
+/**
+ * Job 5 (fees split): the new home of feeTypes + feeStructures. One
+ * collection per field, paths built from
+ * CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded — same shape as
+ * Job 2's schedule collections. feeStructures is keyed by classLevel,
+ * NOT by id: the document id IS the class name (e.g. 'Class 6'), one
+ * structure per class — today's union rule, kept.
+ */
+export type FeesSplitField = 'feeTypes' | 'feeStructures';
+
+export function feesCollectionRef(field: FeesSplitField) {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, field);
+}
+
+export function feeTypesCollectionRef() {
+  return feesCollectionRef('feeTypes');
+}
+
+export function feeStructuresCollectionRef() {
+  return feesCollectionRef('feeStructures');
+}
+
+/** Write fee records into their new collection (setDoc merge, doc id = field key: id for feeTypes, classLevel for feeStructures). */
+export async function writeFeeRecordsToCollection(field: FeesSplitField, records: any[]): Promise<void> {
+  const col = feesCollectionRef(field);
+  const keyFn = fieldKeyFn(field);
+  for (const r of records || []) {
+    const key = r ? keyFn(r) : '';
+    if (!key) continue; // key assertion happens in the caller
+    await setDoc(doc(col, String(key)), stripUndefinedRecord(r), { merge: true });
+  }
+}
+
+/** Delete fee docs from their new collection (missing docs are a no-op). Ids are field keys: id for feeTypes, classLevel for feeStructures. */
+export async function deleteFeeRecordsFromCollection(field: FeesSplitField, ids: string[]): Promise<void> {
+  const col = feesCollectionRef(field);
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
+/** Read all docs of one fees field from its new collection (empty array when none). */
+export async function readFeesFieldFromCollection(field: FeesSplitField): Promise<any[]> {
+  const snap = await getDocs(feesCollectionRef(field));
+  return snap.docs.map((d) => {
+    const data = d.data() as any;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
 /** Routine + syllabus + calendar travel together (one editor save can touch all three via the bridge) — one write carries all three. */
 export async function writeScheduleFieldsToCloud(
   routines: ClassRoutineItem[],
@@ -762,6 +813,10 @@ export async function writeFeeStructuresFieldToCloud(
     // never be keyed, so the write is refused instead of dropped.
     assertUpsertRecords('feeStructures', structures as any, (r) => (r.classLevel ? String(r.classLevel) : ''), 'classLevel');
     if (structures.length === 0) return;
+    // Job 5 dual-write: the new collection first (doc id = classLevel).
+    // A failure anywhere fails the whole write, so the payload queue +
+    // retry replay both legs.
+    await writeFeeRecordsToCollection('feeStructures', structures as any);
     const ref = doc(db, 'institution', 'main_store');
     const snap = await getDoc(ref);
     const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
@@ -784,11 +839,20 @@ export async function writeFeeTypesFieldToCloud(
   types: { id: string }[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(
-    writeFieldToCloud('feeTypes', types, updatedBy),
-    CONFIRM_TIMEOUT_MS,
-    'fee types cloud confirm'
-  );
+  const write = async (): Promise<void> => {
+    const list = types || [];
+    if (list.length > 0) {
+      // Job 5 dual-write: same id assertion as the main_store leg,
+      // then the new collection first. A failure anywhere fails the
+      // whole write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('feeTypes', list as any, fieldKeyFn('feeTypes'));
+      await writeFeeRecordsToCollection('feeTypes', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldToCloud('feeTypes', types, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'fee types cloud confirm');
 }
 
 // --- Phase 1 writers (4 Nov 2026): every field that previously had
@@ -1097,6 +1161,13 @@ export async function writeDeleteFieldsToCloud(
         // subject/exam/assignment can never be resurrected by an
         // academic feed.
         await deleteAcademicRecordsFromCollection(removal.field as AcademicSplitField, removal.ids);
+      } else if (removal.field === 'feeTypes' || removal.field === 'feeStructures') {
+        // Job 5 (fees split): fee records also live in the new
+        // collections — delete their docs there too, so a deleted fee
+        // type/structure can never be resurrected by a fees feed.
+        // Removal ids are field keys: id for feeTypes, classLevel for
+        // feeStructures.
+        await deleteFeeRecordsFromCollection(removal.field as FeesSplitField, removal.ids);
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1166,6 +1237,10 @@ export async function writeTrashOpToCloud(
         // Job 4: same for a restored academic record — otherwise the
         // restore would stay invisible until a main_store read.
         await writeAcademicRecordsToCollection(field as AcademicSplitField, liveRecords);
+      } else if (field === 'feeTypes' || field === 'feeStructures') {
+        // Job 5: same for a restored fee record — otherwise the
+        // restore would stay invisible until a main_store read.
+        await writeFeeRecordsToCollection(field as FeesSplitField, liveRecords);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a

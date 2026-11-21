@@ -119,6 +119,7 @@ import {
   classesCollectionRef,
   academicCollectionRef,
   readAcademicFieldFromCollection,
+  feesCollectionRef,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
@@ -172,6 +173,7 @@ import { migrateNoticesToCollection, migrateFieldToCollection } from '../service
 import type { ScheduleSplitField } from '../services/cloudConfirm';
 import type { ClassesSplitField } from '../services/cloudConfirm';
 import type { AcademicSplitField } from '../services/cloudConfirm';
+import type { FeesSplitField } from '../services/cloudConfirm';
 import {
   readPendingPayloads,
   queuePendingPayload,
@@ -2119,6 +2121,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // waits for this, so sync never starts on half-loaded academic state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedAcademicCollectionsRef = useRef(false);
+  // Job 5 (fees split): same shape as Job 2, except the two fee lists
+  // switch TOGETHER — one joint flag, so a fee type can never come from
+  // the new collection while its structure still comes from main_store.
+  // Once the flag flips, both lists come from the new collections;
+  // until then main_store stays the fallback for both.
+  const feesFromCollectionRef = useRef(false);
+  // Job 5: guards the one-time fees backfills against concurrent feed events.
+  const feesBackfillInFlightRef = useRef<Record<FeesSplitField, boolean>>({ feeTypes: false, feeStructures: false });
+  // Job 5: keys already copied into the new collections by a backfill, so
+  // repeat snapshots don't rewrite them (id for feeTypes, classLevel
+  // for feeStructures — see fieldKeyFn).
+  const backfilledFeesIdsRef = useRef<Record<FeesSplitField, Set<string>>>({ feeTypes: new Set(), feeStructures: new Set() });
+  // Job 5: the last docs each fees collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionFeesRef = useRef<Record<FeesSplitField, any[]>>({ feeTypes: [], feeStructures: [] });
+  // Job 5: whether each fees feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on both.
+  const feesFeedSettledRef = useRef<Record<FeesSplitField, boolean>>({ feeTypes: false, feeStructures: false });
+  // Job 5: true once both fees feeds have settled — auto-sync waits
+  // for this, so sync never starts on half-loaded fees state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedFeesCollectionsRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2675,6 +2699,92 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 5 one-time backfill: copy main_store fee records into their
+  // new collections. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by key (the
+  // backfilled-keys set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillFeesOnce = async (field: FeesSplitField, source?: any[]) => {
+    if (feesBackfillInFlightRef.current[field]) return;
+    const list = source || lastConfirmedRef.current[field] || [];
+    const keyFn = fieldKeyFn(field);
+    const pending = (list || []).filter((r) => r && keyFn(r) && !backfilledFeesIdsRef.current[field].has(String(keyFn(r))));
+    if (pending.length === 0) return;
+    feesBackfillInFlightRef.current[field] = true;
+    try {
+      await migrateFieldToCollection(field, pending);
+      pending.forEach((r) => backfilledFeesIdsRef.current[field].add(String(keyFn(r))));
+    } catch (err: any) {
+      console.warn('Fees backfill notice:', err?.message || err);
+    } finally {
+      feesBackfillInFlightRef.current[field] = false;
+    }
+  };
+
+  // Job 5: the two fee lists switch TOGETHER — a fee type must never
+  // come from the new collection while its structure still comes from
+  // main_store. Take over only once main_store has loaded (no vacuous
+  // takeover on an unloaded list), both feeds have settled, and every
+  // confirmed main_store record is present in its collection (by field
+  // key: id for feeTypes, classLevel for feeStructures). Returns true
+  // when the switch happened (or already had).
+  const tryFeesTakeover = (): boolean => {
+    if (feesFromCollectionRef.current) return true;
+    if (!hasLoadedMainStoreRef.current) return false;
+    if (!feesFeedSettledRef.current.feeTypes || !feesFeedSettledRef.current.feeStructures) return false;
+    for (const field of (['feeTypes', 'feeStructures'] as FeesSplitField[])) {
+      const keyFn = fieldKeyFn(field);
+      const knownKeys = new Set(((lastConfirmedRef.current[field] || []) as any[]).map((r) => String(keyFn(r))));
+      const colKeys = new Set((lastCollectionFeesRef.current[field] || []).map((d) => String(keyFn(d))));
+      if (![...knownKeys].every((key) => colKeys.has(key))) return false;
+    }
+    feesFromCollectionRef.current = true;
+    applyRemoteData({
+      feeTypes: lastCollectionFeesRef.current.feeTypes,
+      feeStructures: lastCollectionFeesRef.current.feeStructures,
+    }, { fromFeesCollection: true });
+    return true;
+  };
+
+  // Job 5: one fees field from a remote snapshot. A collection feed's
+  // own snapshots always apply (its handler decides when an empty
+  // snapshot is real — see startFeesFeeds); main_store applies only
+  // while the joint flag is still off. After takeover, a main_store
+  // list only rescues stragglers (written by a stale pre-split tab,
+  // which only writes main_store) into the collection — the feed then
+  // delivers them. feeTypes hydrates ONLY when the list is non-empty
+  // (same rule as before) — an empty list never wipes the seeded
+  // DEFAULT_FEE_TYPES, from either source.
+  const applyFeesFieldFromRemote = (field: FeesSplitField, records: any[], opts: { fromFeesCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
+    if (field === 'feeTypes' && records.length === 0) return;
+    if (opts?.fromFeesCollection || !feesFromCollectionRef.current) {
+      if (field === 'feeTypes') {
+        setFeeTypes(records);
+      } else {
+        setFeeStructures(records);
+      }
+      lastConfirmedRef.current[field] = records;
+      snapshotApplied[field] = records;
+      try { localStorage.setItem(field === 'feeTypes' ? 'madrasha_fee_types' : 'madrasha_fee_structures', JSON.stringify(records)); } catch {}
+      // Job 5: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded), then
+      // re-check the joint takeover (the feeds may already hold
+      // every record).
+      if (!opts?.fromFeesCollection) {
+        void backfillFeesOnce(field);
+        tryFeesTakeover();
+      }
+    } else {
+      const keyFn = fieldKeyFn(field);
+      const colKeys = new Set((lastCollectionFeesRef.current[field] || []).map((r) => String(keyFn(r))));
+      const stragglers = (records || []).filter((r) => !colKeys.has(String(keyFn(r))));
+      if (stragglers.length > 0) void backfillFeesOnce(field, stragglers);
+    }
+  };
+
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
@@ -2684,7 +2794,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // classes collection feed (all three fields together).
   // opts.fromAcademicCollection marks data that came from a Job 4
   // academic collection feed (all six fields together).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean }) => {
+  // opts.fromFeesCollection marks data that came from a Job 5 fees
+  // collection feed (both fields together).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -2766,16 +2878,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('madrasha_transactions', JSON.stringify(cleanTransactions)); } catch {}
     }
     if (data.feeStructures && Array.isArray(data.feeStructures)) {
-      setFeeStructures(data.feeStructures);
-      lastConfirmedRef.current['feeStructures'] = data.feeStructures;
-      snapshotApplied['feeStructures'] = data.feeStructures;
-      try { localStorage.setItem('madrasha_fee_structures', JSON.stringify(data.feeStructures)); } catch {}
+      applyFeesFieldFromRemote('feeStructures', data.feeStructures, opts, snapshotApplied);
     }
-    if (data.feeTypes && Array.isArray(data.feeTypes) && data.feeTypes.length > 0) {
-      setFeeTypes(data.feeTypes);
-      lastConfirmedRef.current['feeTypes'] = data.feeTypes;
-      snapshotApplied['feeTypes'] = data.feeTypes;
-      try { localStorage.setItem('madrasha_fee_types', JSON.stringify(data.feeTypes)); } catch {}
+    if (data.feeTypes && Array.isArray(data.feeTypes)) {
+      applyFeesFieldFromRemote('feeTypes', data.feeTypes, opts, snapshotApplied);
     }
     if (data.trashBin && Array.isArray(data.trashBin)) {
       setTrashBin(data.trashBin);
@@ -3015,6 +3121,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let scheduleUnsubscribes: Array<() => void> = [];
     let classesUnsubscribes: Array<() => void> = [];
     let academicUnsubscribes: Array<() => void> = [];
+    let feesUnsubscribes: Array<() => void> = [];
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -3044,6 +3151,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       academicUnsubscribes = [];
     };
 
+    const stopFeesFeeds = () => {
+      for (const unsub of feesUnsubscribes) {
+        try { unsub(); } catch {}
+      }
+      feesUnsubscribes = [];
+    };
+
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
@@ -3053,6 +3167,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopScheduleFeeds();
       stopClassesFeeds();
       stopAcademicFeeds();
+      stopFeesFeeds();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -3272,6 +3387,65 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       });
     };
 
+    // Job 5 read-switch: one onSnapshot feed per fees field. Same shape
+    // as Job 2's schedule feeds, except the two switch TOGETHER (see
+    // tryFeesTakeover): a feed snapshot never flips one field on its
+    // own, so a fee type can never differ from its structure between
+    // two places. An empty snapshot before takeover means the backfill
+    // has not run yet, so main_store stays in place (fallback) and the
+    // backfill runs. An empty snapshot AFTER takeover means every
+    // record was deleted — that empty list applies for real (feeTypes
+    // keeps its non-empty rule: an empty list never wipes the seeded
+    // defaults). A non-empty snapshot AFTER takeover applies too, so
+    // a record added on another device shows without a reload. A feed
+    // error only settles the auto-sync guard;
+    // main_store keeps showing.
+    const markFeesFeedSettled = (field: FeesSplitField) => {
+      feesFeedSettledRef.current[field] = true;
+      if (feesFeedSettledRef.current.feeTypes && feesFeedSettledRef.current.feeStructures) {
+        hasLoadedFeesCollectionsRef.current = true;
+      }
+    };
+
+    const startFeesFeeds = () => {
+      if (cancelled) return;
+      stopFeesFeeds();
+      (['feeTypes', 'feeStructures'] as FeesSplitField[]).forEach((field) => {
+        const unsub = onSnapshot(
+          feesCollectionRef(field),
+          (snapshot) => {
+            if (cancelled) return;
+            const docs = snapshot.docs.map((d) => {
+              const data = d.data() as any;
+              return { ...data, id: (data as any).id || d.id };
+            });
+            lastCollectionFeesRef.current[field] = docs;
+            markFeesFeedSettled(field);
+            if (docs.length === 0 && feesFromCollectionRef.current) {
+              applyRemoteData({ [field]: [] }, { fromFeesCollection: true });
+            } else if (feesFromCollectionRef.current) {
+              // Post-takeover non-empty snapshot: tryFeesTakeover()
+              // returns true at once once the flag is on, so without
+              // this branch the new docs would never reach state.
+              // (feeTypes keeps its non-empty hydrate rule inside
+              // applyFeesFieldFromRemote — an empty list never wipes
+              // the seeded defaults; this branch only sees non-empty.)
+              applyRemoteData({ [field]: docs }, { fromFeesCollection: true });
+            } else if (!tryFeesTakeover()) {
+              void backfillFeesOnce(field);
+            }
+          },
+          (error) => {
+            if (cancelled) return;
+            console.warn('Fees collection snapshot listener notice:', error?.message || error);
+            // Fallback stays in place: main_store fees keep showing.
+            markFeesFeedSettled(field);
+          }
+        );
+        feesUnsubscribes.push(unsub);
+      });
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -3286,6 +3460,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startClassesFeeds();
       // Job 4: same for the six academic collections.
       startAcademicFeeds();
+      // Job 5: same for the two fees collections.
+      startFeesFeeds();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -3495,6 +3671,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // directly), and queued payloads preserve anything edited
     // meanwhile.
     if (!hasLoadedAcademicCollectionsRef.current) return;
+    // Job 5: never auto-sync until the fees collections have
+    // delivered their first snapshot (or errored) — otherwise sync
+    // could start on half-loaded fees state. Explicit fees saves
+    // bypass this (confirmFeeStructures/TypesCloudSync write
+    // directly), and queued payloads preserve anything edited
+    // meanwhile.
+    if (!hasLoadedFeesCollectionsRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -3503,7 +3686,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
-      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {

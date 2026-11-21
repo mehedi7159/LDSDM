@@ -21,6 +21,7 @@
     "test:job2-schedule-split": "tsx scripts/verify-job2-schedule-split.ts",
     "test:job3-classes-split": "tsx scripts/verify-job3-classes-split.ts",
     "test:job4-academic-split": "tsx scripts/verify-job4-academic-split.ts",
+    "test:job5-fees-split": "tsx scripts/verify-job5-fees-split.ts",
     "test:api-admin-500": "tsx scripts/verify-api-admin-500.ts",
     "test:grant-admin": "tsx scripts/verify-grant-admin.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
