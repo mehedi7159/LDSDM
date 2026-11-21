@@ -370,15 +370,61 @@ export async function writeStaffAttendanceFieldToCloud(
   );
 }
 
+/**
+ * Job 10 (transactions split): the new home of fee transactions. One
+ * collection, path built from CANONICAL_PRIMARY_INSTITUTION_ID, never
+ * hardcoded — same shape as Job 1's notices collection.
+ */
+export function transactionsCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'transactions');
+}
+
+/** Read all transaction docs from the new collection (empty array when none). */
+export async function readTransactionsFromCollection(): Promise<FinanceTransaction[]> {
+  const snap = await getDocs(transactionsCollectionRef());
+  return snap.docs.map((d) => {
+    const data = d.data() as FinanceTransaction;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
+/** Write transaction docs into the new collection (setDoc merge by id). */
+export async function writeTransactionsToCollection(transactions: FinanceTransaction[]): Promise<void> {
+  const col = transactionsCollectionRef();
+  for (const t of transactions || []) {
+    if (!t || !t.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(t.id)), stripUndefinedRecord(t), { merge: true });
+  }
+}
+
+/** Delete transaction docs from the new collection (missing docs are a no-op). */
+export async function deleteTransactionsFromCollection(ids: string[]): Promise<void> {
+  const col = transactionsCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
 export async function writeTransactionsFieldToCloud(
   transactions: FinanceTransaction[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(
-    writeFieldToCloud('transactions', transactions, updatedBy),
-    CONFIRM_TIMEOUT_MS,
-    'fee cloud confirm'
-  );
+  const write = async (): Promise<void> => {
+    const list = transactions || [];
+    if (list.length > 0) {
+      // Job 10 dual-write: same id assertion as the main_store leg, then
+      // the new collection first. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay both legs. The first
+      // fee transaction creates the (currently empty) collection.
+      assertUpsertRecords('transactions', list as any, fieldKeyFn('transactions'));
+      await writeTransactionsToCollection(list);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldToCloud('transactions', transactions, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'fee cloud confirm');
 }
 
 // --- Step 2 field writers (same one-write, union-by-id, merge:true shape) ---
@@ -1280,6 +1326,7 @@ export async function writeDeleteFieldsToCloud(
     // (it used to run after) — subjects + exams are tripwire fields,
     // so a refused shrink must delete nothing anywhere, not even in
     // a collection the read-switch already treats as the source.
+    // Job 10: transactions is a tripwire field too.
     const oldTrashSize = ((data.trashBin as { id: string }[] | undefined) || []).length;
     const newTrashSize = cleanTrash.length > 0 ? (payload.trashBin as { id: string }[]).length : oldTrashSize;
     assertTripwire(oldSizes, newSizes, oldTrashSize, newTrashSize);
@@ -1329,6 +1376,12 @@ export async function writeDeleteFieldsToCloud(
         // collection — delete their docs there too, so a deleted leave
         // can never be resurrected by the leaves feed.
         await deleteStaffLeavesFromCollection(removal.ids);
+      } else if (removal.field === 'transactions') {
+        // Job 10 (transactions split): transaction records also live
+        // in the new collection — delete their docs there too, so a
+        // deleted transaction can never be resurrected by the
+        // transactions feed.
+        await deleteTransactionsFromCollection(removal.ids);
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1414,6 +1467,10 @@ export async function writeTrashOpToCloud(
         // Job 8: same for a restored leave record — otherwise the
         // restore would stay invisible until a main_store read.
         await writeStaffLeavesToCollection(liveRecords as StaffLeaveRecord[]);
+      } else if (field === 'transactions') {
+        // Job 10: same for a restored transaction — otherwise the
+        // restore would stay invisible until a main_store read.
+        await writeTransactionsToCollection(liveRecords as FinanceTransaction[]);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a
