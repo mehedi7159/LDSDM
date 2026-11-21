@@ -535,6 +535,57 @@ export async function writeNoticesFieldToCloud(
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'notices cloud confirm');
 }
 
+/**
+ * Job 2 (schedule split): the new home of routines + syllabus +
+ * calendar. One collection per field, paths built from
+ * CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded — same shape as
+ * Job 1's notices collection.
+ */
+export type ScheduleSplitField = 'classRoutines' | 'syllabusItems' | 'calendarEvents';
+
+export function scheduleCollectionRef(field: ScheduleSplitField) {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, field);
+}
+
+export function classRoutinesCollectionRef() {
+  return scheduleCollectionRef('classRoutines');
+}
+
+export function syllabusItemsCollectionRef() {
+  return scheduleCollectionRef('syllabusItems');
+}
+
+export function calendarEventsCollectionRef() {
+  return scheduleCollectionRef('calendarEvents');
+}
+
+/** Write schedule records into their new collection (setDoc merge by id). */
+export async function writeScheduleRecordsToCollection(field: ScheduleSplitField, records: any[]): Promise<void> {
+  const col = scheduleCollectionRef(field);
+  for (const r of records || []) {
+    if (!r || !r.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(r.id)), stripUndefinedRecord(r), { merge: true });
+  }
+}
+
+/** Delete schedule docs from their new collection (missing docs are a no-op). */
+export async function deleteScheduleRecordsFromCollection(field: ScheduleSplitField, ids: string[]): Promise<void> {
+  const col = scheduleCollectionRef(field);
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
+/** Read all docs of one schedule field from its new collection (empty array when none). */
+export async function readScheduleFieldFromCollection(field: ScheduleSplitField): Promise<any[]> {
+  const snap = await getDocs(scheduleCollectionRef(field));
+  return snap.docs.map((d) => {
+    const data = d.data() as any;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
 /** Routine + syllabus + calendar travel together (one editor save can touch all three via the bridge) — one write carries all three. */
 export async function writeScheduleFieldsToCloud(
   routines: ClassRoutineItem[],
@@ -542,11 +593,27 @@ export async function writeScheduleFieldsToCloud(
   calendarEvents: AcademicCalendarEvent[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(
-    writeFieldsToCloud({ classRoutines: routines, syllabusItems, calendarEvents }, updatedBy),
-    CONFIRM_TIMEOUT_MS,
-    'schedule cloud confirm'
-  );
+  const write = async (): Promise<void> => {
+    const lists = {
+      classRoutines: routines || [],
+      syllabusItems: syllabusItems || [],
+      calendarEvents: calendarEvents || [],
+    } as Record<ScheduleSplitField, any[]>;
+    for (const field of Object.keys(lists) as ScheduleSplitField[]) {
+      const list = lists[field];
+      if (list.length > 0) {
+        // Job 2 dual-write: same id assertion as the main_store leg,
+        // then the new collection first. A failure anywhere fails the
+        // whole write, so the payload queue + retry replay both legs.
+        assertUpsertRecords(field, list as any, fieldKeyFn(field));
+        await writeScheduleRecordsToCollection(field, list as any);
+      }
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldsToCloud({ classRoutines: routines, syllabusItems, calendarEvents }, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'schedule cloud confirm');
 }
 
 /** Step 4 (25 Oct 2026): staff leave records (staffLeaves field only). */
@@ -763,6 +830,11 @@ export async function writeDeleteFieldsToCloud(
     for (const removal of cleanRemovals) {
       if (removal.field === 'notices') {
         await deleteNoticesFromCollection(removal.ids);
+      } else if (removal.field === 'classRoutines' || removal.field === 'syllabusItems' || removal.field === 'calendarEvents') {
+        // Job 2 (schedule split): schedule records also live in the new
+        // collections — delete their docs there too, so a deleted
+        // routine can never be resurrected by a schedule feed.
+        await deleteScheduleRecordsFromCollection(removal.field as ScheduleSplitField, removal.ids);
       }
     }
     const ref = doc(db, 'institution', 'main_store');
@@ -844,6 +916,10 @@ export async function writeTrashOpToCloud(
       // invisible until a main_store read.
       if (field === 'notices') {
         await writeNoticesToCollection(liveRecords as NoticeItem[]);
+      } else if (field === 'classRoutines' || field === 'syllabusItems' || field === 'calendarEvents') {
+        // Job 2: same for a restored schedule record — otherwise the
+        // restore would stay invisible until a main_store read.
+        await writeScheduleRecordsToCollection(field as ScheduleSplitField, liveRecords);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a
