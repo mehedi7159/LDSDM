@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
-import { calculateTotalDues, topDueEntries, academicYearFallbackStartMonth, isTuitionPayment } from '../services/studentDuesService';
+import { calculateTotalDues, topDueEntries, academicYearFallbackStartMonth } from '../services/studentDuesService';
 import { calculateTotalGPA, formatNumber } from '../services/utils';
 import { calcPassRate } from '../services/gradingEngine';
 
@@ -139,23 +139,6 @@ export const MadrasaReports: React.FC = () => {
   // taken. A day with no record for the student is NOT counted as absent:
   // not marked is not the same as absent. Nothing here writes data.
   const alerts = useMemo(() => {
-    const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
-    const toAscii = (s: string) => s.replace(/[০-৯]/g, ch => String(BN_DIGITS.indexOf(ch)));
-    const BN_MONTH_PREFIX: Array<[string, string]> = [
-      ['জানু', '01'], ['ফেব', '02'], ['মার্চ', '03'], ['এপ্রি', '04'],
-      ['মে', '05'], ['জুন', '06'], ['জুলা', '07'], ['আগ', '08'],
-      ['সেপ্টে', '09'], ['অক্টো', '10'], ['নভে', '11'], ['ডিসে', '12'],
-    ];
-    const normFeeMonth = (tx: { feeMonth?: string; date?: string }): string => {
-      const fm = String(tx.feeMonth || '').trim();
-      if (/^\d{4}-\d{2}$/.test(fm)) return fm;
-      const ascii = toAscii(fm);
-      const ym = ascii.match(/(\d{4})/);
-      const pref = BN_MONTH_PREFIX.find(([p]) => fm.startsWith(p));
-      if (ym && pref) return `${ym[1]}-${pref[1]}`;
-      return (tx.date || '').slice(0, 7);
-    };
-
     // Low-attendance classes, this month so far (PRESENT + LATE count as present).
     const byClass = new Map<string, { total: number; present: number }>();
     for (const r of dailyStudentAttendance || []) {
@@ -170,45 +153,26 @@ export const MadrasaReports: React.FC = () => {
       .filter(c => c.recorded >= 10 && c.pct < 60)
       .sort((a, b) => a.pct - b.pct);
 
-    // Dues: finished months only (a month's fee becomes due after it ends),
-    // last 12, never before the student's admission month.
-    const finishedMonths: string[] = [];
-    {
-      const [cy, cm] = monthPrefix.split('-').map(Number);
-      for (let i = 1; i <= 12; i++) {
-        const d = new Date(cy, cm - 1 - i, 1);
-        finishedMonths.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}`);
-      }
-    }
-    const paidByKey = new Map<string, number>();
-    for (const tx of transactions || []) {
-      if (tx.type !== 'INCOME' || !tx.studentId || !isTuitionPayment(tx)) continue;
-      const key = `${tx.studentId}__${normFeeMonth(tx)}`;
-      paidByKey.set(key, (paidByKey.get(key) || 0) + (Number(tx.amount) || 0));
-    }
-    const expectedById = new Map<string, number>();
-    for (const p of duesSummary.profiles || []) {
-      if (p.monthlyExpected > 0) {
-        expectedById.set(p.student.id, p.monthlyExpected);
-        if (p.student.studentId && p.student.studentId !== p.student.id) expectedById.set(p.student.studentId, p.monthlyExpected);
-      }
-    }
-    const longDues: Array<{ student: (typeof activeStudents)[number]; classLevel: string; dueMonths: number; dueAmount: number }> = [];
-    for (const st of activeStudents) {
-      const expected = expectedById.get(st.id) ?? (st.studentId ? expectedById.get(st.studentId) : undefined) ?? 0;
-      if (!expected) continue;
-      const admMonth = (st.admissionDate || '').slice(0, 7);
-      let dueMonths = 0;
-      let dueAmount = 0;
-      for (const m of finishedMonths) {
-        if (admMonth && m < admMonth) continue;
-        let paid = paidByKey.get(`${st.id}__${m}`) || 0;
-        if (st.studentId && st.studentId !== st.id) paid += paidByKey.get(`${st.studentId}__${m}`) || 0;
-        if (paid < expected) { dueMonths += 1; dueAmount += expected - paid; }
-      }
-      if (dueMonths >= 3) longDues.push({ student: st, classLevel: st.classLevel, dueMonths, dueAmount });
-    }
-    longDues.sort((a, b) => b.dueMonths - a.dueMonths || b.dueAmount - a.dueAmount);
+    // Dues: the ONE shared dues total — the last 12 finished months of
+    // the shared aging (calculateTotalDues entries: admission-guarded,
+    // Jan-2026 fallback for dateless students, tuition money only). The
+    // old hand-rolled recompute counted 12 finished months with NO
+    // fallback start, so a dateless never-paid student showed 12 x
+    // ৳1,500 = ৳18,000 here while the shared total said ৳15,000
+    // (21 Nov 2026 audit). Threshold stays 3+ months.
+    const longDues: Array<{ student: (typeof activeStudents)[number]; classLevel: string; dueMonths: number; dueAmount: number }> =
+      (duesSummary.entries || [])
+        .map(e => {
+          const last12 = e.aging.byMonth.slice(-12);
+          return {
+            student: e.profile.student,
+            classLevel: e.profile.classLevel,
+            dueMonths: last12.length,
+            dueAmount: last12.reduce((s, m) => s + m.due, 0),
+          };
+        })
+        .filter(d => d.dueMonths >= 3)
+        .sort((a, b) => b.dueMonths - a.dueMonths || b.dueAmount - a.dueAmount);
 
     // Long absence: ABSENT on each of the last 7 days the class attendance was taken.
     const datesByClass = new Map<string, Set<string>>();
@@ -242,7 +206,7 @@ export const MadrasaReports: React.FC = () => {
       longAbsent,
       total: lowAttendance.length + longDues.length + longAbsent.length,
     };
-  }, [dailyStudentAttendance, monthPrefix, transactions, duesSummary, activeStudents]);
+  }, [dailyStudentAttendance, monthPrefix, duesSummary]);
   const monthTx = useMemo(() => {
     const m = (transactions || []).filter(t => String(t.date || '').startsWith(monthPrefix));
     return {

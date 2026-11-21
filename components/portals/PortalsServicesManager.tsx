@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
+import { calculateTotalDues, localMonthStr, academicYearFallbackStartMonth } from '../../services/studentDuesService';
 import { 
   Users, 
   Globe, 
@@ -124,6 +125,8 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     subjects = [], 
     transactions = [], 
     feeStructures = [], 
+    feeTypes = [],
+    academicYears = [],
     schoolProfile, 
     language, 
     addStudent,
@@ -212,20 +215,26 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     };
   }, [activeStudent, activeExam, marks, subjects]);
 
-  // Student financial calculation
+  // Student financial calculation — the ONE shared dues total
+  // (calculateTotalDues: current month + finished months). The old math
+  // invented a yearly bill ((500 fallback for tuition) + boarding) x 10 minus
+  // ALL lifetime payments and labelled it "চলতি বকেয়া" — that is the
+  // ৳5,000 figure the 21 Nov 2026 audit saw for a student whose shared
+  // total is ৳15,000. totalPaid stays lifetime income ("মোট পরিশোধ").
   const studentFinancials = useMemo(() => {
-    if (!activeStudent) return { totalPaid: 0, pendingDues: 0 };
-    const classFee = feeStructures.find(f => f.classLevel === activeStudent.classLevel);
-    const monthlyRate = classFee?.tuitionFee || 500;
-    const boardingRate = activeStudent.isResidential ? (classFee?.boardingFee || 2500) : 0;
-    const estimatedYearlyBill = (monthlyRate + boardingRate) * 10;
-
+    if (!activeStudent) return { totalPaid: 0, pendingDues: 0, dueMonthCount: 0 };
+    const month = localMonthStr();
+    const summary = calculateTotalDues(
+      [activeStudent], feeStructures, transactions, month, feeTypes,
+      academicYearFallbackStartMonth(academicYears, month));
     const studentTx = transactions.filter(t => t.studentId === activeStudent.id && t.type === 'INCOME');
     const totalPaid = studentTx.reduce((sum, t) => sum + (t.amount || 0), 0);
-    const pendingDues = Math.max(0, estimatedYearlyBill - totalPaid);
-
-    return { totalPaid, pendingDues, monthlyRate, boardingRate, recentPayments: studentTx.slice(-3) };
-  }, [activeStudent, feeStructures, transactions]);
+    return {
+      totalPaid,
+      pendingDues: summary.totalDue,
+      dueMonthCount: summary.entries[0]?.dueMonthCount ?? 0,
+    };
+  }, [activeStudent, feeStructures, transactions, feeTypes, academicYears]);
 
   // ----------------------------------------------------
   // SUB-TAB 2: ONLINE ADMISSIONS TRACKER STATE
@@ -960,8 +969,10 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                             <span className="font-bold text-slate-800 dark:text-slate-100">৳{formatNumber(studentFinancials.totalPaid, language)}</span>
                           </div>
                           <div className="flex justify-between items-baseline">
-                            <span className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'চলতি বকেয়া:' : 'Due Balance:'}</span>
-                            <span className="font-bold text-rose-600 dark:text-rose-400">৳{formatNumber(studentFinancials.pendingDues, language)}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{isBn ? 'মোট বকেয়া:' : 'Total Due:'}</span>
+                            <span className="font-bold text-rose-600 dark:text-rose-400">৳{formatNumber(studentFinancials.pendingDues, language)}{studentFinancials.pendingDues > 0 && (
+                              <span className="text-[11px] font-medium"> · {formatNumber(studentFinancials.dueMonthCount, language)} মাসের বকেয়া</span>
+                            )}</span>
                           </div>
                         </div>
                       </div>

@@ -1,5 +1,5 @@
 import type { FinanceTransaction, Student } from '../types';
-import { isTuitionPayment } from './studentDuesService';
+import { isTuitionPayment, resolveAgingStartMonth } from './studentDuesService';
 
 /**
  * Month-wise dues history for the Dues Directory (Pragya-inspired month grid,
@@ -78,19 +78,26 @@ export function computeDueHistory(
   monthlyExpected: number,
   asOfMonth: string,
   count = 12,
+  startMonth?: string,
 ): DueHistory {
   const months = getFinishedMonths(asOfMonth, count);
-  const admMonth = (student.admissionDate || '').slice(0, 7);
   const paidByMonth = new Map<string, number>();
   for (const tx of transactions) {
     if (tx.type !== 'INCOME' || tx.studentId !== student.id || !isTuitionPayment(tx)) continue;
     const m = normalizeFeeMonth(tx);
     paidByMonth.set(m, (paidByMonth.get(m) || 0) + (Number(tx.amount) || 0));
   }
+  // Start month — the one shared rule (resolveAgingStartMonth): the old
+  // guard used admissionDate only, so a student with no admissionDate
+  // showed all 12 finished months as unpaid in the grid — a brand-new
+  // student looked 12 months due. Fully dateless students still accrue
+  // from the January fallback.
+  const paidMonths = [...paidByMonth.keys()].filter(m => /^\d{4}-\d{2}$/.test(m));
+  const resolvedStart = resolveAgingStartMonth(student, paidMonths, startMonth, asOfMonth);
   let dueMonths = 0;
   let dueAmount = 0;
   const cells: DueMonthCell[] = months.map(m => {
-    if (!monthlyExpected || (admMonth && m < admMonth)) {
+    if (!monthlyExpected || (resolvedStart && m < resolvedStart)) {
       return { month: m, paid: 0, expected: 0, status: 'na' as const };
     }
     const paid = paidByMonth.get(m) || 0;

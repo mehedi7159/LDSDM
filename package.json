@@ -53,7 +53,8 @@
     "test:auto-snapshot-trigger": "tsx scripts/verify-auto-snapshot-trigger.ts",
     "test:pass-rate-unify": "tsx scripts/verify-pass-rate-unify.ts",
     "test:pass-rate-analytics": "tsx scripts/verify-pass-rate-analytics.ts",
-    "test:name-doubling-guard": "tsx scripts/verify-name-doubling-guard.ts"
+    "test:name-doubling-guard": "tsx scripts/verify-name-doubling-guard.ts",
+    "test:dues-unify-v2": "tsx scripts/verify-dues-unify-v2.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
