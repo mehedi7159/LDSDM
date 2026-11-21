@@ -22,7 +22,7 @@ import {
   StaffLeaveRecord
 } from '../types';
 import { recordPromotionAuditEvent } from '../services/promotionService';
-import { planTrashRestore, dedupeTrashEntries } from '../services/trashRestore';
+import { planTrashRestore, dedupeTrashEntries, collectTrashedIds } from '../services/trashRestore';
 import type { 
   CustomRole, 
   InstitutionMember, 
@@ -127,6 +127,7 @@ import {
   promotionHistoryCollectionRef,
   studentsCollectionRef,
   readStudentsFromCollection,
+  trashCollectionRef,
   writeScheduleFieldsToCloud,
   staffLeavesCollectionRef,
   transactionsCollectionRef,
@@ -178,7 +179,7 @@ import {
   readPendingConfirms,
   type CloudConfirmResult,
 } from '../services/cloudConfirm';
-import { migrateNoticesToCollection, migrateFieldToCollection } from '../services/migrationSplit';
+import { migrateNoticesToCollection, migrateFieldToCollection, trashCollectionComplete } from '../services/migrationSplit';
 import type { ScheduleSplitField } from '../services/cloudConfirm';
 import type { ClassesSplitField } from '../services/cloudConfirm';
 import type { AcademicSplitField } from '../services/cloudConfirm';
@@ -2262,6 +2263,27 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // sync never starts on half-loaded students state. Login verdict
   // and manual force-push do NOT wait on it.
   const hasLoadedStudentsCollectionRef = useRef(false);
+
+  // Job 13 (trash split): same shape as Job 1, one field — once the
+  // trash collection feed has delivered docs matching the confirmed
+  // main_store list exactly it is the read source; main_store stays
+  // the fallback until then.
+  const trashFromCollectionRef = useRef(false);
+  // Job 13: guards the one-time trash backfill against concurrent feed events.
+  const trashBackfillInFlightRef = useRef(false);
+  // Job 13: ids already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledTrashIdsRef = useRef<Set<string>>(new Set());
+  // Job 13: the last docs the trash collection feed delivered — the
+  // straggler check compares main_store trash entries against this set.
+  const lastCollectionTrashRef = useRef<TrashItem[]>([]);
+  // Job 13: whether the trash feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on it.
+  const trashFeedSettledRef = useRef(false);
+  // Job 13: true once the trash feed has settled — auto-sync waits
+  // for this, so sync never starts on half-loaded trash state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedTrashCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2719,6 +2741,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 13 one-time backfill: copy main_store trash entries into
+  // their new collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold an
+  // entry deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied entries), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillTrashOnce = async (source?: TrashItem[]) => {
+    if (trashBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['trashBin'] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledTrashIdsRef.current.has(String(r.id)));
+    if (pending.length === 0) return;
+    trashBackfillInFlightRef.current = true;
+    try {
+      await migrateFieldToCollection('trashBin', pending);
+      pending.forEach((r) => backfilledTrashIdsRef.current.add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Trash backfill notice:', err?.message || err);
+    } finally {
+      trashBackfillInFlightRef.current = false;
+    }
+  };
   // Job 2: one schedule field from a remote snapshot. A collection
   // feed's own snapshots always apply (its handler decides when an
   // empty snapshot is real — see startScheduleFeeds); main_store
@@ -3154,7 +3198,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // marks collection feed (not from a main_store snapshot).
   // opts.fromStudentsCollection marks data that came from the Job 12
   // students collection feed (not from a main_store snapshot).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean; fromStudentsCollection?: boolean }) => {
+  // opts.fromTrashCollection marks data that came from the Job 13
+  // trash collection feed (not from a main_store snapshot).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean; fromStudentsCollection?: boolean; fromTrashCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -3163,18 +3209,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const snapshotApplied: Record<string, any> = {};
 
     // Build set of trashed IDs across remote data and local state to prevent
-    // resurrecting deleted records (e.g. Arafat MDR-T002)
-    const trashedIds = new Set<string>();
-    if (data.trashBin && Array.isArray(data.trashBin)) {
-      data.trashBin.forEach((t: any) => {
-        if (t?.id) trashedIds.add(String(t.id));
-        if (t?.data?.id) trashedIds.add(String(t.data.id));
-      });
-    }
-    (trashBin || []).forEach((t: any) => {
-      if (t?.id) trashedIds.add(String(t.id));
-      if (t?.data?.id) trashedIds.add(String(t.data.id));
-    });
+    // resurrecting deleted records (e.g. Arafat MDR-T002). Job 13: the
+    // same set also hides a record whose collection deleteDoc failed
+    // (plan point 2 — the doc stays, the filter hides it).
+    const trashedIds = collectTrashedIds(data.trashBin, trashBin);
 
     if (data.schoolProfile && !hasQueuedUpsertForField('schoolProfile')) {
       setSchoolProfile(data.schoolProfile);
@@ -3275,10 +3313,32 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       applyFeesFieldFromRemote('feeTypes', data.feeTypes, opts, snapshotApplied);
     }
     if (data.trashBin && Array.isArray(data.trashBin)) {
-      setTrashBin(data.trashBin);
-      lastConfirmedRef.current['trashBin'] = data.trashBin;
-      snapshotApplied['trashBin'] = data.trashBin;
-      try { localStorage.setItem('madrasha_trash_bin', JSON.stringify(data.trashBin)); } catch {}
+      // Job 13: main_store trashBin applies only while the collection
+      // feed has not taken over as the source. The collection feed's
+      // own snapshots always apply (its handler decides when an empty
+      // snapshot is real — see startTrashFeed).
+      if (opts?.fromTrashCollection || !trashFromCollectionRef.current) {
+        setTrashBin(data.trashBin);
+        lastConfirmedRef.current['trashBin'] = data.trashBin;
+        snapshotApplied['trashBin'] = data.trashBin;
+        try { localStorage.setItem('madrasha_trash_bin', JSON.stringify(data.trashBin)); } catch {}
+        // Job 13: main_store is known now — copy any not-yet-backfilled
+        // entries into the new collection (the feed handler's empty
+        // snapshot may have fired before main_store loaded).
+        if (!opts?.fromTrashCollection) void backfillTrashOnce();
+      } else {
+        // Job 13: the collection is the source — but main_store stays
+        // the removal authority, so its list is still the confirmed
+        // truth the feed's completeness gate compares against (a
+        // non-super-admin restore leaves an orphan trash doc behind —
+        // the gate must see the smaller main_store list). Stale
+        // pre-split tabs may also hold entries the collection lacks;
+        // copy them in, the feed then delivers them.
+        lastConfirmedRef.current['trashBin'] = data.trashBin;
+        const colIds = new Set((lastCollectionTrashRef.current || []).map((t) => String(t.id)));
+        const stragglers = data.trashBin.filter((t) => !colIds.has(String(t.id)));
+        if (stragglers.length > 0) void backfillTrashOnce(stragglers);
+      }
     }
     if (data.promotionHistory && Array.isArray(data.promotionHistory)) {
       // Job 7: main_store promotionHistory applies only while the
@@ -3338,13 +3398,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       snapshotApplied['dailyStaffAttendance'] = dailyAttendanceService.getAllStaffRecords();
     }
     if (data.classRoutines && Array.isArray(data.classRoutines)) {
-      applyScheduleFieldFromRemote('classRoutines', data.classRoutines, opts, snapshotApplied);
+      // Job 13: trashed routines stay hidden — same failed-deleteDoc
+      // path as notices (see the notices branch above).
+      applyScheduleFieldFromRemote('classRoutines', data.classRoutines.filter((r: any) => !trashedIds.has(String(r.id))), opts, snapshotApplied);
     }
     if (data.syllabusItems && Array.isArray(data.syllabusItems)) {
-      applyScheduleFieldFromRemote('syllabusItems', data.syllabusItems, opts, snapshotApplied);
+      applyScheduleFieldFromRemote('syllabusItems', data.syllabusItems.filter((r: any) => !trashedIds.has(String(r.id))), opts, snapshotApplied);
     }
     if (data.calendarEvents && Array.isArray(data.calendarEvents)) {
-      applyScheduleFieldFromRemote('calendarEvents', data.calendarEvents, opts, snapshotApplied);
+      applyScheduleFieldFromRemote('calendarEvents', data.calendarEvents.filter((r: any) => !trashedIds.has(String(r.id))), opts, snapshotApplied);
     }
     if (data.classSubjectAssignments && Array.isArray(data.classSubjectAssignments)) {
       applyAcademicFieldFromRemote('classSubjectAssignments', data.classSubjectAssignments, opts, snapshotApplied);
@@ -3420,7 +3482,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // snapshots always apply (its handler decides when an empty
       // snapshot is real — see startNoticesFeed).
       if (opts?.fromNoticesCollection || !noticesFromCollectionRef.current) {
-        const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
+        // Job 13: trashed notices stay hidden — a notice whose
+        // collection deleteDoc failed (not super admin) still arrives
+        // from the notices feed, and only this filter hides it.
+        const cleanNotices = data.notices.filter(n => !trashedIds.has(String(n.id)) && !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
         setNotices(cleanNotices);
         lastConfirmedRef.current['notices'] = cleanNotices;
         snapshotApplied['notices'] = cleanNotices;
@@ -3434,7 +3499,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         // stragglers (written by a stale pre-split tab, which only
         // writes main_store). Copy them into the collection; the feed
         // then delivers them. Nothing is lost, nothing is wiped.
-        const cleanNotices = data.notices.filter(n => !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
+        // Job 13: same trashed filter as above — a trashed notice is
+        // never a straggler to rescue into the collection.
+        const cleanNotices = data.notices.filter(n => !trashedIds.has(String(n.id)) && !n.id?.startsWith('notice-urgent-') && !n.id?.startsWith('notice-exam-') && !n.id?.startsWith('notice-update-'));
         const colIds = new Set((lastCollectionNoticesRef.current || []).map((n) => String(n.id)));
         const stragglers = cleanNotices.filter((n) => !colIds.has(String(n.id)));
         if (stragglers.length > 0) void backfillNoticesOnce(stragglers);
@@ -3536,6 +3603,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let marksUnsubscribe: (() => void) | null = null;
     let studentsUnsubscribe: (() => void) | null = null;
 
+    let trashUnsubscribe: (() => void) | null = null;
+
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
         try { noticesUnsubscribe(); } catch {}
@@ -3561,6 +3630,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (studentsUnsubscribe) {
         try { studentsUnsubscribe(); } catch {}
         studentsUnsubscribe = null;
+      }
+    };
+
+    const stopTrashFeed = () => {
+      if (trashUnsubscribe) {
+        try { trashUnsubscribe(); } catch {}
+        trashUnsubscribe = null;
       }
     };
     const stopScheduleFeeds = () => {
@@ -3627,6 +3703,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopTransactionsFeed();
       stopMarksFeed();
       stopStudentsFeed();
+
+      stopTrashFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -4267,6 +4345,78 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 13 read-switch: the trash collection feed. Same shape as
+    // Job 1's notices feed, with one stricter rule — takeover needs an
+    // EXACT match with the confirmed main_store list (see
+    // trashCollectionComplete), not just coverage: a non-super-admin
+    // restore/permanent-delete cannot deleteDoc the trash doc, so the
+    // collection can hold an orphan main_store no longer has, and a
+    // subset gate would take over with that orphan still hiding the
+    // restored record. On a failed gate the feed relinquishes a
+    // previous takeover and re-applies the confirmed main_store list,
+    // so a restored record reappears without waiting for the next
+    // main_store snapshot. An empty snapshot before takeover means the
+    // backfill has not run yet, so main_store stays in place
+    // (fallback) and the backfill runs. An empty snapshot AFTER docs
+    // existed means every trash entry was cleared — that empty list
+    // applies for real. A feed error only settles the auto-sync guard;
+    // main_store keeps showing. Every complete non-empty snapshot
+    // applies (Job 7/Job 8 lesson) — a record trashed later on
+    // another device appears without a reload.
+    const markTrashFeedSettled = () => {
+      trashFeedSettledRef.current = true;
+      hasLoadedTrashCollectionRef.current = true;
+    };
+
+    const startTrashFeed = () => {
+      if (cancelled) return;
+      stopTrashFeed();
+      trashUnsubscribe = onSnapshot(
+        trashCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as TrashItem;
+            return { ...data, id: (data as any).id || d.id };
+          });
+          lastCollectionTrashRef.current = docs;
+          markTrashFeedSettled();
+          if (docs.length > 0) {
+            if (trashCollectionComplete(lastConfirmedRef.current['trashBin'] || [], docs)) {
+              trashFromCollectionRef.current = true;
+              applyRemoteData({ trashBin: docs }, { fromTrashCollection: true });
+            } else {
+              // Incomplete (backfill still running) or orphaned
+              // (extra docs main_store no longer has): stay on
+              // main_store, and relinquish a previous takeover so the
+              // next main_store snapshot applies again. Re-applying the
+              // confirmed list now can briefly flicker a just-trashed
+              // entry out when this snapshot beats the main_store one
+              // — it heals on the main_store snapshot a moment later,
+              // and no data is ever lost.
+              const wasSource = trashFromCollectionRef.current;
+              trashFromCollectionRef.current = false;
+              if (wasSource) {
+                const known = lastConfirmedRef.current['trashBin'] || [];
+                applyRemoteData({ trashBin: known });
+              }
+              void backfillTrashOnce();
+            }
+          } else if (trashFromCollectionRef.current) {
+            applyRemoteData({ trashBin: [] }, { fromTrashCollection: true });
+          } else {
+            void backfillTrashOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Trash collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store trashBin keeps showing.
+          markTrashFeedSettled();
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -4295,6 +4445,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startMarksFeed();
       // Job 12: same for the students collection.
       startStudentsFeed();
+
+      // Job 13: same for the trash collection.
+      startTrashFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -4548,6 +4701,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // and queued payloads preserve anything edited meanwhile.
     if (!hasLoadedStudentsCollectionRef.current) return;
 
+    // Job 13: never auto-sync until the trash collection has
+    // delivered its first snapshot (or errored) — otherwise sync
+    // could start on half-loaded trash state. Explicit delete/trash
+    // saves bypass this (confirmDeleteRecordsCloudSync and
+    // confirmTrashOpCloudSync write directly), and queued payloads
+    // preserve anything edited meanwhile.
+    if (!hasLoadedTrashCollectionRef.current) return;
+
     setCloudStatus('syncing');
 
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
@@ -4559,6 +4720,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedLeavesCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedTransactionsCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedMarksCollectionRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedTrashCollectionRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {

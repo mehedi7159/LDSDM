@@ -12,6 +12,7 @@
  * Job 10: transactions, 21 Nov 2026).
  * Job 11: marks, 21 Nov 2026).
  * Job 12: students, 21 Nov 2026).
+ * Job 13: trashBin, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -24,11 +25,11 @@
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
  * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
- * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed / startMarksFeed / startStudentsFeed).
+ * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed / startMarksFeed / startStudentsFeed / startTrashFeed).
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, marksCollectionRef, studentsCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, marksCollectionRef, studentsCollectionRef, trashCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
 import type { NoticeItem, RemarkRecord } from '../types';
@@ -146,10 +147,11 @@ export function remarksBackfillPlan(records: RemarkRecord[]): { docs: RemarkReco
  * Job 11 reuses it for 'marks' (same shape, one field — the biggest
  * 2,601 records = 6 batches of 500).
  * Job 12 reuses it for 'students' (same shape, one field, doc id =
- * Student.id). Returns counts. Throws on Firestore failure so the
- * caller can retry.
+ * Student.id).
+ * Job 13 reuses it for 'trashBin' (same shape — doc id = TrashItem.id).
+ * Returns counts. Throws on Firestore failure so the caller can retry.
  */
-export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory' | 'staffLeaves' | 'transactions' | 'marks' | 'students', records: any[]): Promise<{ written: number; skipped: number }> {
+export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory' | 'staffLeaves' | 'transactions' | 'marks' | 'students' | 'trashBin', records: any[]): Promise<{ written: number; skipped: number }> {
   const isFeesField = field === 'feeTypes' || field === 'feeStructures';
   const { docs, skipped } = field === 'remarks' ? remarksBackfillPlan(records) : isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
   if (docs.length > 0) {
@@ -157,7 +159,8 @@ export async function migrateFieldToCollection(field: ScheduleSplitField | Class
     // the backfill loudly instead of being silently dropped.
     assertUpsertRecords(field, docs as any, fieldKeyFn(field), field === 'remarks' ? 'studentId+examId' : 'id');
   }
-  const col = field === 'students' ? studentsCollectionRef()
+  const col = field === 'trashBin' ? trashCollectionRef()
+    : field === 'students' ? studentsCollectionRef()
     : field === 'marks' ? marksCollectionRef()
     : field === 'staffLeaves' ? staffLeavesCollectionRef()
     : field === 'transactions' ? transactionsCollectionRef()
@@ -223,4 +226,25 @@ export function feesBackfillPlan(field: FeesSplitField, records: any[]): { docs:
     docs.push(r);
   }
   return { docs, skipped };
+}
+
+/**
+ * Job 13 — completeness gate for the trash collection: the collection
+ * is the read source ONLY when it holds exactly the confirmed
+ * main_store trash entries — every confirmed id present AND no extra
+ * doc. Extra docs are orphans left by a non-super-admin restore /
+ * permanent-delete (Rules: deleteDoc is super-admin-only, so the
+ * principal's trash-doc delete fails and the doc stays). A subset
+ * check (Jobs 1/2/7) would take over with the orphan still hiding
+ * the restored record; exact equality falls back to main_store, so
+ * the restored record stays visible. Pure — unit-tested in
+ * scripts/verify-job13-trash-split.ts.
+ */
+export function trashCollectionComplete(confirmedTrash: any[], collectionDocs: any[]): boolean {
+  const idOf = (r: any) => (r && r.id ? String(r.id) : '');
+  const knownIds = new Set((confirmedTrash || []).map(idOf).filter(Boolean));
+  const colIds = new Set((collectionDocs || []).map(idOf).filter(Boolean));
+  if (knownIds.size !== colIds.size) return false;
+  for (const id of knownIds) if (!colIds.has(id)) return false;
+  return true;
 }

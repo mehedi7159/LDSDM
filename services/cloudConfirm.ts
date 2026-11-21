@@ -69,7 +69,7 @@ import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, writeBatch } from 
 import { db } from './firebase';
 import { CANONICAL_PRIMARY_INSTITUTION_ID } from './dataAdapter';
 import type { DailyStudentAttendanceRecord, DailyStaffAttendanceRecord } from './dailyAttendanceService';
-import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem, StaffLeaveRecord, Exam, Subject, SchoolClass, RemarkRecord } from '../types';
+import type { FinanceTransaction, MarkRecord, Student, AcademicTeacher, AppUser, NoticeItem, StaffLeaveRecord, Exam, Subject, SchoolClass, RemarkRecord, TrashItem } from '../types';
 import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent, AcademicYear, Section, ClassSubjectAssignment, TeacherSubjectAssignment, ClassTeacherAssignment, ExamSubjectAssignment } from '../types/academic';
 import type { PromotionHistoryRecord } from '../types/promotion';
 import {
@@ -1390,6 +1390,56 @@ export async function writeMarkEntryEnabledFieldToCloud(
 }
 
 /**
+ * Job 13 (trash split): the new home of trashBin. The path is built
+ * from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded — same shape
+ * as Job 1's notices collection. Doc id = TrashItem.id.
+ */
+export function trashCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'trash');
+}
+
+/** Write trash entries into the new collection (setDoc merge by id). */
+export async function writeTrashRecordsToCollection(entries: TrashItem[]): Promise<void> {
+  const col = trashCollectionRef();
+  for (const e of entries || []) {
+    if (!e || !e.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(e.id)), stripUndefinedRecord(e), { merge: true });
+  }
+}
+
+/** Delete trash docs from the new collection (missing docs are a no-op). */
+export async function deleteTrashRecordsFromCollection(ids: string[]): Promise<void> {
+  const col = trashCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
+
+/**
+ * Job 13 (plan §6 Job 13 point 2): a deleteDoc under
+ * institutions/{id}/{document=**} succeeds only for the super admin —
+ * firestore.rules isSuperAdmin() checks the owner EMAIL only
+ * (mehedihasansagor26@gmail.com); the principal's {role:'admin'}
+ * custom claim never grants it. Anyone else gets permission-denied
+ * and the doc STAYS; the trash filter hides it from lists, so on
+ * screen nothing changes. Swallow ONLY that error, so the trash
+ * write itself still lands; any other failure fails the whole write
+ * and queues a retry, as today.
+ */
+async function deleteSplitDocsBestEffort(run: () => Promise<void>): Promise<void> {
+  try {
+    await run();
+  } catch (err: any) {
+    if (err?.code === 'permission-denied') {
+      console.warn('Collection delete skipped (not super admin — record stays, hidden by the trash filter):', err?.message || err);
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
  * Phase 1 DELETE writer (upsert/delete split): removes EXACTLY the
  * named ids from their fields AND appends the given trash entries in
  * the SAME write, failing closed if the write itself fails. An id
@@ -1443,68 +1493,80 @@ export async function writeDeleteFieldsToCloud(
     const oldTrashSize = ((data.trashBin as { id: string }[] | undefined) || []).length;
     const newTrashSize = cleanTrash.length > 0 ? (payload.trashBin as { id: string }[]).length : oldTrashSize;
     assertTripwire(oldSizes, newSizes, oldTrashSize, newTrashSize);
+    // Job 13 (trash split): the trash entries go to the new trash
+    // collection FIRST (plan point 1) — same id assertion as the
+    // main_store leg. A failure here fails the whole write, so the
+    // payload queue + retry replay both legs.
+    if (cleanTrash.length > 0) {
+      assertUpsertRecords('trashBin', cleanTrash as any, fieldKeyFn('trashBin'));
+      await writeTrashRecordsToCollection(cleanTrash as TrashItem[]);
+    }
     // Job 1 (notices split): notices also live in the new collection —
     // delete their docs there too, so a deleted notice can never be
     // resurrected by the notices feed. deleteDoc of a missing doc
     // succeeds, so a retry replays this idempotently.
+    // Job 13 point 2: the delete is best-effort — the super admin's
+    // deleteDoc succeeds; anyone else gets permission-denied, the doc
+    // stays, and the trash filter hides it (see the notices/schedule
+    // branches in applyRemoteData).
     for (const removal of cleanRemovals) {
       if (removal.field === 'notices') {
-        await deleteNoticesFromCollection(removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteNoticesFromCollection(removal.ids));
       } else if (removal.field === 'classRoutines' || removal.field === 'syllabusItems' || removal.field === 'calendarEvents') {
         // Job 2 (schedule split): schedule records also live in the new
         // collections — delete their docs there too, so a deleted
         // routine can never be resurrected by a schedule feed.
-        await deleteScheduleRecordsFromCollection(removal.field as ScheduleSplitField, removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteScheduleRecordsFromCollection(removal.field as ScheduleSplitField, removal.ids));
       } else if (removal.field === 'classes' || removal.field === 'sections' || removal.field === 'academicYears') {
         // Job 3 (classes split): class/section/year records also live
         // in the new collections — delete their docs there too, so a
         // deleted class can never be resurrected by a classes feed.
-        await deleteClassesRecordsFromCollection(removal.field as ClassesSplitField, removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteClassesRecordsFromCollection(removal.field as ClassesSplitField, removal.ids));
       } else if (removal.field === 'subjects' || removal.field === 'exams' || removal.field === 'examSubjectAssignments' || removal.field === 'classSubjectAssignments' || removal.field === 'teacherSubjectAssignments' || removal.field === 'classTeacherAssignments') {
         // Job 4 (academic split): academic records also live in the
         // new collections — delete their docs there too, so a deleted
         // subject/exam/assignment can never be resurrected by an
         // academic feed.
-        await deleteAcademicRecordsFromCollection(removal.field as AcademicSplitField, removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteAcademicRecordsFromCollection(removal.field as AcademicSplitField, removal.ids));
       } else if (removal.field === 'feeTypes' || removal.field === 'feeStructures') {
         // Job 5 (fees split): fee records also live in the new
         // collections — delete their docs there too, so a deleted fee
         // type/structure can never be resurrected by a fees feed.
         // Removal ids are field keys: id for feeTypes, classLevel for
         // feeStructures.
-        await deleteFeeRecordsFromCollection(removal.field as FeesSplitField, removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteFeeRecordsFromCollection(removal.field as FeesSplitField, removal.ids));
       } else if (removal.field === 'remarks') {
         // Job 6 (remarks split): remarks also live in the new
         // collection — delete their docs there too, so a deleted remark
         // can never be resurrected by the remarks feed. Ids here are
         // studentId__examId keys, which are the collection doc ids.
-        await deleteRemarksFromCollection(removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteRemarksFromCollection(removal.ids));
       } else if (removal.field === 'promotionHistory') {
         // Job 7 (promotionHistory split): history records also live in
         // the new collection — delete their docs there too, so a
         // cleared record can never be resurrected by the promotion feed.
-        await deletePromotionHistoryFromCollection(removal.ids);
+        await deleteSplitDocsBestEffort(() => deletePromotionHistoryFromCollection(removal.ids));
       } else if (removal.field === 'staffLeaves') {
         // Job 8 (staffLeaves split): leave records also live in the new
         // collection — delete their docs there too, so a deleted leave
         // can never be resurrected by the leaves feed.
-        await deleteStaffLeavesFromCollection(removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteStaffLeavesFromCollection(removal.ids));
       } else if (removal.field === 'transactions') {
         // Job 10 (transactions split): transaction records also live
         // in the new collection — delete their docs there too, so a
         // deleted transaction can never be resurrected by the
         // transactions feed.
-        await deleteTransactionsFromCollection(removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteTransactionsFromCollection(removal.ids));
       } else if (removal.field === 'marks') {
         // Job 11 (marks split): mark records also live in the new
         // collection — delete their docs there too, so a deleted mark
         // can never be resurrected by the marks feed.
-        await deleteMarksFromCollection(removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteMarksFromCollection(removal.ids));
       } else if (removal.field === 'students') {
         // Job 12 (students split): students also live in the new
         // collection — delete their docs there too, so a trashed student
         // can never be resurrected by the students feed.
-        await deleteStudentsFromCollection(removal.ids);
+        await deleteSplitDocsBestEffort(() => deleteStudentsFromCollection(removal.ids));
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1621,6 +1683,16 @@ export async function writeTrashOpToCloud(
         ((data.trashBin as { id: string }[] | undefined) || []).length,
         (payload.trashBin as { id: string }[]).length
       );
+    }
+    // Job 13 (trash split): the removed trash entries also leave the
+    // new trash collection. Best-effort (plan point 3): the super
+    // admin's deleteDoc removes them; anyone else gets
+    // permission-denied and the docs stay as orphans — the trash
+    // feed's exact-match gate then keeps main_store as the source, so
+    // a principal's restore still shows. Permanent delete from trash
+    // stays super-admin-only by the rules, never by this code.
+    if (ids.length > 0) {
+      await deleteSplitDocsBestEffort(() => deleteTrashRecordsFromCollection(ids));
     }
     await setDoc(ref, payload, { merge: true });
   };
