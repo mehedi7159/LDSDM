@@ -55,7 +55,8 @@
     "test:pass-rate-analytics": "tsx scripts/verify-pass-rate-analytics.ts",
     "test:name-doubling-guard": "tsx scripts/verify-name-doubling-guard.ts",
     "test:dues-unify-v2": "tsx scripts/verify-dues-unify-v2.ts",
-    "test:pass-rate-v2": "tsx scripts/verify-pass-rate-v2.ts"
+    "test:pass-rate-v2": "tsx scripts/verify-pass-rate-v2.ts",
+    "test:name-doubling-v2": "tsx scripts/verify-name-doubling-v2.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

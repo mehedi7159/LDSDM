@@ -18,6 +18,7 @@ import {
   executeClassPromotion 
 } from '../services/promotionService';
 import { formatNumber, formatSafeDate } from '../services/utils';
+import { showSecondName } from '../services/displayNames';
 import { PROMOTION_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { Button } from './ui/Button';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -911,7 +912,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                                 <span className="font-bold">
                                   {language === 'bn' && item.student.nameBn ? item.student.nameBn : item.student.name}
                                 </span>
-                                {item.student.nameBn && language !== 'bn' && (
+                                {language !== 'bn' && showSecondName(item.student.name, item.student.nameBn) && (
                                   <span className="block text-[11px] text-slate-500 font-normal">{item.student.nameBn}</span>
                                 )}
                                 <span className="text-[10px] text-slate-400 block font-mono">

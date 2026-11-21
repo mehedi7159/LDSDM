@@ -37,6 +37,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { showSecondName } from '../services/displayNames';
 
 let failures = 0;
 const check = (label: string, ok: boolean, extra?: string) => {
@@ -56,10 +57,18 @@ const pkg = JSON.parse(readSource('package.json'));
 
 // The guard, exactly as ResultView.tsx already writes it:
 //   X.name && X.nameBn && X.name.trim() !== X.nameBn.trim() && ( ... {X.nameBn} ... )
-const guarded = (src: string, obj: string) =>
-  new RegExp(
-    `${obj.replace(/\./g, '\\.')}\\.name && ${obj.replace(/\./g, '\\.')}\\.nameBn && ${obj.replace(/\./g, '\\.')}\\.name\\.trim\\(\\) !== ${obj.replace(/\./g, '\\.')}\\.nameBn\\.trim\\(\\) && [\\(<]`
-  ).test(src);
+// v2 (fix/name-doubling-v2) replaced the inline trim guard with the ONE
+// shared predicate services/displayNames.ts `showSecondName(name, nameBn)`
+// (NFC + collapse-all-whitespace compare — trim() missed near-duplicates
+// like a double space inside). Either form counts as guarded.
+const guarded = (src: string, obj: string) => {
+  const esc = obj.replace(/\./g, '\\.');
+  const inline = new RegExp(
+    `${esc}\\.name && ${esc}\\.nameBn && ${esc}\\.name\\.trim\\(\\) !== ${esc}\\.nameBn\\.trim\\(\\) && [\\(<]`
+  );
+  const helper = new RegExp(`showSecondName\\(${esc}\\.name, ${esc}\\.nameBn\\)`);
+  return inline.test(src) || helper.test(src);
+};
 
 // (1) Merit cell — Portal → Result Live → Play merit ("মোঃ নাজিম মোঃ নাজিম")
 check('(1) merit cell guards nameBn', guarded(webResult, 'item.student'),
@@ -85,7 +94,7 @@ check('(5) profile modal guards nameBn', guarded(profileModal, 'student'),
 // every `{...nameBn && (` that renders a name must carry the trim guard.
 const unguardedNameBn = (src: string) => {
   const hits = src.match(/\{[^}\n]*\.nameBn && [\(<]/g) || [];
-  return hits.filter(h => !/\.trim\(\) !==/.test(h));
+  return hits.filter(h => !/\.trim\(\) !==/.test(h) && !/showSecondName/.test(h));
 };
 check('(1-4) no unguarded nameBn display remains in WebResultView',
   unguardedNameBn(webResult).length === 0,
@@ -94,9 +103,9 @@ check('(1-4) no unguarded nameBn display remains in StudentIDCardGenerator',
   unguardedNameBn(idCard).length === 0,
   `unguarded: ${unguardedNameBn(idCard).join(' | ')}`);
 
-// (6) Guard logic on the audit's own examples (the rule the code applies).
-const showSecondName = (name: string | undefined, nameBn: string | undefined) =>
-  !!name && !!nameBn && name.trim() !== nameBn.trim();
+// (6) Guard logic on the audit's own examples — the real shared rule
+// (v2: services/displayNames.ts showSecondName, NFC + collapsed
+// whitespace), not a local re-implementation.
 check('(6) identical Bangla names hide the second name',
   showSecondName('মোঃ নাজিম', 'মোঃ নাজিম') === false, 'মোঃ নাজিম / মোঃ নাজিম must show once');
 check('(6) identical Bangla subject hides the second name',
@@ -107,6 +116,9 @@ check('(6) English-named student (no nameBn) shows once',
   showSecondName('John Smith', undefined) === false, 'no nameBn means nothing extra to show');
 check('(6) trailing-space duplicate hides the second name',
   showSecondName('মোঃ নাজিম ', 'মোঃ নাজিম') === false, 'trim must catch whitespace-only differences');
+check('(6) double-space-inside duplicate hides the second name (v1 trim miss)',
+  showSecondName('সুমাইয়া আক্তার [2]', 'সুমাইয়া আক্তার  [2]') === false,
+  'internal whitespace-only difference must hide the second name');
 
 // (7) Display-only: calculations, totals, GPA and merit order untouched.
 check('(7) merit total marks still rendered', webResult.includes('toBanglaDigits(item.totalMarks)'), 'totalMarks rendering must stay');
