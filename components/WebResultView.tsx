@@ -21,6 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, getConsolidatedMark, getAutoRemark, getStudentRoll } from '../services/utils';
+import { calcPassRate } from '../services/gradingEngine';
 import { classNamesMatch } from '../services/classNames';
 import { toAsciiDigits } from '../services/studentService';
 import { Exam, SchoolClass, Student, Subject } from '../types';
@@ -36,16 +37,16 @@ export const WebResultView: React.FC = () => {
     schoolProfile, 
     language, 
     t,
-    setActiveTab 
+    setActiveTab,
+    // The exam selector is shared (AppContext): the portal follows the
+    // same exam as the Dashboard and never resets to First Term on
+    // navigation.
+    selectedExamId,
+    setSelectedExamId
   } = useApp();
 
   // Mode: 'student' (single student result card) or 'class' (class-wise merit & results list)
   const [viewMode, setViewMode] = useState<'student' | 'class'>('student');
-
-  // Exam Selection
-  const [selectedExamId, setSelectedExamId] = useState<string>(() => {
-    return exams.length > 0 ? exams[0].id : '';
-  });
 
   // Class Selection
   const [selectedClass, setSelectedClass] = useState<string>(() => {
@@ -93,17 +94,25 @@ export const WebResultView: React.FC = () => {
     return subsInExam.length > 0 ? subsInExam : subsInClass;
   }, [subjects, selectedClass, selectedExam]);
 
-  // Process all students in the class for class-wise view and rankings
+  // Process all students in the class for class-wise view and rankings.
+  // FILTER-ONLY (12 Nov 2026 exception): students with NO mark record in
+  // the selected exam are not examinees — the old list counted every
+  // enrolled student, so a no-marks student appeared as a failed
+  // examinee (GPA 0.00, "ফেল") and the Play merit read 50% (6/12) while
+  // the Dashboard ledger read 100% (6/6). Per-student GPA / grade / rank
+  // calculation is untouched.
   const processedClassResults = useMemo(() => {
     if (!selectedExam) return [];
 
-    const list = classStudents.map(student => {
-      const stats = calculateTotalGPA(classSubjects, marks, student.id, selectedExam.id, student.group, exams);
-      return {
-        student,
-        ...stats
-      };
-    });
+    const list = classStudents
+      .filter(student => marks.some(m => m.studentId === student.id && m.examId === selectedExam.id))
+      .map(student => {
+        const stats = calculateTotalGPA(classSubjects, marks, student.id, selectedExam.id, student.group, exams);
+        return {
+          student,
+          ...stats
+        };
+      });
 
     // Sort by Merit: Passed first, then higher GPA, then higher total marks
     list.sort((a, b) => {
@@ -202,12 +211,13 @@ export const WebResultView: React.FC = () => {
     );
   }, [activeStudentResult, selectedExam, remarks, language]);
 
-  // Overall class statistics
+  // Overall class statistics — the shared 1-decimal rate, over the
+  // evaluated students only (see the filter above).
   const classStats = useMemo(() => {
     const total = processedClassResults.length;
     const passed = processedClassResults.filter(r => !r.isFail).length;
     const failed = total - passed;
-    const passRate = total > 0 ? ((passed / total) * 100).toFixed(1) : '0';
+    const passRate = calcPassRate(passed, total);
     const gpa5Count = processedClassResults.filter(r => !r.isFail && r.gpa >= 5.0).length;
     const highestMarks = processedClassResults.length > 0 ? processedClassResults[0].totalMarks : 0;
 

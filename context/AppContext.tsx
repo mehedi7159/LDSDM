@@ -68,6 +68,7 @@ import {
   isGoogleOnlyAccount
 } from '../services/googleSignupRules';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
+import { resolveSelectedExamId } from '../services/examPassRate';
 import { buildPublicPortalData } from '../services/publicPortal';
 import {
   dailyAttendanceService,
@@ -319,6 +320,11 @@ interface AppContextType extends AppState {
   loginWithEmailOrPhone: (identifier: string, password: string) => Promise<{ success: boolean; message?: string; user?: AppUser }>;
   logoutUser: () => Promise<void>;
   setActiveTab: (tab: string) => void;
+  // One shared exam selection (21 Nov 2026): every pass-rate surface reads
+  // this, so the selector never resets on navigation and the header cards
+  // follow it. Persisted like activeTab.
+  selectedExamId: string;
+  setSelectedExamId: (examId: string) => void;
   isModuleEnabled: (module: ModuleKey) => boolean;
   getTerm: (term: TermKey) => string;
   setInstitutionType: (type: InstitutionType) => void;
@@ -1035,6 +1041,32 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setActiveTabState(tab);
     localStorage.setItem('madrasha_active_tab', tab);
   };
+
+  // One shared exam selection (21 Nov 2026): the pass-rate surfaces each
+  // kept their own local exam state initialised to exams[0], so the
+  // selector reset to First Term on every navigation and the header cards
+  // (MadrasaReports exams[last], Exams-hub KPI first SCHEDULED) ignored
+  // it entirely. This lives in context + localStorage, like activeTab.
+  const [selectedExamId, setSelectedExamIdState] = useState<string>(() => {
+    return localStorage.getItem('madrasha_selected_exam_id') || '';
+  });
+
+  const setSelectedExamId = (examId: string) => {
+    setSelectedExamIdState(examId);
+    localStorage.setItem('madrasha_selected_exam_id', examId);
+  };
+
+  // Resolve the default once exams load: a stored id wins while that exam
+  // exists, otherwise the first exam of the current year (the Dashboard's
+  // old default), otherwise the first exam.
+  useEffect(() => {
+    if (exams.length === 0) return;
+    const currentYear = (academicYears || []).find(y => y.isCurrent || (y as any).status === 'ACTIVE')?.name
+      || schoolProfile?.academicYear;
+    const resolved = resolveSelectedExamId(exams, selectedExamId || undefined, currentYear);
+    if (resolved !== selectedExamId) setSelectedExamId(resolved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exams, academicYears]);
 
   // Multi-Institution RBAC State
   const [institutionRoles, setInstitutionRoles] = useState<CustomRole[]>([]);
@@ -7060,6 +7092,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       isAuthReady,
       activeTab,
       setActiveTab,
+      selectedExamId,
+      setSelectedExamId,
       isSuperAdmin,
       isOwnerAdmin,
       authContext,

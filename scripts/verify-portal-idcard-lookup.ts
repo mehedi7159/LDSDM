@@ -125,7 +125,14 @@ checkPredicate('components/WebResultView.tsx', 'Portal');
 
 check('Merit list derives from the same classStudents (so the portal fix covers it)', () => {
   const src = readSource('components/WebResultView.tsx');
-  assert.ok(src.includes('const list = classStudents.map(student =>'), 'processedClassResults must map over classStudents');
+  // Since fix/pass-rate-v2 the list is classStudents filtered to students
+  // with at least one mark in the selected exam (D3: no-marks students
+  // are not examinees) — it still derives from the same classStudents,
+  // so the portal lookup fix still covers it.
+  assert.ok(
+    src.includes('const list = classStudents.map(student =>') ||
+    (src.includes('const list = classStudents') && src.includes('.filter(student => marks.some(m => m.studentId === student.id && m.examId === selectedExam.id))')),
+    'processedClassResults must derive from classStudents');
 });
 
 console.log('--- No strict lowercase comparison left in either lookup ---');

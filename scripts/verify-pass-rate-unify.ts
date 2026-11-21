@@ -120,20 +120,25 @@ eq('(1) 0 evaluated is 0, never 100', calcPassRate(0, 0), 0);
   eq('(3) marks-presence rule keeps them (evaluated, failed)', newEvaluated.length, 3);
 }
 
-// (4) Source checks
+// (4) Source checks — since fix/pass-rate-v2 the KPI and the Executive
+// page no longer build their own evaluated lists: both delegate to the
+// ONE shared calcExamPassRate (services/examPassRate.ts), which embodies
+// the rules checked in (2)–(3) above (resolvable students only, orphans
+// excluded, marks-presence so all-zero students count as evaluated and
+// failed). verify-pass-rate-v2.ts proves the helper itself.
 {
   const kpi = readSource('components/examination/ExamResultsManager.tsx');
-  check('(4) KPI builds the evaluated list from resolvable students',
-    kpi.includes('evaluatedStudentIds = activeStudentIds.filter'), 'KPI must filter activeStudentIds to resolvable students');
-  check('(4) KPI denominator is the filtered list',
-    kpi.includes('evaluatedStudentsCount = evaluatedStudentIds.length'), 'evaluatedStudentsCount must be the filtered count, not raw mark-holder IDs');
-  check('(4) KPI pass loop iterates the filtered list',
-    kpi.includes('evaluatedStudentIds.forEach'), 'pass loop must iterate evaluatedStudentIds');
+  check('(4) KPI uses the shared calcExamPassRate',
+    kpi.includes('calcExamPassRate'), 'KPI must delegate to calcExamPassRate');
+  check('(4) KPI rate comes from the shared result',
+    kpi.includes('passRate: rate.passRate'), 'KPI passRate must come from the shared result');
+  check('(4) KPI evaluated count comes from the shared result',
+    kpi.includes('evaluatedStudentsCount: rate.evaluated'), 'KPI evaluated count must come from the shared result');
   check('(4) KPI no longer counts raw mark-holder IDs',
     !kpi.includes('evaluatedStudentsCount = activeStudentIds.length'), 'the orphan-counting line must be gone');
   const exec = readSource('components/ExecutiveInstitutionalDashboard.tsx');
-  check('(4) Executive uses marks-presence for evaluated',
-    exec.includes('marks.some(m => m.studentId === r.student.id && m.examId === selectedExam.id)'), 'Executive evaluated must be marks-presence, not totalMarks > 0');
+  check('(4) Executive uses the shared calcExamPassRate',
+    exec.includes('calcExamPassRate'), 'Executive must delegate to calcExamPassRate');
   check('(4) Executive totalMarks > 0 rule is gone',
     !exec.includes('results.filter(r => r.totalMarks > 0)'), 'the totalMarks > 0 filter must be gone');
   const mobile = readSource('components/StaffMobileApp.tsx');
