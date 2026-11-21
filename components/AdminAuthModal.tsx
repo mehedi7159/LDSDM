@@ -40,7 +40,6 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
     authClaims, 
     authRole,
     isAdmin, 
-    adminEmail, 
     mode 
   } = useApp();
   
@@ -188,7 +187,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
     }
   };
 
-  const isOwnerEmail = authUser?.email?.toLowerCase() === (adminEmail || SUPER_ADMIN_EMAIL).toLowerCase();
+  // Owner check compares against the configured owner email directly:
+  // adminEmail state is the signed-in user's own email, so comparing
+  // against it made the ⚡ button show for everyone.
+  const isOwnerEmail = authUser?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -246,7 +248,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose,
               </span>
             </div>
             <p className="font-mono text-[11px] font-semibold text-blue-700 bg-white/90 p-2 rounded-xl border border-blue-200/60 truncate">
-              {adminEmail || SUPER_ADMIN_EMAIL}
+              {SUPER_ADMIN_EMAIL}
             </p>
           </div>
 
