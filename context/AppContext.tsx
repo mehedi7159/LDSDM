@@ -115,6 +115,7 @@ import {
   writeNoticesFieldToCloud,
   noticesCollectionRef,
   readNoticesFromCollection,
+  scheduleCollectionRef,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
@@ -164,7 +165,8 @@ import {
   readPendingConfirms,
   type CloudConfirmResult,
 } from '../services/cloudConfirm';
-import { migrateNoticesToCollection } from '../services/migrationSplit';
+import { migrateNoticesToCollection, migrateFieldToCollection } from '../services/migrationSplit';
+import type { ScheduleSplitField } from '../services/cloudConfirm';
 import {
   readPendingPayloads,
   queuePendingPayload,
@@ -2050,6 +2052,25 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // Job 1: the last docs the notices collection feed delivered — the
   // straggler check compares main_store notices against this set.
   const lastCollectionNoticesRef = useRef<NoticeItem[]>([]);
+  // Job 2 (schedule split): same shape as Job 1, one entry per field —
+  // once a field's collection feed has delivered docs it is the read
+  // source for that field; main_store stays the fallback until then.
+  const scheduleFromCollectionRef = useRef<Record<ScheduleSplitField, boolean>>({ classRoutines: false, syllabusItems: false, calendarEvents: false });
+  // Job 2: guards the one-time schedule backfills against concurrent feed events.
+  const scheduleBackfillInFlightRef = useRef<Record<ScheduleSplitField, boolean>>({ classRoutines: false, syllabusItems: false, calendarEvents: false });
+  // Job 2: ids already copied into the new collections by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledScheduleIdsRef = useRef<Record<ScheduleSplitField, Set<string>>>({ classRoutines: new Set(), syllabusItems: new Set(), calendarEvents: new Set() });
+  // Job 2: the last docs each schedule collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionScheduleRef = useRef<Record<ScheduleSplitField, any[]>>({ classRoutines: [], syllabusItems: [], calendarEvents: [] });
+  // Job 2: whether each schedule feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on all three.
+  const scheduleFeedSettledRef = useRef<Record<ScheduleSplitField, boolean>>({ classRoutines: false, syllabusItems: false, calendarEvents: false });
+  // Job 2: true once all three schedule feeds have settled — auto-sync
+  // waits for this, so sync never starts on half-loaded schedule state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedScheduleCollectionsRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2363,10 +2384,67 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 2 one-time backfill: copy main_store schedule records into
+  // their new collections. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillScheduleOnce = async (field: ScheduleSplitField, source?: any[]) => {
+    if (scheduleBackfillInFlightRef.current[field]) return;
+    const list = source || lastConfirmedRef.current[field] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledScheduleIdsRef.current[field].has(String(r.id)));
+    if (pending.length === 0) return;
+    scheduleBackfillInFlightRef.current[field] = true;
+    try {
+      await migrateFieldToCollection(field, pending);
+      pending.forEach((r) => backfilledScheduleIdsRef.current[field].add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Schedule backfill notice:', err?.message || err);
+    } finally {
+      scheduleBackfillInFlightRef.current[field] = false;
+    }
+  };
+
+  // Job 2: one schedule field from a remote snapshot. A collection
+  // feed's own snapshots always apply (its handler decides when an
+  // empty snapshot is real — see startScheduleFeeds); main_store
+  // applies only while that field's collection feed has not taken
+  // over. After takeover, a main_store list only rescues stragglers
+  // (written by a stale pre-split tab, which only writes main_store)
+  // into the collection — the feed then delivers them.
+  const applyScheduleFieldFromRemote = (field: ScheduleSplitField, records: any[], opts: { fromScheduleCollection?: ScheduleSplitField } | undefined, snapshotApplied: Record<string, any>) => {
+    if (opts?.fromScheduleCollection === field || !scheduleFromCollectionRef.current[field]) {
+      if (field === 'classRoutines') {
+        setClassRoutines(records);
+        academicScheduleService.replaceRoutines(records);
+      } else if (field === 'syllabusItems') {
+        setSyllabusItems(records);
+        academicScheduleService.replaceSyllabusItems(records);
+      } else {
+        setCalendarEvents(records);
+        academicScheduleService.replaceCalendarEvents(records);
+      }
+      lastConfirmedRef.current[field] = records;
+      snapshotApplied[field] = records;
+      // Job 2: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded).
+      if (!opts?.fromScheduleCollection) void backfillScheduleOnce(field);
+    } else {
+      const colIds = new Set((lastCollectionScheduleRef.current[field] || []).map((r) => String(r.id)));
+      const stragglers = (records || []).filter((r) => !colIds.has(String(r.id)));
+      if (stragglers.length > 0) void backfillScheduleOnce(field, stragglers);
+    }
+  };
+
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean }) => {
+  // opts.fromScheduleCollection marks data that came from a Job 2
+  // schedule collection feed (one field at a time).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -2523,22 +2601,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       snapshotApplied['dailyStaffAttendance'] = dailyAttendanceService.getAllStaffRecords();
     }
     if (data.classRoutines && Array.isArray(data.classRoutines)) {
-      setClassRoutines(data.classRoutines);
-      lastConfirmedRef.current['classRoutines'] = data.classRoutines;
-      snapshotApplied['classRoutines'] = data.classRoutines;
-      academicScheduleService.replaceRoutines(data.classRoutines);
+      applyScheduleFieldFromRemote('classRoutines', data.classRoutines, opts, snapshotApplied);
     }
     if (data.syllabusItems && Array.isArray(data.syllabusItems)) {
-      setSyllabusItems(data.syllabusItems);
-      lastConfirmedRef.current['syllabusItems'] = data.syllabusItems;
-      snapshotApplied['syllabusItems'] = data.syllabusItems;
-      academicScheduleService.replaceSyllabusItems(data.syllabusItems);
+      applyScheduleFieldFromRemote('syllabusItems', data.syllabusItems, opts, snapshotApplied);
     }
     if (data.calendarEvents && Array.isArray(data.calendarEvents)) {
-      setCalendarEvents(data.calendarEvents);
-      lastConfirmedRef.current['calendarEvents'] = data.calendarEvents;
-      snapshotApplied['calendarEvents'] = data.calendarEvents;
-      academicScheduleService.replaceCalendarEvents(data.calendarEvents);
+      applyScheduleFieldFromRemote('calendarEvents', data.calendarEvents, opts, snapshotApplied);
     }
     if (data.classSubjectAssignments && Array.isArray(data.classSubjectAssignments)) {
       setClassSubjectAssignments(data.classSubjectAssignments);
@@ -2731,6 +2800,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let cancelled = false;
     let activeUnsubscribe: (() => void) | null = null;
     let noticesUnsubscribe: (() => void) | null = null;
+    let scheduleUnsubscribes: Array<() => void> = [];
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -2739,12 +2809,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
     };
 
+    const stopScheduleFeeds = () => {
+      for (const unsub of scheduleUnsubscribes) {
+        try { unsub(); } catch {}
+      }
+      scheduleUnsubscribes = [];
+    };
+
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
         activeUnsubscribe = null;
       }
       stopNoticesFeed();
+      stopScheduleFeeds();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -2794,6 +2872,69 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 2 read-switch: one onSnapshot feed per schedule field.
+    // Same shape as Job 1's notices feed — once a field's feed
+    // delivers docs covering every confirmed main_store record it
+    // becomes the read source for that field; an empty snapshot
+    // before that means the backfill has not run yet, so main_store
+    // stays in place (fallback) and the backfill runs. An empty
+    // snapshot AFTER docs existed means every record was deleted —
+    // that empty list applies for real. A feed error only settles
+    // the auto-sync guard; main_store keeps showing.
+    const markScheduleFeedSettled = (field: ScheduleSplitField) => {
+      scheduleFeedSettledRef.current[field] = true;
+      if (scheduleFeedSettledRef.current.classRoutines && scheduleFeedSettledRef.current.syllabusItems && scheduleFeedSettledRef.current.calendarEvents) {
+        hasLoadedScheduleCollectionsRef.current = true;
+      }
+    };
+
+    const startScheduleFeeds = () => {
+      if (cancelled) return;
+      stopScheduleFeeds();
+      (['classRoutines', 'syllabusItems', 'calendarEvents'] as ScheduleSplitField[]).forEach((field) => {
+        const unsub = onSnapshot(
+          scheduleCollectionRef(field),
+          (snapshot) => {
+            if (cancelled) return;
+            const docs = snapshot.docs.map((d) => {
+              const data = d.data() as any;
+              return { ...data, id: (data as any).id || d.id };
+            });
+            lastCollectionScheduleRef.current[field] = docs;
+            markScheduleFeedSettled(field);
+            if (docs.length > 0) {
+              // Take over only when the collection holds every record
+              // the confirmed main_store list knows — a partial
+              // collection (backfill still running) must not hide the
+              // rest. Queued local records survive via
+              // preserveQueuedPayloads, so the check uses the
+              // confirmed list, not local state.
+              const knownIds = new Set(((lastConfirmedRef.current[field] || []) as any[]).map((r) => String(r.id)));
+              const colIds = new Set(docs.map((d) => String(d.id)));
+              const complete = [...knownIds].every((id) => colIds.has(id));
+              if (complete) {
+                scheduleFromCollectionRef.current[field] = true;
+                applyRemoteData({ [field]: docs }, { fromScheduleCollection: field });
+              } else {
+                void backfillScheduleOnce(field);
+              }
+            } else if (scheduleFromCollectionRef.current[field]) {
+              applyRemoteData({ [field]: [] }, { fromScheduleCollection: field });
+            } else {
+              void backfillScheduleOnce(field);
+            }
+          },
+          (error) => {
+            if (cancelled) return;
+            console.warn('Schedule collection snapshot listener notice:', error?.message || error);
+            // Fallback stays in place: main_store schedule keeps showing.
+            markScheduleFeedSettled(field);
+          }
+        );
+        scheduleUnsubscribes.push(unsub);
+      });
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -2802,6 +2943,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       // collection (the read-switch). Public sessions never start it —
       // they read notices from the public_portal document instead.
       startNoticesFeed();
+      // Job 2: same for the three schedule collections.
+      startScheduleFeeds();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -2991,6 +3134,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return;
     }
 
+    // Job 2: never auto-sync until the schedule collections have
+    // delivered their first snapshot (or errored) — otherwise sync
+    // could start on half-loaded schedule state. Explicit schedule
+    // saves bypass this (confirmScheduleCloudSync writes directly),
+    // and queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedScheduleCollectionsRef.current) return;
+
     setCloudStatus('syncing');
 
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
@@ -2998,7 +3148,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
-      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
