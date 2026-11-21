@@ -15,12 +15,17 @@ import {
 } from 'lucide-react';
 import { FinanceTransaction, Student, ClassFeeStructure } from '../../types';
 import { formatBanglaNumber } from '../../services/utils';
+import { calculateTotalDues, localMonthStr, academicYearFallbackStartMonth } from '../../services/studentDuesService';
+import type { FeeTypeDef } from '../../services/feeTypes';
+import type { AcademicYear } from '../../types/academic';
 import { ProgressBar } from '../ui/ProgressBar';
 
 interface HighImpactSummaryCardsProps {
   transactions: FinanceTransaction[];
   students: Student[];
   feeStructures: ClassFeeStructure[];
+  feeTypes?: FeeTypeDef[];
+  academicYears?: AcademicYear[];
   language: 'en' | 'bn';
   onQuickCollectFee?: () => void;
 }
@@ -29,6 +34,8 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
   transactions,
   students,
   feeStructures,
+  feeTypes = [],
+  academicYears = [],
   language,
   onQuickCollectFee,
 }) => {
@@ -103,77 +110,47 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
     ? Math.round((monthlySurplus / thisMonthIncome) * 100) 
     : 0;
 
-  // 2. Dynamic Calculations: Total Pending Fees
-  const { 
-    totalExpectedTuition, 
-    totalCollectedFeesThisMonth, 
-    totalPendingFees, 
-    activeStudentsCount, 
-    paidStudentsCount, 
+  // 2. Dynamic Calculations: Total Pending Fees — the ONE shared dues
+  //    total (calculateTotalDues, Fix #4): this month's unpaid + every
+  //    finished month's unpaid, same student set / month / feeTypes as
+  //    the dashboard, the finance header KPI and the fee page. The old
+  //    inline math (struct tuition with an invented 700 fallback for a
+  //    missing structure, current month only, any status but
+  //    Inactive/Former) was a fourth dues figure on the fee page: on
+  //    live data it showed ৳193,200 while the header showed ৳177,800.
+  //    Collection rate stays this month's.
+  const {
+    totalExpectedTuition,
+    totalCollectedFeesThisMonth,
+    totalPendingFees,
+    currentMonthDueFees,
+    agedDueFees,
+    activeStudentsCount,
+    paidStudentsCount,
     pendingStudentsCount,
-    collectionRatePercent 
+    collectionRatePercent
   } = useMemo(() => {
-    // Active students
-    const activeStudents = students.filter(s => s.status !== 'Inactive' && s.status !== 'Former');
-    const activeCount = activeStudents.length;
-
-    // Class fee structure map
-    const feeMap = new Map<string, number>();
-    feeStructures.forEach(fs => {
-      feeMap.set(fs.classLevel, fs.monthlyTuition || 700);
-    });
-
-    // Total expected tuition for current month
-    let expectedTuition = 0;
-    activeStudents.forEach(s => {
-      const classFee = feeMap.get(s.classLevel) || 700;
-      expectedTuition += classFee;
-    });
-
-    // If there are no students or structures yet, use reasonable minimum benchmark
-    if (expectedTuition === 0 && activeCount > 0) {
-      expectedTuition = activeCount * 700;
-    }
-
-    // Collected student fees this month
-    let collectedFees = 0;
-    const paidStudentIds = new Set<string>();
-
-    transactions.forEach(tx => {
-      if (tx.type === 'INCOME') {
-        const isStudentFee = [
-          'STUDENT_TUITION', 'ADMISSION_FEE', 'EXAM_FEE', 
-          'BOARDING_FEE', 'BOOK_STATIONERY', 'BOOK_PURCHASE_FEE'
-        ].includes(tx.category as string) || Boolean(tx.studentId || tx.feeBreakdown);
-
-        const matchesMonth = tx.feeMonth ? tx.feeMonth.startsWith(currentYearMonth) : tx.date.startsWith(currentYearMonth);
-
-        if (isStudentFee && matchesMonth) {
-          collectedFees += tx.amount;
-          if (tx.studentId) {
-            paidStudentIds.add(tx.studentId);
-          }
-        }
-      }
-    });
-
-    const pending = Math.max(0, expectedTuition - collectedFees);
-    const paidCount = paidStudentIds.size;
-    const pendingCount = Math.max(0, activeCount - paidCount);
-    const collectionRate = expectedTuition > 0 
-      ? Math.min(100, Math.round((collectedFees / expectedTuition) * 100)) 
-      : (collectedFees > 0 ? 100 : 0);
+    const month = localMonthStr();
+    const summary = calculateTotalDues(
+      students.filter(s => s.status === 'Active' && !s.isFormer),
+      feeStructures, transactions, month, feeTypes,
+      academicYearFallbackStartMonth(academicYears, month));
+    const collectionRate = summary.totalExpected > 0
+      ? Math.round((summary.totalPaid / summary.totalExpected) * 100)
+      : (summary.totalPaid > 0 ? 100 : 0);
 
     return {
-      totalExpectedTuition: expectedTuition,
-      totalCollectedFeesThisMonth: collectedFees,
-      totalPendingFees: pending,
-      activeStudentsCount: activeCount,
-      paidStudentsCount: paidCount,
-      pendingStudentsCount: pendingCount,
+      totalExpectedTuition: summary.totalExpected,
+      totalCollectedFeesThisMonth: summary.totalPaid,
+      totalPendingFees: summary.totalDue,
+      currentMonthDueFees: summary.currentMonthDue,
+      agedDueFees: summary.agedDue,
+      activeStudentsCount: summary.totalStudents,
+      paidStudentsCount: summary.paidStudentsCount,
+      pendingStudentsCount: summary.dueStudentsCount,
       collectionRatePercent: collectionRate,
     };
-  }, [students, feeStructures, transactions, currentYearMonth]);
+  }, [students, feeStructures, transactions, feeTypes, academicYears]);
 
   const isSurplusPositive = monthlySurplus >= 0;
 
@@ -237,7 +214,7 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
         <div>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-              {isBn ? 'ছাত্রদের চলতি বকেয়া ফি' : 'Total Pending Fees'}
+              {isBn ? 'মোট বকেয়া ফি' : 'Total Pending Fees'}
             </span>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
               {collectionRatePercent}% {isBn ? 'আদায়' : 'Collected'}
@@ -248,6 +225,13 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
             <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-amber-900 dark:text-amber-200 flex items-baseline gap-1">
               <span>৳</span>
               <span>{isBn ? formatBanglaNumber(totalPendingFees) : totalPendingFees.toLocaleString()}</span>
+            </div>
+            <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 font-medium flex items-center gap-1.5">
+              <span>
+                {isBn
+                  ? `চলতি মাস ৳${formatBanglaNumber(currentMonthDueFees)} + পুরনো ৳${formatBanglaNumber(agedDueFees)}`
+                  : `This month ৳${currentMonthDueFees.toLocaleString()} + old ৳${agedDueFees.toLocaleString()}`}
+              </span>
             </div>
             <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 font-medium flex items-center gap-1.5">
               <span>

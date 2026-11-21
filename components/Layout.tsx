@@ -63,6 +63,10 @@ interface LayoutProps {
   children: React.ReactNode;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  // Sidebar §10 opens a Settings sub-tab instead of its own tab (see
+  // the `settingsSubTab` field on MainMenuItem below).
+  onOpenSettingsSubTab?: (subTab: string) => void;
+  activeSettingsSubTab?: string;
 }
 
 interface MainMenuItem {
@@ -77,9 +81,13 @@ interface MainMenuItem {
   isAdminOnly?: boolean;
   isSuperAdminOnly?: boolean;
   badge?: string;
+  // Opens a sub-tab of Settings instead of targetTab (sidebar §10:
+  // the standalone 'backup_recovery' tab denies the principal, but
+  // the same backup centre is the Settings > Backup sub-tab).
+  settingsSubTab?: string;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onOpenSettingsSubTab, activeSettingsSubTab }) => {
   const { 
     schoolProfile, 
     language, 
@@ -363,6 +371,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       icon: ShieldCheck,
       targetTab: 'backup_recovery',
       associatedTabs: ['backup_recovery'],
+      // Routing, not a permission change: the standalone tab denies
+      // the principal (App.tsx gate), but the same backup centre is
+      // the Settings > Backup sub-tab, which the principal already
+      // opens — so this shortcut opens that sub-tab instead.
+      settingsSubTab: 'backup',
       isAdminOnly: true,
       permissions: ['institution.settings.view']
     },
@@ -415,6 +428,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // sidebar stays expanded until the user collapses it (the old drawer
   // auto-closed because it was an overlay; the rail is not).
   const handleTabClick = (itemId: string) => {
+    // A menu item with a settingsSubTab opens that Settings sub-tab
+    // instead of its own tab (sidebar §10 — see the field above).
+    const menu = mainMenuItems.find(m => m.targetTab === itemId);
+    if (menu?.settingsSubTab && onOpenSettingsSubTab) {
+      onOpenSettingsSubTab(menu.settingsSubTab);
+      return;
+    }
     setActiveTab(itemId);
   };
 
@@ -476,7 +496,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           <div onScroll={() => { if (flyoutOpen) setFlyoutOpen(false); }} className={`flex-1 overflow-y-auto w-full custom-scrollbar ${isRailExpanded ? 'px-2 space-y-1' : 'px-2 flex flex-col items-center gap-1.5'}`}>
             {visibleMenus.map((menu) => {
               const Icon = menu.icon;
-              const isActive = activeTab === menu.targetTab || menu.associatedTabs.includes(activeTab);
+              const isActive = activeTab === menu.targetTab || menu.associatedTabs.includes(activeTab) || (menu.settingsSubTab !== undefined && activeTab === 'settings' && activeSettingsSubTab === menu.settingsSubTab);
               if (!isRailExpanded) {
                 const rowButton = (
                   <button

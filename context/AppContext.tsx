@@ -4506,6 +4506,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // render-time list, never a re-derived one).
     const nextStudents = [...students, finalStudent];
     setStudents(nextStudents);
+    // P2 (sync hardening, mirror addTeacher): queue the FULL new record
+    // optimistically, in the same step as setStudents — not only inside
+    // confirmStudentsCloudSync. Until the confirm clears it, the record
+    // shows the amber 'cloud-এ যায়নি' badge, and a close mid-confirm
+    // cannot lose it. Merges by key with the confirm's own pre-queue,
+    // so no duplicate entry or write.
+    queuePendingPayload({ field: 'students', op: 'upsert', records: [finalStudent], updatedBy: confirmActorName() });
+    refreshPendingPayloads();
     if (authUser) {
       recordStudentAuditEvent({
         action: 'STUDENT_CREATED',
@@ -5985,6 +5993,25 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // snapshot + session; the refs mirror the snapshot-applied state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloudHydrated, authUser, classes]);
+
+  // Phase 3 daily snapshot — boot-time trigger (20 Nov 2026): the
+  // snapshot used to fire ONLY on the first confirmed write of the
+  // day, so a day with no write before the check got no snapshot
+  // (missed 18/11 + 20/11). Opening the app on a new day now
+  // attempts it once per boot, after the snapshot settles. The
+  // function itself guards the date key, auth and degraded state, so
+  // a skipped boot still retries on the next write as before.
+  const dailySnapshotBootAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (!cloudHydrated || !authUser) return;
+    if (dailySnapshotBootAttemptedRef.current) return;
+    if (feedKindRef.current === 'public') return;
+    dailySnapshotBootAttemptedRef.current = true;
+    void maybeCreateDailyCloudSnapshot(authUser.email || adminEmail).catch(() => {});
+    // Intentionally once per boot (ref-guarded) and gated on the settled
+    // snapshot + session, like the banner fee seeding above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudHydrated, authUser]);
 
   const updateTeacher = async (updatedTeacher: AcademicTeacher, loginRole?: UserRole): Promise<StaffCredentialSyncStatus & { nextTeachers?: AcademicTeacher[]; nextUsers?: AppUser[]; error?: string }> => {
     const existing = teachers.find(t => t.id === updatedTeacher.id);
