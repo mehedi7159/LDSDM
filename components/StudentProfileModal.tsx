@@ -111,7 +111,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </h2>
                 {getStatusBadge()}
               </div>
-              {student.nameBn && (
+              {student.name && student.nameBn && student.name.trim() !== student.nameBn.trim() && (
                 <p className="text-emerald-200/90 text-sm font-medium">
                   {student.nameBn}
                 </p>
