@@ -131,6 +131,7 @@ import {
   settingsDocRef,
   readSettingsFromCollection,
   settingsDocToRemoteData,
+  attendanceCollectionRef,
   writeScheduleFieldsToCloud,
   staffLeavesCollectionRef,
   transactionsCollectionRef,
@@ -182,11 +183,12 @@ import {
   readPendingConfirms,
   type CloudConfirmResult,
 } from '../services/cloudConfirm';
-import { migrateNoticesToCollection, migrateFieldToCollection, trashCollectionComplete, migrateSettingsToCollection } from '../services/migrationSplit';
+import { migrateNoticesToCollection, migrateFieldToCollection, trashCollectionComplete, migrateSettingsToCollection, attendanceRecordKey } from '../services/migrationSplit';
 import type { ScheduleSplitField } from '../services/cloudConfirm';
 import type { ClassesSplitField } from '../services/cloudConfirm';
 import type { AcademicSplitField } from '../services/cloudConfirm';
 import type { FeesSplitField } from '../services/cloudConfirm';
+import type { AttendanceSplitField } from '../services/cloudConfirm';
 import {
   readPendingPayloads,
   queuePendingPayload,
@@ -2303,6 +2305,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // it, so sync never starts on half-loaded settings state. Login
   // verdict and manual force-push do NOT wait on it.
   const hasLoadedSettingsCollectionRef = useRef(false);
+
+  // Job 9 (attendance split): same shape as Job 2, but ONE flag for
+  // both fields — student + staff attendance switch TOGETHER. Once
+  // either collection feed has delivered a complete list it is the
+  // read source for both fields; main_store stays the fallback until
+  // then. The read is always a MERGE (never replace), so a teacher's
+  // phone-local backlog survives every snapshot.
+  const attendanceFromCollectionRef = useRef(false);
+  // Job 9: guards the one-time attendance backfills against concurrent feed events.
+  const attendanceBackfillInFlightRef = useRef<Record<AttendanceSplitField, boolean>>({ dailyStudentAttendance: false, dailyStaffAttendance: false });
+  // Job 9: keys already copied into the new collections by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledAttendanceIdsRef = useRef<Record<AttendanceSplitField, Set<string>>>({ dailyStudentAttendance: new Set(), dailyStaffAttendance: new Set() });
+  // Job 9: the last docs each attendance collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionAttendanceRef = useRef<Record<AttendanceSplitField, any[]>>({ dailyStudentAttendance: [], dailyStaffAttendance: [] });
+  // Job 9: whether each attendance feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on both.
+  const attendanceFeedSettledRef = useRef<Record<AttendanceSplitField, boolean>>({ dailyStudentAttendance: false, dailyStaffAttendance: false });
+  // Job 9: true once both attendance feeds have settled — auto-sync
+  // waits for this, so sync never starts on half-loaded attendance
+  // state. Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedAttendanceCollectionsRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -3225,6 +3250,67 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 9 one-time backfill: copy main_store attendance records into
+  // their new collections. Source is the CONFIRMED list
+  // (lastConfirmedRef) — for attendance that list is the MERGED list
+  // (see applyRemoteData), so it may include a teacher's phone-local
+  // records not yet synced to cloud. Copying them into the collection
+  // is safe — the read is a merge, never a replace — and it is the
+  // same upload the next sync would do. Idempotent by
+  // attendanceRecordKey (the backfilled-ids set skips already-copied
+  // records), so repeat runs write the same docs; a failure only
+  // logs — the next snapshot retries, and dual-write keeps main_store
+  // correct.
+  const backfillAttendanceOnce = async (field: AttendanceSplitField, source?: any[]) => {
+    if (attendanceBackfillInFlightRef.current[field]) return;
+    const list = source || lastConfirmedRef.current[field] || [];
+    const pending = (list || []).filter((r) => r && attendanceRecordKey(r) && !backfilledAttendanceIdsRef.current[field].has(attendanceRecordKey(r)));
+    if (pending.length === 0) return;
+    attendanceBackfillInFlightRef.current[field] = true;
+    try {
+      await migrateFieldToCollection(field, pending);
+      pending.forEach((r) => backfilledAttendanceIdsRef.current[field].add(attendanceRecordKey(r)));
+    } catch (err: any) {
+      console.warn('Attendance backfill notice:', err?.message || err);
+    } finally {
+      attendanceBackfillInFlightRef.current[field] = false;
+    }
+  };
+
+  // Job 9: one attendance field from a remote snapshot. MERGE, never
+  // replace — the collection feed's own snapshots always apply (its
+  // handler decides when an empty snapshot is real — see
+  // startAttendanceFeeds); main_store applies only while the
+  // attendance collections have not taken over. After takeover, a
+  // main_store list only rescues stragglers (written by a stale
+  // pre-split tab, which only writes main_store) into the collection
+  // — the feed then delivers them. A record added later on another
+  // device arrives as a new collection snapshot and merges in without
+  // a reload. The merge keeps phone-local records (incoming wins on
+  // id conflict), so an unsynced backlog is never wiped by any
+  // snapshot, including an empty one.
+  const applyAttendanceFieldFromRemote = (field: AttendanceSplitField, records: any[], opts: { fromAttendanceCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
+    if (opts?.fromAttendanceCollection || !attendanceFromCollectionRef.current) {
+      if (field === 'dailyStudentAttendance') {
+        dailyAttendanceService.mergeStudentRecords(records);
+        setDailyStudentAttendance(dailyAttendanceService.getAllStudentRecords());
+      } else {
+        dailyAttendanceService.mergeStaffRecords(records);
+        setDailyStaffAttendance(dailyAttendanceService.getAllStaffRecords());
+      }
+      const merged = field === 'dailyStudentAttendance' ? dailyAttendanceService.getAllStudentRecords() : dailyAttendanceService.getAllStaffRecords();
+      lastConfirmedRef.current[field] = merged;
+      snapshotApplied[field] = merged;
+      // Job 9: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded).
+      if (!opts?.fromAttendanceCollection) void backfillAttendanceOnce(field);
+    } else {
+      const colIds = new Set((lastCollectionAttendanceRef.current[field] || []).map((r) => attendanceRecordKey(r)));
+      const stragglers = (records || []).filter((r) => !colIds.has(attendanceRecordKey(r)));
+      if (stragglers.length > 0) void backfillAttendanceOnce(field, stragglers);
+    }
+  };
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
@@ -3252,7 +3338,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // trash collection feed (not from a main_store snapshot).
   // opts.fromSettingsCollection marks data that came from the Job 14
   // settings/main doc feed.
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean; fromStudentsCollection?: boolean; fromTrashCollection?: boolean; fromSettingsCollection?: boolean }) => {
+  // opts.fromAttendanceCollection marks data that came from a Job 9
+  // attendance collection feed.
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean; fromStudentsCollection?: boolean; fromTrashCollection?: boolean; fromSettingsCollection?: boolean; fromAttendanceCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -3467,17 +3555,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // sync uploads the backlog instead of an empty array. Schedule
     // hydration below keeps replace* (routines/calendar have no
     // equivalent phone-local backlog; same-pattern risk noted).
+    // Job 9: the same merge applies to collection-feed snapshots —
+    // applyAttendanceFieldFromRemote is the only path in.
     if (data.dailyStudentAttendance && Array.isArray(data.dailyStudentAttendance)) {
-      dailyAttendanceService.mergeStudentRecords(data.dailyStudentAttendance);
-      setDailyStudentAttendance(dailyAttendanceService.getAllStudentRecords());
-      lastConfirmedRef.current['dailyStudentAttendance'] = dailyAttendanceService.getAllStudentRecords();
-      snapshotApplied['dailyStudentAttendance'] = dailyAttendanceService.getAllStudentRecords();
+      applyAttendanceFieldFromRemote('dailyStudentAttendance', data.dailyStudentAttendance, opts, snapshotApplied);
     }
     if (data.dailyStaffAttendance && Array.isArray(data.dailyStaffAttendance)) {
-      dailyAttendanceService.mergeStaffRecords(data.dailyStaffAttendance);
-      setDailyStaffAttendance(dailyAttendanceService.getAllStaffRecords());
-      lastConfirmedRef.current['dailyStaffAttendance'] = dailyAttendanceService.getAllStaffRecords();
-      snapshotApplied['dailyStaffAttendance'] = dailyAttendanceService.getAllStaffRecords();
+      applyAttendanceFieldFromRemote('dailyStaffAttendance', data.dailyStaffAttendance, opts, snapshotApplied);
     }
     if (data.classRoutines && Array.isArray(data.classRoutines)) {
       // Job 13: trashed routines stay hidden — same failed-deleteDoc
@@ -3689,6 +3773,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     let settingsUnsubscribe: (() => void) | null = null;
 
+    let attendanceUnsubscribes: Array<() => void> = [];
+
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
         try { noticesUnsubscribe(); } catch {}
@@ -3778,6 +3864,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         marksUnsubscribe = null;
       }
     };
+
+    const stopAttendanceFeeds = () => {
+      for (const unsub of attendanceUnsubscribes) {
+        try { unsub(); } catch {}
+      }
+      attendanceUnsubscribes = [];
+    };
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
@@ -3798,6 +3891,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopTrashFeed();
 
       stopSettingsFeed();
+
+      stopAttendanceFeeds();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -4555,6 +4650,73 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    const markAttendanceFeedSettled = (field: AttendanceSplitField) => {
+      attendanceFeedSettledRef.current[field] = true;
+      if (attendanceFeedSettledRef.current.dailyStudentAttendance && attendanceFeedSettledRef.current.dailyStaffAttendance) {
+        hasLoadedAttendanceCollectionsRef.current = true;
+      }
+    };
+
+    // Job 9 read-switch: the attendance collection feeds. Once a feed
+    // delivers a complete list it becomes the read source — BOTH
+    // fields switch together on one flag, so a main_store list never
+    // applies for one field while the other already reads from its
+    // collection. An empty snapshot before that means the backfill has
+    // not run yet, so main_store attendance stays in place (fallback)
+    // and the backfill runs. An empty snapshot AFTER docs existed
+    // applies as an empty MERGE — a no-op for the register, never a
+    // wipe. Every non-empty snapshot applies, before AND after
+    // takeover (Job 3 / Job 5 lesson): a record added later on another
+    // device merges in without a reload. A feed error only settles
+    // the auto-sync guard; main_store keeps showing.
+    const startAttendanceFeeds = () => {
+      if (cancelled) return;
+      stopAttendanceFeeds();
+      (['dailyStudentAttendance', 'dailyStaffAttendance'] as AttendanceSplitField[]).forEach((field) => {
+        const unsub = onSnapshot(
+          attendanceCollectionRef(field),
+          (snapshot) => {
+            if (cancelled) return;
+            const docs = snapshot.docs.map((d) => {
+              const data = d.data() as any;
+              return { ...data, id: (data as any).id || d.id };
+            });
+            lastCollectionAttendanceRef.current[field] = docs;
+            markAttendanceFeedSettled(field);
+            if (docs.length > 0) {
+              // Take over only when the collection holds every record
+              // the confirmed main_store list knows — a partial
+              // collection (backfill still running) must not hide the
+              // rest. The check uses the confirmed (merged) list, so
+              // a phone-local record not yet backfilled blocks
+              // takeover instead of being hidden — the backfill then
+              // copies it into the collection.
+              const knownIds = new Set(((lastConfirmedRef.current[field] || []) as any[]).map((r) => attendanceRecordKey(r)));
+              const colIds = new Set(docs.map((d) => attendanceRecordKey(d)));
+              const complete = [...knownIds].every((id) => colIds.has(id));
+              if (complete) {
+                attendanceFromCollectionRef.current = true;
+                applyRemoteData({ [field]: docs }, { fromAttendanceCollection: true });
+              } else {
+                void backfillAttendanceOnce(field);
+              }
+            } else if (attendanceFromCollectionRef.current) {
+              applyRemoteData({ [field]: [] }, { fromAttendanceCollection: true });
+            } else {
+              void backfillAttendanceOnce(field);
+            }
+          },
+          (error) => {
+            if (cancelled) return;
+            console.warn('Attendance collection snapshot listener notice:', error?.message || error);
+            // Fallback stays in place: main_store attendance keeps showing.
+            markAttendanceFeedSettled(field);
+          }
+        );
+        attendanceUnsubscribes.push(unsub);
+      });
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -4589,6 +4751,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
       // Job 14: same for the settings doc.
       startSettingsFeed();
+
+      // Job 9: same for the two attendance collections.
+      startAttendanceFeeds();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -4857,6 +5022,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // preserve anything edited meanwhile.
     if (!hasLoadedSettingsCollectionRef.current) return;
 
+    // Job 9: never auto-sync until the attendance collections have
+    // delivered their first snapshot (or errored) — otherwise sync
+    // could start on half-loaded attendance state. Explicit
+    // attendance saves bypass this (confirmAttendanceCloudSync /
+    // confirmStaffAttendanceCloudSync write directly), and queued
+    // payloads preserve anything edited meanwhile.
+    if (!hasLoadedAttendanceCollectionsRef.current) return;
+
     setCloudStatus('syncing');
 
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
@@ -4870,6 +5043,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedMarksCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedTrashCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedSettingsCollectionRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedAttendanceCollectionsRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
