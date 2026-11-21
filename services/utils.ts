@@ -230,10 +230,20 @@ export const formatNumber = (num: number | string | undefined | null, lang: Lang
  * on the ID card and "—" in the portal. Every display, sort and search
  * must read through this: legacy `roll` wins, then `rollNumber`, else
  * '' — never invent a roll; a missing roll stays missing for data repair.
+ * A zero roll ('0', '০', 0 — rolls start at 1) is not a roll either:
+ * the string '0' is truthy, so plain `roll || rollNumber` passed it
+ * through and the ID card still showed 'রোল: ০' after the v1 fix.
  */
 export const getStudentRoll = (s: { roll?: string | number | null; rollNumber?: string | number | null } | null | undefined): string => {
-  const raw = s?.roll || s?.rollNumber || '';
-  return String(raw).trim();
+  const pick = (v: string | number | null | undefined): string => {
+    if (v == null) return '';
+    const raw = String(v).trim();
+    if (!raw) return '';
+    const ascii = raw.replace(/[০-৯]/g, d => String('০১২৩৪৫৬৭৮৯'.indexOf(d)));
+    if (/^\d+$/.test(ascii) && Number(ascii) === 0) return '';
+    return raw;
+  };
+  return pick(s?.roll) || pick(s?.rollNumber);
 };
 
 export const getAutoRemark = (gpa: number, isFail: boolean, failCount: number, lang: Language): string => {

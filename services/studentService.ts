@@ -326,6 +326,11 @@ export function buildCreateStudentPayload(
   const normalizedRollNumber =
     input.rollNumber != null && input.rollNumber !== '' ? toAsciiDigits(input.rollNumber) : normalizedRoll;
 
+  // Roll 0 is not a roll (rolls start at 1): Bengali '০' typed in the form
+  // normalizes to ASCII '0' — store it as missing, never as '0'.
+  const cleanRoll = normalizedRoll && Number(normalizedRoll) !== 0 ? normalizedRoll : undefined;
+  const cleanRollNumber = normalizedRollNumber && Number(normalizedRollNumber) !== 0 ? normalizedRollNumber : undefined;
+
   const student: Student = stripUndefinedValues({
     ...input,
     // Save-time guard: a requested studentId that is already taken
@@ -336,8 +341,8 @@ export function buildCreateStudentPayload(
     institutionId: input.institutionId || institutionId,
     status,
     isFormer,
-    roll: normalizedRoll,
-    rollNumber: normalizedRollNumber || input.roll,
+    roll: cleanRoll,
+    rollNumber: cleanRollNumber || cleanRoll,
     createdAt: now,
     createdBy: actor?.uid || 'system',
     updatedAt: now,
@@ -374,6 +379,10 @@ export function buildUpdateStudentPayload(
   // Master audit F11: rolls are stored ASCII (see create builder).
   if (merged.roll != null && merged.roll !== '') merged.roll = toAsciiDigits(merged.roll);
   if (merged.rollNumber != null && merged.rollNumber !== '') merged.rollNumber = toAsciiDigits(merged.rollNumber);
+
+  // Roll 0 is not a roll (see create builder): a zero roll becomes missing.
+  if (merged.roll != null && merged.roll !== '' && Number(merged.roll) === 0) merged.roll = undefined;
+  if (merged.rollNumber != null && merged.rollNumber !== '' && Number(merged.rollNumber) === 0) merged.rollNumber = undefined;
 
   const student: Student = stripUndefinedValues({
     ...merged,

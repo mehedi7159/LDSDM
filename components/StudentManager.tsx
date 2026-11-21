@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import type { TrashItem } from '../context/AppContext';
 import { Student } from '../types';
-import { formatNumber } from '../services/utils';
+import { formatNumber, getStudentRoll } from '../services/utils';
 import { Button } from './ui/Button';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { 
@@ -82,6 +82,13 @@ interface StudentManagerProps {
   /** Open the full staff profile tab for one student (from the compact profile modal). */
   onViewFullProfile?: (studentId: string) => void;
 }
+
+/** 21 Nov 2026 (badge visibility): the cloud confirm usually lands in
+    ~1s — faster than a human can find the new row — so the amber badge
+    would clear before anyone sees it (teacher add shows it for seconds
+    only because provisioning holds its confirm back). A just-added row
+    therefore keeps its badge for this minimum window. */
+const STUDENT_BADGE_MIN_VISIBLE_MS = 5000;
 
 export const StudentManager: React.FC<StudentManagerProps> = ({ 
   initialOpenPromotion = false,
@@ -187,6 +194,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const [pendingStudentSave, setPendingStudentSave] = useState<Student[] | null>(null);
   const [pendingStudentId, setPendingStudentId] = useState<string | null>(null);
   const [pendingSaveError, setPendingSaveError] = useState<string | null>(null);
+  // 21 Nov 2026 (badge visibility): ids saved moments ago, kept badged
+  // for STUDENT_BADGE_MIN_VISIBLE_MS so the pending state is actually
+  // seen — the queue check above stays the truth for failures (a failed
+  // confirm re-queues, so the badge outlives this window until it lands).
+  const [recentStudentSaveIds, setRecentStudentSaveIds] = useState<string[]>([]);
+  const isStudentRowBadged = (id: string) => isRecordUnconfirmed('students', id) || recentStudentSaveIds.includes(id);
   const [pendingStudentDelete, setPendingStudentDelete] = useState<{ students: Student[]; trashBin: TrashItem[] } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isStudentDeleting, setIsStudentDeleting] = useState(false);
@@ -421,6 +434,13 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       }
       nextStudents = res.students;
       savedStudentId = res.student.id;
+      // Badge visibility: hold the new row's amber badge for the minimum
+      // window (confirm usually lands in ~1s, before anyone sees the
+      // row). The confirm below still runs at once; only the badge
+      // display outlives it. Clears itself; a failed confirm keeps the
+      // badge via the queue regardless.
+      setRecentStudentSaveIds(prev => [...prev.filter(id => id !== res.student.id), res.student.id]);
+      setTimeout(() => setRecentStudentSaveIds(prev => prev.filter(id => id !== res.student.id)), STUDENT_BADGE_MIN_VISIBLE_MS);
       if (authUser) {
         recordStudentAuditEvent({
           action: 'STUDENT_CREATED',
@@ -504,7 +524,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
     setFormData({
       studentId: student.studentId || '',
-      roll: student.roll || student.rollNumber || '',
+      roll: getStudentRoll(student),
       name: student.name || '',
       nameBn: student.nameBn || '',
       gender: (student.gender as any) || 'male',
@@ -682,7 +702,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const handleExportCSV = () => {
     const headers = ['রোল', 'আইডি', 'শিক্ষার্থীর নাম', 'ইংরেজি নাম', 'শ্রেণি', 'পিতার নাম', 'মোবাইল', 'অবস্থা'];
     const rows = filteredStudents.map(s => [
-      s.roll || s.rollNumber || '',
+      getStudentRoll(s),
       s.studentId || '',
       `"${s.nameBn || s.name}"`,
       `"${s.name}"`,
@@ -730,8 +750,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         (s.name && s.name.toLowerCase().includes(term)) ||
         (s.nameBn && s.nameBn.includes(term)) ||
         (s.studentId && toAsciiDigits(String(s.studentId)).toLowerCase().includes(asciiTerm)) ||
-        (s.roll != null && toAsciiDigits(String(s.roll)).toLowerCase().includes(asciiTerm)) ||
-        (s.rollNumber != null && toAsciiDigits(String(s.rollNumber)).toLowerCase().includes(asciiTerm)) ||
+        (toAsciiDigits(getStudentRoll(s)).toLowerCase().includes(asciiTerm)) ||
         (s.guardianPhone != null && String(s.guardianPhone).includes(term)) ||
         (s.fatherName && s.fatherName.toLowerCase().includes(term)) ||
         (s.fatherNameBn && s.fatherNameBn.includes(term))
@@ -741,8 +760,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       let comparison = 0;
       if (sortBy === 'roll') {
         // Master audit F11: parseInt('১') is NaN — normalize first.
-        const rollA = parseInt(toAsciiDigits(a.roll || a.rollNumber || '0'), 10) || 0;
-        const rollB = parseInt(toAsciiDigits(b.roll || b.rollNumber || '0'), 10) || 0;
+        const rollA = parseInt(toAsciiDigits(getStudentRoll(a) || '0'), 10) || 0;
+        const rollB = parseInt(toAsciiDigits(getStudentRoll(b) || '0'), 10) || 0;
         comparison = rollA - rollB;
       } else if (sortBy === 'classLevel') {
         comparison = a.classLevel.localeCompare(b.classLevel);
@@ -810,7 +829,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               {/* Job 0 (instant save): a record whose background cloud
                   confirm failed stays visibly marked until its queued
                   payload lands — same pattern as the staff badge. */}
-              {isRecordUnconfirmed('students', student.id) && (
+              {isStudentRowBadged(student.id) && (
                 <UnconfirmedBadge isBn={language === 'bn'} />
               )}
               {altName && altName !== displayName && (
@@ -818,7 +837,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               )}
               <div className="flex items-center gap-2 mt-1 text-xs text-gray-600 dark:text-slate-300 flex-wrap">
                 <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
-                  {language === 'bn' ? 'রোল:' : 'Roll:'} <strong className="font-mono">{formatNumber(student.roll, language)}</strong>
+                  {language === 'bn' ? 'রোল:' : 'Roll:'} <strong className="font-mono">{formatNumber(getStudentRoll(student) || '—', language)}</strong>
                 </span>
                 <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium text-[11px]">
                   {language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}
@@ -1191,7 +1210,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <option value="" disabled>{language === 'bn' ? '-- শিক্ষার্থী নির্বাচন করুন --' : '-- Select a Student --'}</option>
                   {allCurrentStudentsList.map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.nameBn || s.name} • শ্রেণি: {s.classLevel} • রোল: {s.roll || s.rollNumber || '—'} (আইডি: {s.studentId || s.id})
+                      {s.nameBn || s.name} • শ্রেণি: {s.classLevel} • রোল: {getStudentRoll(s) || '—'} (আইডি: {s.studentId || s.id})
                     </option>
                   ))}
                 </select>
@@ -1522,7 +1541,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
                     <td className="px-4 py-3 text-gray-400 dark:text-slate-500 font-medium text-center">{formatNumber(idx + 1, language)}</td>
                     <td className="px-4 py-3 font-mono font-bold text-indigo-700 dark:text-indigo-400">
-                      {(student.roll || student.rollNumber) ? formatNumber(student.roll || student.rollNumber, language) : '-'}
+                      {formatNumber(getStudentRoll(student) || '-', language)}
                     </td>
                     <td className="px-4 py-3 font-mono text-gray-600 dark:text-slate-300">
                       {student.studentId ? formatNumber(student.studentId, language) : '-'}
@@ -1539,7 +1558,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       </div>
                       {/* Job 0 (instant save): badge for a record whose
                           background cloud confirm failed — see StudentCard. */}
-                      {isRecordUnconfirmed('students', student.id) && <UnconfirmedBadge isBn={language === 'bn'} />}
+                      {isStudentRowBadged(student.id) && <UnconfirmedBadge isBn={language === 'bn'} />}
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-300 whitespace-nowrap font-medium">
                       <span>{language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}</span>

@@ -738,14 +738,14 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             className="flex-1 min-w-[180px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            মোট {filteredSnapshots.length}টি স্ন্যাপশট
+            মোট {filteredSnapshots.length}টি লোকাল স্ন্যাপশট
             {lastKnownGoodId ? ' • সর্বশেষ ভালো স্ন্যাপশট চিহ্নিত আছে' : ''}
           </span>
         </div>
 
         {filteredSnapshots.length === 0 ? (
           <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-            এখনও কোনো অটোমেটিক স্ন্যাপশট ইতিহাস নেই। ব্যাকআপ ডাউনলোড বা রিস্টোরের সময় এখানে তৈরি হবে।
+            এই ডিভাইসের লোকাল ভল্টে এখনো কোনো স্ন্যাপশট নেই। ক্লাউড স্ন্যাপশট আলাদা — সেগুলো Diagnostics-এর ক্লাউড সিঙ্ক অংশে আছে।
           </div>
         ) : (
           <>

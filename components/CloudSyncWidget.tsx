@@ -79,6 +79,9 @@ export const CloudSyncWidget: React.FC = () => {
   const [showSnapshotModal, setShowSnapshotModal] = useState<boolean>(false);
   const [snapshotNote, setSnapshotNote] = useState<string>('');
   const [cloudSnapshots, setCloudSnapshots] = useState<any[]>([]);
+  // True until the first fetch settles: the list is UNKNOWN, not
+  // empty — the first paint must never claim "0 snapshots".
+  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(true);
   const [cloudSnapHasMore, setCloudSnapHasMore] = useState(false);
   const [cloudSnapLastCreatedAt, setCloudSnapLastCreatedAt] = useState<number | null>(null);
   const [isLoadingMoreSnaps, setIsLoadingMoreSnaps] = useState(false);
@@ -100,14 +103,19 @@ export const CloudSyncWidget: React.FC = () => {
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState<boolean>(false);
 
   // Load cloud snapshots (Phase 3: paginated — the old 20-item cap is gone)
-  const refreshSnapshotsList = async () => {
+  const refreshSnapshotsList = async (): Promise<boolean> => {
+    setIsLoadingSnapshots(true);
     try {
       const page = await fetchFirestoreCloudSnapshotsPage(20);
       setCloudSnapshots(page.items);
       setCloudSnapHasMore(page.hasMore);
       setCloudSnapLastCreatedAt(page.lastCreatedAt);
+      return true;
     } catch (e) {
       console.warn('Failed to fetch cloud snapshots:', e);
+      return false;
+    } finally {
+      setIsLoadingSnapshots(false);
     }
   };
 
@@ -127,9 +135,22 @@ export const CloudSyncWidget: React.FC = () => {
   };
 
   React.useEffect(() => {
-    if (authUser) {
-      refreshSnapshotsList();
-    }
+    if (!authUser) return;
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    (async () => {
+      const ok = await refreshSnapshotsList();
+      // A first fetch can fail while auth/Firestore is still warming
+      // up — retry once instead of leaving a false 0 on screen
+      // until a manual refresh.
+      if (!ok && !cancelled) {
+        retryTimer = setTimeout(() => { if (!cancelled) void refreshSnapshotsList(); }, 3000);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [authUser]);
 
   const handleManualPush = async () => {
@@ -571,7 +592,7 @@ export const CloudSyncWidget: React.FC = () => {
               </span>
               <div className="flex items-center gap-1.5 mt-1 text-xs font-bold text-slate-700 truncate">
                 <History size={13} className="text-emerald-600 shrink-0" />
-                <span>{cloudSnapshots.length} {language === 'bn' ? 'টি ব্যাকআপ ভার্সন' : 'Snapshots'}</span>
+                <span>{isLoadingSnapshots && cloudSnapshots.length === 0 ? (language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...') : (<>{cloudSnapshots.length} {language === 'bn' ? 'টি ব্যাকআপ ভার্সন' : 'Snapshots'}</>)}</span>
               </div>
             </div>
           </div>
@@ -632,7 +653,11 @@ export const CloudSyncWidget: React.FC = () => {
           </button>
         </div>
 
-        {cloudSnapshots.length === 0 ? (
+        {isLoadingSnapshots && cloudSnapshots.length === 0 ? (
+          <div className="p-8 text-center bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 text-slate-500 text-xs">
+            <p className="font-semibold">{language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...'}</p>
+          </div>
+        ) : cloudSnapshots.length === 0 ? (
           <div className="p-8 text-center bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 text-slate-500 text-xs">
             <p className="font-semibold">{language === 'bn' ? 'এখনো কোনো ক্লাউড স্ন্যাপশট ব্যাকআপ তৈরি করা হয়নি।' : 'No cloud snapshots saved yet.'}</p>
           </div>

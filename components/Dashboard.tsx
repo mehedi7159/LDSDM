@@ -1056,8 +1056,12 @@ export const Dashboard = () => {
       {/* Pending approvals — admin notice card (Phase 1): applications
           used to wait silently with no notice to the admin. The count
           now surfaces on the dashboard itself, with a direct door to
-          HR approval. Hidden for non-admin viewers. */}
-      {(isOwnerAdmin || isSuperAdmin || currentMember?.roleId === 'role_principal') && (pendingMembers.length > 0 || pendingMembersError) && (
+          HR approval. Hidden for non-admin viewers. A failed refresh
+          must NOT show the banner on its own: with 0 pending members
+          it read "অনুমোদনের অপেক্ষায় 0 জন" plus a stale-list warning
+          — a banner about nobody. The stale warning + Retry still show
+          inside the banner when the list is non-empty. */}
+      {(isOwnerAdmin || isSuperAdmin || currentMember?.roleId === 'role_principal') && pendingMembers.length > 0 && (
         <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h4 className="font-black text-slate-900 dark:text-white text-sm">
