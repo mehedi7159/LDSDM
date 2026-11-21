@@ -116,6 +116,7 @@ import {
   noticesCollectionRef,
   readNoticesFromCollection,
   scheduleCollectionRef,
+  classesCollectionRef,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
@@ -167,6 +168,7 @@ import {
 } from '../services/cloudConfirm';
 import { migrateNoticesToCollection, migrateFieldToCollection } from '../services/migrationSplit';
 import type { ScheduleSplitField } from '../services/cloudConfirm';
+import type { ClassesSplitField } from '../services/cloudConfirm';
 import {
   readPendingPayloads,
   queuePendingPayload,
@@ -2071,6 +2073,27 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // waits for this, so sync never starts on half-loaded schedule state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedScheduleCollectionsRef = useRef(false);
+  // Job 3 (classes split): same shape as Job 2, except the three
+  // reference lists switch TOGETHER — one joint flag, so a class name
+  // can never differ between two places. Once the flag flips, all
+  // three lists come from the new collections; until then main_store
+  // stays the fallback for all three.
+  const classesFromCollectionRef = useRef(false);
+  // Job 3: guards the one-time classes backfills against concurrent feed events.
+  const classesBackfillInFlightRef = useRef<Record<ClassesSplitField, boolean>>({ classes: false, sections: false, academicYears: false });
+  // Job 3: ids already copied into the new collections by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledClassesIdsRef = useRef<Record<ClassesSplitField, Set<string>>>({ classes: new Set(), sections: new Set(), academicYears: new Set() });
+  // Job 3: the last docs each classes collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionClassesRef = useRef<Record<ClassesSplitField, any[]>>({ classes: [], sections: [], academicYears: [] });
+  // Job 3: whether each classes feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on all three.
+  const classesFeedSettledRef = useRef<Record<ClassesSplitField, boolean>>({ classes: false, sections: false, academicYears: false });
+  // Job 3: true once all three classes feeds have settled — auto-sync
+  // waits for this, so sync never starts on half-loaded classes state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedClassesCollectionsRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2439,12 +2462,96 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 3 one-time backfill: copy main_store class/section/year
+  // records into their new collections. Source is the CONFIRMED
+  // main_store list (lastConfirmedRef) — never local state, which may
+  // still hold a record deleted on another device. Idempotent by id
+  // (the backfilled-ids set skips already-copied records), so repeat
+  // runs write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillClassesOnce = async (field: ClassesSplitField, source?: any[]) => {
+    if (classesBackfillInFlightRef.current[field]) return;
+    const list = source || lastConfirmedRef.current[field] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledClassesIdsRef.current[field].has(String(r.id)));
+    if (pending.length === 0) return;
+    classesBackfillInFlightRef.current[field] = true;
+    try {
+      await migrateFieldToCollection(field, pending);
+      pending.forEach((r) => backfilledClassesIdsRef.current[field].add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Classes backfill notice:', err?.message || err);
+    } finally {
+      classesBackfillInFlightRef.current[field] = false;
+    }
+  };
+
+  // Job 3: the three reference lists switch TOGETHER — a class name
+  // must never come from the new collection in one place and from
+  // main_store in another. Take over only once main_store has loaded
+  // (no vacuous takeover on an unloaded list), all three feeds have
+  // settled, and every confirmed main_store record is present in its
+  // collection. Returns true when the switch happened (or already had).
+  const tryClassesTakeover = (): boolean => {
+    if (classesFromCollectionRef.current) return true;
+    if (!hasLoadedMainStoreRef.current) return false;
+    if (!classesFeedSettledRef.current.classes || !classesFeedSettledRef.current.sections || !classesFeedSettledRef.current.academicYears) return false;
+    for (const field of (['classes', 'sections', 'academicYears'] as ClassesSplitField[])) {
+      const knownIds = new Set(((lastConfirmedRef.current[field] || []) as any[]).map((r) => String(r.id)));
+      const colIds = new Set((lastCollectionClassesRef.current[field] || []).map((d) => String(d.id)));
+      if (![...knownIds].every((id) => colIds.has(id))) return false;
+    }
+    classesFromCollectionRef.current = true;
+    applyRemoteData({
+      classes: lastCollectionClassesRef.current.classes,
+      academicYears: lastCollectionClassesRef.current.academicYears,
+      sections: lastCollectionClassesRef.current.sections,
+    }, { fromClassesCollection: true });
+    return true;
+  };
+
+  // Job 3: one classes field from a remote snapshot. A collection
+  // feed's own snapshots always apply (its handler decides when an
+  // empty snapshot is real — see startClassesFeeds); main_store
+  // applies only while the joint flag is still off. After takeover, a
+  // main_store list only rescues stragglers (written by a stale
+  // pre-split tab, which only writes main_store) into the collection
+  // — the feed then delivers them.
+  const applyClassesFieldFromRemote = (field: ClassesSplitField, records: any[], opts: { fromClassesCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
+    if (opts?.fromClassesCollection || !classesFromCollectionRef.current) {
+      if (field === 'classes') {
+        setClasses(records);
+      } else if (field === 'academicYears') {
+        setAcademicYears(records);
+      } else {
+        setSections(records);
+      }
+      lastConfirmedRef.current[field] = records;
+      snapshotApplied[field] = records;
+      try { localStorage.setItem(field, JSON.stringify(records)); } catch {}
+      // Job 3: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded), then
+      // re-check the joint takeover (the feeds may already hold
+      // every record).
+      if (!opts?.fromClassesCollection) {
+        void backfillClassesOnce(field);
+        tryClassesTakeover();
+      }
+    } else {
+      const colIds = new Set((lastCollectionClassesRef.current[field] || []).map((r) => String(r.id)));
+      const stragglers = (records || []).filter((r) => !colIds.has(String(r.id)));
+      if (stragglers.length > 0) void backfillClassesOnce(field, stragglers);
+    }
+  };
+
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
   // opts.fromScheduleCollection marks data that came from a Job 2
   // schedule collection feed (one field at a time).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField }) => {
+  // opts.fromClassesCollection marks data that came from a Job 3
+  // classes collection feed (all three fields together).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -2517,22 +2624,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('remarks', JSON.stringify(data.remarks)); } catch {}
     }
     if (data.classes && Array.isArray(data.classes)) {
-      setClasses(data.classes);
-      lastConfirmedRef.current['classes'] = data.classes;
-      snapshotApplied['classes'] = data.classes;
-      try { localStorage.setItem('classes', JSON.stringify(data.classes)); } catch {}
+      applyClassesFieldFromRemote('classes', data.classes, opts, snapshotApplied);
     }
     if (data.academicYears && Array.isArray(data.academicYears)) {
-      setAcademicYears(data.academicYears);
-      lastConfirmedRef.current['academicYears'] = data.academicYears;
-      snapshotApplied['academicYears'] = data.academicYears;
-      try { localStorage.setItem('academicYears', JSON.stringify(data.academicYears)); } catch {}
+      applyClassesFieldFromRemote('academicYears', data.academicYears, opts, snapshotApplied);
     }
     if (data.sections && Array.isArray(data.sections)) {
-      setSections(data.sections);
-      lastConfirmedRef.current['sections'] = data.sections;
-      snapshotApplied['sections'] = data.sections;
-      try { localStorage.setItem('sections', JSON.stringify(data.sections)); } catch {}
+      applyClassesFieldFromRemote('sections', data.sections, opts, snapshotApplied);
     }
     if (data.transactions && Array.isArray(data.transactions)) {
       const cleanTransactions = data.transactions.filter(t => !t.id?.startsWith('tx-init-'));
@@ -2801,6 +2899,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let activeUnsubscribe: (() => void) | null = null;
     let noticesUnsubscribe: (() => void) | null = null;
     let scheduleUnsubscribes: Array<() => void> = [];
+    let classesUnsubscribes: Array<() => void> = [];
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -2816,6 +2915,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       scheduleUnsubscribes = [];
     };
 
+    const stopClassesFeeds = () => {
+      for (const unsub of classesUnsubscribes) {
+        try { unsub(); } catch {}
+      }
+      classesUnsubscribes = [];
+    };
+
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
@@ -2823,6 +2929,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
       stopNoticesFeed();
       stopScheduleFeeds();
+      stopClassesFeeds();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -2935,6 +3042,60 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       });
     };
 
+    // Job 3 read-switch: one onSnapshot feed per classes field.
+    // Same shape as Job 2's schedule feeds, except the three switch
+    // TOGETHER (see tryClassesTakeover): a feed snapshot never flips
+    // one field on its own, so a class name can never differ between
+    // two places. An empty snapshot before takeover means the backfill
+    // has not run yet, so main_store stays in place (fallback) and the
+    // backfill runs. An empty snapshot AFTER takeover means every
+    // record was deleted — that empty list applies for real. A
+    // non-empty snapshot AFTER takeover applies too, so a record added
+    // on another device shows without a reload. A feed
+    // error only settles the auto-sync guard; main_store keeps showing.
+    const markClassesFeedSettled = (field: ClassesSplitField) => {
+      classesFeedSettledRef.current[field] = true;
+      if (classesFeedSettledRef.current.classes && classesFeedSettledRef.current.sections && classesFeedSettledRef.current.academicYears) {
+        hasLoadedClassesCollectionsRef.current = true;
+      }
+    };
+
+    const startClassesFeeds = () => {
+      if (cancelled) return;
+      stopClassesFeeds();
+      (['classes', 'sections', 'academicYears'] as ClassesSplitField[]).forEach((field) => {
+        const unsub = onSnapshot(
+          classesCollectionRef(field),
+          (snapshot) => {
+            if (cancelled) return;
+            const docs = snapshot.docs.map((d) => {
+              const data = d.data() as any;
+              return { ...data, id: (data as any).id || d.id };
+            });
+            lastCollectionClassesRef.current[field] = docs;
+            markClassesFeedSettled(field);
+            if (docs.length === 0 && classesFromCollectionRef.current) {
+              applyRemoteData({ [field]: [] }, { fromClassesCollection: true });
+            } else if (classesFromCollectionRef.current) {
+              // Post-takeover non-empty snapshot: tryClassesTakeover()
+              // returns true at once once the flag is on, so without
+              // this branch the new docs would never reach state.
+              applyRemoteData({ [field]: docs }, { fromClassesCollection: true });
+            } else if (!tryClassesTakeover()) {
+              void backfillClassesOnce(field);
+            }
+          },
+          (error) => {
+            if (cancelled) return;
+            console.warn('Classes collection snapshot listener notice:', error?.message || error);
+            // Fallback stays in place: main_store classes keep showing.
+            markClassesFeedSettled(field);
+          }
+        );
+        classesUnsubscribes.push(unsub);
+      });
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -2945,6 +3106,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startNoticesFeed();
       // Job 2: same for the three schedule collections.
       startScheduleFeeds();
+      // Job 3: same for the three classes collections.
+      startClassesFeeds();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -3141,6 +3304,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // and queued payloads preserve anything edited meanwhile.
     if (!hasLoadedScheduleCollectionsRef.current) return;
 
+    // Job 3: never auto-sync until the classes collections have
+    // delivered their first snapshot (or errored) — otherwise sync
+    // could start on half-loaded classes state. Explicit classes
+    // saves bypass this (confirmClassesCloudSync writes directly),
+    // and queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedClassesCollectionsRef.current) return;
+
     setCloudStatus('syncing');
 
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
@@ -3148,7 +3318,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
-      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedClassesCollectionsRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
