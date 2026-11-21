@@ -1348,6 +1348,45 @@ export async function writeSectionsFieldToCloud(
 }
 
 /**
+ * Job 14 (settings split): the new home of schoolProfile +
+ * markEntryEnabled. ONE document — institutions/<CANONICAL>/
+ * settings/main — holding both fields. The path is built from
+ * CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded. Writes use
+ * setDoc merge, so a profile write never wipes the switch and a
+ * switch write never wipes the profile.
+ */
+export function settingsDocRef() {
+  return doc(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'settings', 'main');
+}
+
+/** Read the settings doc (empty object when it does not exist yet). */
+export async function readSettingsFromCollection(): Promise<{ schoolProfile?: Record<string, any>; markEntryEnabled?: boolean }> {
+  const snap = await getDoc(settingsDocRef());
+  return snap.exists() ? (snap.data() as any) : {};
+}
+
+/** Write one or both settings fields (setDoc merge — one never wipes the other). */
+export async function writeSettingsToCollection(patch: Record<string, any>): Promise<void> {
+  await setDoc(settingsDocRef(), stripUndefinedRecord(patch), { merge: true });
+}
+
+/**
+ * Pure: a settings doc snapshot -> applyRemoteData payload. Only
+ * fields actually present are carried — a missing markEntryEnabled
+ * is NEVER invented as false, so the read keeps its default-open
+ * rule (only a real boolean closes the switch). A non-object
+ * profile is dropped, so the feed's completeness gate sees it as
+ * an incomplete doc and falls back to main_store.
+ */
+export function settingsDocToRemoteData(data: any): { schoolProfile?: Record<string, any>; markEntryEnabled?: boolean } {
+  if (!data || typeof data !== 'object') return {};
+  const out: { schoolProfile?: Record<string, any>; markEntryEnabled?: boolean } = {};
+  if (data.schoolProfile && typeof data.schoolProfile === 'object' && !Array.isArray(data.schoolProfile)) out.schoolProfile = data.schoolProfile;
+  if (typeof data.markEntryEnabled === 'boolean') out.markEntryEnabled = data.markEntryEnabled;
+  return out;
+}
+
+/**
  * Scalar writers: schoolProfile is an object (not an array) and
  * markEntryEnabled is a boolean. Both are single-field setDoc merge
  * writes — they touch nothing else. A non-boolean markEntryEnabled or
@@ -1361,11 +1400,17 @@ export async function writeSchoolProfileFieldToCloud(
     if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
       throw new Error('Phase 1 choke point: schoolProfile write rejected — profile is not an object.');
     }
+    const updatedAt = new Date().toISOString();
+    // Job 14 dual-write: settings/main first (merge — the switch
+    // field is untouched), then main_store as before. Same
+    // updatedBy/updatedAt in both; one leg failing fails the whole
+    // write, so the payload queue + retry replay both legs.
+    await writeSettingsToCollection({ schoolProfile: stripUndefinedRecord(profile), updatedBy, updatedAt });
     const ref = doc(db, 'institution', 'main_store');
     await setDoc(ref, {
       schoolProfile: stripUndefinedRecord(profile),
       updatedBy,
-      updatedAt: new Date().toISOString(),
+      updatedAt,
     }, { merge: true });
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'school profile cloud confirm');
@@ -1379,11 +1424,15 @@ export async function writeMarkEntryEnabledFieldToCloud(
     if (typeof enabled !== 'boolean') {
       throw new Error('Phase 1 choke point: markEntryEnabled write rejected — value is not a boolean.');
     }
+    const updatedAt = new Date().toISOString();
+    // Job 14 dual-write: same shape as the profile writer — the
+    // settings leg first, then main_store, same updatedBy/updatedAt.
+    await writeSettingsToCollection({ markEntryEnabled: enabled, updatedBy, updatedAt });
     const ref = doc(db, 'institution', 'main_store');
     await setDoc(ref, {
       markEntryEnabled: enabled,
       updatedBy,
-      updatedAt: new Date().toISOString(),
+      updatedAt,
     }, { merge: true });
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'mark entry cloud confirm');

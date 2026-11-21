@@ -27,6 +27,7 @@
     "test:job10-transactions-split": "tsx scripts/verify-job10-transactions-split.ts",
     "test:job11-marks-split": "tsx scripts/verify-job11-marks-split.ts",
     "test:job13-trash-split": "tsx scripts/verify-job13-trash-split.ts",
+    "test:job14-settings-split": "tsx scripts/verify-job14-settings-split.ts",
     "test:api-admin-500": "tsx scripts/verify-api-admin-500.ts",
     "test:grant-admin": "tsx scripts/verify-grant-admin.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",

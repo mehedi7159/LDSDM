@@ -128,6 +128,9 @@ import {
   studentsCollectionRef,
   readStudentsFromCollection,
   trashCollectionRef,
+  settingsDocRef,
+  readSettingsFromCollection,
+  settingsDocToRemoteData,
   writeScheduleFieldsToCloud,
   staffLeavesCollectionRef,
   transactionsCollectionRef,
@@ -179,7 +182,7 @@ import {
   readPendingConfirms,
   type CloudConfirmResult,
 } from '../services/cloudConfirm';
-import { migrateNoticesToCollection, migrateFieldToCollection, trashCollectionComplete } from '../services/migrationSplit';
+import { migrateNoticesToCollection, migrateFieldToCollection, trashCollectionComplete, migrateSettingsToCollection } from '../services/migrationSplit';
 import type { ScheduleSplitField } from '../services/cloudConfirm';
 import type { ClassesSplitField } from '../services/cloudConfirm';
 import type { AcademicSplitField } from '../services/cloudConfirm';
@@ -2284,6 +2287,22 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // for this, so sync never starts on half-loaded trash state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedTrashCollectionRef = useRef(false);
+
+  // Job 14 (settings split): once the settings/main doc feed has
+  // delivered a profile it is the read source for schoolProfile +
+  // markEntryEnabled; main_store stays the fallback until then.
+  const settingsFromCollectionRef = useRef(false);
+  // Guards the one-time settings backfill against concurrent feed events.
+  const settingsBackfillInFlightRef = useRef(false);
+  // Job 14: the last settings doc the feed delivered (null when the
+  // doc does not exist) — the straggler check compares main_store
+  // settings against it.
+  const lastCollectionSettingsRef = useRef<any>(null);
+  // Job 14: true once the settings feed has delivered its first
+  // snapshot (doc, missing, or error) — the auto-sync guard waits on
+  // it, so sync never starts on half-loaded settings state. Login
+  // verdict and manual force-push do NOT wait on it.
+  const hasLoadedSettingsCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2763,6 +2782,37 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       trashBackfillInFlightRef.current = false;
     }
   };
+
+  // Job 14 one-time backfill: copy the confirmed main_store
+  // schoolProfile / markEntryEnabled into settings/main. Source is the
+  // CONFIRMED main_store state (lastConfirmedRef) — never local state,
+  // which may still hold a value deleted on another device.
+  // Idempotent (setDoc merge on the one doc), so repeat runs write the
+  // same values; a failure only logs — the next snapshot retries, and
+  // dual-write keeps main_store correct. Only fields MISSING from the
+  // settings doc are copied: after takeover the settings doc is the
+  // source, and a stale main_store value must never clobber it (a
+  // stale pre-split tab's profile/switch edit stays visible in
+  // main_store until a new-code device re-saves). Anonymous public
+  // sessions never backfill (they cannot write the settings doc).
+  const backfillSettingsOnce = async (patch?: { schoolProfile?: any; markEntryEnabled?: boolean }) => {
+    if (feedKindRef.current !== 'main') return;
+    if (settingsBackfillInFlightRef.current) return;
+    const col = lastCollectionSettingsRef.current || {};
+    const computed = patch || {
+      ...(lastConfirmedRef.current['schoolProfile'] && typeof lastConfirmedRef.current['schoolProfile'] === 'object' && !col.schoolProfile ? { schoolProfile: lastConfirmedRef.current['schoolProfile'] } : {}),
+      ...(typeof lastConfirmedRef.current['markEntryEnabled'] === 'boolean' && typeof col.markEntryEnabled !== 'boolean' ? { markEntryEnabled: lastConfirmedRef.current['markEntryEnabled'] } : {}),
+    };
+    if (!computed.schoolProfile && typeof computed.markEntryEnabled !== 'boolean') return;
+    settingsBackfillInFlightRef.current = true;
+    try {
+      await migrateSettingsToCollection(computed.schoolProfile, computed.markEntryEnabled);
+    } catch (err: any) {
+      console.warn('Settings backfill notice:', err?.message || err);
+    } finally {
+      settingsBackfillInFlightRef.current = false;
+    }
+  };
   // Job 2: one schedule field from a remote snapshot. A collection
   // feed's own snapshots always apply (its handler decides when an
   // empty snapshot is real — see startScheduleFeeds); main_store
@@ -3200,7 +3250,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // students collection feed (not from a main_store snapshot).
   // opts.fromTrashCollection marks data that came from the Job 13
   // trash collection feed (not from a main_store snapshot).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean; fromStudentsCollection?: boolean; fromTrashCollection?: boolean }) => {
+  // opts.fromSettingsCollection marks data that came from the Job 14
+  // settings/main doc feed.
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean; fromStudentsCollection?: boolean; fromTrashCollection?: boolean; fromSettingsCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -3215,10 +3267,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const trashedIds = collectTrashedIds(data.trashBin, trashBin);
 
     if (data.schoolProfile && !hasQueuedUpsertForField('schoolProfile')) {
-      setSchoolProfile(data.schoolProfile);
-      lastConfirmedRef.current['schoolProfile'] = data.schoolProfile;
-      snapshotApplied['schoolProfile'] = data.schoolProfile;
-      try { localStorage.setItem('schoolProfile', JSON.stringify(data.schoolProfile)); } catch {}
+      // Job 14: main_store profile applies only while the settings
+      // feed has not taken over as the source. The settings feed's
+      // own snapshots always apply (its handler decides when a doc
+      // is complete — see startSettingsFeed).
+      if (opts?.fromSettingsCollection || !settingsFromCollectionRef.current) {
+        setSchoolProfile(data.schoolProfile);
+        lastConfirmedRef.current['schoolProfile'] = data.schoolProfile;
+        snapshotApplied['schoolProfile'] = data.schoolProfile;
+        try { localStorage.setItem('schoolProfile', JSON.stringify(data.schoolProfile)); } catch {}
+        // Job 14: main_store is known now — copy the profile into
+        // settings/main if the doc lacks it (the feed handler's
+        // empty snapshot may have fired before main_store loaded).
+        if (!opts?.fromSettingsCollection) void backfillSettingsOnce();
+      } else {
+        // Job 14: the settings doc is the source, but main_store may
+        // hold a profile the settings doc lacks (written by a stale
+        // pre-split tab, which only writes main_store). Copy it into
+        // settings; the feed then delivers it. A profile the settings
+        // doc already HAS is never overwritten — main_store cannot
+        // tell which of two differing values is newer.
+        const col = lastCollectionSettingsRef.current || {};
+        if (!col.schoolProfile || typeof col.schoolProfile !== 'object') void backfillSettingsOnce({ schoolProfile: data.schoolProfile });
+      }
     }
     if (data.students && Array.isArray(data.students)) {
       // Job 12: main_store students apply only while the collection
@@ -3261,10 +3332,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // Admin global mark-entry switch: only a real boolean overwrites
     // the default — an old cloud doc without the flag leaves it open.
     if (typeof data.markEntryEnabled === 'boolean' && !hasQueuedUpsertForField('markEntryEnabled')) {
-      setMarkEntryEnabled(data.markEntryEnabled);
-      lastConfirmedRef.current['markEntryEnabled'] = data.markEntryEnabled;
-      snapshotApplied['markEntryEnabled'] = data.markEntryEnabled;
-      try { localStorage.setItem('markEntryEnabled', JSON.stringify(data.markEntryEnabled)); } catch {}
+      // Job 14: same gate as the profile — main_store switch applies
+      // only while settings has not taken over; the settings feed's
+      // own snapshots always apply.
+      if (opts?.fromSettingsCollection || !settingsFromCollectionRef.current) {
+        setMarkEntryEnabled(data.markEntryEnabled);
+        lastConfirmedRef.current['markEntryEnabled'] = data.markEntryEnabled;
+        snapshotApplied['markEntryEnabled'] = data.markEntryEnabled;
+        try { localStorage.setItem('markEntryEnabled', JSON.stringify(data.markEntryEnabled)); } catch {}
+        if (!opts?.fromSettingsCollection) void backfillSettingsOnce();
+      } else {
+        // Job 14: rescue a switch the settings doc lacks (same
+        // never-clobber rule as the profile — see above).
+        const col = lastCollectionSettingsRef.current || {};
+        if (typeof col.markEntryEnabled !== 'boolean') void backfillSettingsOnce({ markEntryEnabled: data.markEntryEnabled });
+      }
     }
     if (data.marks && Array.isArray(data.marks)) {
       applyMarksFieldFromRemote(data.marks, opts, snapshotApplied);
@@ -3605,6 +3687,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     let trashUnsubscribe: (() => void) | null = null;
 
+    let settingsUnsubscribe: (() => void) | null = null;
+
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
         try { noticesUnsubscribe(); } catch {}
@@ -3637,6 +3721,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (trashUnsubscribe) {
         try { trashUnsubscribe(); } catch {}
         trashUnsubscribe = null;
+      }
+    };
+
+    const stopSettingsFeed = () => {
+      if (settingsUnsubscribe) {
+        try { settingsUnsubscribe(); } catch {}
+        settingsUnsubscribe = null;
       }
     };
     const stopScheduleFeeds = () => {
@@ -3705,6 +3796,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopStudentsFeed();
 
       stopTrashFeed();
+
+      stopSettingsFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -4417,6 +4510,51 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 14 read-switch: the settings/main doc feed. Once it
+    // delivers a doc with a schoolProfile it becomes the read source
+    // for BOTH fields (settingsFromCollectionRef); a missing or
+    // incomplete doc before that means the backfill has not run yet,
+    // so main_store stays in place (fallback) and the backfill runs.
+    // Every complete snapshot applies — not just the first — so a
+    // profile edited later on another device appears without a
+    // reload. A feed error only settles the auto-sync guard;
+    // main_store keeps showing.
+    const startSettingsFeed = () => {
+      if (cancelled) return;
+      stopSettingsFeed();
+      settingsUnsubscribe = onSnapshot(
+        settingsDocRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const data = snapshot.exists() ? (snapshot.data() as any) : null;
+          lastCollectionSettingsRef.current = data;
+          hasLoadedSettingsCollectionRef.current = true;
+          const payload = settingsDocToRemoteData(data);
+          if (payload.schoolProfile) {
+            // Completeness gate: the settings doc exists with a
+            // profile, so it is the read source for both fields from
+            // now on — and every later snapshot applies too.
+            settingsFromCollectionRef.current = true;
+            applyRemoteData(payload, { fromSettingsCollection: true });
+          } else if (settingsFromCollectionRef.current) {
+            // The settings doc was deleted after takeover (super
+            // admin only) — fall back to main_store instead of
+            // blanking the profile, and copy it back into settings.
+            settingsFromCollectionRef.current = false;
+            void backfillSettingsOnce();
+          } else {
+            void backfillSettingsOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Settings snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store settings keep showing.
+          hasLoadedSettingsCollectionRef.current = true;
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -4448,6 +4586,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
       // Job 13: same for the trash collection.
       startTrashFeed();
+
+      // Job 14: same for the settings doc.
+      startSettingsFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -4709,6 +4850,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // preserve anything edited meanwhile.
     if (!hasLoadedTrashCollectionRef.current) return;
 
+    // Job 14: never auto-sync until the settings doc has delivered
+    // its first snapshot (or errored) — otherwise sync could start
+    // on half-loaded settings state. Explicit profile/switch saves
+    // bypass this (they write directly), and queued payloads
+    // preserve anything edited meanwhile.
+    if (!hasLoadedSettingsCollectionRef.current) return;
+
     setCloudStatus('syncing');
 
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
@@ -4721,6 +4869,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedTransactionsCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedMarksCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedTrashCollectionRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedSettingsCollectionRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
@@ -5282,7 +5431,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       } catch (colErr: any) {
         console.warn('Students collection read notice (portal keeps main_store students):', colErr?.message || colErr);
       }
-      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments, remarks, marks, students }));
+
+      // Job 14: the portal's schoolProfile comes from settings/main
+      // when it has a profile; main_store stays the fallback until
+      // the backfill (a settings read failure also falls back, never
+      // breaks the rebuild). The builder's output is unchanged.
+      let schoolProfile = (data as any).schoolProfile;
+      try {
+        const settings = await readSettingsFromCollection();
+        if (settings && settings.schoolProfile && typeof settings.schoolProfile === 'object') schoolProfile = settings.schoolProfile;
+      } catch (colErr: any) {
+        console.warn('Settings read notice (portal keeps main_store profile):', colErr?.message || colErr);
+      }
+      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments, remarks, marks, students, schoolProfile }));
     } catch (pubErr: any) {
       console.warn('Public portal rebuild notice:', pubErr?.message || pubErr);
     }
