@@ -47,7 +47,9 @@
     "test:roll-single-source": "tsx scripts/verify-roll-single-source.ts",
     "test:fee-highimpact-shared": "tsx scripts/verify-fee-highimpact-shared.ts",
     "test:student-add-cloud-badge": "tsx scripts/verify-student-add-cloud-badge.ts",
-    "test:auto-snapshot-trigger": "tsx scripts/verify-auto-snapshot-trigger.ts"
+    "test:auto-snapshot-trigger": "tsx scripts/verify-auto-snapshot-trigger.ts",
+    "test:pass-rate-unify": "tsx scripts/verify-pass-rate-unify.ts",
+    "test:pass-rate-analytics": "tsx scripts/verify-pass-rate-analytics.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

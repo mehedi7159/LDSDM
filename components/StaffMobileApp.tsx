@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
-import { calculateSubjectGrade } from '../services/gradingEngine';
+import { calculateSubjectGrade, calcPassRate } from '../services/gradingEngine';
 import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
 import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
 import { resolveGuardianChildren } from '../services/guardianScope';
@@ -1643,7 +1643,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     const appeared = rows.filter(r => r.has);
     const passed = appeared.filter(r => !r.isFail);
     const avgGpa = appeared.length > 0 ? appeared.reduce((s, r) => s + r.gpa, 0) / appeared.length : 0;
-    const passRate = appeared.length > 0 ? Math.round((passed.length / appeared.length) * 100) : 0;
+    const passRate = calcPassRate(passed.length, appeared.length);
     const sorted = [...rows].sort((a, b) => b.gpa - a.gpa || b.totalMarks - a.totalMarks);
     return { exam, rows: sorted, appeared: appeared.length, passed: passed.length, failed: appeared.length - passed.length, avgGpa, passRate };
   }, [exams, marks, classStudents, classSubjects]);

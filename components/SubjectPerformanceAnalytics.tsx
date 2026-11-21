@@ -30,7 +30,8 @@ import {
   Cell 
 } from 'recharts';
 import { Subject, Student, MarkRecord, Exam, SchoolClass } from '../types';
-import { calculateGrade } from '../services/utils';
+import { calculateGrade, calculateTotalGPA } from '../services/utils';
+import { calcPassRate } from '../services/gradingEngine';
 import { Language } from '../services/translations';
 
 interface SubjectPerformanceAnalyticsProps {
@@ -386,8 +387,33 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
     const weakest = (sortedByWeak || []).filter(s => s && (s.failRate > 0 || s.avgScorePercent < 55)).slice(0, 4);
     const weakestFinal = weakest.length > 0 ? weakest : (sortedByWeak || []).slice(0, 3);
 
-    const overallPass = globalCount > 0 ? (globalPassed / globalCount) * 100 : 0;
+    // Overall pass rate: student-level for ONE exam — the same definition
+    // the dashboard, reports and exam results use (Fix #5): evaluated = a
+    // real, active student with at least one mark in this exam; passed =
+    // their total result is not a fail, via calculateTotalGPA (a missing
+    // core-subject mark fails them, so "no failed mark" alone is NOT a
+    // pass). Per-subject rates above stay subject-level: a subject's rate
+    // is passed-marks / total-marks in that subject. With scope 'all'
+    // there is no single exam, so the overall stays the mark-level figure
+    // it always was.
     const overallAvg = globalCount > 0 ? globalTotalScore / globalCount : 0;
+    let overallPass: number;
+    if (effectiveExamId !== 'ALL') {
+      const evaluatedStudentIds = Array.from(new Set(markDetails.map(md => md.studentId))).filter(stId => {
+        const st = studentMap.get(stId);
+        return !!st && st.status === 'Active' && !st.isFormer;
+      });
+      let studentPassed = 0;
+      evaluatedStudentIds.forEach(stId => {
+        const student = studentMap.get(stId)!;
+        const classSubjects = subjects.filter(s => s.classLevel === student.classLevel);
+        const stats = calculateTotalGPA(classSubjects, marks, stId, effectiveExamId, student.group, exams);
+        if (!stats.isFail) studentPassed++;
+      });
+      overallPass = calcPassRate(studentPassed, evaluatedStudentIds.length);
+    } else {
+      overallPass = globalCount > 0 ? (globalPassed / globalCount) * 100 : 0;
+    }
 
     return {
       aggregatedSubjects: statsList,

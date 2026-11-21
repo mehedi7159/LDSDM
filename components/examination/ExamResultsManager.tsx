@@ -117,11 +117,24 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
 
     const activeExamMarks = marks.filter(m => m.examId === activeExam.id);
     const activeStudentIds = Array.from(new Set(activeExamMarks.map(m => m.studentId)));
-    
+
+    // Evaluated = a real, active student with at least one mark in this
+    // exam — the same universe the dashboard and reports count. Mark
+    // rows whose student record is gone (deleted students leave orphan
+    // marks behind) count in NEITHER the numerator nor the denominator:
+    // on live data the old denominator was 101 mark-holder IDs (19
+    // orphans) while the dashboard counted 82, so the same First Term
+    // showed 5.9% here and 7.3% there. The pass loop already skipped
+    // unresolvable IDs; only the count was wrong.
+    const evaluatedStudentIds = activeStudentIds.filter(stId => {
+      const st = students.find(s => s.id === stId);
+      return !!st && st.status === 'Active' && !st.isFormer;
+    });
+
     let passCount = 0;
     let gpa5 = 0;
 
-    activeStudentIds.forEach(stId => {
+    evaluatedStudentIds.forEach(stId => {
       const student = students.find(s => s.id === stId);
       if (!student) return;
       const classSubjects = subjects.filter(s => s.classLevel === student.classLevel);
@@ -132,7 +145,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       }
     });
 
-    const evaluatedStudentsCount = activeStudentIds.length;
+    const evaluatedStudentsCount = evaluatedStudentIds.length;
     const passRate = calcPassRate(passCount, evaluatedStudentsCount);
 
     return {
