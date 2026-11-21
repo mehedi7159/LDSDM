@@ -9,8 +9,10 @@
  * LDSDM-job1-go-ahead-2026-11-09.md):
  *  - New path is institutions/inst_madrasah_primary/notices/{id}, built
  *    from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeNoticesFieldToCloud writes the new collection AND
- *    main_store in one try; the old main_store write is NOT stopped.
+ *  - Collection-only write (step 5, 21 Nov 2026, supersedes the
+ *    dual-write below): writeNoticesFieldToCloud writes the new
+ *    collection ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. See scripts/verify-job1-step5-notices.ts.
  *  - Deletes + restores of notices also reach the new collection, so a
  *    deleted notice can never be resurrected by the notices feed.
  *  - Read-switch: the notices feed (onSnapshot on the new collection) is
@@ -114,15 +116,15 @@ check('migrateNoticesToCollection uses writeBatch + setDoc merge, doc id = recor
 
 console.log('--- Dual-write (source checks) ---');
 
-check('writeNoticesFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writeNoticesFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeNoticesFieldToCloud');
   assert.ok(start > -1, 'writeNoticesFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeNoticesToCollection'), 'must write the new collection');
-  assert.ok(body.includes("writeFieldToCloud('notices'"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeNoticesToCollection') < body.indexOf("writeFieldToCloud('notices'"), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes("writeFieldToCloud('notices'"), 'must NOT write main_store anymore (step 5, 21 Nov 2026)');
+  assert.ok(body.indexOf('writeNoticesToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
 });
 
 check('writeNoticesToCollection asserts ids via the shared choke point', () => {
@@ -246,9 +248,9 @@ check('rebuildPublicPortalFromCloud reads notices from the new collection, main_
   assert.ok(body.includes('buildPublicPortalData({ ...data, notices })') || body.includes('buildPublicPortalData({'), 'portal rebuild must pass the chosen notices into buildPublicPortalData');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes notices through the dual-write writer', () => {
+check('pushDiffToCloud still writes notices through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('notices: writeNoticesFieldToCloud'), 'auto-sync must still carry notices through writeNoticesFieldToCloud');
 });
