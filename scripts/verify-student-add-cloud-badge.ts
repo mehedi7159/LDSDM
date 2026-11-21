@@ -165,7 +165,11 @@ console.log('--- Badge render + confirm-clear paths unchanged ---');
 
 check('StudentManager still badges a row whose id is queued', () => {
   const src = readSource('components/StudentManager.tsx');
-  assert.ok(src.includes("isRecordUnconfirmed('students', student.id)"), 'student rows must badge on the queued key');
+  // 21 Nov 2026 v2: rows badge via the isStudentRowBadged predicate
+  // (queue check OR recent-save window) instead of the raw queue check.
+  assert.ok(src.includes('isStudentRowBadged(student.id)'), 'student rows must badge via isStudentRowBadged');
+  const at = src.indexOf('isStudentRowBadged');
+  assert.ok(src.slice(at, at + 300).includes("isRecordUnconfirmed('students', id)"), 'the predicate must still badge on the queued key');
   assert.ok(src.includes('<UnconfirmedBadge'), 'UnconfirmedBadge must still render');
 });
 

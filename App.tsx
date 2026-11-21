@@ -76,6 +76,7 @@ const AppContent = () => {
     currentUser,
     userRole,
     effectiveRoles,
+    institutionRoles,
     authClaims,
     authRole,
     currentMember,
@@ -386,7 +387,12 @@ const AppContent = () => {
         clearTimeout(debounceRedirectRef.current);
       }
     };
-  }, [activeTab, authUser, authClaims, authRole, isAdmin, isSuperAdmin, currentMember, isAuthReady, isNonAdminRole, homeTab]);
+    // The guard reads the role through currentUser / userRole /
+    // effectiveRoles / institutionRoles (hasPermission's CustomRole
+    // layer), so all four are deps: without them a §10 click while
+    // `users` is still hydrating schedules the bounce on stale values
+    // and nothing re-runs the effect when the principal's role lands.
+  }, [activeTab, authUser, authClaims, authRole, isAdmin, isSuperAdmin, currentMember, isAuthReady, isNonAdminRole, homeTab, currentUser, userRole, effectiveRoles, institutionRoles]);
   
   // States for Result switching
   const [resultMode, setResultMode] = useState<'individual' | 'class'>('individual');
