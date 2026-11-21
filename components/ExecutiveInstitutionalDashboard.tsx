@@ -146,7 +146,11 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
       };
     });
 
-    const evaluated = results.filter(r => r.totalMarks > 0);
+    // Evaluated = at least one mark record in this exam (Fix #5's
+    // definition, same as the dashboard and reports). totalMarks > 0
+    // excluded a student who sat the exam and scored 0 in every
+    // subject — the dashboard counts them as evaluated (and failed).
+    const evaluated = results.filter(r => marks.some(m => m.studentId === r.student.id && m.examId === selectedExam.id));
     const passed = evaluated.filter(r => !r.isFail).length;
     const failed = evaluated.length - passed;
     const passRate = evaluated.length > 0 ? ((passed / evaluated.length) * 100).toFixed(1) : '0';
