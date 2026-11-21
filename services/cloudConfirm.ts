@@ -526,9 +526,11 @@ export async function writeNoticesFieldToCloud(
       assertUpsertRecords('notices', list as any, fieldKeyFn('notices'));
       await writeNoticesToCollection(list);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldToCloud('notices', list, updatedBy);
+    // Step 5 (21 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new notices go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted notice.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'notices cloud confirm');
 }
