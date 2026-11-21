@@ -503,11 +503,68 @@ export async function writeStudentsFieldToCloud(
   students: Student[],
   updatedBy: string
 ): Promise<void> {
+  const write = async (): Promise<void> => {
+    const list = students || [];
+    // Job 12 dual-write, main_store FIRST (unlike Jobs 1/2/7, which
+    // write the collection first): writeFieldsToCloud runs the SAME
+    // findDegradingStudentIds check against the current main_store
+    // list and throws before anything is written — so a
+    // public-shaped record can never land in the new collection
+    // first and then fail the main_store leg. A failure anywhere
+    // fails the whole write, so the payload queue + retry replay
+    // both legs. The collection leg is setDoc merge per record, so
+    // it can never shrink the list; the tripwire lives in
+    // writeDeleteFieldsToCloud, where the SAME assertTripwire runs
+    // before any students collection doc is deleted.
+    await writeFieldsToCloud({ students }, updatedBy);
+    if (list.length > 0) {
+      assertUpsertRecords('students', list as any, fieldKeyFn('students'));
+      await writeStudentsToCollection(list);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+  };
   await withTimeout(
-    writeFieldToCloud('students', students, updatedBy),
+    write(),
     STUDENTS_CONFIRM_TIMEOUT_MS,
     'students cloud confirm'
   );
+}
+
+/**
+ * Job 12 (students split): the new home of students. The path is built
+ * from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded — same shape
+ * as Job 1's notices collection.
+ */
+export function studentsCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'students');
+}
+
+/** Read all student docs from the new collection (empty array when none). */
+export async function readStudentsFromCollection(): Promise<Student[]> {
+  const snap = await getDocs(studentsCollectionRef());
+  return snap.docs.map((d) => {
+    const data = d.data() as Student;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
+/** Write student docs into the new collection (setDoc merge by id). */
+export async function writeStudentsToCollection(students: Student[]): Promise<void> {
+  const col = studentsCollectionRef();
+  for (const s of students || []) {
+    if (!s || !s.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(s.id)), stripUndefinedRecord(s), { merge: true });
+  }
+}
+
+/** Delete student docs from the new collection (missing docs are a no-op). */
+export async function deleteStudentsFromCollection(ids: string[]): Promise<void> {
+  const col = studentsCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
 }
 
 /**
@@ -1443,6 +1500,11 @@ export async function writeDeleteFieldsToCloud(
         // collection — delete their docs there too, so a deleted mark
         // can never be resurrected by the marks feed.
         await deleteMarksFromCollection(removal.ids);
+      } else if (removal.field === 'students') {
+        // Job 12 (students split): students also live in the new
+        // collection — delete their docs there too, so a trashed student
+        // can never be resurrected by the students feed.
+        await deleteStudentsFromCollection(removal.ids);
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1536,6 +1598,10 @@ export async function writeTrashOpToCloud(
         // Job 11: same for a restored mark record — otherwise the
         // restore would stay invisible until a main_store read.
         await writeMarksToCollection(liveRecords as MarkRecord[]);
+      } else if (field === 'students') {
+        // Job 12: same for a restored student — otherwise the restore
+        // would stay invisible until a main_store read.
+        await writeStudentsToCollection(liveRecords as Student[]);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a

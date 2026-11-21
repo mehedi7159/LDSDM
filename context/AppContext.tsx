@@ -125,6 +125,8 @@ import {
   remarksCollectionRef,
   readRemarksFromCollection,
   promotionHistoryCollectionRef,
+  studentsCollectionRef,
+  readStudentsFromCollection,
   writeScheduleFieldsToCloud,
   staffLeavesCollectionRef,
   transactionsCollectionRef,
@@ -2243,6 +2245,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // for this, so sync never starts on half-loaded marks state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedMarksCollectionRef = useRef(false);
+  // Job 12 (students split): same shape as Job 1, one field — once
+  // the students collection feed has delivered docs it is the read
+  // source; main_store stays the fallback until then.
+  const studentsFromCollectionRef = useRef(false);
+  // Job 12: guards the one-time students backfill against concurrent feed events.
+  const studentsBackfillInFlightRef = useRef(false);
+  // Job 12: ids already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledStudentsIdsRef = useRef<Set<string>>(new Set());
+  // Job 12: the last docs the students collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionStudentsRef = useRef<Student[]>([]);
+  // Job 12: true once the students feed has delivered its first
+  // snapshot (docs, empty, or error) — auto-sync waits for this, so
+  // sync never starts on half-loaded students state. Login verdict
+  // and manual force-push do NOT wait on it.
+  const hasLoadedStudentsCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2673,6 +2692,33 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       transactionsBackfillInFlightRef.current = false;
     }
   };
+
+  // Job 12 one-time backfill: copy main_store students into the new
+  // collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // student deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct. Records are
+  // copied as-is (demo records included — applyRemoteData filters
+  // them on read); no student data is cleaned, repaired or invented
+  // here (roll / duplicates are priority #12, a separate job).
+  const backfillStudentsOnce = async (source?: Student[]) => {
+    if (studentsBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['students'] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledStudentsIdsRef.current.has(String(r.id)));
+    if (pending.length === 0) return;
+    studentsBackfillInFlightRef.current = true;
+    try {
+      await migrateFieldToCollection('students', pending);
+      pending.forEach((r) => backfilledStudentsIdsRef.current.add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Students backfill notice:', err?.message || err);
+    } finally {
+      studentsBackfillInFlightRef.current = false;
+    }
+  };
+
   // Job 2: one schedule field from a remote snapshot. A collection
   // feed's own snapshots always apply (its handler decides when an
   // empty snapshot is real — see startScheduleFeeds); main_store
@@ -3106,7 +3152,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // transactions collection feed.
   // opts.fromMarksCollection marks data that came from the Job 11
   // marks collection feed (not from a main_store snapshot).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean }) => {
+  // opts.fromStudentsCollection marks data that came from the Job 12
+  // students collection feed (not from a main_store snapshot).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean; fromTransactionsCollection?: boolean; fromMarksCollection?: boolean; fromStudentsCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -3135,14 +3183,36 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('schoolProfile', JSON.stringify(data.schoolProfile)); } catch {}
     }
     if (data.students && Array.isArray(data.students)) {
-      const cleanStudents = data.students
-        .filter(s => !trashedIds.has(String(s.id)))
-        .filter(s => !s.id?.startsWith('demo-std-') && s.id !== 'st-1' && s.id !== 'st-2')
-        .map(hydrateStudentLifecycle);
-      setStudents(cleanStudents);
-      lastConfirmedRef.current['students'] = cleanStudents;
-      snapshotApplied['students'] = cleanStudents;
-      try { localStorage.setItem('students', JSON.stringify(cleanStudents)); } catch {}
+      // Job 12: main_store students apply only while the collection
+      // feed has not taken over as the source. The collection feed's
+      // own snapshots always apply (its handler decides when an empty
+      // snapshot is real — see startStudentsFeed). The cleanup
+      // (trash-filter, demo-record filter, hydrateStudentLifecycle)
+      // is unchanged on both sources.
+      if (opts?.fromStudentsCollection || !studentsFromCollectionRef.current) {
+        const cleanStudents = data.students
+          .filter(s => !trashedIds.has(String(s.id)))
+          .filter(s => !s.id?.startsWith('demo-std-') && s.id !== 'st-1' && s.id !== 'st-2')
+          .map(hydrateStudentLifecycle);
+        setStudents(cleanStudents);
+        lastConfirmedRef.current['students'] = cleanStudents;
+        snapshotApplied['students'] = cleanStudents;
+        try { localStorage.setItem('students', JSON.stringify(cleanStudents)); } catch {}
+        // Job 12: main_store is known now — copy any not-yet-backfilled
+        // students into the new collection (the feed handler's empty
+        // snapshot may have fired before main_store loaded).
+        if (!opts?.fromStudentsCollection) void backfillStudentsOnce();
+      } else {
+        // Job 12: the collection is the source, but main_store may hold
+        // stragglers (written by a stale pre-split tab, which only
+        // writes main_store). Copy them into the collection; the feed
+        // then delivers them. Nothing is lost, nothing is wiped.
+        // Trashed records are never rescued — the trash filter above
+        // is the same one that hides them from the list.
+        const colIds = new Set((lastCollectionStudentsRef.current || []).map((s) => String(s.id)));
+        const stragglers = data.students.filter((s) => s && s.id && !trashedIds.has(String(s.id)) && !colIds.has(String(s.id)));
+        if (stragglers.length > 0) void backfillStudentsOnce(stragglers);
+      }
     }
     if (data.subjects && Array.isArray(data.subjects)) {
       applyAcademicFieldFromRemote('subjects', data.subjects, opts, snapshotApplied);
@@ -3464,6 +3534,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let leavesUnsubscribe: (() => void) | null = null;
     let transactionsUnsubscribe: (() => void) | null = null;
     let marksUnsubscribe: (() => void) | null = null;
+    let studentsUnsubscribe: (() => void) | null = null;
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -3486,6 +3557,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
     };
 
+    const stopStudentsFeed = () => {
+      if (studentsUnsubscribe) {
+        try { studentsUnsubscribe(); } catch {}
+        studentsUnsubscribe = null;
+      }
+    };
     const stopScheduleFeeds = () => {
       for (const unsub of scheduleUnsubscribes) {
         try { unsub(); } catch {}
@@ -3549,6 +3626,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopLeavesFeed();
       stopTransactionsFeed();
       stopMarksFeed();
+      stopStudentsFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -4119,6 +4197,76 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 12 read-switch: the students collection feed. Same shape as
+    // Job 1's notices feed — once it delivers docs covering every
+    // confirmed main_store record it becomes the read source; an empty
+    // snapshot before that means the backfill has not run yet, so
+    // main_store stays in place (fallback) and the backfill runs. An
+    // empty snapshot AFTER docs existed means every student was
+    // deleted — that empty list applies for real. A feed error only
+    // settles the auto-sync guard; main_store keeps showing.
+    const markStudentsFeedSettled = () => {
+      hasLoadedStudentsCollectionRef.current = true;
+    };
+
+    const startStudentsFeed = () => {
+      if (cancelled) return;
+      stopStudentsFeed();
+      studentsUnsubscribe = onSnapshot(
+        studentsCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as Student;
+            return { ...data, id: (data as any).id || d.id };
+          });
+          lastCollectionStudentsRef.current = docs;
+          markStudentsFeedSettled();
+          if (docs.length > 0) {
+            if (studentsFromCollectionRef.current) {
+              // Job 12: AFTER takeover the collection is the source, so
+              // EVERY later snapshot applies — a record added on another
+              // device appears without a reload, and a record deleted
+              // there disappears too. (Job 3/5 only applied at takeover;
+              // Job 7/8 re-check completeness each time, which leaves a
+              // cross-device delete visible until reload. Firestore
+              // snapshots are consistent, so a missing doc here means a
+              // real delete; a record whose collection leg failed
+              // elsewhere is rescued by the straggler backfill in
+              // applyRemoteData.)
+              applyRemoteData({ students: docs }, { fromStudentsCollection: true });
+            } else {
+              // Take over only when the collection holds every student
+              // the confirmed main_store list knows — a partial
+              // collection (backfill still running) must not hide the
+              // rest. Queued local students survive via
+              // preserveQueuedPayloads, so the check uses the
+              // confirmed list, not local state.
+              const knownIds = new Set(((lastConfirmedRef.current['students'] || []) as Student[]).map((s) => String(s.id)));
+              const colIds = new Set(docs.map((d) => String(d.id)));
+              const complete = [...knownIds].every((id) => colIds.has(id));
+              if (complete) {
+                studentsFromCollectionRef.current = true;
+                applyRemoteData({ students: docs }, { fromStudentsCollection: true });
+              } else {
+                void backfillStudentsOnce();
+              }
+            }
+          } else if (studentsFromCollectionRef.current) {
+            applyRemoteData({ students: [] }, { fromStudentsCollection: true });
+          } else {
+            void backfillStudentsOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Students collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store students keep showing.
+          markStudentsFeedSettled();
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -4145,6 +4293,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startTransactionsFeed();
       // Job 11: same for the marks collection.
       startMarksFeed();
+      // Job 12: same for the students collection.
+      startStudentsFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -4391,6 +4541,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // bypass this (confirmMarksCloudSync writes directly), and
     // queued payloads preserve anything edited meanwhile.
     if (!hasLoadedMarksCollectionRef.current) return;
+    // Job 12: never auto-sync until the students collection has
+    // delivered its first snapshot (or errored) — otherwise sync
+    // could start on half-loaded students state. Explicit students
+    // saves bypass this (confirmStudentsCloudSync writes directly),
+    // and queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedStudentsCollectionRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -4399,6 +4555,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedStudentsCollectionRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedLeavesCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedTransactionsCollectionRef.current) return;
       if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedMarksCollectionRef.current) return;
@@ -4951,7 +5108,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       } catch (colErr: any) {
         console.warn('Marks collection read notice (portal keeps main_store marks):', colErr?.message || colErr);
       }
-      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments, remarks, marks }));
+      // Job 12: the portal's students come from the new collection
+      // when it has docs; main_store students stay the fallback until
+      // the backfill (a collection read failure also falls back, never
+      // breaks the rebuild). The portal OUTPUT is unchanged —
+      // buildPublicPortalData picks the same public fields.
+      let students = (data as any).students;
+      try {
+        const colStudents = await readStudentsFromCollection();
+        if (colStudents.length > 0) students = colStudents;
+      } catch (colErr: any) {
+        console.warn('Students collection read notice (portal keeps main_store students):', colErr?.message || colErr);
+      }
+      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments, remarks, marks, students }));
     } catch (pubErr: any) {
       console.warn('Public portal rebuild notice:', pubErr?.message || pubErr);
     }
