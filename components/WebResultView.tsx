@@ -393,7 +393,7 @@ export const WebResultView: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="text-xl font-black text-slate-900">{activeStudentResult.student.name}</h2>
-                        {activeStudentResult.student.nameBn && (
+                        {activeStudentResult.student.name && activeStudentResult.student.nameBn && activeStudentResult.student.name.trim() !== activeStudentResult.student.nameBn.trim() && (
                           <span className="text-sm font-semibold text-slate-500">({activeStudentResult.student.nameBn})</span>
                         )}
                       </div>
@@ -536,7 +536,7 @@ export const WebResultView: React.FC = () => {
                           <td className="py-3 px-4 text-center font-mono text-slate-400">{toBanglaDigits(idx + 1)}</td>
                           <td className="py-3 px-4">
                             <span className="font-bold text-slate-900 block">{row.subject.name}</span>
-                            {row.subject.nameBn && (
+                            {row.subject.name && row.subject.nameBn && row.subject.name.trim() !== row.subject.nameBn.trim() && (
                               <span className="text-[10px] text-slate-400 font-normal">{row.subject.nameBn}</span>
                             )}
                           </td>
@@ -727,7 +727,7 @@ export const WebResultView: React.FC = () => {
                         <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">{toBanglaDigits(getStudentRoll(item.student))}</td>
                         <td className="py-3 px-4 font-bold text-slate-900">
                           {item.student.name}
-                          {item.student.nameBn && (
+                          {item.student.name && item.student.nameBn && item.student.name.trim() !== item.student.nameBn.trim() && (
                             <span className="text-[10px] text-slate-400 block font-normal">{item.student.nameBn}</span>
                           )}
                         </td>
