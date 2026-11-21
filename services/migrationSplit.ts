@@ -14,6 +14,7 @@
  * Job 12: students, 21 Nov 2026).
  * Job 13: trashBin, 21 Nov 2026).
  * Job 14: schoolProfile + markEntryEnabled -> settings/main, 21 Nov 2026).
+ * Job 9: dailyStudentAttendance + dailyStaffAttendance, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -26,7 +27,7 @@
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
  * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
- * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed / startMarksFeed / startStudentsFeed / startTrashFeed / startSettingsFeed).
+ * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed / startMarksFeed / startStudentsFeed / startTrashFeed / startSettingsFeed / startAttendanceFeeds).
  *
  * Job 14 is the exception to the per-record shape: settings/main is a
  * SINGLE document holding two scalar fields, so its backfill writes
@@ -35,7 +36,7 @@
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, marksCollectionRef, studentsCollectionRef, trashCollectionRef, writeSettingsToCollection, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, marksCollectionRef, studentsCollectionRef, trashCollectionRef, writeSettingsToCollection, attendanceCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField, type AttendanceSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
 import type { NoticeItem, RemarkRecord } from '../types';
@@ -155,17 +156,25 @@ export function remarksBackfillPlan(records: RemarkRecord[]): { docs: RemarkReco
  * Job 12 reuses it for 'students' (same shape, one field, doc id =
  * Student.id).
  * Job 13 reuses it for 'trashBin' (same shape — doc id = TrashItem.id).
- * Returns counts. Throws on Firestore failure so the caller can retry.
+ * Job 9 extends it to both attendance fields: same idempotent batch
+ * copy, only the collection and the doc-id rule differ — attendance
+ * docs are keyed by attendanceRecordKey (the record id, or the
+ * derived date_id form when a record carries no id). Returns counts.
+ * Throws on Firestore failure so the caller can retry.
  */
-export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory' | 'staffLeaves' | 'transactions' | 'marks' | 'students' | 'trashBin', records: any[]): Promise<{ written: number; skipped: number }> {
+export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | AttendanceSplitField | 'remarks' | 'promotionHistory' | 'staffLeaves' | 'transactions' | 'marks' | 'students' | 'trashBin', records: any[]): Promise<{ written: number; skipped: number }> {
   const isFeesField = field === 'feeTypes' || field === 'feeStructures';
-  const { docs, skipped } = field === 'remarks' ? remarksBackfillPlan(records) : isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
+  const isAttendance = field === 'dailyStudentAttendance' || field === 'dailyStaffAttendance';
+  const { docs, skipped } = isAttendance ? attendanceBackfillPlan(records, field) : field === 'remarks' ? remarksBackfillPlan(records) : isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
   if (docs.length > 0) {
     // Same id assertion as every confirmed writer — a bad record fails
-    // the backfill loudly instead of being silently dropped.
+    // the backfill loudly instead of being silently dropped. The
+    // attendance plan stamps every doc with an id first, so the
+    // id-based fieldKeyFn holds for both legs.
     assertUpsertRecords(field, docs as any, fieldKeyFn(field), field === 'remarks' ? 'studentId+examId' : 'id');
   }
-  const col = field === 'trashBin' ? trashCollectionRef()
+  const col = isAttendance ? attendanceCollectionRef(field)
+    : field === 'trashBin' ? trashCollectionRef()
     : field === 'students' ? studentsCollectionRef()
     : field === 'marks' ? marksCollectionRef()
     : field === 'staffLeaves' ? staffLeavesCollectionRef()
@@ -283,4 +292,47 @@ export async function migrateSettingsToCollection(profile?: any, markEntryEnable
   if (fields.length === 0) return { written: false, fields: [] };
   await writeSettingsToCollection(patch);
   return { written: true, fields };
+}
+
+/**
+ * Job 9 — the stable key of one attendance record. The record id
+ * when it has one; otherwise the date_id form the plan specifies
+ * (`2026-11-07_ST-12` / `2026-11-07_MDR-T003`) — the same key the
+ * attendance service merges on. '' when the record cannot be keyed
+ * at all (no date or no person).
+ */
+export function attendanceRecordKey(r: any): string {
+  if (!r) return '';
+  if (r.id) return String(r.id);
+  const person = r.studentId || r.staffId;
+  if (r.date && person) return `${r.date}_${person}`;
+  return '';
+}
+
+/**
+ * Job 9 — pure plan step for one attendance field: which docs a
+ * backfill would write. Dedupe by attendanceRecordKey (first copy
+ * wins); a record without an id is stamped with its derived date_id
+ * key, so it still becomes one doc. Skip only records that cannot
+ * be keyed at all. Testable without Firestore. Counts are RAW:
+ * docs + skipped always equals the main_store array length, so the
+ * plan's count check (array length = new collection doc count) holds
+ * whenever records are keyable. Records copy as-is — no date
+ * filtering (a Friday-dated record, if one exists, is copied too;
+ * the holiday rule lives in the register display, not the backfill).
+ */
+export function attendanceBackfillPlan(records: any[], field: AttendanceSplitField): { docs: any[]; skipped: number } {
+  const seen = new Set<string>();
+  const docs: any[] = [];
+  let skipped = 0;
+  for (const r of records || []) {
+    const key = attendanceRecordKey(r);
+    if (!key || seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    docs.push(r && (r as any).id ? r : { ...r, id: key });
+  }
+  return { docs, skipped };
 }

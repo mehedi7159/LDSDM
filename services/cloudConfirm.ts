@@ -348,12 +348,64 @@ async function writeFieldToCloud(
   await writeFieldsToCloud({ [field]: localRecords }, updatedBy, keyFn ? { [field]: keyFn } : undefined);
 }
 
+/**
+ * Job 9 (attendance split): the new home of daily student + staff
+ * attendance. One collection per field, paths built from
+ * CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded — same shape as
+ * Job 2's schedule collections. Doc id is the record id, which is
+ * already in date_id form (`2026-11-07_ST-12`).
+ */
+export type AttendanceSplitField = 'dailyStudentAttendance' | 'dailyStaffAttendance';
+
+export function attendanceCollectionRef(field: AttendanceSplitField) {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, field);
+}
+
+export function dailyStudentAttendanceCollectionRef() {
+  return attendanceCollectionRef('dailyStudentAttendance');
+}
+
+export function dailyStaffAttendanceCollectionRef() {
+  return attendanceCollectionRef('dailyStaffAttendance');
+}
+
+/** Write attendance records into their new collection (setDoc merge by id). */
+export async function writeAttendanceRecordsToCollection(field: AttendanceSplitField, records: any[]): Promise<void> {
+  const col = attendanceCollectionRef(field);
+  for (const r of records || []) {
+    if (!r || !r.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(r.id)), stripUndefinedRecord(r), { merge: true });
+  }
+}
+
+/** Read all docs of one attendance field from its new collection (empty array when none). */
+export async function readAttendanceFieldFromCollection(field: AttendanceSplitField): Promise<any[]> {
+  const snap = await getDocs(attendanceCollectionRef(field));
+  return snap.docs.map((d) => {
+    const data = d.data() as any;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
 export async function writeAttendanceFieldToCloud(
   records: DailyStudentAttendanceRecord[],
   updatedBy: string
 ): Promise<void> {
+  const write = async (): Promise<void> => {
+    const list = records || [];
+    if (list.length > 0) {
+      // Job 9 dual-write: same id assertion as the main_store leg, then
+      // the new collection first. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('dailyStudentAttendance', list as any, fieldKeyFn('dailyStudentAttendance'));
+      await writeAttendanceRecordsToCollection('dailyStudentAttendance', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldToCloud('dailyStudentAttendance', records, updatedBy);
+  };
   await withTimeout(
-    writeFieldToCloud('dailyStudentAttendance', records, updatedBy),
+    write(),
     CONFIRM_TIMEOUT_MS,
     'attendance cloud confirm'
   );
@@ -363,8 +415,19 @@ export async function writeStaffAttendanceFieldToCloud(
   records: DailyStaffAttendanceRecord[],
   updatedBy: string
 ): Promise<void> {
+  const write = async (): Promise<void> => {
+    const list = records || [];
+    if (list.length > 0) {
+      // Job 9 dual-write: same shape as the student leg above.
+      assertUpsertRecords('dailyStaffAttendance', list as any, fieldKeyFn('dailyStaffAttendance'));
+      await writeAttendanceRecordsToCollection('dailyStaffAttendance', list as any);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldToCloud('dailyStaffAttendance', records, updatedBy);
+  };
   await withTimeout(
-    writeFieldToCloud('dailyStaffAttendance', records, updatedBy),
+    write(),
     CONFIRM_TIMEOUT_MS,
     'staff attendance cloud confirm'
   );
