@@ -32,7 +32,7 @@ import {
   FileText
 } from 'lucide-react';
 import { formatNumber, calculateTotalGPA, calculateGrade } from '../../services/utils';
-import { calcPassRate } from '../../services/gradingEngine';
+import { calcExamPassRate } from '../../services/examPassRate';
 import { ExamManager } from '../ExamManager';
 import { MarksEntry } from '../MarksEntry';
 // Phase 5: the marksheet/result sub-views are the heaviest files in this
@@ -77,7 +77,12 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
     hasPermission, 
     isOwnerAdmin, 
     isAdmin, 
-    isSuperAdmin 
+    isSuperAdmin,
+    // The exam selector is shared (AppContext): the KPI header and the
+    // analytics tab follow the same exam as the Dashboard, and the
+    // selection never resets on navigation.
+    selectedExamId,
+    setSelectedExamId
   } = useApp();
 
   const isBn = language === 'bn';
@@ -93,17 +98,19 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
   const [smsClass, setSmsClass] = useState<string>(() => classes[0]?.name || '');
   const [smsCopiedNotice, setSmsCopiedNotice] = useState<string | null>(null);
 
-  // Analytics filter state
-  const [analyticsExamId, setAnalyticsExamId] = useState<string>(() => exams[0]?.id || '');
+  // Analytics filter state (exam itself is the shared selector above)
   const [analyticsClass, setAnalyticsClass] = useState<string>('ALL');
 
-  // Real-time KPI Calculations for Step 6
+  // Real-time KPI Calculations for Step 6 — the SELECTED exam (shared
+  // selector), not the first SCHEDULED / MARKS_ENTRY exam: the old rule
+  // pinned this header to Second Term while the Dashboard selector said
+  // First Term. Counts + rate come from the one shared definition.
   const kpis = useMemo(() => {
     const totalExamsCount = exams.length;
-    const activeExam = exams.find(e => e.status === 'SCHEDULED' || e.status === 'MARKS_ENTRY') || exams[0];
+    const activeExam = exams.find(e => e.id === selectedExamId) || exams[0];
     const totalMarksEntries = marks.length;
 
-    // Calculate pass rate and GPA 5 count in active exam
+    // Calculate pass rate and GPA 5 count in the selected exam
     if (!activeExam) {
       return {
         totalExamsCount,
@@ -115,48 +122,18 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       };
     }
 
-    const activeExamMarks = marks.filter(m => m.examId === activeExam.id);
-    const activeStudentIds = Array.from(new Set(activeExamMarks.map(m => m.studentId)));
-
-    // Evaluated = a real, active student with at least one mark in this
-    // exam — the same universe the dashboard and reports count. Mark
-    // rows whose student record is gone (deleted students leave orphan
-    // marks behind) count in NEITHER the numerator nor the denominator:
-    // on live data the old denominator was 101 mark-holder IDs (19
-    // orphans) while the dashboard counted 82, so the same First Term
-    // showed 5.9% here and 7.3% there. The pass loop already skipped
-    // unresolvable IDs; only the count was wrong.
-    const evaluatedStudentIds = activeStudentIds.filter(stId => {
-      const st = students.find(s => s.id === stId);
-      return !!st && st.status === 'Active' && !st.isFormer;
-    });
-
-    let passCount = 0;
-    let gpa5 = 0;
-
-    evaluatedStudentIds.forEach(stId => {
-      const student = students.find(s => s.id === stId);
-      if (!student) return;
-      const classSubjects = subjects.filter(s => s.classLevel === student.classLevel);
-      const res = calculateTotalGPA(classSubjects, marks, student.id, activeExam.id, student.group, exams);
-      if (!res.isFail) {
-        passCount++;
-        if (res.gpa >= 5.0) gpa5++;
-      }
-    });
-
-    const evaluatedStudentsCount = evaluatedStudentIds.length;
-    const passRate = calcPassRate(passCount, evaluatedStudentsCount);
+    const rate = calcExamPassRate({ students, marks, subjects, exams, examId: activeExam.id });
+    const gpa5 = rate.results.filter(r => !r.isFail && r.gpa >= 5.0).length;
 
     return {
       totalExamsCount,
       activeExamName: isBn ? (activeExam.nameBn || activeExam.name) : activeExam.name,
       totalMarksEntries,
-      passRate,
+      passRate: rate.passRate,
       gpa5Count: gpa5,
-      evaluatedStudentsCount
+      evaluatedStudentsCount: rate.evaluated
     };
-  }, [exams, marks, students, subjects, isBn]);
+  }, [exams, marks, students, subjects, isBn, selectedExamId]);
 
   // Tab definitions
   const tabs = [
@@ -232,48 +209,29 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       .sort((a, b) => (Number(a.roll) || 0) - (Number(b.roll) || 0));
   }, [students, smsClass]);
 
-  // Analytics students calculation
+  // Analytics students calculation — the SELECTED exam (shared selector)
+  // and the ONE shared pass-rate definition per class.
   const analyticsData = useMemo(() => {
-    const examObj = exams.find(e => e.id === analyticsExamId) || exams[0];
+    const examObj = exams.find(e => e.id === selectedExamId) || exams[0];
     if (!examObj) return { classBreakdown: [], topAchievers: [], gpaDistribution: {} };
 
     const classBreakdown = classes.map(cls => {
       const clsStudents = students.filter(s => s.classLevel === cls.name && s.status === 'Active' && !s.isFormer);
-      const clsSubjects = subjects.filter(s => s.classLevel === cls.name);
 
-      // Pass rate counts only evaluated students (at least 1 mark in this
-      // exam); a student with no marks is not evaluated, not a pass or a fail.
-      const evaluatedStudents = clsStudents.filter(st =>
-        marks.some(m => m.studentId === st.id && m.examId === examObj.id)
-      );
-
-      let pass = 0;
-      let fail = 0;
-      let gpa5 = 0;
-      let totalMarksAccum = 0;
-
-      evaluatedStudents.forEach(st => {
-        const res = calculateTotalGPA(clsSubjects, marks, st.id, examObj.id, st.group, exams);
-        if (res.isFail) {
-          fail++;
-        } else {
-          pass++;
-          if (res.gpa >= 5.0) gpa5++;
-        }
-        totalMarksAccum += res.totalMarks;
-      });
+      const rate = calcExamPassRate({ students, marks, subjects, exams, examId: examObj.id, classLevel: cls.name });
+      const gpa5 = rate.results.filter(r => !r.isFail && r.gpa >= 5.0).length;
+      const totalMarksAccum = rate.results.reduce((sum, r) => sum + r.totalMarks, 0);
 
       const total = clsStudents.length;
-      const rate = calcPassRate(pass, evaluatedStudents.length);
       const avgMarks = total > 0 ? (totalMarksAccum / total).toFixed(1) : '0';
 
       return {
         className: cls.name,
         total,
-        pass,
-        fail,
+        pass: rate.passed,
+        fail: rate.failed,
         gpa5,
-        passRate: rate,
+        passRate: rate.passRate,
         avgMarks
       };
     });
@@ -302,7 +260,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       classBreakdown,
       topAchievers: studentRanks
     };
-  }, [exams, analyticsExamId, analyticsClass, classes, students, subjects, marks]);
+  }, [exams, selectedExamId, analyticsClass, classes, students, subjects, marks]);
 
   return (
     <div className="space-y-6">
@@ -363,7 +321,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
             <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'প্রাতিষ্ঠানিক পাশের হার' : 'Avg Pass Rate'}</div>
             <div className="text-xl font-black text-emerald-300 mt-0.5">{kpis.passRate}%</div>
-            <div className="text-[11px] text-emerald-300 font-semibold">{isBn ? 'চলমান পরীক্ষায়' : 'Current Exam'}</div>
+            <div className="text-[11px] text-emerald-300 font-semibold">{isBn ? 'নির্বাচিত পরীক্ষায়' : 'Selected Exam'}</div>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
@@ -726,8 +684,8 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">{isBn ? 'বিশ্লেষণ পরীক্ষা:' : 'Analysis Exam:'}</label>
                   <select 
                     className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    onChange={(e) => setAnalyticsExamId(e.target.value)}
-                    value={analyticsExamId}
+                    onChange={(e) => setSelectedExamId(e.target.value)}
+                    value={selectedExamId}
                   >
                     {exams.map(e => <option key={e.id} value={e.id}>{isBn ? (e.nameBn || e.name) : e.name}</option>)}
                   </select>

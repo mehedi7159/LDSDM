@@ -7,8 +7,8 @@ import {
 import { useApp } from '../context/AppContext';
 import { summarizeStudentRecords, summarizeStaffRecords } from '../services/dailyAttendanceService';
 import { calculateTotalDues, topDueEntries, academicYearFallbackStartMonth } from '../services/studentDuesService';
-import { calculateTotalGPA, formatNumber } from '../services/utils';
-import { calcPassRate } from '../services/gradingEngine';
+import { formatNumber } from '../services/utils';
+import { calcExamPassRate } from '../services/examPassRate';
 
 /**
  * MadrasaReports — the Dashboard Overview's report center.
@@ -54,7 +54,10 @@ export const MadrasaReports: React.FC = () => {
     students = [], subjects = [], marks = [], exams = [],
     transactions = [], feeStructures = [], feeTypes = [], staffLeaves = [], academicYears = [],
     dailyStudentAttendance = [], dailyStaffAttendance = [],
-    language = 'bn', setActiveTab
+    language = 'bn', setActiveTab,
+    // The exam selector is shared (AppContext): this card follows the
+    // Dashboard hero selector instead of always showing the last exam.
+    selectedExamId
   } = useApp();
   const isBn = language === 'bn';
   const num = (v: number) => formatNumber(Math.round(v), isBn ? 'bn' : 'en');
@@ -261,28 +264,26 @@ export const MadrasaReports: React.FC = () => {
     [duesSummary]
   );
 
+  // Latest-exam summary: the SELECTED exam (shared selector), not
+  // exams[last] — the old code always showed Second Term here while the
+  // Dashboard hero selector said First Term, so this card read 23% next
+  // to the pie's 7.3%. Rate + counts come from the one shared definition.
   const latestExamSummary = useMemo(() => {
     try {
-      const exam = exams.length > 0 ? exams[exams.length - 1] : null;
+      const exam = (exams || []).find(e => e.id === selectedExamId) || null;
       if (!exam) return null;
-      const rows = activeStudents
-        .filter(st => marks.some(m => m.studentId === st.id && m.examId === exam.id))
-        .map(st => calculateTotalGPA(
-          subjects.filter(s => s.classLevel === st.classLevel),
-          marks, st.id, exam.id, st.group, exams
-        ));
-      if (rows.length === 0) return { exam, appeared: 0, passRate: 0, avgGpa: 0 };
-      const passed = rows.filter(r => !r.isFail).length;
+      const rate = calcExamPassRate({ students: activeStudents, marks, subjects, exams, examId: exam.id });
+      if (rate.evaluated === 0) return { exam, appeared: 0, passRate: 0, avgGpa: 0 };
       return {
         exam,
-        appeared: rows.length,
-        passRate: calcPassRate(passed, rows.length),
-        avgGpa: rows.reduce((s, r) => s + (r.gpa || 0), 0) / rows.length
+        appeared: rate.evaluated,
+        passRate: rate.passRate,
+        avgGpa: rate.results.reduce((s, r) => s + (r.gpa || 0), 0) / rate.results.length
       };
     } catch {
       return null;
     }
-  }, [exams, marks, subjects, activeStudents]);
+  }, [exams, marks, subjects, activeStudents, selectedExamId]);
 
   // ---------- CLASS COMPARISONS ----------
   const classLevels = useMemo(
@@ -304,20 +305,17 @@ export const MadrasaReports: React.FC = () => {
   }, [classLevels, dailyStudentAttendance, todayIso]);
   const classResults = useMemo(() => {
     try {
-      const exam = exams.length > 0 ? exams[exams.length - 1] : null;
+      const exam = (exams || []).find(e => e.id === selectedExamId) || null;
       if (!exam) return [];
       return classLevels.map(cls => {
-        const clsStudents = activeStudents.filter(s => s.classLevel === cls);
-        const appeared = clsStudents.filter(st => marks.some(m => m.studentId === st.id && m.examId === exam.id));
-        if (appeared.length === 0) return { name: cls, appeared: 0, passRate: null as number | null };
-        const clsSubjects = subjects.filter(s => s.classLevel === cls);
-        const passed = appeared.filter(st => !calculateTotalGPA(clsSubjects, marks, st.id, exam.id, st.group, exams).isFail).length;
-        return { name: cls, appeared: appeared.length, passRate: calcPassRate(passed, appeared.length) };
+        const rate = calcExamPassRate({ students: activeStudents, marks, subjects, exams, examId: exam.id, classLevel: cls });
+        if (rate.evaluated === 0) return { name: cls, appeared: 0, passRate: null as number | null };
+        return { name: cls, appeared: rate.evaluated, passRate: rate.passRate };
       }).sort((a, b) => (b.passRate ?? -1) - (a.passRate ?? -1));
     } catch {
       return [];
     }
-  }, [classLevels, activeStudents, exams, marks, subjects]);
+  }, [classLevels, activeStudents, exams, marks, subjects, selectedExamId]);
   const classDues = useMemo(() => {
     return classLevels.map(cls => {
       const summary = calculateTotalDues(

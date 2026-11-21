@@ -113,19 +113,20 @@ const studentPasses = (id: string) =>
   eq('(1) fixed student-level overall is 25.0%', calcPassRate(passedIds.length, evaluatedIds.length), 25);
 }
 
-// (2) Source checks
+// (2) Source checks — since fix/pass-rate-v2 the single-exam overall no
+// longer builds its own evaluated list: it delegates to the ONE shared
+// calcExamPassRate (services/examPassRate.ts), which embodies the rules
+// checked in (1) above (distinct students with marks, Active only,
+// orphan excluded, partial-marks and all-zero students fail).
+// verify-pass-rate-v2.ts proves the helper itself.
 {
   const src = readSource('components/SubjectPerformanceAnalytics.tsx');
-  check('(2) Analytics imports calcPassRate',
-    src.includes('calcPassRate') && src.includes("from '../services/gradingEngine'"), 'must import calcPassRate from services/gradingEngine');
-  check('(2) Analytics imports calculateTotalGPA',
-    src.includes('calculateTotalGPA') && src.includes("from '../services/utils'"), 'must import calculateTotalGPA from services/utils');
-  check('(2) evaluated list comes from markDetails studentIds, Active only',
-    src.includes('Array.from(new Set(markDetails.map(md => md.studentId)))') && src.includes("st.status === 'Active'"), 'evaluated must be distinct markDetails students filtered to Active');
-  check('(2) pass loop runs calculateTotalGPA for the effective exam',
-    src.includes('calculateTotalGPA(classSubjects, marks, stId, effectiveExamId'), 'pass must come from calculateTotalGPA(classSubjects, marks, stId, effectiveExamId, ...)');
-  check('(2) single-exam overall uses calcPassRate with student counts',
-    src.includes('calcPassRate(studentPassed, evaluatedStudentIds.length)'), 'overallPass must be calcPassRate(studentPassed, evaluatedStudentIds.length)');
+  check('(2) Analytics uses the shared calcExamPassRate',
+    src.includes('calcExamPassRate'), 'must delegate to calcExamPassRate');
+  check('(2) single-exam overall comes from the shared result',
+    src.includes('calcExamPassRate({ students: scopedStudents, marks, subjects, exams, examId: effectiveExamId })'), 'overallPass must come from the shared helper for the effective exam');
+  check('(2) no local evaluated-student list remains',
+    !src.includes('Array.from(new Set(markDetails.map(md => md.studentId)))'), 'the old markDetails evaluated list must be gone');
   check('(2) per-subject rate stays subject-level (eval-based)',
     src.includes('const passRate = (totalPassed / totalAppeared) * 100;'), 'per-subject passRate must stay (totalPassed / totalAppeared)');
   check('(2) scope all keeps the mark-level overall',

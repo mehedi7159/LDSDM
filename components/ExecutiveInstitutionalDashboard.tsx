@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   GraduationCap, 
@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { DashboardNoticeWidget } from './DashboardNoticeWidget';
 import { PageHeader } from './ui/PageHeader';
-import { calculateTotalGPA, formatNumber } from '../services/utils';
+import { formatNumber } from '../services/utils';
+import { calcExamPassRate } from '../services/examPassRate';
 
 interface ExecutiveDashboardProps {
   onNavigate: (tab: string) => void;
@@ -46,18 +47,12 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
     isSuperAdmin, 
     isAdmin, 
     language, 
-    t 
+    t,
+    // The exam selector is shared (AppContext): picking an exam here moves
+    // every pass-rate surface, and it never resets on navigation.
+    selectedExamId,
+    setSelectedExamId
   } = useApp();
-
-  const [selectedExamId, setSelectedExamId] = useState<string>(() => {
-    return exams.length > 0 ? exams[0].id : '';
-  });
-
-  React.useEffect(() => {
-    if (exams.length > 0 && (!selectedExamId || !exams.some(e => e.id === selectedExamId))) {
-      setSelectedExamId(exams[0].id);
-    }
-  }, [exams, selectedExamId]);
 
   const selectedExam = useMemo(() => {
     return exams.find(e => e.id === selectedExamId) || exams[0];
@@ -130,37 +125,26 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
     };
   }, [remarks, selectedExamId]);
 
-  // 3. Academic Health & Pass Rates
+  // 3. Academic Health & Pass Rates — the ONE shared definition
+  // (services/examPassRate, D3 option (k)): the selected exam, evaluated
+  // = an Active student with >= 1 mark in it. The old code counted a
+  // student as evaluated only when totalMarks > 0 (PR #28 fixed that to
+  // marks-presence) but still fed calculateTotalGPA ALL class subjects,
+  // while the Dashboard feeds only the exam-assigned ones — the same
+  // students got different pass/fail verdicts, 7.7% here vs 7.3% there.
   const academicStats = useMemo(() => {
     if (!selectedExam) {
       return { totalAppeared: 0, passed: 0, failed: 0, passRate: '0', avgGpa: '0.00', gpa5Count: 0, topStudents: [] };
     }
 
-    const activeStudents = students.filter(s => s.status === 'Active' && !s.isFormer);
-    const results = activeStudents.map(student => {
-      const classSubs = subjects.filter(s => s.classLevel === student.classLevel);
-      const stats = calculateTotalGPA(classSubs, marks, student.id, selectedExam.id, student.group, exams);
-      return {
-        student,
-        ...stats
-      };
-    });
+    const rate = calcExamPassRate({ students, marks, subjects, exams, examId: selectedExam.id });
+    const gpa5Count = rate.results.filter(r => !r.isFail && r.gpa >= 5.0).length;
 
-    // Evaluated = at least one mark record in this exam (Fix #5's
-    // definition, same as the dashboard and reports). totalMarks > 0
-    // excluded a student who sat the exam and scored 0 in every
-    // subject — the dashboard counts them as evaluated (and failed).
-    const evaluated = results.filter(r => marks.some(m => m.studentId === r.student.id && m.examId === selectedExam.id));
-    const passed = evaluated.filter(r => !r.isFail).length;
-    const failed = evaluated.length - passed;
-    const passRate = evaluated.length > 0 ? ((passed / evaluated.length) * 100).toFixed(1) : '0';
-    const gpa5Count = evaluated.filter(r => !r.isFail && r.gpa >= 5.0).length;
-
-    const totalGpaSum = evaluated.reduce((sum, r) => sum + r.gpa, 0);
-    const avgGpa = evaluated.length > 0 ? (totalGpaSum / evaluated.length).toFixed(2) : '0.00';
+    const totalGpaSum = rate.results.reduce((sum, r) => sum + r.gpa, 0);
+    const avgGpa = rate.evaluated > 0 ? (totalGpaSum / rate.evaluated).toFixed(2) : '0.00';
 
     // Sort by Merit for Top Achievers
-    const sorted = [...evaluated].sort((a, b) => {
+    const sorted = [...rate.results].sort((a, b) => {
       if (a.isFail && !b.isFail) return 1;
       if (!a.isFail && b.isFail) return -1;
       if (b.gpa !== a.gpa) return b.gpa - a.gpa;
@@ -168,10 +152,10 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
     });
 
     return {
-      totalAppeared: evaluated.length,
-      passed,
-      failed,
-      passRate,
+      totalAppeared: rate.evaluated,
+      passed: rate.passed,
+      failed: rate.failed,
+      passRate: rate.passRate.toFixed(1),
       avgGpa,
       gpa5Count,
       topStudents: sorted.slice(0, 5)

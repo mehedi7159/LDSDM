@@ -95,9 +95,14 @@ check('result is a number', () => {
 
 console.log('--- ExamResultsManager KPI: shared fn, no 100.0 fallback ---');
 
-check('KPI uses calcPassRate(passCount, evaluatedStudentsCount)', () => {
+// Since fix/pass-rate-v2 the KPI no longer calls calcPassRate directly:
+// it delegates to the ONE shared calcExamPassRate (services/examPassRate.ts),
+// which calls calcPassRate(passed, evaluated) with the evaluated-only
+// denominator. verify-pass-rate-v2.ts proves the helper itself.
+check('KPI uses the shared calcExamPassRate', () => {
   const src = readSource('components/examination/ExamResultsManager.tsx');
-  assert.ok(src.includes('calcPassRate(passCount, evaluatedStudentsCount)'), 'KPI must call calcPassRate(passCount, evaluatedStudentsCount)');
+  assert.ok(src.includes('calcExamPassRate'), 'KPI must delegate to calcExamPassRate');
+  assert.ok(src.includes('passRate: rate.passRate'), 'KPI passRate must come from the shared result');
 });
 
 check("no '100.0' fallback left anywhere in ExamResultsManager", () => {
@@ -113,8 +118,8 @@ check('class breakdown counts only evaluated students (at least 1 mark in the ex
   const start = src.indexOf('// Analytics students calculation');
   assert.ok(start > -1, 'analytics calculation must exist');
   const body = src.slice(start, src.indexOf('// Top Achievers', start));
-  assert.ok(body.includes('calcPassRate(pass, evaluatedStudents.length)'), 'class rate must be calcPassRate(pass, evaluatedStudents.length)');
-  assert.ok(body.includes('marks.some(m => m.studentId === st.id && m.examId === examObj.id)'), 'evaluated must mean at least 1 mark in this exam');
+  assert.ok(body.includes('calcExamPassRate'), 'class rate must come from the shared calcExamPassRate');
+  assert.ok(body.includes('classLevel: cls.name'), 'class rate must be computed per class');
 });
 
 check('class breakdown no longer divides by all students in the class', () => {
@@ -126,9 +131,9 @@ check('class breakdown no longer divides by all students in the class', () => {
 
 console.log('--- Dashboard: header + class cards share the function ---');
 
-check('Dashboard header uses calcPassRate(passed, totalEvaluated)', () => {
+check('Dashboard header uses the shared calcExamPassRate', () => {
   const src = readSource('components/Dashboard.tsx');
-  assert.ok(src.includes('calcPassRate(passed, totalEvaluated)'), 'header must call calcPassRate(passed, totalEvaluated)');
+  assert.ok(src.includes('calcExamPassRate'), 'header must delegate to calcExamPassRate');
   assert.ok(!src.includes('Number(((passed / totalEvaluated) * 100).toFixed(1))'), 'old inline header formula must be gone');
 });
 
@@ -140,15 +145,15 @@ check('Dashboard class cards use calcPassRate(clsPassed, clsEvaluated)', () => {
 
 console.log('--- MadrasaReports: latest summary + class results share the function ---');
 
-check('latest exam summary uses calcPassRate(passed, rows.length)', () => {
+check('latest exam summary uses the shared calcExamPassRate', () => {
   const src = readSource('components/MadrasaReports.tsx');
-  assert.ok(src.includes('calcPassRate(passed, rows.length)'), 'latest summary must call calcPassRate(passed, rows.length)');
+  assert.ok(src.includes('calcExamPassRate'), 'latest summary must delegate to calcExamPassRate');
   assert.ok(!src.includes('Math.round((passed / rows.length) * 100)'), 'old integer-rounded summary formula must be gone');
 });
 
-check('class results use calcPassRate(passed, appeared.length)', () => {
+check('class results use the shared calcExamPassRate', () => {
   const src = readSource('components/MadrasaReports.tsx');
-  assert.ok(src.includes('calcPassRate(passed, appeared.length)'), 'class results must call calcPassRate(passed, appeared.length)');
+  assert.ok(src.includes('calcExamPassRate'), 'class results must delegate to calcExamPassRate');
   assert.ok(!src.includes('Math.round((passed / appeared.length) * 100)'), 'old integer-rounded class formula must be gone');
 });
 

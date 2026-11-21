@@ -49,7 +49,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     classes = [],
     exams = [],
     subjects = [],
-    marks = []
+    marks = [],
+    // The exam selector is shared (AppContext): the public portal follows
+    // the same exam as the Dashboard instead of always showing First Term.
+    selectedExamId,
+    setSelectedExamId
   } = useApp();
   const { showSuccess, showError } = useTheme();
 
@@ -74,8 +78,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   }, [authDeniedMessage]);
 
 
-  // Public Result Search State
-  const [selectedExamId, setSelectedExamId] = useState<string>(() => exams[0]?.id || '');
+  // Public Result Search State (exam itself is the shared selector above)
   const [searchStudentQuery, setSearchStudentQuery] = useState('');
   const [searchedStudent, setSearchedStudent] = useState<any>(null);
   const [hasSearched, setHasSearched] = useState(false);

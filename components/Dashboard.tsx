@@ -61,8 +61,8 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
-import { calculateTotalGPA } from '../services/utils';
 import { calcPassRate } from '../services/gradingEngine';
+import { calcExamPassRate } from '../services/examPassRate';
 import { classNamesMatch } from '../services/classNames';
 import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
@@ -446,7 +446,11 @@ export const Dashboard = () => {
     t, 
     language = 'bn', 
     setIsRecoveryModalOpen,
-    setActiveTab
+    setActiveTab,
+    // The exam selector is shared (AppContext): every pass-rate surface
+    // reads this one id, so it never resets on navigation.
+    selectedExamId,
+    setSelectedExamId
   } = useApp();
 
   // Academic Year State
@@ -455,7 +459,6 @@ export const Dashboard = () => {
     return currentYearObj?.name || schoolProfile?.academicYear || new Date().getFullYear().toString();
   });
 
-  const [selectedExamId, setSelectedExamId] = useState<string>('All');
   const [selectedClass, setSelectedClass] = useState<string>('All');
   // Top-level dashboard split (owner directive): 'overview' = whole-madrasa
   // monitoring + reports; 'action' = AI Master advisor + live to-do list.
@@ -489,21 +492,21 @@ export const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Default exam selector sync
+  // If the academic-year filter changes (or the shared exam changes) and
+  // the shared exam is not in that year, fall back to the year's first
+  // exam — the hero selector only lists this year's exams.
   useEffect(() => {
-    if (exams.length > 0 && (!selectedExamId || selectedExamId === 'All')) {
-      const yearExams = (exams || []).filter(e => 
-        selectedAcademicYear === 'ALL' || 
-        !e.academicYear || 
-        e.academicYear === selectedAcademicYear
-      );
-      if (yearExams.length > 0) {
-        setSelectedExamId(yearExams[0].id);
-      } else {
-        setSelectedExamId(exams[0]?.id || 'All');
-      }
+    if (!selectedExamId) return;
+    const yearExams = (exams || []).filter(e =>
+      selectedAcademicYear === 'ALL' ||
+      !e.academicYear ||
+      e.academicYear === selectedAcademicYear
+    );
+    if (yearExams.length > 0 && !yearExams.some(e => e.id === selectedExamId)) {
+      setSelectedExamId(yearExams[0].id);
     }
-  }, [exams, selectedAcademicYear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exams, selectedAcademicYear, selectedExamId]);
 
   // =========================================================================
   // GRANULAR, TARGETED MEMOIZED METRICS COMPUTATIONS
@@ -703,72 +706,48 @@ export const Dashboard = () => {
       ? activeStudents
       : activeStudents.filter(s => s && classNamesMatch(s.classLevel, selectedClass));
 
-    const effectiveExamId = selectedExamId === 'All' 
-      ? (yearExams[0]?.id || '') 
-      : selectedExamId;
+    // One shared pass-rate definition (services/examPassRate, D3 option
+    // (k)): the selected exam, evaluated = an Active student with >= 1
+    // mark in it, 0 = fail, no-marks students excluded. The pie, the
+    // header badge, the class cards, the top/at-risk lists and every other
+    // surface read this same result, so one exam shows one rate.
+    const examRate = selectedExamId
+      ? calcExamPassRate({
+          students: effectiveTargetStudents,
+          marks,
+          subjects,
+          exams,
+          examId: selectedExamId,
+        })
+      : { evaluated: 0, passed: 0, failed: 0, passRate: 0, results: [] as Array<any> };
 
-    let passed = 0;
-    let failed = 0;
+    const passed = examRate.passed;
+    const failed = examRate.failed;
     const gradeCounts: Record<string, number> = { 'A+': 0, 'A': 0, 'A-': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
-    const performers: Array<any> = [];
+    const performers: Array<any> = examRate.results.map(r => {
+      if (gradeCounts[r.grade] !== undefined) {
+        gradeCounts[r.grade]++;
+      }
+      return {
+        id: r.student.id,
+        name: r.student.name,
+        nameBn: r.student.nameBn,
+        roll: r.student.roll,
+        studentId: r.student.studentId || '',
+        gpa: r.gpa,
+        grade: r.grade,
+        isFail: r.isFail,
+        group: r.student.group,
+        classLevel: r.student.classLevel,
+        totalMarks: r.totalMarks,
+        failCount: r.failCount
+      };
+    });
 
-    if (effectiveExamId) {
-      effectiveTargetStudents.forEach(student => {
-        if (!student) return;
-        const hasMarks = selectedExamId === 'All'
-          ? (marks || []).some(m => m && m.studentId === student.id)
-          : (marks || []).some(m => m && m.studentId === student.id && m.examId === effectiveExamId);
-
-        if (!hasMarks) return;
-
-        const classSubjectsInThisClass = (subjects || []).filter(s => s && classNamesMatch(s.classLevel, student.classLevel));
-        const subjectsAssignedToThisExam = selectedExamId === 'All'
-          ? classSubjectsInThisClass
-          : classSubjectsInThisClass.filter(s => s.examIds && s.examIds.includes(effectiveExamId));
-        
-        const anySubjectAssigned = subjectsAssignedToThisExam.length > 0;
-        const validSubjects = classSubjectsInThisClass.filter(s => {
-          const matchesGroup = !s.group || s.group === 'All' || s.group === student.group;
-          if (!matchesGroup) return false;
-          if (anySubjectAssigned) return s.examIds && s.examIds.includes(effectiveExamId);
-          return true;
-        });
-
-        if (validSubjects.length === 0) return;
-
-        const stats = calculateTotalGPA(validSubjects, marks, student.id, effectiveExamId, student.group, exams);
-        
-        if (stats.isFail) {
-          failed++;
-        } else {
-          passed++;
-        }
-
-        if (gradeCounts[stats.grade] !== undefined) {
-          gradeCounts[stats.grade]++;
-        }
-
-        performers.push({
-          id: student.id,
-          name: student.name,
-          nameBn: student.nameBn,
-          roll: student.roll,
-          studentId: student.studentId || '',
-          gpa: stats.gpa,
-          grade: stats.grade,
-          isFail: stats.isFail,
-          group: student.group,
-          classLevel: student.classLevel,
-          totalMarks: stats.totalMarks,
-          failCount: stats.failCount
-        });
-      });
-    }
-
-    const totalEvaluated = passed + failed;
-    const passRate = calcPassRate(passed, totalEvaluated);
-    const overallAverageGpa = totalEvaluated > 0 
-      ? Number((performers.reduce((sum, s) => sum + s.gpa, 0) / totalEvaluated).toFixed(2)) 
+    const totalEvaluated = examRate.evaluated;
+    const passRate = examRate.passRate;
+    const overallAverageGpa = totalEvaluated > 0
+      ? Number((performers.reduce((sum, s) => sum + s.gpa, 0) / totalEvaluated).toFixed(2))
       : 0;
     const aPlusCount = gradeCounts['A+'] || 0;
 
@@ -806,10 +785,10 @@ export const Dashboard = () => {
     const atRisk = sortedPerformers
       .filter(s => s && (s.isFail || s.failCount > 0))
       .map(s => {
-        const studentMarks = (marks || []).filter(m => 
+        const studentMarks = (marks || []).filter(m =>
           m &&
-          m.studentId === s.id && 
-          (selectedExamId === 'All' || m.examId === effectiveExamId)
+          m.studentId === s.id &&
+          m.examId === selectedExamId
         );
         const failedSubjectDetails: Array<{ name: string; marks: number; fullMarks: number }> = [];
         studentMarks.forEach(m => {
@@ -851,7 +830,7 @@ export const Dashboard = () => {
       gradeTiers: tiers,
       statusData: statusChart
     };
-  }, [students, marks, subjects, classes, exams, yearExams, selectedAcademicYear, selectedExamId, selectedClass, language]);
+  }, [students, marks, subjects, classes, exams, selectedAcademicYear, selectedExamId, selectedClass, language]);
 
   // =========================================================================
   // ACTION & ADVICE DATA — every count below comes from a live record set;
