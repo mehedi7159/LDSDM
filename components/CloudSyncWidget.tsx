@@ -24,7 +24,8 @@ import {
   Trash2,
   ArrowDownToLine,
   ShieldAlert,
-  Pin
+  Pin,
+  Zap
 } from 'lucide-react';
 import firebaseConfig from '../firebase-applet-config.json';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -48,6 +49,9 @@ import { doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { formatSafeDate, formatSafeTime } from '../services/utils';
 import type { PendingPayloadItem } from '../services/payloadQueue';
 
+// Principal's login email — the account the owner grants the admin claim to.
+const PRINCIPAL_ADMIN_EMAIL = 'ldsdm.2003@gmail.com';
+
 export const CloudSyncWidget: React.FC = () => {
   const { 
     schoolProfile, 
@@ -61,6 +65,7 @@ export const CloudSyncWidget: React.FC = () => {
     cloudStatus,
     cloudLastSynced,
     isAdmin,
+    isOwnerAdmin,
     adminEmail,
     authUser,
     loginWithGoogle,
@@ -101,6 +106,8 @@ export const CloudSyncWidget: React.FC = () => {
   const [copiedVercelSnippet, setCopiedVercelSnippet] = useState<boolean>(false);
   const [isRescuing, setIsRescuing] = useState<boolean>(false);
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState<boolean>(false);
+  const [isGrantingAdmin, setIsGrantingAdmin] = useState<boolean>(false);
+  const [grantAdminNotice, setGrantAdminNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
   // Load cloud snapshots (Phase 3: paginated — the old 20-item cap is gone)
   const refreshSnapshotsList = async (): Promise<boolean> => {
@@ -152,6 +159,43 @@ export const CloudSyncWidget: React.FC = () => {
       if (retryTimer) clearTimeout(retryTimer);
     };
   }, [authUser]);
+
+  // Owner-only: grant { role: 'admin' } to the principal. Mirrors the
+  // AdminAuthModal bootstrap call (fresh token + POST to /api/admin/*).
+  const handleGrantPrincipalAdmin = async () => {
+    if (!authUser || isGrantingAdmin) return;
+    setIsGrantingAdmin(true);
+    setGrantAdminNotice(null);
+    try {
+      const idToken = await authUser.getIdToken(true);
+      const res = await fetch('/api/admin/grant-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, targetEmail: PRINCIPAL_ADMIN_EMAIL }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.success) {
+        setGrantAdminNotice({
+          kind: 'success',
+          text: language === 'bn'
+            ? '✓ প্রিন্সিপাল এখন এডমিন — পরের লগইন থেকে পুরো এডমিন মোড চলবে'
+            : '✓ The principal is now an admin — full admin mode from the next login.',
+        });
+      } else {
+        setGrantAdminNotice({
+          kind: 'error',
+          text: data.message || (language === 'bn' ? 'এডমিন দেওয়া যায়নি — আবার চেষ্টা করুন।' : 'Could not grant admin — please try again.'),
+        });
+      }
+    } catch (err: any) {
+      setGrantAdminNotice({
+        kind: 'error',
+        text: err?.message || (language === 'bn' ? 'সার্ভারের সাথে যোগাযোগ হয়নি।' : 'Could not reach the server.'),
+      });
+    } finally {
+      setIsGrantingAdmin(false);
+    }
+  };
 
   const handleManualPush = async () => {
     setIsSyncingAction(true);
@@ -788,6 +832,43 @@ export const CloudSyncWidget: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Owner-only: grant the admin claim to the principal. The
+            in-app bootstrap cannot be opened by the owner, so without
+            this the principal would stay in Viewer Mode forever. */}
+        {isOwnerAdmin && (
+          <div className="p-3 bg-indigo-50/80 rounded-2xl border border-indigo-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                <Zap size={14} className="text-indigo-600" />
+                <span>{language === 'bn' ? 'প্রিন্সিপালকে এডমিন করুন' : 'Make the principal an admin'}</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-indigo-700 leading-relaxed">
+              {language === 'bn'
+                ? `প্রিন্সিপাল (${PRINCIPAL_ADMIN_EMAIL}) এখনো ভিউয়ার মোডে আছেন। নিচের বাটনে ক্লিক করলে তাঁর অ্যাকাউন্টে admin ক্লেইম যুক্ত হবে।`
+                : `The principal (${PRINCIPAL_ADMIN_EMAIL}) is still in viewer mode. Click below to grant the admin claim to that account.`}
+            </p>
+            <button
+              type="button"
+              onClick={handleGrantPrincipalAdmin}
+              disabled={isGrantingAdmin}
+              className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 cursor-pointer"
+            >
+              <Zap size={13} className={isGrantingAdmin ? 'animate-spin' : ''} />
+              <span>
+                {isGrantingAdmin
+                  ? (language === 'bn' ? 'সেট করা হচ্ছে...' : 'Granting...')
+                  : (language === 'bn' ? '⚡ প্রিন্সিপালকে এডমিন করুন' : '⚡ Make the principal an admin')}
+              </span>
+            </button>
+            {grantAdminNotice && (
+              <div className={`p-2.5 rounded-xl text-[11px] font-semibold leading-relaxed ${grantAdminNotice.kind === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-rose-50 border border-rose-200 text-rose-800'}`}>
+                {grantAdminNotice.text}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Vercel & GitHub Deployment Sync Helper Card */}

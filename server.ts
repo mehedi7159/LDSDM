@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleAdminBootstrapApi } from './server/adminApi.ts';
 import { handleStaffPasswordSyncApi } from './server/staffPasswordApi.ts';
+import { handleAdminGrantApi } from './server/grantAdminApi.ts';
 import { handleAiAdvisorApi } from './server/aiAssistantApi.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -100,6 +101,11 @@ const server = http.createServer((req, res) => {
 
   if (urlPath.startsWith('/api/admin/sync-staff-password')) {
     handleStaffPasswordSyncApi(req, res);
+    return;
+  }
+
+  if (urlPath.startsWith('/api/admin/grant-admin')) {
+    handleAdminGrantApi(req, res);
     return;
   }
 
