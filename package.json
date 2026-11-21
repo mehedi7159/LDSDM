@@ -20,6 +20,7 @@
     "test:job1-notices-split": "tsx scripts/verify-job1-notices-split.ts",
     "test:job2-schedule-split": "tsx scripts/verify-job2-schedule-split.ts",
     "test:api-admin-500": "tsx scripts/verify-api-admin-500.ts",
+    "test:grant-admin": "tsx scripts/verify-grant-admin.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
     "test:blank-marksheet-play": "tsx scripts/verify-blank-marksheet-play.ts",
     "test:pass-rate": "tsx scripts/verify-pass-rate.ts",
