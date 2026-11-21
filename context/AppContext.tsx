@@ -124,6 +124,7 @@ import {
   readRemarksFromCollection,
   promotionHistoryCollectionRef,
   writeScheduleFieldsToCloud,
+  staffLeavesCollectionRef,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
   writeFeeTypesFieldToCloud,
@@ -2186,6 +2187,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // for this, so sync never starts on half-loaded promotion state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedPromotionHistoryCollectionRef = useRef(false);
+  // Job 8 (staffLeaves split): same shape as Job 1, for the one leaves
+  // field — once the leaves collection feed has delivered docs it is
+  // the read source for staffLeaves; main_store stays the fallback
+  // until then.
+  const leavesFromCollectionRef = useRef(false);
+  // Job 8: guards the one-time leaves backfill against concurrent feed events.
+  const leavesBackfillInFlightRef = useRef(false);
+  // Job 8: ids already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledLeaveIdsRef = useRef<Set<string>>(new Set());
+  // Job 8: the last docs the leaves collection feed delivered — the
+  // straggler check compares main_store leaves against this set.
+  const lastCollectionLeavesRef = useRef<StaffLeaveRecord[]>([]);
+  // Job 8: true once the leaves feed has settled — auto-sync waits for
+  // this, so sync never starts on half-loaded leaves state. Login
+  // verdict and manual force-push do NOT wait on it.
+  const hasLoadedLeavesCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2569,6 +2587,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 8 one-time backfill: copy main_store staffLeaves into the new
+  // collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillLeavesOnce = async (source?: StaffLeaveRecord[]) => {
+    if (leavesBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['staffLeaves'] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledLeaveIdsRef.current.has(String(r.id)));
+    if (pending.length === 0) return;
+    leavesBackfillInFlightRef.current = true;
+    try {
+      await migrateFieldToCollection('staffLeaves', pending);
+      pending.forEach((r) => backfilledLeaveIdsRef.current.add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Leaves backfill notice:', err?.message || err);
+    } finally {
+      leavesBackfillInFlightRef.current = false;
+    }
+  };
+
   // Job 2: one schedule field from a remote snapshot. A collection
   // feed's own snapshots always apply (its handler decides when an
   // empty snapshot is real — see startScheduleFeeds); main_store
@@ -2875,6 +2916,32 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 8: staffLeaves from a remote snapshot. A collection feed's
+  // own snapshots always apply (its handler decides when an empty
+  // snapshot is real — see startLeavesFeed); main_store applies only
+  // while the leaves collection feed has not taken over. After
+  // takeover, a main_store list only rescues stragglers (written by a
+  // stale pre-split tab, which only writes main_store) into the
+  // collection — the feed then delivers them. Records apply as-is:
+  // leave rules never change here (PENDING applications, APPROVED
+  // grants, REJECTED stays in the list).
+  const applyLeavesFieldFromRemote = (records: StaffLeaveRecord[], opts: { fromStaffLeavesCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
+    if (opts?.fromStaffLeavesCollection || !leavesFromCollectionRef.current) {
+      setStaffLeaves(records);
+      lastConfirmedRef.current['staffLeaves'] = records;
+      snapshotApplied['staffLeaves'] = records;
+      try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(records)); } catch {}
+      // Job 8: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded).
+      if (!opts?.fromStaffLeavesCollection) void backfillLeavesOnce();
+    } else {
+      const colIds = new Set((lastCollectionLeavesRef.current || []).map((r) => String(r.id)));
+      const stragglers = (records || []).filter((r) => !colIds.has(String(r.id)));
+      if (stragglers.length > 0) void backfillLeavesOnce(stragglers);
+    }
+  };
+
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
@@ -2890,7 +2957,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // remarks collection feed (not from a main_store snapshot).
   // opts.fromPromotionHistoryCollection marks data that came from the
   // Job 7 promotion collection feed (not from a main_store snapshot).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean }) => {
+  // opts.fromStaffLeavesCollection marks data that came from a Job 8
+  // leaves collection feed.
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean; fromStaffLeavesCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -3035,10 +3104,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('teachers', JSON.stringify(cleanTeachers)); } catch {}
     }
     if (data.staffLeaves && Array.isArray(data.staffLeaves)) {
-      setStaffLeaves(data.staffLeaves);
-      lastConfirmedRef.current['staffLeaves'] = data.staffLeaves;
-      snapshotApplied['staffLeaves'] = data.staffLeaves;
-      try { localStorage.setItem('madrasah_staff_leaves', JSON.stringify(data.staffLeaves)); } catch {}
+      applyLeavesFieldFromRemote(data.staffLeaves, opts, snapshotApplied);
     }
     // Attendance hydration MERGES into the local services (24 Oct 2026
     // visibility fix) — it must never wholesale-replace. The live cloud
@@ -3256,6 +3322,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let feesUnsubscribes: Array<() => void> = [];
     let remarksUnsubscribe: (() => void) | null = null;
     let promotionHistoryUnsubscribe: (() => void) | null = null;
+    let leavesUnsubscribe: (() => void) | null = null;
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -3268,6 +3335,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       if (promotionHistoryUnsubscribe) {
         try { promotionHistoryUnsubscribe(); } catch {}
         promotionHistoryUnsubscribe = null;
+      }
+    };
+
+    const stopLeavesFeed = () => {
+      if (leavesUnsubscribe) {
+        try { leavesUnsubscribe(); } catch {}
+        leavesUnsubscribe = null;
       }
     };
 
@@ -3318,6 +3392,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopFeesFeeds();
       stopRemarksFeed();
       stopPromotionHistoryFeed();
+      stopLeavesFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -3710,6 +3785,60 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 8 read-switch: the leaves collection feed. Once it delivers
+    // docs it becomes the read source (leavesFromCollectionRef); an
+    // empty snapshot before that means the backfill has not run yet, so
+    // main_store leaves stay in place (fallback) and the backfill
+    // runs. An empty snapshot AFTER docs existed means every leave
+    // was deleted — that empty list applies for real. A feed error
+    // only settles the auto-sync guard; main_store keeps showing.
+    const markLeavesFeedSettled = () => {
+      hasLoadedLeavesCollectionRef.current = true;
+    };
+
+    const startLeavesFeed = () => {
+      if (cancelled) return;
+      stopLeavesFeed();
+      leavesUnsubscribe = onSnapshot(
+        staffLeavesCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as StaffLeaveRecord;
+            return { ...data, id: (data as any).id || d.id };
+          });
+          lastCollectionLeavesRef.current = docs;
+          markLeavesFeedSettled();
+          if (docs.length > 0) {
+            // Take over only when the collection holds every leave the
+            // confirmed main_store list knows — a partial collection
+            // (backfill still running) must not hide the rest. Queued
+            // local leaves survive via preserveQueuedPayloads, so the
+            // check uses the confirmed list, not local state.
+            const knownIds = new Set(((lastConfirmedRef.current['staffLeaves'] || []) as StaffLeaveRecord[]).map((r) => String(r.id)));
+            const colIds = new Set(docs.map((d) => String(d.id)));
+            const complete = [...knownIds].every((id) => colIds.has(id));
+            if (complete) {
+              leavesFromCollectionRef.current = true;
+              applyRemoteData({ staffLeaves: docs }, { fromStaffLeavesCollection: true });
+            } else {
+              void backfillLeavesOnce();
+            }
+          } else if (leavesFromCollectionRef.current) {
+            applyRemoteData({ staffLeaves: [] }, { fromStaffLeavesCollection: true });
+          } else {
+            void backfillLeavesOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Leaves collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store leaves keep showing.
+          markLeavesFeedSettled();
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -3730,6 +3859,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startRemarksFeed();
       // Job 7: same for the promotionHistory collection.
       startPromotionHistoryFeed();
+      // Job 8: same for the staffLeaves collection.
+      startLeavesFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -3958,6 +4089,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // saves bypass this (confirmPromotionHistoryCloudSync writes
     // directly), and queued payloads preserve anything edited meanwhile.
     if (!hasLoadedPromotionHistoryCollectionRef.current) return;
+    // Job 8: never auto-sync until the leaves collection has
+    // delivered its first snapshot (or errored) — otherwise sync
+    // could start on half-loaded leaves state. Explicit leave saves
+    // bypass this (confirmLeavesCloudSync writes directly), and
+    // queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedLeavesCollectionRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -3966,7 +4103,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
-      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current || !hasLoadedLeavesCollectionRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
