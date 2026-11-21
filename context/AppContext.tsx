@@ -61,10 +61,6 @@ import type { FeeTypeDef } from '../services/feeTypes';
 import { DEFAULT_FEE_TYPES, BANNER_CLASS_FEES, isUnmigratedLegacyPlayStructure } from '../services/feeTypes';
 import {
   GOOGLE_PASSWORD_LOGIN_DENIED,
-  GOOGLE_SIGNUP_EXISTING_MEMBER,
-  approvalPasswordFor,
-  buildGoogleSignupMember,
-  googlePopupErrorMessage,
   isGoogleOnlyAccount
 } from '../services/googleSignupRules';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
@@ -327,18 +323,6 @@ interface AppContextType extends AppState {
   setUsers: React.Dispatch<React.SetStateAction<AppUser[]>>;
   currentUser: AppUser | null;
   userRole: UserRole | null;
-  signUpUser: (data: {
-    name: string;
-    nameBn?: string;
-    phone: string;
-    email?: string;
-    password?: string;
-    role: UserRole;
-    designation?: string;
-    assignedClasses?: string[];
-    studentId?: string;
-    studentClass?: string;
-  }) => Promise<{ success: boolean; message: string; user?: AppUser }>;
   updateAppUser: (user: AppUser) => Promise<{ success: boolean; message?: string }>;
   deleteAppUser: (userId: string) => Promise<{ success: boolean; message?: string }>;
   loginWithEmailOrPhone: (identifier: string, password: string) => Promise<{ success: boolean; message?: string; user?: AppUser }>;
@@ -496,10 +480,7 @@ interface AppContextType extends AppState {
   seedDemoMadrashaData: () => void;
   loginWithGoogle: () => Promise<boolean>;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUpWithEmail: (email: string, password: string, displayName: string, requestedRole: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
-  signUpWithGoogle: (requestedRole: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
-  loginAsDemoRole: (roleKey: 'superadmin' | 'principal' | 'teacher' | 'accountant' | 'office_staff' | 'guardian') => Promise<void>;
   logoutAdmin: () => Promise<void>;
   authDeniedMessage: string | null;
   refreshAdminClaims: () => Promise<boolean>;
@@ -1639,89 +1620,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
 
     return false;
-  };
-
-  const signUpUser = async (data: {
-    name: string;
-    nameBn?: string;
-    phone: string;
-    email?: string;
-    password?: string;
-    role: UserRole;
-    designation?: string;
-    assignedClasses?: string[];
-    studentId?: string;
-    studentClass?: string;
-  }): Promise<{ success: boolean; message: string; user?: AppUser }> => {
-    const cleanPhone = (data.phone || '').trim();
-    const cleanEmail = (data.email || '').trim().toLowerCase();
-
-    const existing = users.find(u => 
-      (cleanPhone && u.phone === cleanPhone) || 
-      (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail)
-    );
-
-    if (existing) {
-      return {
-        success: false,
-        message: 'এই মোবাইল নম্বর অথবা ইমেইল দিয়ে ইতোমধ্যে একটি একাউন্ট খোলা আছে।'
-      };
-    }
-
-    // Also block signups that collide with an admin-created staff record —
-    // otherwise the same person ends up with two parallel accounts
-    // (one in users, one in teachers) and login picks whichever matches first.
-    const existingStaff = teachers.find(t =>
-      (cleanPhone && t.phone && t.phone.trim() === cleanPhone) ||
-      (cleanEmail && t.email && t.email.trim().toLowerCase() === cleanEmail)
-    );
-    if (existingStaff) {
-      return {
-        success: false,
-        message: 'এই মোবাইল নম্বর অথবা ইমেইল দিয়ে স্টাফ তালিকায় ইতোমধ্যে একটি অ্যাকাউন্ট আছে। নতুন সাইনআপ না করে অ্যাডমিনের সাথে যোগাযোগ করুন।'
-      };
-    }
-
-    const newUser: AppUser = {
-      id: 'usr_' + generateId(),
-      name: data.name.trim(),
-      nameBn: (data.nameBn || data.name).trim(),
-      phone: cleanPhone,
-      email: cleanEmail || undefined,
-      role: data.role,
-      designation: data.designation?.trim(),
-      assignedClasses: data.assignedClasses || [],
-      studentId: data.studentId,
-      studentClass: data.studentClass,
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-
-    setUsers(prev => [newUser, ...prev]);
-
-    try {
-      const memberObj: InstitutionMember = {
-        uid: newUser.id,
-        institutionId: 'inst_madrasah_primary',
-        email: newUser.email || (newUser.phone ? `${newUser.phone}@madrasha.local` : `${newUser.id}@madrasha.local`),
-        displayName: newUser.nameBn || newUser.name,
-        phone: newUser.phone,
-        roleId: newUser.role === 'super_admin' ? 'role_institution_admin' : `role_${newUser.role}`,
-        requestedRole: newUser.role,
-        status: 'active',
-        assignedClasses: newUser.assignedClasses || [],
-        assignedSubjects: [],
-        createdAt: newUser.createdAt,
-        updatedAt: newUser.createdAt
-      };
-      setInstitutionMember('inst_madrasah_primary', memberObj, newUser.id).catch(() => {});
-    } catch (e) {}
-
-    return {
-      success: true,
-      message: 'নতুন একাউন্ট সফলভাবে তৈরি হয়েছে!',
-      user: newUser
-    };
   };
 
   const updateAppUser = async (user: AppUser): Promise<{ success: boolean; message?: string }> => {
@@ -6054,180 +5952,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     };
   };
 
-  // Email/Password Register
-  const signUpWithEmail = async (
-    email: string, 
-    password: string, 
-    displayName: string, 
-    requestedRole: string, 
-    phone?: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
-      return { success: false, error: 'ইমেইল ও পাসওয়ার্ড প্রদান করুন।' };
-    }
-
-    const isOwnerAccount = trimmedEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-    if (isOwnerAccount) {
-      return {
-        success: false,
-        error: 'প্রধান অ্যাডমিন অ্যাকাউন্ট পাবলিক রেজিস্ট্রেশন থেকে তৈরি করা যাবে না। ফায়ারবেস কনসোল বা ট্রাস্টেড অ্যাডমিন এসডিকে (Firebase Console / Admin SDK) দিয়ে অ্যাকাউন্ট তৈরি করুন এবং সরাসরি সাইন-ইন ব্যবহার করুন।'
-      };
-    }
-
-    // Check if already registered
-    try {
-      const allMembers = await getAllInstitutionMembers('inst_madrasah_primary');
-      const existing = allMembers.find(m => m.email.toLowerCase() === trimmedEmail.toLowerCase());
-      if (existing) {
-        return { success: false, error: 'এই ইমেইল ঠিকানা দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে। লগইন করুন।' };
-      }
-    } catch (e) {}
-
-    const uid = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-
-    let defaultRole = 'role_teacher';
-    if (requestedRole.toLowerCase().includes('account') || requestedRole.toLowerCase().includes('ক্যাশ')) {
-      defaultRole = 'role_accountant';
-    } else if (requestedRole.toLowerCase().includes('principal') || requestedRole.toLowerCase().includes('অধ্যক্ষ') || requestedRole.toLowerCase().includes('সুপার') || requestedRole.toLowerCase().includes('মুহতামিম')) {
-      defaultRole = 'role_principal';
-    } else if (requestedRole.toLowerCase().includes('staff') || requestedRole.toLowerCase().includes('অফিস')) {
-      defaultRole = 'role_office_staff';
-    } else if (requestedRole.toLowerCase().includes('guardian') || requestedRole.toLowerCase().includes('অভিভাবক')) {
-      defaultRole = 'role_guardian';
-    }
-
-    const memberData: InstitutionMember = {
-      uid,
-      institutionId: 'inst_madrasah_primary',
-      email: trimmedEmail,
-      displayName,
-      phone: phone || '',
-      password, // securely stored for login validation
-      roleId: defaultRole,
-      requestedRole,
-      status: 'pending',
-      assignedClasses: [],
-      assignedSubjects: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    // Save to Firestore and local storage
-    try {
-      await setInstitutionMember('inst_madrasah_primary', memberData, uid);
-    } catch (e) {
-      console.warn('setInstitutionMember fallback notice:', e);
-    }
-
-    // NO teachers-list entry here (Phase 1): a signup is only a pending
-    // application. Teacher records are created ONLY by approveMember —
-    // inserting an ACTIVE entry at signup is exactly how unapproved
-    // people used to appear in the teacher list.
-
-    // Local membership application created (no elevated or remote admin privileges)
-    setAuthUser(null);
-    setAdminEmail(trimmedEmail);
-    setIsAdmin(false);
-    setAuthRole(memberData.roleId);
-    setModeState('viewer');
-
-    setCurrentMember(memberData);
-    localStorage.setItem('madrasha_active_auth_session', JSON.stringify(memberData));
-
-    return { success: true };
-  };
-
-  // Google Sign-Up (25 Oct 2026): register view's "Google দিয়ে নিবন্ধন করুন".
-  // Mirrors email sign-up's approval model, but the Firebase user
-  // already exists after the popup — so the member doc id MUST be the
-  // Firebase uid (boot lookup uses authUser.uid), status is ALWAYS
-  // pending, and NO password and NO teachers-list entry are created.
-  // Role comes only from this member doc (never from the auth-state
-  // stamp, which no longer mints teacher/active entries for unmatched
-  // non-owner users). Approval then resolves the active role.
-  const signUpWithGoogle = async (
-    requestedRole: string,
-    phone?: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    let result: any = null;
-    try {
-      result = await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
-      console.warn('Google sign-up popup notice:', err?.code);
-      return { success: false, error: googlePopupErrorMessage(err?.code) };
-    }
-
-    const user = result?.user;
-    const email = (user?.email || '').trim();
-    if (!user || !email) {
-      try { await signOut(auth); } catch {}
-      return { success: false, error: 'Google নিবন্ধন সম্পন্ন হয়নি। আবার চেষ্টা করুন।' };
-    }
-
-    // Owner email can never self-register (same rule as email sign-up).
-    if (email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
-      try { await signOut(auth); } catch {}
-      return {
-        success: false,
-        error: 'প্রধান অ্যাডমিন অ্যাকাউন্ট পাবলিক রেজিস্ট্রেশন থেকে তৈরি করা যাবে না। Google দিয়ে প্রবেশ করতে লগইন ব্যবহার করুন।'
-      };
-    }
-
-    // Existing member → must log in, never a duplicate member doc.
-    try {
-      const allMembers = await getAllInstitutionMembers('inst_madrasah_primary');
-      const existing = allMembers.find(m => m.email.toLowerCase() === email.toLowerCase());
-      if (existing) {
-        try { await signOut(auth); } catch {}
-        return { success: false, error: GOOGLE_SIGNUP_EXISTING_MEMBER };
-      }
-    } catch (e) {}
-
-    const displayName = user.displayName || email.split('@')[0] || 'User';
-
-    // Member construction lives in googleSignupRules so the verify
-    // script tests the real builder (uid = Firebase uid, pending,
-    // no password, authProvider 'google').
-    const memberData: InstitutionMember = {
-      ...buildGoogleSignupMember({
-        uid: user.uid,
-        email,
-        displayName,
-        phone,
-        requestedRole,
-      }),
-      institutionId: 'inst_madrasah_primary',
-    };
-
-    try {
-      await setInstitutionMember('inst_madrasah_primary', memberData, user.uid);
-    } catch (e) {
-      console.warn('Google sign-up member write notice:', e);
-      try { await signOut(auth); } catch {}
-      return { success: false, error: 'Google নিবন্ধন সম্পন্ন হয়নি। আবার চেষ্টা করুন।' };
-    }
-
-    // NO teachers-list entry here (unlike email sign-up): a pending
-    // applicant must not appear in the staff directory before approval.
-    // Approval creates the account/teacher records, with no password.
-
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (credential?.accessToken) {
-      setCachedGoogleAccessToken(credential.accessToken);
-    }
-    setAuthUser(user);
-    setAdminEmail(email);
-    setIsAdmin(false);
-    setAuthRole(memberData.roleId);
-    setModeState('viewer');
-
-    setCurrentMember(memberData);
-    localStorage.setItem('madrasha_active_auth_session', JSON.stringify(memberData));
-
-    return { success: true };
-  };
-
   // Password Reset
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -6236,79 +5960,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     } catch (err: any) {
       console.warn('Password reset error:', err);
       return { success: false, error: err.message || 'পাসওয়ার্ড রিসেট লিংক পাঠাতে ব্যর্থ হয়েছে।' };
-    }
-  };
-
-  // Instant Demo Role Login (Simulation for reviewing/testing role features)
-  const loginAsDemoRole = async (
-    roleKey: 'superadmin' | 'principal' | 'teacher' | 'accountant' | 'office_staff' | 'guardian'
-  ) => {
-    const demoConfigs: Record<string, { email: string; name: string; roleId: string; classes?: string[]; subjects?: string[] }> = {
-      superadmin: {
-        email: SUPER_ADMIN_EMAIL,
-        name: 'অধ্যক্ষ / অ্যাডমিন (ডেমো ভিউ)',
-        roleId: 'role_institution_admin'
-      },
-      principal: {
-        email: 'principal@madrasha.edu.bd',
-        name: 'অধ্যক্ষ মাওলানা আব্দুল করিম (ডেমো)',
-        roleId: 'role_principal'
-      },
-      teacher: {
-        email: 'teacher.mahmud@madrasha.edu.bd',
-        name: 'মাওলানা মাহমুদুর রহমান (সহকারী শিক্ষক)',
-        roleId: 'role_teacher',
-        classes: ['cls_7', 'cls_8', '1', '2'],
-        subjects: ['sub_math', 'sub_arabic']
-      },
-      accountant: {
-        email: 'accountant.hafiz@madrasha.edu.bd',
-        name: 'মুহাম্মদ হাফিজুর রহমান (ডেমো ক্যাশিয়ার)',
-        roleId: 'role_accountant'
-      },
-      guardian: {
-        email: 'guardian.rafiq@gmail.com',
-        name: 'মো. রফিকুল ইসলাম (ডেমো অভিভাবক)',
-        roleId: 'role_guardian'
-      },
-      office_staff: {
-        email: 'staff.zahir@madrasha.edu.bd',
-        name: 'মো. জহিরুল ইসলাম (ডেমো অফিস সহকারী)',
-        roleId: 'role_office_staff'
-      }
-    };
-
-    const target = demoConfigs[roleKey];
-    if (!target) return;
-
-    // Demo role preview is for local UI exploration only.
-    // CRITICAL SECURITY RULE: Demo roles MUST NOT set authUser or grant remote Firestore admin privileges.
-    setAuthUser(null);
-    setAdminEmail(target.email);
-    setIsAdmin(false);
-    setAuthRole(target.roleId);
-    setModeState('viewer');
-
-    const memberRecord: InstitutionMember = {
-      uid: `demo_${roleKey}_uid`,
-      institutionId: 'inst_madrasah_primary',
-      email: target.email,
-      displayName: target.name,
-      roleId: target.roleId,
-      status: 'active',
-      assignedClasses: target.classes || [],
-      assignedSubjects: target.subjects || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    setCurrentMember(memberRecord);
-
-    if (roleKey === 'guardian') {
-      setActiveTabState('guardian_portal');
-    } else if (roleKey === 'teacher') {
-      setActiveTabState('teacher_portal');
-    } else {
-      setActiveTabState('dashboard');
     }
   };
 
@@ -9193,11 +8844,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setRemarks,
       seedDemoMadrashaData,
       loginWithGoogle,
-      signUpWithGoogle,
       signInWithEmail,
-      signUpWithEmail,
       resetPassword,
-      loginAsDemoRole,
       logoutAdmin,
       authDeniedMessage,
       refreshAdminClaims,
@@ -9231,7 +8879,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       pendingMembersError,
       approveMember,
       rejectMember,
-      signUpUser,
       updateAppUser,
       deleteAppUser,
       loginWithEmailOrPhone,
