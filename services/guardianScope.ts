@@ -14,7 +14,7 @@
  *
  * Linkage model (union of all signals, deduplicated by student id):
  *   1. The account's explicit link — AppUser.studentId, captured at
- *      signup (signUpUser) — matched against the student's internal
+ *      signup — matched against the student's internal
  *      id, legacy studentId and studentCode. When the account also
  *      carries studentRoll + studentClass, a roll+class match is
  *      accepted as an explicit link too.

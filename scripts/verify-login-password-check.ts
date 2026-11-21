@@ -65,8 +65,9 @@ const WRONG_PASSWORD_MSG = 'ভুল পাসওয়ার্ড প্র�
 const appContext = readSource('context/AppContext.tsx');
 const fnStart = appContext.indexOf('const signInWithEmail = async');
 assert.ok(fnStart >= 0, 'signInWithEmail must exist in context/AppContext.tsx');
-const fnEnd = appContext.indexOf('const signUpWithEmail = async', fnStart);
-assert.ok(fnEnd > fnStart, 'signUpWithEmail must follow signInWithEmail');
+// L2 deleted signUpWithEmail, so the next sibling function is the boundary now.
+const fnEnd = appContext.indexOf('const resetPassword = async', fnStart);
+assert.ok(fnEnd > fnStart, 'resetPassword must follow signInWithEmail');
 const rawSignIn = appContext.slice(fnStart, fnEnd);
 
 // Step boundaries are line comments — find them BEFORE stripping.
