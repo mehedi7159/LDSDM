@@ -117,6 +117,8 @@ import {
   readNoticesFromCollection,
   scheduleCollectionRef,
   classesCollectionRef,
+  academicCollectionRef,
+  readAcademicFieldFromCollection,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
@@ -169,6 +171,7 @@ import {
 import { migrateNoticesToCollection, migrateFieldToCollection } from '../services/migrationSplit';
 import type { ScheduleSplitField } from '../services/cloudConfirm';
 import type { ClassesSplitField } from '../services/cloudConfirm';
+import type { AcademicSplitField } from '../services/cloudConfirm';
 import {
   readPendingPayloads,
   queuePendingPayload,
@@ -2094,6 +2097,28 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // waits for this, so sync never starts on half-loaded classes state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedClassesCollectionsRef = useRef(false);
+  // Job 4 (academic split): same shape as Job 2, except the six
+  // academic lists switch TOGETHER — one joint flag, so a subject or
+  // exam can never come from the new collection in one place and from
+  // main_store in another. Once the flag flips, all six lists come
+  // from the new collections; until then main_store stays the
+  // fallback for all six.
+  const academicFromCollectionRef = useRef(false);
+  // Job 4: guards the one-time academic backfills against concurrent feed events.
+  const academicBackfillInFlightRef = useRef<Record<AcademicSplitField, boolean>>({ subjects: false, exams: false, examSubjectAssignments: false, classSubjectAssignments: false, teacherSubjectAssignments: false, classTeacherAssignments: false });
+  // Job 4: ids already copied into the new collections by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledAcademicIdsRef = useRef<Record<AcademicSplitField, Set<string>>>({ subjects: new Set(), exams: new Set(), examSubjectAssignments: new Set(), classSubjectAssignments: new Set(), teacherSubjectAssignments: new Set(), classTeacherAssignments: new Set() });
+  // Job 4: the last docs each academic collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionAcademicRef = useRef<Record<AcademicSplitField, any[]>>({ subjects: [], exams: [], examSubjectAssignments: [], classSubjectAssignments: [], teacherSubjectAssignments: [], classTeacherAssignments: [] });
+  // Job 4: whether each academic feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on all six.
+  const academicFeedSettledRef = useRef<Record<AcademicSplitField, boolean>>({ subjects: false, exams: false, examSubjectAssignments: false, classSubjectAssignments: false, teacherSubjectAssignments: false, classTeacherAssignments: false });
+  // Job 4: true once all six academic feeds have settled — auto-sync
+  // waits for this, so sync never starts on half-loaded academic state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedAcademicCollectionsRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2544,6 +2569,112 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 4 one-time backfill: copy main_store academic records into
+  // their new collections. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillAcademicOnce = async (field: AcademicSplitField, source?: any[]) => {
+    if (academicBackfillInFlightRef.current[field]) return;
+    const list = source || lastConfirmedRef.current[field] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledAcademicIdsRef.current[field].has(String(r.id)));
+    if (pending.length === 0) return;
+    academicBackfillInFlightRef.current[field] = true;
+    try {
+      await migrateFieldToCollection(field, pending);
+      pending.forEach((r) => backfilledAcademicIdsRef.current[field].add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Academic backfill notice:', err?.message || err);
+    } finally {
+      academicBackfillInFlightRef.current[field] = false;
+    }
+  };
+
+  // Job 4: the six academic lists switch TOGETHER — a subject or exam
+  // must never come from the new collection in one place and from
+  // main_store in another. Take over only once main_store has loaded
+  // (no vacuous takeover on an unloaded list), all six feeds have
+  // settled, and every confirmed main_store record is present in its
+  // collection. For subjects + exams (tripwire fields) the counts
+  // match via lastConfirmedRef lengths: the collection must hold
+  // every confirmed id, so a partial collection can never hide a
+  // record the tripwire still protects. Returns true when the switch
+  // happened (or already had).
+  const tryAcademicTakeover = (): boolean => {
+    if (academicFromCollectionRef.current) return true;
+    if (!hasLoadedMainStoreRef.current) return false;
+    if (!academicFeedSettledRef.current.subjects || !academicFeedSettledRef.current.exams || !academicFeedSettledRef.current.examSubjectAssignments || !academicFeedSettledRef.current.classSubjectAssignments || !academicFeedSettledRef.current.teacherSubjectAssignments || !academicFeedSettledRef.current.classTeacherAssignments) return false;
+    for (const field of (['subjects', 'exams', 'examSubjectAssignments', 'classSubjectAssignments', 'teacherSubjectAssignments', 'classTeacherAssignments'] as AcademicSplitField[])) {
+      const knownIds = new Set(((lastConfirmedRef.current[field] || []) as any[]).map((r) => String(r.id)));
+      const colIds = new Set((lastCollectionAcademicRef.current[field] || []).map((d) => String(d.id)));
+      if (![...knownIds].every((id) => colIds.has(id))) return false;
+    }
+    academicFromCollectionRef.current = true;
+    applyRemoteData({
+      subjects: lastCollectionAcademicRef.current.subjects,
+      exams: lastCollectionAcademicRef.current.exams,
+      examSubjectAssignments: lastCollectionAcademicRef.current.examSubjectAssignments,
+      classSubjectAssignments: lastCollectionAcademicRef.current.classSubjectAssignments,
+      teacherSubjectAssignments: lastCollectionAcademicRef.current.teacherSubjectAssignments,
+      classTeacherAssignments: lastCollectionAcademicRef.current.classTeacherAssignments,
+    }, { fromAcademicCollection: true });
+    return true;
+  };
+
+  // Job 4: one academic field from a remote snapshot. A collection
+  // feed's own snapshots always apply (its handler decides when an
+  // empty snapshot is real — see startAcademicFeeds); main_store
+  // applies only while the joint flag is still off. After takeover, a
+  // main_store list only rescues stragglers (written by a stale
+  // pre-split tab, which only writes main_store) into the collection
+  // — the feed then delivers them. Subjects keep their demo-sub-
+  // filter on BOTH sources: the backfill copies demo records as-is
+  // (plan §5 step 2), and applyRemoteData has always dropped them.
+  const ACADEMIC_LOCAL_KEYS: Record<AcademicSplitField, string> = {
+    subjects: 'subjects',
+    exams: 'exams',
+    examSubjectAssignments: 'madrasha_exam_subject_assignments',
+    classSubjectAssignments: 'madrasha_class_subject_assignments',
+    teacherSubjectAssignments: 'madrasha_teacher_subject_assignments',
+    classTeacherAssignments: 'madrasha_class_teacher_assignments',
+  };
+  const applyAcademicFieldFromRemote = (field: AcademicSplitField, records: any[], opts: { fromAcademicCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
+    const cleanRecords = field === 'subjects' ? (records || []).filter((s) => !s.id?.startsWith('demo-sub-')) : records;
+    if (opts?.fromAcademicCollection || !academicFromCollectionRef.current) {
+      if (field === 'subjects') {
+        setSubjects(cleanRecords);
+      } else if (field === 'exams') {
+        setExams(cleanRecords);
+      } else if (field === 'examSubjectAssignments') {
+        setExamSubjectAssignments(cleanRecords);
+      } else if (field === 'classSubjectAssignments') {
+        setClassSubjectAssignments(cleanRecords);
+      } else if (field === 'teacherSubjectAssignments') {
+        setTeacherSubjectAssignments(cleanRecords);
+      } else {
+        setClassTeacherAssignments(cleanRecords);
+      }
+      lastConfirmedRef.current[field] = cleanRecords;
+      snapshotApplied[field] = cleanRecords;
+      try { localStorage.setItem(ACADEMIC_LOCAL_KEYS[field], JSON.stringify(cleanRecords)); } catch {}
+      // Job 4: main_store is known now — copy any not-yet-backfilled
+      // records into the new collection (the feed handler's empty
+      // snapshot may have fired before main_store loaded), then
+      // re-check the joint takeover (the feeds may already hold
+      // every record).
+      if (!opts?.fromAcademicCollection) {
+        void backfillAcademicOnce(field);
+        tryAcademicTakeover();
+      }
+    } else {
+      const colIds = new Set((lastCollectionAcademicRef.current[field] || []).map((r) => String(r.id)));
+      const stragglers = (cleanRecords || []).filter((r) => !colIds.has(String(r.id)));
+      if (stragglers.length > 0) void backfillAcademicOnce(field, stragglers);
+    }
+  };
+
   // Helper: Atomically load remote data into both React state and localStorage cache
   // opts.fromNoticesCollection marks data that came from the Job 1
   // notices collection feed (not from a main_store snapshot).
@@ -2551,7 +2682,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // schedule collection feed (one field at a time).
   // opts.fromClassesCollection marks data that came from a Job 3
   // classes collection feed (all three fields together).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean }) => {
+  // opts.fromAcademicCollection marks data that came from a Job 4
+  // academic collection feed (all six fields together).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -2590,17 +2723,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('students', JSON.stringify(cleanStudents)); } catch {}
     }
     if (data.subjects && Array.isArray(data.subjects)) {
-      const cleanSubjects = data.subjects.filter(s => !s.id?.startsWith('demo-sub-'));
-      setSubjects(cleanSubjects);
-      lastConfirmedRef.current['subjects'] = cleanSubjects;
-      snapshotApplied['subjects'] = cleanSubjects;
-      try { localStorage.setItem('subjects', JSON.stringify(cleanSubjects)); } catch {}
+      applyAcademicFieldFromRemote('subjects', data.subjects, opts, snapshotApplied);
     }
     if (data.exams && Array.isArray(data.exams)) {
-      setExams(data.exams);
-      lastConfirmedRef.current['exams'] = data.exams;
-      snapshotApplied['exams'] = data.exams;
-      try { localStorage.setItem('exams', JSON.stringify(data.exams)); } catch {}
+      applyAcademicFieldFromRemote('exams', data.exams, opts, snapshotApplied);
     }
     // Admin global mark-entry switch: only a real boolean overwrites
     // the default — an old cloud doc without the flag leaves it open.
@@ -2708,28 +2834,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       applyScheduleFieldFromRemote('calendarEvents', data.calendarEvents, opts, snapshotApplied);
     }
     if (data.classSubjectAssignments && Array.isArray(data.classSubjectAssignments)) {
-      setClassSubjectAssignments(data.classSubjectAssignments);
-      lastConfirmedRef.current['classSubjectAssignments'] = data.classSubjectAssignments;
-      snapshotApplied['classSubjectAssignments'] = data.classSubjectAssignments;
-      try { localStorage.setItem('madrasha_class_subject_assignments', JSON.stringify(data.classSubjectAssignments)); } catch {}
+      applyAcademicFieldFromRemote('classSubjectAssignments', data.classSubjectAssignments, opts, snapshotApplied);
     }
     if (data.teacherSubjectAssignments && Array.isArray(data.teacherSubjectAssignments)) {
-      setTeacherSubjectAssignments(data.teacherSubjectAssignments);
-      lastConfirmedRef.current['teacherSubjectAssignments'] = data.teacherSubjectAssignments;
-      snapshotApplied['teacherSubjectAssignments'] = data.teacherSubjectAssignments;
-      try { localStorage.setItem('madrasha_teacher_subject_assignments', JSON.stringify(data.teacherSubjectAssignments)); } catch {}
+      applyAcademicFieldFromRemote('teacherSubjectAssignments', data.teacherSubjectAssignments, opts, snapshotApplied);
     }
     if (data.classTeacherAssignments && Array.isArray(data.classTeacherAssignments)) {
-      setClassTeacherAssignments(data.classTeacherAssignments);
-      lastConfirmedRef.current['classTeacherAssignments'] = data.classTeacherAssignments;
-      snapshotApplied['classTeacherAssignments'] = data.classTeacherAssignments;
-      try { localStorage.setItem('madrasha_class_teacher_assignments', JSON.stringify(data.classTeacherAssignments)); } catch {}
+      applyAcademicFieldFromRemote('classTeacherAssignments', data.classTeacherAssignments, opts, snapshotApplied);
     }
     if (data.examSubjectAssignments && Array.isArray(data.examSubjectAssignments)) {
-      setExamSubjectAssignments(data.examSubjectAssignments);
-      lastConfirmedRef.current['examSubjectAssignments'] = data.examSubjectAssignments;
-      snapshotApplied['examSubjectAssignments'] = data.examSubjectAssignments;
-      try { localStorage.setItem('madrasha_exam_subject_assignments', JSON.stringify(data.examSubjectAssignments)); } catch {}
+      applyAcademicFieldFromRemote('examSubjectAssignments', data.examSubjectAssignments, opts, snapshotApplied);
     }
     if (data.users && Array.isArray(data.users)) {
       const cleanUsers = data.users
@@ -2900,6 +3014,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let noticesUnsubscribe: (() => void) | null = null;
     let scheduleUnsubscribes: Array<() => void> = [];
     let classesUnsubscribes: Array<() => void> = [];
+    let academicUnsubscribes: Array<() => void> = [];
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -2922,6 +3037,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       classesUnsubscribes = [];
     };
 
+    const stopAcademicFeeds = () => {
+      for (const unsub of academicUnsubscribes) {
+        try { unsub(); } catch {}
+      }
+      academicUnsubscribes = [];
+    };
+
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
@@ -2930,6 +3052,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopNoticesFeed();
       stopScheduleFeeds();
       stopClassesFeeds();
+      stopAcademicFeeds();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -3096,6 +3219,59 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       });
     };
 
+    // Job 4 read-switch: one onSnapshot feed per academic field.
+    // Same shape as Job 2's schedule feeds, except the six switch
+    // TOGETHER (see tryAcademicTakeover): a feed snapshot never flips
+    // one field on its own, so a subject or exam can never differ
+    // between two places. An empty snapshot before takeover means the
+    // backfill has not run yet, so main_store stays in place
+    // (fallback) and the backfill runs. An empty snapshot AFTER
+    // takeover means every record was deleted — that empty list
+    // applies for real. A feed error only settles the auto-sync
+    // guard; main_store keeps showing. Unlike Job 3's joint handler,
+    // the feed stays a LIVE source after takeover: every later
+    // snapshot applies its field, so a subject added on another
+    // device lands here without a reload (Jobs 1/2/8 already do this).
+    const markAcademicFeedSettled = (field: AcademicSplitField) => {
+      academicFeedSettledRef.current[field] = true;
+      if (academicFeedSettledRef.current.subjects && academicFeedSettledRef.current.exams && academicFeedSettledRef.current.examSubjectAssignments && academicFeedSettledRef.current.classSubjectAssignments && academicFeedSettledRef.current.teacherSubjectAssignments && academicFeedSettledRef.current.classTeacherAssignments) {
+        hasLoadedAcademicCollectionsRef.current = true;
+      }
+    };
+
+    const startAcademicFeeds = () => {
+      if (cancelled) return;
+      stopAcademicFeeds();
+      (['subjects', 'exams', 'examSubjectAssignments', 'classSubjectAssignments', 'teacherSubjectAssignments', 'classTeacherAssignments'] as AcademicSplitField[]).forEach((field) => {
+        const unsub = onSnapshot(
+          academicCollectionRef(field),
+          (snapshot) => {
+            if (cancelled) return;
+            const docs = snapshot.docs.map((d) => {
+              const data = d.data() as any;
+              return { ...data, id: (data as any).id || d.id };
+            });
+            lastCollectionAcademicRef.current[field] = docs;
+            markAcademicFeedSettled(field);
+            if (docs.length === 0 && academicFromCollectionRef.current) {
+              applyRemoteData({ [field]: [] }, { fromAcademicCollection: true });
+            } else if (academicFromCollectionRef.current) {
+              applyRemoteData({ [field]: docs }, { fromAcademicCollection: true });
+            } else if (!tryAcademicTakeover()) {
+              void backfillAcademicOnce(field);
+            }
+          },
+          (error) => {
+            if (cancelled) return;
+            console.warn('Academic collection snapshot listener notice:', error?.message || error);
+            // Fallback stays in place: main_store academic lists keep showing.
+            markAcademicFeedSettled(field);
+          }
+        );
+        academicUnsubscribes.push(unsub);
+      });
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -3108,6 +3284,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startScheduleFeeds();
       // Job 3: same for the three classes collections.
       startClassesFeeds();
+      // Job 4: same for the six academic collections.
+      startAcademicFeeds();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -3310,6 +3488,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // saves bypass this (confirmClassesCloudSync writes directly),
     // and queued payloads preserve anything edited meanwhile.
     if (!hasLoadedClassesCollectionsRef.current) return;
+    // Job 4: never auto-sync until the academic collections have
+    // delivered their first snapshot (or errored) — otherwise sync
+    // could start on half-loaded academic state. Explicit academic
+    // saves bypass this (the confirm*CloudSync writers write
+    // directly), and queued payloads preserve anything edited
+    // meanwhile.
+    if (!hasLoadedAcademicCollectionsRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -3318,7 +3503,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
-      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedClassesCollectionsRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
@@ -3821,7 +4006,26 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       } catch (colErr: any) {
         console.warn('Notices collection read notice (portal keeps main_store notices):', colErr?.message || colErr);
       }
-      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices }));
+      // Job 4: the portal's subjects, exams and examSubjectAssignments
+      // come from the new collections when they hold docs; main_store
+      // stays the fallback until the backfill (a collection read
+      // failure also falls back, never breaks the rebuild). The
+      // portal OUTPUT is unchanged — buildPublicPortalData picks the
+      // same fields from the same-shaped source.
+      let subjects = (data as any).subjects;
+      let exams = (data as any).exams;
+      let examSubjectAssignments = (data as any).examSubjectAssignments;
+      try {
+        const colSubjects = await readAcademicFieldFromCollection('subjects');
+        if (colSubjects.length > 0) subjects = colSubjects;
+        const colExams = await readAcademicFieldFromCollection('exams');
+        if (colExams.length > 0) exams = colExams;
+        const colAssignments = await readAcademicFieldFromCollection('examSubjectAssignments');
+        if (colAssignments.length > 0) examSubjectAssignments = colAssignments;
+      } catch (colErr: any) {
+        console.warn('Academic collection read notice (portal keeps main_store subjects/exams/assignments):', colErr?.message || colErr);
+      }
+      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments }));
     } catch (pubErr: any) {
       console.warn('Public portal rebuild notice:', pubErr?.message || pubErr);
     }
