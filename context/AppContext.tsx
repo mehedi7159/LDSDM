@@ -122,6 +122,7 @@ import {
   feesCollectionRef,
   remarksCollectionRef,
   readRemarksFromCollection,
+  promotionHistoryCollectionRef,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
@@ -2166,6 +2167,25 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // for this, so sync never starts on half-loaded remarks state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedRemarksCollectionRef = useRef(false);
+  // Job 7 (promotionHistory split): same shape as Job 1, one field —
+  // once the promotion collection feed has delivered docs it is the
+  // read source; main_store stays the fallback until then.
+  const promotionHistoryFromCollectionRef = useRef(false);
+  // Job 7: guards the one-time promotion backfill against concurrent feed events.
+  const promotionHistoryBackfillInFlightRef = useRef(false);
+  // Job 7: ids already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledPromotionHistoryIdsRef = useRef<Set<string>>(new Set());
+  // Job 7: the last docs the promotion collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionPromotionHistoryRef = useRef<PromotionHistoryRecord[]>([]);
+  // Job 7: whether the promotion feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on it.
+  const promotionHistoryFeedSettledRef = useRef(false);
+  // Job 7: true once the promotion feed has settled — auto-sync waits
+  // for this, so sync never starts on half-loaded promotion state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedPromotionHistoryCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2526,6 +2546,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 7 one-time backfill: copy main_store promotion records into
+  // their new collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by id (the
+  // backfilled-ids set skips already-copied records), so repeat runs
+  // write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillPromotionHistoryOnce = async (source?: PromotionHistoryRecord[]) => {
+    if (promotionHistoryBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['promotionHistory'] || [];
+    const pending = (list || []).filter((r) => r && r.id && !backfilledPromotionHistoryIdsRef.current.has(String(r.id)));
+    if (pending.length === 0) return;
+    promotionHistoryBackfillInFlightRef.current = true;
+    try {
+      await migrateFieldToCollection('promotionHistory', pending);
+      pending.forEach((r) => backfilledPromotionHistoryIdsRef.current.add(String(r.id)));
+    } catch (err: any) {
+      console.warn('Promotion backfill notice:', err?.message || err);
+    } finally {
+      promotionHistoryBackfillInFlightRef.current = false;
+    }
+  };
+
   // Job 2: one schedule field from a remote snapshot. A collection
   // feed's own snapshots always apply (its handler decides when an
   // empty snapshot is real — see startScheduleFeeds); main_store
@@ -2845,7 +2888,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // collection feed (both fields together).
   // opts.fromRemarksCollection marks data that came from the Job 6
   // remarks collection feed (not from a main_store snapshot).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean }) => {
+  // opts.fromPromotionHistoryCollection marks data that came from the
+  // Job 7 promotion collection feed (not from a main_store snapshot).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean; fromPromotionHistoryCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -2958,10 +3003,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('madrasha_trash_bin', JSON.stringify(data.trashBin)); } catch {}
     }
     if (data.promotionHistory && Array.isArray(data.promotionHistory)) {
-      setPromotionHistory(data.promotionHistory);
-      lastConfirmedRef.current['promotionHistory'] = data.promotionHistory;
-      snapshotApplied['promotionHistory'] = data.promotionHistory;
-      try { localStorage.setItem('madrasha_promotion_history', JSON.stringify(data.promotionHistory)); } catch {}
+      // Job 7: main_store promotionHistory applies only while the
+      // collection feed has not taken over as the source. The
+      // collection feed's own snapshots always apply (its handler
+      // decides when an empty snapshot is real — see
+      // startPromotionHistoryFeed).
+      if (opts?.fromPromotionHistoryCollection || !promotionHistoryFromCollectionRef.current) {
+        setPromotionHistory(data.promotionHistory);
+        lastConfirmedRef.current['promotionHistory'] = data.promotionHistory;
+        snapshotApplied['promotionHistory'] = data.promotionHistory;
+        try { localStorage.setItem('madrasha_promotion_history', JSON.stringify(data.promotionHistory)); } catch {}
+        // Job 7: main_store is known now — copy any not-yet-backfilled
+        // records into the new collection (the feed handler's empty
+        // snapshot may have fired before main_store loaded).
+        if (!opts?.fromPromotionHistoryCollection) void backfillPromotionHistoryOnce();
+      } else {
+        // Job 7: the collection is the source, but main_store may hold
+        // stragglers (written by a stale pre-split tab, which only
+        // writes main_store). Copy them into the collection; the feed
+        // then delivers them. Nothing is lost, nothing is wiped.
+        const colIds = new Set((lastCollectionPromotionHistoryRef.current || []).map((r) => String(r.id)));
+        const stragglers = data.promotionHistory.filter((r) => !colIds.has(String(r.id)));
+        if (stragglers.length > 0) void backfillPromotionHistoryOnce(stragglers);
+      }
     }
     if (data.teachers && Array.isArray(data.teachers)) {
       const cleanTeachers = data.teachers.filter(t => !trashedIds.has(String(t.id)));
@@ -3191,11 +3255,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let academicUnsubscribes: Array<() => void> = [];
     let feesUnsubscribes: Array<() => void> = [];
     let remarksUnsubscribe: (() => void) | null = null;
+    let promotionHistoryUnsubscribe: (() => void) | null = null;
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
         try { noticesUnsubscribe(); } catch {}
         noticesUnsubscribe = null;
+      }
+    };
+
+    const stopPromotionHistoryFeed = () => {
+      if (promotionHistoryUnsubscribe) {
+        try { promotionHistoryUnsubscribe(); } catch {}
+        promotionHistoryUnsubscribe = null;
       }
     };
 
@@ -3245,6 +3317,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopAcademicFeeds();
       stopFeesFeeds();
       stopRemarksFeed();
+      stopPromotionHistoryFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -3580,6 +3653,63 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       );
     };
 
+    // Job 7 read-switch: the promotionHistory collection feed. Same
+    // shape as Job 1's notices feed — once it delivers docs covering
+    // every confirmed main_store record it becomes the read source;
+    // an empty snapshot before that means the backfill has not run
+    // yet, so main_store stays in place (fallback) and the backfill
+    // runs. An empty snapshot AFTER docs existed means every record
+    // was cleared — that empty list applies for real. A feed error
+    // only settles the auto-sync guard; main_store keeps showing.
+    const markPromotionHistoryFeedSettled = () => {
+      promotionHistoryFeedSettledRef.current = true;
+      hasLoadedPromotionHistoryCollectionRef.current = true;
+    };
+
+    const startPromotionHistoryFeed = () => {
+      if (cancelled) return;
+      stopPromotionHistoryFeed();
+      promotionHistoryUnsubscribe = onSnapshot(
+        promotionHistoryCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as PromotionHistoryRecord;
+            return { ...data, id: (data as any).id || d.id };
+          });
+          lastCollectionPromotionHistoryRef.current = docs;
+          markPromotionHistoryFeedSettled();
+          if (docs.length > 0) {
+            // Take over only when the collection holds every record
+            // the confirmed main_store list knows — a partial
+            // collection (backfill still running) must not hide the
+            // rest. Queued local records survive via
+            // preserveQueuedPayloads, so the check uses the
+            // confirmed list, not local state.
+            const knownIds = new Set(((lastConfirmedRef.current['promotionHistory'] || []) as PromotionHistoryRecord[]).map((r) => String(r.id)));
+            const colIds = new Set(docs.map((d) => String(d.id)));
+            const complete = [...knownIds].every((id) => colIds.has(id));
+            if (complete) {
+              promotionHistoryFromCollectionRef.current = true;
+              applyRemoteData({ promotionHistory: docs }, { fromPromotionHistoryCollection: true });
+            } else {
+              void backfillPromotionHistoryOnce();
+            }
+          } else if (promotionHistoryFromCollectionRef.current) {
+            applyRemoteData({ promotionHistory: [] }, { fromPromotionHistoryCollection: true });
+          } else {
+            void backfillPromotionHistoryOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Promotion collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store promotionHistory keeps showing.
+          markPromotionHistoryFeedSettled();
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -3598,6 +3728,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startFeesFeeds();
       // Job 6: same for the remarks collection.
       startRemarksFeed();
+      // Job 7: same for the promotionHistory collection.
+      startPromotionHistoryFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -3820,6 +3952,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // saves bypass this (confirmRemarksCloudSync writes directly),
     // and queued payloads preserve anything edited meanwhile.
     if (!hasLoadedRemarksCollectionRef.current) return;
+    // Job 7: never auto-sync until the promotion collection has
+    // delivered its first snapshot (or errored) — otherwise sync
+    // could start on half-loaded promotion state. Explicit promotion
+    // saves bypass this (confirmPromotionHistoryCloudSync writes
+    // directly), and queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedPromotionHistoryCollectionRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -3828,7 +3966,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
-      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current || !hasLoadedPromotionHistoryCollectionRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
