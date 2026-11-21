@@ -13,6 +13,7 @@
  * Job 11: marks, 21 Nov 2026).
  * Job 12: students, 21 Nov 2026).
  * Job 13: trashBin, 21 Nov 2026).
+ * Job 14: schoolProfile + markEntryEnabled -> settings/main, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -25,11 +26,16 @@
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
  * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
- * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed / startMarksFeed / startStudentsFeed / startTrashFeed).
+ * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed / startTransactionsFeed / startMarksFeed / startStudentsFeed / startTrashFeed / startSettingsFeed).
+ *
+ * Job 14 is the exception to the per-record shape: settings/main is a
+ * SINGLE document holding two scalar fields, so its backfill writes
+ * one merge doc (only the fields actually present — a missing
+ * markEntryEnabled is never invented, keeping the default-open rule).
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, marksCollectionRef, studentsCollectionRef, trashCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, transactionsCollectionRef, marksCollectionRef, studentsCollectionRef, trashCollectionRef, writeSettingsToCollection, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
 import type { NoticeItem, RemarkRecord } from '../types';
@@ -247,4 +253,34 @@ export function trashCollectionComplete(confirmedTrash: any[], collectionDocs: a
   if (knownIds.size !== colIds.size) return false;
   for (const id of knownIds) if (!colIds.has(id)) return false;
   return true;
+}
+
+/**
+ * Job 14 — pure plan step for the settings doc: which fields a
+ * backfill would write into settings/main. Only fields actually
+ * present in main_store are copied, as-is — a missing
+ * markEntryEnabled stays missing (default open), a missing profile
+ * stays missing. Testable without Firestore.
+ */
+export function settingsBackfillPlan(profile?: any, markEntryEnabled?: unknown): { patch: { schoolProfile?: Record<string, any>; markEntryEnabled?: boolean } } {
+  const patch: { schoolProfile?: Record<string, any>; markEntryEnabled?: boolean } = {};
+  if (profile && typeof profile === 'object' && !Array.isArray(profile)) patch.schoolProfile = profile;
+  if (typeof markEntryEnabled === 'boolean') patch.markEntryEnabled = markEntryEnabled;
+  return { patch };
+}
+
+/**
+ * Job 14 — one-time backfill: copy the confirmed main_store
+ * schoolProfile / markEntryEnabled into settings/main (doc id =
+ * "main", setDoc merge — a second run writes the same doc, and a
+ * field written once is never wiped by a later run that lacks it).
+ * Returns what was written. Throws on Firestore failure so the
+ * caller can retry.
+ */
+export async function migrateSettingsToCollection(profile?: any, markEntryEnabled?: unknown): Promise<{ written: boolean; fields: string[] }> {
+  const { patch } = settingsBackfillPlan(profile, markEntryEnabled);
+  const fields = Object.keys(patch);
+  if (fields.length === 0) return { written: false, fields: [] };
+  await writeSettingsToCollection(patch);
+  return { written: true, fields };
 }
