@@ -120,6 +120,8 @@ import {
   academicCollectionRef,
   readAcademicFieldFromCollection,
   feesCollectionRef,
+  remarksCollectionRef,
+  readRemarksFromCollection,
   writeScheduleFieldsToCloud,
   writeStaffLeavesFieldToCloud,
   writeFeeStructuresFieldToCloud,
@@ -2143,6 +2145,27 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // for this, so sync never starts on half-loaded fees state.
   // Login verdict and manual force-push do NOT wait on it.
   const hasLoadedFeesCollectionsRef = useRef(false);
+  // Job 6 (remarks split): same shape as Job 1, one field —
+  // once the remarks collection feed has delivered docs it is the
+  // read source; main_store stays the fallback until then. Remark keys
+  // are studentId__examId (no id field), so the backfilled set holds
+  // keys, not ids.
+  const remarksFromCollectionRef = useRef(false);
+  // Job 6: guards the one-time remarks backfill against concurrent feed events.
+  const remarksBackfillInFlightRef = useRef(false);
+  // Job 6: keys already copied into the new collection by a backfill, so
+  // repeat snapshots don't rewrite them.
+  const backfilledRemarkKeysRef = useRef<Set<string>>(new Set());
+  // Job 6: the last docs the remarks collection feed delivered — the
+  // straggler check compares main_store records against this set.
+  const lastCollectionRemarksRef = useRef<RemarkRecord[]>([]);
+  // Job 6: whether the remarks feed has delivered its first snapshot
+  // (docs, empty, or error) — the auto-sync guard waits on it.
+  const remarksFeedSettledRef = useRef(false);
+  // Job 6: true once the remarks feed has settled — auto-sync waits
+  // for this, so sync never starts on half-loaded remarks state.
+  // Login verdict and manual force-push do NOT wait on it.
+  const hasLoadedRemarksCollectionRef = useRef(false);
   // Phase 2 (public-data split): which Firestore document currently feeds
   // this session — 'main' (institution/main_store, signed-in) or 'public'
   // (institution/public_portal, anonymous portal visitors).
@@ -2479,6 +2502,30 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }
   };
 
+  // Job 6 one-time backfill: copy main_store remarks into their new
+  // collection. Source is the CONFIRMED main_store list
+  // (lastConfirmedRef) — never local state, which may still hold a
+  // record deleted on another device. Idempotent by studentId__examId
+  // (the backfilled-keys set skips already-copied records), so repeat
+  // runs write the same docs; a failure only logs — the next snapshot
+  // retries, and dual-write keeps main_store correct.
+  const backfillRemarksOnce = async (source?: RemarkRecord[]) => {
+    if (remarksBackfillInFlightRef.current) return;
+    const list = source || lastConfirmedRef.current['remarks'] || [];
+    const keyFn = fieldKeyFn('remarks');
+    const pending = (list || []).filter((r) => r && keyFn(r as any) && !backfilledRemarkKeysRef.current.has(keyFn(r as any)));
+    if (pending.length === 0) return;
+    remarksBackfillInFlightRef.current = true;
+    try {
+      await migrateFieldToCollection('remarks', pending);
+      pending.forEach((r) => backfilledRemarkKeysRef.current.add(keyFn(r as any)));
+    } catch (err: any) {
+      console.warn('Remarks backfill notice:', err?.message || err);
+    } finally {
+      remarksBackfillInFlightRef.current = false;
+    }
+  };
+
   // Job 2: one schedule field from a remote snapshot. A collection
   // feed's own snapshots always apply (its handler decides when an
   // empty snapshot is real — see startScheduleFeeds); main_store
@@ -2796,7 +2843,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // academic collection feed (all six fields together).
   // opts.fromFeesCollection marks data that came from a Job 5 fees
   // collection feed (both fields together).
-  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean }) => {
+  // opts.fromRemarksCollection marks data that came from the Job 6
+  // remarks collection feed (not from a main_store snapshot).
+  const applyRemoteData = (data: any, opts?: { fromNoticesCollection?: boolean; fromScheduleCollection?: ScheduleSplitField; fromClassesCollection?: boolean; fromAcademicCollection?: boolean; fromFeesCollection?: boolean; fromRemarksCollection?: boolean }) => {
     if (!data) return;
     hasLoadedRemoteRef.current = true;
     isRemoteUpdateRef.current = true;
@@ -2856,10 +2905,29 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       try { localStorage.setItem('marks', JSON.stringify(cleanMarks)); } catch {}
     }
     if (data.remarks && Array.isArray(data.remarks)) {
-      setRemarks(data.remarks);
-      lastConfirmedRef.current['remarks'] = data.remarks;
-      snapshotApplied['remarks'] = data.remarks;
-      try { localStorage.setItem('remarks', JSON.stringify(data.remarks)); } catch {}
+      // Job 6: main_store remarks apply only while the collection feed
+      // has not taken over as the source. The collection feed's own
+      // snapshots always apply (its handler decides when an empty
+      // snapshot is real — see startRemarksFeed).
+      if (opts?.fromRemarksCollection || !remarksFromCollectionRef.current) {
+        setRemarks(data.remarks);
+        lastConfirmedRef.current['remarks'] = data.remarks;
+        snapshotApplied['remarks'] = data.remarks;
+        try { localStorage.setItem('remarks', JSON.stringify(data.remarks)); } catch {}
+        // Job 6: main_store is known now — copy any not-yet-backfilled
+        // remarks into the new collection (the feed handler's empty
+        // snapshot may have fired before main_store loaded).
+        if (!opts?.fromRemarksCollection) void backfillRemarksOnce();
+      } else {
+        // Job 6: the collection is the source, but main_store may hold
+        // stragglers (written by a stale pre-split tab, which only
+        // writes main_store). Copy them into the collection; the feed
+        // then delivers them. Nothing is lost, nothing is wiped.
+        const remarkKey = (r: any) => fieldKeyFn('remarks')(r);
+        const colIds = new Set((lastCollectionRemarksRef.current || []).map((r) => remarkKey(r)));
+        const stragglers = data.remarks.filter((r) => !colIds.has(remarkKey(r)));
+        if (stragglers.length > 0) void backfillRemarksOnce(stragglers);
+      }
     }
     if (data.classes && Array.isArray(data.classes)) {
       applyClassesFieldFromRemote('classes', data.classes, opts, snapshotApplied);
@@ -3122,6 +3190,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     let classesUnsubscribes: Array<() => void> = [];
     let academicUnsubscribes: Array<() => void> = [];
     let feesUnsubscribes: Array<() => void> = [];
+    let remarksUnsubscribe: (() => void) | null = null;
 
     const stopNoticesFeed = () => {
       if (noticesUnsubscribe) {
@@ -3158,6 +3227,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       feesUnsubscribes = [];
     };
 
+    const stopRemarksFeed = () => {
+      if (remarksUnsubscribe) {
+        try { remarksUnsubscribe(); } catch {}
+        remarksUnsubscribe = null;
+      }
+    };
+
     const stopActiveFeed = () => {
       if (activeUnsubscribe) {
         try { activeUnsubscribe(); } catch {}
@@ -3168,6 +3244,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       stopClassesFeeds();
       stopAcademicFeeds();
       stopFeesFeeds();
+      stopRemarksFeed();
     };
 
     // Job 1 read-switch: the notices collection feed. Once it delivers
@@ -3446,6 +3523,63 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       });
     };
 
+    // Job 6 read-switch: the remarks collection feed. Same shape as
+    // Job 1's notices feed — once it delivers docs covering every
+    // confirmed main_store record it becomes the read source; an empty
+    // snapshot before that means the backfill has not run yet, so
+    // main_store stays in place (fallback) and the backfill runs. An
+    // empty snapshot AFTER docs existed means every remark was cleared
+    // — that empty list applies for real. A feed error only settles
+    // the auto-sync guard; main_store keeps showing.
+    const markRemarksFeedSettled = () => {
+      remarksFeedSettledRef.current = true;
+      hasLoadedRemarksCollectionRef.current = true;
+    };
+
+    const startRemarksFeed = () => {
+      if (cancelled) return;
+      stopRemarksFeed();
+      remarksUnsubscribe = onSnapshot(
+        remarksCollectionRef(),
+        (snapshot) => {
+          if (cancelled) return;
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data() as RemarkRecord;
+            return { ...data, studentId: data.studentId || d.id.split('__')[0], examId: data.examId || d.id.split('__')[1] };
+          });
+          lastCollectionRemarksRef.current = docs;
+          markRemarksFeedSettled();
+          if (docs.length > 0) {
+            // Take over only when the collection holds every remark the
+            // confirmed main_store list knows — a partial collection
+            // (backfill still running) must not hide the rest. Queued
+            // local remarks survive via preserveQueuedPayloads, so the
+            // check uses the confirmed list, not local state.
+            const remarkKey = (r: any) => fieldKeyFn('remarks')(r);
+            const knownIds = new Set(((lastConfirmedRef.current['remarks'] || []) as RemarkRecord[]).map((r) => remarkKey(r)));
+            const colIds = new Set(docs.map((d) => remarkKey(d)));
+            const complete = [...knownIds].every((id) => colIds.has(id));
+            if (complete) {
+              remarksFromCollectionRef.current = true;
+              applyRemoteData({ remarks: docs }, { fromRemarksCollection: true });
+            } else {
+              void backfillRemarksOnce();
+            }
+          } else if (remarksFromCollectionRef.current) {
+            applyRemoteData({ remarks: [] }, { fromRemarksCollection: true });
+          } else {
+            void backfillRemarksOnce();
+          }
+        },
+        (error) => {
+          if (cancelled) return;
+          console.warn('Remarks collection snapshot listener notice:', error?.message || error);
+          // Fallback stays in place: main_store remarks keep showing.
+          markRemarksFeedSettled();
+        }
+      );
+    };
+
     const startMainStoreFeed = () => {
       if (cancelled) return;
       stopActiveFeed();
@@ -3462,6 +3596,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       startAcademicFeeds();
       // Job 5: same for the two fees collections.
       startFeesFeeds();
+      // Job 6: same for the remarks collection.
+      startRemarksFeed();
       const docRef = doc(db, 'institution', 'main_store');
 
       // Immediate direct getDoc load to guarantee instant data availability on boot
@@ -3678,6 +3814,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // directly), and queued payloads preserve anything edited
     // meanwhile.
     if (!hasLoadedFeesCollectionsRef.current) return;
+    // Job 6: never auto-sync until the remarks collection has
+    // delivered its first snapshot (or errored) — otherwise sync
+    // could start on half-loaded remarks state. Explicit remark
+    // saves bypass this (confirmRemarksCloudSync writes directly),
+    // and queued payloads preserve anything edited meanwhile.
+    if (!hasLoadedRemarksCollectionRef.current) return;
 
     setCloudStatus('syncing');
 
@@ -3686,7 +3828,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     syncTimeoutRef.current = setTimeout(async () => {
       // Fire-time re-validation (belt & braces): the scheduled closure
       // may predate the main feed, so re-check before any write.
-      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current) return;
+      if (feedKindRef.current === 'public' || !hasLoadedMainStoreRef.current || !hasLoadedScheduleCollectionsRef.current || !hasLoadedAcademicCollectionsRef.current || !hasLoadedClassesCollectionsRef.current || !hasLoadedFeesCollectionsRef.current || !hasLoadedRemarksCollectionRef.current) return;
       try {
         const { wrote, failedFields } = await pushDiffToCloud();
         if (wrote) {
@@ -4208,7 +4350,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       } catch (colErr: any) {
         console.warn('Academic collection read notice (portal keeps main_store subjects/exams/assignments):', colErr?.message || colErr);
       }
-      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments }));
+      // Job 6: the portal's remarks (teacher comments on the student
+      // profile) come from the new collection when it has docs;
+      // main_store remarks stay the fallback until the backfill (a
+      // collection read failure also falls back, never breaks the
+      // rebuild). The portal document shape is unchanged.
+      let remarks = (data as any).remarks;
+      try {
+        const colRemarks = await readRemarksFromCollection();
+        if (colRemarks.length > 0) remarks = colRemarks;
+      } catch (colErr: any) {
+        console.warn('Remarks collection read notice (portal keeps main_store remarks):', colErr?.message || colErr);
+      }
+      await setDoc(doc(db, 'institution', 'public_portal'), buildPublicPortalData({ ...data, notices, subjects, exams, examSubjectAssignments, remarks }));
     } catch (pubErr: any) {
       console.warn('Public portal rebuild notice:', pubErr?.message || pubErr);
     }
