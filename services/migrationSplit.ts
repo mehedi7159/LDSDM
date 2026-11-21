@@ -8,6 +8,7 @@
  * Job 5: feeTypes + feeStructures, 21 Nov 2026).
  * Job 6: remarks, 21 Nov 2026).
  * Job 7: promotionHistory, 21 Nov 2026).
+ * Job 8: staffLeaves, 21 Nov 2026).
  *
  * Each migrate*ToCollection copies one main_store field into its new
  * collection under institutions/<CANONICAL_PRIMARY_INSTITUTION_ID>/.
@@ -20,11 +21,11 @@
  * A backfill never deletes anything and never touches Firestore rules.
  * It only runs when the new collection is empty and main_store still
  * holds the records (see AppContext startNoticesFeed / startScheduleFeeds
- * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed).
+ * / startClassesFeeds / startAcademicFeeds / startFeesFeeds / startRemarksFeed / startPromotionHistoryFeed / startLeavesFeed).
  */
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
+import { noticesCollectionRef, scheduleCollectionRef, classesCollectionRef, academicCollectionRef, feesCollectionRef, remarksCollectionRef, promotionHistoryCollectionRef, staffLeavesCollectionRef, stripUndefinedRecord, type ScheduleSplitField, type ClassesSplitField, type AcademicSplitField, type FeesSplitField } from './cloudConfirm';
 import { assertUpsertRecords } from './mainStoreWrite';
 import { fieldKeyFn } from './payloadQueue';
 import type { NoticeItem, RemarkRecord } from '../types';
@@ -78,6 +79,8 @@ export async function migrateNoticesToCollection(records: NoticeItem[]): Promise
  * without Firestore. Counts are RAW: docs + skipped always equals the
  * main_store array length, so the plan's count check (array length =
  * new collection doc count) holds whenever ids are distinct.
+ * Job 8 reuses this same plan step for staffLeaves — it keys on id
+ * exactly the same way, so no second copy of the logic is needed.
  */
 export function scheduleBackfillPlan(records: any[]): { docs: any[]; skipped: number } {
   const seen = new Set<string>();
@@ -133,9 +136,11 @@ export function remarksBackfillPlan(records: RemarkRecord[]): { docs: RemarkReco
  * Job 6 reuses it for 'remarks' (same shape, one field — doc id =
  * studentId__examId instead of an id field).
  * Job 7 reuses it for 'promotionHistory' (same shape, one field).
+ * Job 8 extends it to staffLeaves: same idempotent batch copy, only
+ * the collection differs.
  * Returns counts. Throws on Firestore failure so the caller can retry.
  */
-export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory', records: any[]): Promise<{ written: number; skipped: number }> {
+export async function migrateFieldToCollection(field: ScheduleSplitField | ClassesSplitField | AcademicSplitField | FeesSplitField | 'remarks' | 'promotionHistory' | 'staffLeaves', records: any[]): Promise<{ written: number; skipped: number }> {
   const isFeesField = field === 'feeTypes' || field === 'feeStructures';
   const { docs, skipped } = field === 'remarks' ? remarksBackfillPlan(records) : isFeesField ? feesBackfillPlan(field as FeesSplitField, records) : scheduleBackfillPlan(records);
   if (docs.length > 0) {
@@ -143,7 +148,8 @@ export async function migrateFieldToCollection(field: ScheduleSplitField | Class
     // the backfill loudly instead of being silently dropped.
     assertUpsertRecords(field, docs as any, fieldKeyFn(field), field === 'remarks' ? 'studentId+examId' : 'id');
   }
-  const col = field === 'promotionHistory' ? promotionHistoryCollectionRef()
+  const col = field === 'staffLeaves' ? staffLeavesCollectionRef()
+    : field === 'promotionHistory' ? promotionHistoryCollectionRef()
     : field === 'remarks' ? remarksCollectionRef()
     : isFeesField ? feesCollectionRef(field as FeesSplitField)
     : (field === 'classes' || field === 'sections' || field === 'academicYears')

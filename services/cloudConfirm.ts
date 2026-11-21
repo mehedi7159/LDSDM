@@ -784,16 +784,60 @@ export async function readAcademicFieldFromCollection(field: AcademicSplitField)
   });
 }
 
+/**
+ * Job 8 (staffLeaves split): the new home of staff leave records. One
+ * collection, path built from CANONICAL_PRIMARY_INSTITUTION_ID, never
+ * hardcoded — same shape as Job 1's notices collection.
+ */
+export function staffLeavesCollectionRef() {
+  return collection(db, 'institutions', CANONICAL_PRIMARY_INSTITUTION_ID, 'staffLeaves');
+}
+
+/** Read all leave docs from the new collection (empty array when none). */
+export async function readStaffLeavesFromCollection(): Promise<StaffLeaveRecord[]> {
+  const snap = await getDocs(staffLeavesCollectionRef());
+  return snap.docs.map((d) => {
+    const data = d.data() as StaffLeaveRecord;
+    return { ...data, id: data.id || d.id };
+  });
+}
+
+/** Write leave docs into the new collection (setDoc merge by id). */
+export async function writeStaffLeavesToCollection(leaves: StaffLeaveRecord[]): Promise<void> {
+  const col = staffLeavesCollectionRef();
+  for (const l of leaves || []) {
+    if (!l || !l.id) continue; // id assertion happens in the caller
+    await setDoc(doc(col, String(l.id)), stripUndefinedRecord(l), { merge: true });
+  }
+}
+
+/** Delete leave docs from the new collection (missing docs are a no-op). */
+export async function deleteStaffLeavesFromCollection(ids: string[]): Promise<void> {
+  const col = staffLeavesCollectionRef();
+  for (const id of ids || []) {
+    if (!id) continue;
+    await deleteDoc(doc(col, String(id)));
+  }
+}
 /** Step 4 (25 Oct 2026): staff leave records (staffLeaves field only). */
 export async function writeStaffLeavesFieldToCloud(
   leaves: StaffLeaveRecord[],
   updatedBy: string
 ): Promise<void> {
-  await withTimeout(
-    writeFieldToCloud('staffLeaves', leaves, updatedBy),
-    CONFIRM_TIMEOUT_MS,
-    'leaves cloud confirm'
-  );
+  const write = async (): Promise<void> => {
+    const list = leaves || [];
+    if (list.length > 0) {
+      // Job 8 dual-write: same id assertion as the main_store leg, then
+      // the new collection first. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay both legs.
+      assertUpsertRecords('staffLeaves', list as any, fieldKeyFn('staffLeaves'));
+      await writeStaffLeavesToCollection(list);
+    }
+    // The old main_store write stays — stopping it is a separate push
+    // after one week of dual-write, never this job.
+    await writeFieldToCloud('staffLeaves', leaves, updatedBy);
+  };
+  await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'leaves cloud confirm');
 }
 
 /**
@@ -1280,6 +1324,11 @@ export async function writeDeleteFieldsToCloud(
         // the new collection — delete their docs there too, so a
         // cleared record can never be resurrected by the promotion feed.
         await deletePromotionHistoryFromCollection(removal.ids);
+      } else if (removal.field === 'staffLeaves') {
+        // Job 8 (staffLeaves split): leave records also live in the new
+        // collection — delete their docs there too, so a deleted leave
+        // can never be resurrected by the leaves feed.
+        await deleteStaffLeavesFromCollection(removal.ids);
       }
     }
     await setDoc(ref, payload, { merge: true });
@@ -1361,6 +1410,10 @@ export async function writeTrashOpToCloud(
         // Job 7: same for a restored promotion record — otherwise the
         // restore would stay invisible until a main_store read.
         await writePromotionHistoryToCollection(liveRecords as PromotionHistoryRecord[]);
+      } else if (field === 'staffLeaves') {
+        // Job 8: same for a restored leave record — otherwise the
+        // restore would stay invisible until a main_store read.
+        await writeStaffLeavesToCollection(liveRecords as StaffLeaveRecord[]);
       }
     }
     // Phase 2 tripwire (defense in depth — trash ops never shrink a
