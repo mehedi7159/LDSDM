@@ -25,6 +25,7 @@ import {
   validateClassTeacherAssignment
 } from './subjectValidation';
 import { logAuditEvent } from './auditLog';
+import { showSecondName } from './displayNames';
 
 export const CANONICAL_PRIMARY_INSTITUTION_ID = 'inst_madrasah_primary';
 
@@ -82,7 +83,9 @@ export function buildCreateSubjectPayload(
     id: stableId,
     institutionId: input.institutionId || institutionId,
     name: input.name.trim(),
-    nameBn: input.nameBn ? input.nameBn.trim() : undefined,
+    // Name doubling: never store a redundant nameBn — when it is the same
+    // subject name after normalizing, views fall back to `name` anyway.
+    nameBn: showSecondName(input.name, input.nameBn) ? input.nameBn.trim() : undefined,
     shortName: input.shortName ? input.shortName.trim() : undefined,
     displayName: input.displayName ? input.displayName.trim() : (input.nameBn || input.name.trim()),
     classLevel: input.classLevel || '',
@@ -129,7 +132,8 @@ export function buildUpdateSubjectPayload(
     ...merged,
     id: existing.id,
     name: merged.name.trim(),
-    nameBn: merged.nameBn ? merged.nameBn.trim() : undefined,
+    // Name doubling (see create builder): drop a redundant nameBn.
+    nameBn: showSecondName(merged.name, merged.nameBn) ? merged.nameBn.trim() : undefined,
     code: merged.code ? merged.code.trim().toUpperCase() : undefined,
     updatedAt: now,
     updatedBy: actor?.uid || 'system'

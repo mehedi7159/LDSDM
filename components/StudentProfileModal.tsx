@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Student } from '../types/student';
 import { FEE_DISCOUNT_TYPE_LABELS, feeArrangementOf } from '../services/studentFeeArrangement';
+import { showSecondName } from '../services/displayNames';
 import { 
   X, 
   User, 
@@ -111,7 +112,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </h2>
                 {getStatusBadge()}
               </div>
-              {student.name && student.nameBn && student.name.trim() !== student.nameBn.trim() && (
+              {showSecondName(student.name, student.nameBn) && (
                 <p className="text-emerald-200/90 text-sm font-medium">
                   {student.nameBn}
                 </p>

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import type { TrashItem } from '../context/AppContext';
 import { Student } from '../types';
 import { formatNumber, getStudentRoll } from '../services/utils';
+import { showSecondName } from '../services/displayNames';
 import { Button } from './ui/Button';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { 
@@ -799,7 +800,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   // Shared student card: mobile list rows + desktop grid tiles. Stateless by design.
   const StudentCard: React.FC<{ student: Student; variant: 'row' | 'tile' }> = ({ student, variant }) => {
     const displayName = language === 'bn' ? (student.nameBn || student.name) : student.name;
-    const altName = language === 'bn' ? (student.nameBn ? student.name : undefined) : student.nameBn;
+    // Name doubling: the second name prints only when it really differs
+    // (the old `altName !== displayName` check missed whitespace-only
+    // differences, e.g. a double space inside the name).
+    const altName = showSecondName(student.name, student.nameBn)
+      ? (language === 'bn' ? student.name : student.nameBn)
+      : undefined;
     return (
       <div
         className={variant === 'tile'
@@ -1553,7 +1559,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                         </div>
                         <div className="truncate max-w-[170px]">
                           <div className="font-bold text-gray-900 dark:text-white truncate font-bangla">{language === 'bn' ? (student.nameBn || student.name) : student.name}</div>
-                          {language !== 'bn' && student.nameBn && <div className="text-[10px] text-gray-400 dark:text-slate-500 truncate font-bangla">{student.nameBn}</div>}
+                          {language !== 'bn' && showSecondName(student.name, student.nameBn) && <div className="text-[10px] text-gray-400 dark:text-slate-500 truncate font-bangla">{student.nameBn}</div>}
                         </div>
                       </div>
                       {/* Job 0 (instant save): badge for a record whose

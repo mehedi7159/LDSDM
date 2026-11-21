@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student, Exam, Subject, MarkRecord, RemarkRecord, ExamSubjectAssignment } from '../types';
 import { calculateGrade, calculateTotalGPA, getConsolidatedMark, formatNumber } from '../services/utils';
+import { showSecondName } from '../services/displayNames';
 import { 
   User, 
   Calendar, 
@@ -1962,7 +1963,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
                   {language === 'bn' ? (currentStudent.nameBn || currentStudent.name) : currentStudent.name}
                 </h2>
-                {currentStudent.nameBn && language !== 'bn' && (
+                {language !== 'bn' && showSecondName(currentStudent.name, currentStudent.nameBn) && (
                   <span className="text-xs text-slate-400 font-normal">({currentStudent.nameBn})</span>
                 )}
               </div>
@@ -2344,7 +2345,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
         {/* Student Bio */}
         <div className="grid grid-cols-2 gap-2 text-xs my-4 p-3 border border-gray-300 rounded">
-          <div><strong>{language === 'bn' ? 'নাম:' : 'Name:'}</strong> {currentStudent.name} {currentStudent.nameBn ? `(${currentStudent.nameBn})` : ''}</div>
+          <div><strong>{language === 'bn' ? 'নাম:' : 'Name:'}</strong> {currentStudent.name}{showSecondName(currentStudent.name, currentStudent.nameBn) ? ` (${currentStudent.nameBn})` : ''}</div>
           <div><strong>{language === 'bn' ? 'স্টুডেন্ট আইডি:' : 'Student ID:'}</strong> {currentStudent.studentId || currentStudent.id}</div>
           <div><strong>{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</strong> {currentStudent.classLevel || studentClass}</div>
           <div><strong>{language === 'bn' ? 'রোল:' : 'Roll:'}</strong> {currentStudent.rollNumber || currentStudent.roll || '1'}</div>

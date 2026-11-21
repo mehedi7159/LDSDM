@@ -5,6 +5,7 @@ import { formatNumber, getStudentRoll } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
 import { defaultIdCardValidity } from '../services/academicYearService';
 import { toAsciiDigits } from '../services/studentService';
+import { showSecondName } from '../services/displayNames';
 import { 
   CreditCard, 
   Printer, 
@@ -266,7 +267,7 @@ export const StudentIDCardGenerator: React.FC = () => {
                       {/* Info Fields */}
                       <div className="flex-1 space-y-1 text-xs text-slate-700">
                         <h4 className="font-black text-sm text-indigo-950 leading-tight">{student.name}</h4>
-                        {student.name && student.nameBn && student.name.trim() !== student.nameBn.trim() && <p className="text-[10px] text-slate-500 font-semibold">{student.nameBn}</p>}
+                        {showSecondName(student.name, student.nameBn) && <p className="text-[10px] text-slate-500 font-semibold">{student.nameBn}</p>}
                         
                         <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 pt-1 text-[11px]">
                           <div><span className="text-slate-400 font-semibold">শ্রেণি:</span> <strong>{student.classLevel}</strong></div>

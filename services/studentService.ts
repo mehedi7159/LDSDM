@@ -13,6 +13,7 @@
 
 import type { Student, StudentFilterOptions, StudentLifecycleStatus } from '../types/student';
 import { validateStudent } from './studentValidation';
+import { showSecondName } from './displayNames';
 import { logAuditEvent } from './auditLog';
 
 export const CANONICAL_PRIMARY_INSTITUTION_ID = 'inst_madrasah_primary';
@@ -330,9 +331,15 @@ export function buildCreateStudentPayload(
   // normalizes to ASCII '0' — store it as missing, never as '0'.
   const cleanRoll = normalizedRoll && Number(normalizedRoll) !== 0 ? normalizedRoll : undefined;
   const cleanRollNumber = normalizedRollNumber && Number(normalizedRollNumber) !== 0 ? normalizedRollNumber : undefined;
+  // Name doubling: never store a redundant nameBn — when it is the same
+  // name after normalizing, views fall back to `name` anyway (stored
+  // students without nameBn already render fine). A genuinely different
+  // nameBn (English name + Bangla nameBn) is still stored.
+  const storedNameBn = showSecondName(input.name, input.nameBn) ? input.nameBn?.trim() : undefined;
 
   const student: Student = stripUndefinedValues({
     ...input,
+    nameBn: storedNameBn,
     // Save-time guard: a requested studentId that is already taken
     // resolves to the next free one, so a duplicate can never be saved
     // even if a caller passes one in directly.
@@ -387,6 +394,8 @@ export function buildUpdateStudentPayload(
   const student: Student = stripUndefinedValues({
     ...merged,
     id: existing.id,
+    // Name doubling (see create builder): drop a redundant nameBn.
+    nameBn: showSecondName(merged.name, merged.nameBn) ? merged.nameBn?.trim() : undefined,
     isFormer,
     updatedAt: now,
     updatedBy: actor?.uid || 'system'
