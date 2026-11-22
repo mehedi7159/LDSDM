@@ -212,16 +212,16 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
       >
           {/* Exam Switcher on Top */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <div className="bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/15 flex items-center gap-2">
-              <Calendar size={15} className="text-amber-400 shrink-0" />
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-2 rounded-2xl flex items-center gap-2">
+              <Calendar size={15} className="text-teal-600 dark:text-teal-400 shrink-0" />
               <div className="text-left">
-                <span className="text-[10px] text-indigo-200 font-bold block uppercase tracking-wider leading-none">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block uppercase tracking-wider leading-none">
                   {language === 'bn' ? 'সক্রিয় পরীক্ষা' : 'Current Exam'}
                 </span>
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="bg-transparent text-white font-black text-xs border-none outline-none cursor-pointer pr-4 focus:ring-0"
+                  className="bg-transparent text-slate-700 dark:text-slate-200 font-black text-xs border-none outline-none cursor-pointer pr-4 focus:ring-0"
                 >
                   {exams.map(e => (
                     <option key={e.id} value={e.id} className="bg-slate-900 text-white font-bold">
@@ -234,9 +234,10 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
 
             <button
               onClick={() => onNavigate('academic_reports')}
-              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-100 text-indigo-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              style={{ backgroundColor: 'var(--color-brand)' }}
+              className="px-4 py-2.5 rounded-2xl text-white font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <BarChart3 size={15} className="text-indigo-600" />
+              <BarChart3 size={15} className="text-white" />
               <span>{language === 'bn' ? 'গ্রাফিক্যাল রিপোর্ট' : 'Deep Analytics'}</span>
             </button>
           </div>
