@@ -4895,22 +4895,20 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
       <main className="flex-1 p-4 space-y-4 anim-stagger">
         <ServerDataGate dataNameBn="ড্যাশবোর্ড তথ্য" dataNameEn="Dashboard data">
-        {/* HERO — gradient greeting + quick actions inside (Tutor App pattern:
+        {/* HERO — light greeting + quick actions inside (Tutor App pattern:
             greeting, "Today at a glance", QUICK ACTIONS row) */}
-        <section className="relative overflow-hidden rounded-3xl brand-grad text-white p-5">
-          <div className="absolute w-40 h-40 -top-10 -right-10 rounded-full bg-white/[0.14] pointer-events-none" />
-          <div className="absolute w-24 h-24 bottom-2 right-32 rounded-full bg-white/[0.10] pointer-events-none" />
-          <div className="relative">
-            <p className="text-[13px] font-medium text-white/85">{todayGreeting.fullDateText}</p>
-            <h2 className="text-[22px] font-black mt-0.5 leading-snug">{roleTitleBengali[userRole]}</h2>
-            <p className="text-[13px] text-white/80 mt-0.5">{schoolProfile.nameBn || schoolProfile.name}</p>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/70 mt-3">
+        <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5">
+          <div>
+            <p className="text-[13px] font-medium text-slate-500 dark:text-slate-400">{todayGreeting.fullDateText}</p>
+            <h2 className="text-[22px] font-black mt-0.5 leading-snug text-slate-900 dark:text-white">{roleTitleBengali[userRole]}</h2>
+            <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">{schoolProfile.nameBn || schoolProfile.name}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-3">
               {isEn ? 'Today at a glance' : 'আজকের সারসংক্ষেপ'}
             </p>
 
             <div className="flex flex-wrap gap-1.5 mt-3">
               {roleBadges.map((b, i) => (
-                <span key={i} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/[0.16]">
+                <span key={i} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-500/20">
                   {b}
                 </span>
               ))}
@@ -4920,7 +4918,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 than one role with a mobile home (e.g. accountant +
                 teacher). Single-role users never see this. */}
             {availableHomes.length > 1 && (
-              <div className="flex gap-1.5 mt-4 p-1 rounded-full bg-white/[0.16]">
+              <div className="flex gap-1.5 mt-4 p-1 rounded-full bg-slate-100 dark:bg-slate-800">
                 {availableHomes.map(h => {
                   const label =
                     h === 'teacher' ? (isEn ? 'Teacher' : 'শিক্ষক') :
@@ -4933,8 +4931,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <button
                       key={h}
                       onClick={() => { setHomeOverride(h); goHome(); }}
+                      style={isActive ? { backgroundColor: 'var(--color-brand)' } : undefined}
                       className={`flex-1 px-3 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                        isActive ? 'bg-white text-[#1e2433]' : 'text-white/85 active:bg-white/[0.14]'
+                        isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-700'
                       }`}
                     >
                       {label}
@@ -4944,7 +4943,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               </div>
             )}
 
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/70 mt-5 mb-2.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-5 mb-2.5">
               {isEn ? 'Quick actions' : 'দ্রুত কাজ'}
             </p>
             <div className={`grid ${roleActions.filter(a => a.id !== 'notices').length === 3 ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
@@ -4962,10 +4961,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       }
                       handleOpenModule(a.moduleKey);
                     }}
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] py-3 px-1 min-h-[72px] bg-white/[0.16] active:bg-white/[0.28] active:scale-95 transition-all cursor-pointer"
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] py-3 px-1 min-h-[72px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 active:bg-slate-100 dark:active:bg-slate-700 active:scale-95 transition-all cursor-pointer"
                   >
-                    <TileIcon size={22} className="text-white" />
-                    <span className="text-[11px] font-semibold text-white leading-tight text-center">
+                    <TileIcon size={22} className="text-teal-600 dark:text-teal-400" />
+                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight text-center">
                       {tileLabels[a.id] || a.title}
                     </span>
                   </button>
