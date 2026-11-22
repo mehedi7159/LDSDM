@@ -6,7 +6,7 @@
  * these primitives instead of hand-rolled markup:
  *
  *  - PageHeader   — a screen's greeting/title header. tone='brand' is the
- *                   flat hero (quick-action tiles live inside it);
+ *                   flat light hero (quick-action tiles live inside it);
  *                   tone='plain' is the standard card header.
  *  - SectionCard  — every content block: bg-white / dark:bg-slate-900,
  *                   rounded-2xl, border slate-200/80 / dark:slate-800,
