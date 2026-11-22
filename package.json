@@ -34,6 +34,7 @@
     "test:login-password-check": "tsx scripts/verify-login-password-check.ts",
     "test:login-remove-dead-auth-code": "tsx scripts/verify-login-remove-dead-auth-code.ts",
     "test:login-remove-dead-emailorphone": "tsx scripts/verify-login-remove-dead-emailorphone.ts",
+    "test:login-drive-scope-on-backup-only": "tsx scripts/verify-login-drive-scope-on-backup-only.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
     "test:blank-marksheet-play": "tsx scripts/verify-blank-marksheet-play.ts",
     "test:pass-rate": "tsx scripts/verify-pass-rate.ts",

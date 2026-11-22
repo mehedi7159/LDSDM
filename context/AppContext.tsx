@@ -76,7 +76,7 @@ import { academicScheduleService } from '../services/academicScheduleService';
 import type { ClassRoutineItem, SyllabusItem, AcademicCalendarEvent } from '../types/academic';
 import { translations, Language } from '../services/translations';
 import { generateSampleMadrashaData, generateSampleFinanceData, defaultFeeStructures } from '../services/sampleData';
-import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken } from '../services/firebase';
+import { db, auth, googleProvider, setCachedGoogleAccessToken, clearCachedGoogleAccessToken, getCachedGoogleAccessToken, isCachedGoogleAccessTokenDrive } from '../services/firebase';
 import { provisionStaffFirebaseUser, createPrimaryFirebaseUser, isStaffProvisioningRole, shouldHealPortalLogin, resolveCredentialSyncNeed, getStaffCanonicalEmail } from '../services/staffProvisioning';
 import { syncStaffCredentialToFirebase, type StaffCredentialSyncStatus } from '../services/staffCredentialSync';
 import { doc, onSnapshot, setDoc, getDoc, collection } from 'firebase/firestore';
@@ -5087,7 +5087,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       const settings = getGoogleDriveBackupSettings();
       if (!settings.autoBackupEnabled) return;
       const token = getCachedGoogleAccessToken();
-      if (!token || !authUser || !isAdmin) return;
+      // Drive backup needs a Drive-scoped token: a scope-free login
+      // token would 403, and a background popup has no user gesture
+      // (browsers block it). Skip until the admin connects Drive once
+      // from the Backup Center — no popup from the background.
+      if (!token || !isCachedGoogleAccessTokenDrive() || !authUser || !isAdmin) return;
 
       if (students.length === 0 && marks.length === 0 && classes.length === 0) return;
 

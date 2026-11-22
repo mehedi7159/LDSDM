@@ -43,7 +43,8 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { RestorePreviewModal } from './ui/RestorePreview';
 import { RecycleBinPanel } from './RecycleBinPanel';
 import { formatNumber, formatSafeDateTime } from '../services/utils';
-import { auth, db } from '../services/firebase';
+import { auth, db, isCachedGoogleAccessTokenDrive } from '../services/firebase';
+import { ensureGoogleDriveToken } from '../services/googleDriveBackupService';
 import { doc, getDoc } from 'firebase/firestore';
 
 interface DataSecurityBackupCenterProps {
@@ -81,6 +82,29 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [isPullingCloud, setIsPullingCloud] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; text: string } | null>(null);
+
+  // Google Drive backup connect (L6, #20): Drive permission is asked
+  // ONLY from this button — the admin's own tap, never at Google login.
+  const [isConnectingDrive, setIsConnectingDrive] = useState(false);
+  const [driveConnected, setDriveConnected] = useState(() => isCachedGoogleAccessTokenDrive());
+  const handleConnectDrive = async () => {
+    setIsConnectingDrive(true);
+    try {
+      await ensureGoogleDriveToken();
+      setDriveConnected(true);
+      setStatusMessage({
+        type: 'success',
+        text: 'Google Drive ব্যাকআপ চালু হয়েছে — এখন থেকে অটো ব্যাকআপ Drive-এ যাবে।'
+      });
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Drive যুক্ত করা যায়নি: ' + (err?.message || 'অনুমতি দেওয়া হয়নি')
+      });
+    } finally {
+      setIsConnectingDrive(false);
+    }
+  };
 
   // Restore states
   const [uploadedInspection, setUploadedInspection] = useState<BackupValidationInspection | null>(null);
@@ -496,13 +520,26 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
           </button>
         </div>
       ) : (
- <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200">
+ <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 text-xs text-emerald-900 dark:text-emerald-200">
           <div className="flex items-center gap-2.5">
             <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>
               ক্লাউড অথরাইজেশন সক্রিয়: <strong>{authUser.email}</strong> হিসেবে Google Firebase ক্লাউড ডেটাবেসে সরাসরি রাইট পারমিশন সফলভাবে অনুমোদিত।
             </span>
           </div>
+          {isAdmin && !driveConnected && (
+            <button
+              onClick={handleConnectDrive}
+              disabled={isConnectingDrive}
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60"
+            >
+              <Cloud size={15} />
+              <span>{isConnectingDrive ? 'যুক্ত হচ্ছে…' : 'Google Drive ব্যাকআপ চালু করুন'}</span>
+            </button>
+          )}
+          {isAdmin && driveConnected && (
+            <span className="shrink-0 font-bold text-emerald-700 dark:text-emerald-300">Drive ব্যাকআপ চালু আছে</span>
+          )}
         </div>
       )}
 

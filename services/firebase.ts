@@ -32,24 +32,38 @@ export const db = dbInstance;
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
+// Login uses a scope-free provider: Google sign-in must NOT ask for
+// Drive permission (#20). Drive scopes live only on
+// driveGoogleProvider, used by the Drive backup flow.
 export const googleProvider = new GoogleAuthProvider();
-// Request Google Drive Workspace scopes
-googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
-googleProvider.addScope('https://www.googleapis.com/auth/drive.appdata');
+export const driveGoogleProvider = new GoogleAuthProvider();
+// Request Google Drive Workspace scopes (backup only)
+driveGoogleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+driveGoogleProvider.addScope('https://www.googleapis.com/auth/drive.appdata');
 
 // In-Memory Access Token cache (Never stored in localStorage per security guidelines)
 let cachedGoogleAccessToken: string | null = null;
+// Whether the cached token was granted with Drive scopes. A token
+// from the scope-free login can NOT call the Drive API, so the
+// backup flow must not reuse it blindly.
+let cachedGoogleAccessTokenHasDrive = false;
 
-export const setCachedGoogleAccessToken = (token: string | null) => {
+export const setCachedGoogleAccessToken = (token: string | null, drive = false) => {
   cachedGoogleAccessToken = token;
+  cachedGoogleAccessTokenHasDrive = token !== null && drive;
 };
 
 export const getCachedGoogleAccessToken = (): string | null => {
   return cachedGoogleAccessToken;
 };
 
+export const isCachedGoogleAccessTokenDrive = (): boolean => {
+  return cachedGoogleAccessToken !== null && cachedGoogleAccessTokenHasDrive;
+};
+
 export const clearCachedGoogleAccessToken = () => {
   cachedGoogleAccessToken = null;
+  cachedGoogleAccessTokenHasDrive = false;
 };
 
 export async function testConnection() {
