@@ -257,43 +257,43 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         icon={Wallet}
         title={isBn ? 'হিসাব, ফি ও অর্থ ব্যবস্থাপনা কেন্দ্র' : 'Finance, Fees & Accounts Suite'}
         footer={
-<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের মোট আয়' : "Today's Income"}</div>
-            <div className="text-xl font-black text-emerald-300 mt-0.5">৳{formatNumber(kpis.todayIncome, language)}</div>
-            <div className="text-[10px] text-emerald-400 font-medium">{isBn ? 'তাৎক্ষণিক ক্যাশ' : 'Cash In'}</div>
+<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'আজকের মোট আয়' : "Today's Income"}</div>
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">৳{formatNumber(kpis.todayIncome, language)}</div>
+            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">{isBn ? 'তাৎক্ষণিক ক্যাশ' : 'Cash In'}</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের মোট ব্যয়' : "Today's Expense"}</div>
-            <div className="text-xl font-black text-rose-300 mt-0.5">৳{formatNumber(kpis.todayExpense, language)}</div>
-            <div className="text-[10px] text-rose-400 font-medium">{isBn ? 'ভাউচার অনুমোদিত' : 'Disbursed'}</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'আজকের মোট ব্যয়' : "Today's Expense"}</div>
+            <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">৳{formatNumber(kpis.todayExpense, language)}</div>
+            <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">{isBn ? 'ভাউচার অনুমোদিত' : 'Disbursed'}</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'ক্যাশ ব্যালেন্স' : 'Net Balance'}</div>
-            <div className={`text-xl font-black mt-0.5 ${kpis.netBalance >= 0 ? 'text-teal-300' : 'text-amber-300'}`}>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'ক্যাশ ব্যালেন্স' : 'Net Balance'}</div>
+            <div className={`text-xl font-black mt-0.5 ${kpis.netBalance >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`}>
               ৳{formatNumber(kpis.netBalance, language)}
             </div>
-            <div className="text-[10px] text-teal-300 font-medium">{isBn ? 'মোট তহবিল স্থিতি' : 'In Treasury'}</div>
+            <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">{isBn ? 'মোট তহবিল স্থিতি' : 'In Treasury'}</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'চলতি মাসে আদায়' : 'Month Inflow'}</div>
-            <div className="text-xl font-black text-white mt-0.5">৳{formatNumber(kpis.monthIncome, language)}</div>
-            <div className="text-[10px] text-teal-300 font-medium">{isBn ? 'মাসিক জমা' : 'This Month'}</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'চলতি মাসে আদায়' : 'Month Inflow'}</div>
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">৳{formatNumber(kpis.monthIncome, language)}</div>
+            <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">{isBn ? 'মাসিক জমা' : 'This Month'}</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'বকেয়া ফি' : 'Pending Dues'}</div>
-            <div className="text-xl font-black text-amber-300 mt-0.5">৳{formatNumber(kpis.totalDues, language)}</div>
-            <div className="text-[10px] text-amber-200 font-medium">{isBn ? 'তাগাদা অ্যালার্ট' : 'Dues Alert'}</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'বকেয়া ফি' : 'Pending Dues'}</div>
+            <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">৳{formatNumber(kpis.totalDues, language)}</div>
+            <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{isBn ? 'তাগাদা অ্যালার্ট' : 'Dues Alert'}</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট লেনদেন' : 'Vouchers'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.totalTransactions, language)}</div>
-            <div className="text-[10px] text-slate-300 font-medium">{isBn ? 'সংরক্ষিত ভাউচার' : 'Recorded'}</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'মোট লেনদেন' : 'Vouchers'}</div>
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.totalTransactions, language)}</div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{isBn ? 'সংরক্ষিত ভাউচার' : 'Recorded'}</div>
           </div>
         </div>
         }
@@ -302,33 +302,33 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('student-fee')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <GraduationCap size={14} className="text-blue-300" />
+              <GraduationCap size={14} className="text-blue-600 dark:text-blue-400" />
               <span>{isBn ? 'ছাত্র ফি আদায়' : 'Collect Fee'}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('donation')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <HeartHandshake size={14} className="text-emerald-300" />
+              <HeartHandshake size={14} className="text-emerald-600 dark:text-emerald-400" />
               <span>{isBn ? 'দান ও সদকা' : 'Donations'}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('salary')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <CreditCard size={14} className="text-rose-300" />
+              <CreditCard size={14} className="text-rose-600 dark:text-rose-400" />
               <span>{isBn ? 'উস্তাদ বেতন' : 'Salary'}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('reports')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <FileSpreadsheet size={14} className="text-teal-300" />
+              <FileSpreadsheet size={14} className="text-teal-600 dark:text-teal-400" />
               <span>{isBn ? 'আর্থিক বিবরণী' : 'Reports'}</span>
             </button>
           </div>

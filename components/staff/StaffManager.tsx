@@ -1244,37 +1244,37 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         icon={Users}
         title={isBn ? 'শিক্ষক, কর্মচারী ও মানবসম্পদ (HR) কেন্দ্র' : 'Staff, Faculty & HR Hub'}
         footer={
-<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট শিক্ষক ও উস্তাদ' : 'Total Teachers'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.teachersOnlyCount, 'bn')} জন</div>
+<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'মোট শিক্ষক ও উস্তাদ' : 'Total Teachers'}</div>
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.teachersOnlyCount, 'bn')} জন</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'কর্মচারী ও অফিস স্টাফ' : 'Office & Staff'}</div>
-            <div className="text-xl font-black text-cyan-300 mt-0.5">{formatNumber(kpis.officeStaffCount, 'bn')} জন</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'কর্মচারী ও অফিস স্টাফ' : 'Office & Staff'}</div>
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.officeStaffCount, 'bn')} জন</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের স্টাফ উপস্থিতি' : 'Attendance Today'}</div>
-            <div className="text-xl font-black text-emerald-300 mt-0.5">{kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'}</div>
-            <div className="text-[10px] text-emerald-400/90 font-medium">{kpis.attendanceRecorded ? (isBn ? 'ডিজিটাল লগ সম্পন্ন' : 'Digital Log Active') : (isBn ? 'আজ হাজিরা নেওয়া হয়নি' : 'Not recorded today')}</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'আজকের স্টাফ উপস্থিতি' : 'Attendance Today'}</div>
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{kpis.attendanceRecorded ? `${kpis.staffAttendanceRate}%` : '—'}</div>
+            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">{kpis.attendanceRecorded ? (isBn ? 'ডিজিটাল লগ সম্পন্ন' : 'Digital Log Active') : (isBn ? 'আজ হাজিরা নেওয়া হয়নি' : 'Not recorded today')}</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মাসিক বেতন বিতরণ' : 'Monthly Payroll'}</div>
-            <div className="text-xl font-black text-amber-300 mt-0.5">৳ {formatBanglaNumber(kpis.totalDisbursed)}</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'মাসিক বেতন বিতরণ' : 'Monthly Payroll'}</div>
+            <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">৳ {formatBanglaNumber(kpis.totalDisbursed)}</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'আজকের অনুমোদিত ছুটি' : 'Staff on Leave'}</div>
-            <div className="text-xl font-black text-rose-300 mt-0.5">{formatNumber(kpis.leavesTodayCount, 'bn')} জন</div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'আজকের অনুমোদিত ছুটি' : 'Staff on Leave'}</div>
+            <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">{formatNumber(kpis.leavesTodayCount, 'bn')} জন</div>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'স্টাফ আইডি কার্ড' : 'Staff ID Cards'}</div>
-            <div className="text-xl font-black text-indigo-300 mt-0.5 flex items-center gap-1.5">
-              <Award size={18} className="text-indigo-400" />
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'স্টাফ আইডি কার্ড' : 'Staff ID Cards'}</div>
+            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-center gap-1.5">
+              <Award size={18} className="text-indigo-600 dark:text-indigo-400" />
               <span>{isBn ? 'রেডি' : 'Ready'}</span>
             </div>
           </div>
@@ -1286,9 +1286,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             <button
               type="button"
               onClick={handleOpenAddModal}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <UserPlus size={14} className="text-teal-300" />
+              <UserPlus size={14} className="text-teal-600 dark:text-teal-400" />
               <span>{isBn ? '+ নতুন শিক্ষক যুক্ত' : 'Add Staff'}</span>
             </button>
             )}
@@ -1296,7 +1296,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             <button
               type="button"
               onClick={() => { setActiveTab('attendance'); setAttendanceSection('attendance'); }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600/30 hover:bg-teal-600/50 text-teal-200 border border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <CalendarCheck size={14} />
               <span>{isBn ? 'দৈনিক স্টাফ হাজিরা' : 'Staff Attendance'}</span>
@@ -1306,7 +1306,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('payroll')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border border-cyan-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <CreditCard size={14} />
               <span>{isBn ? 'বেতন প্রদান' : 'Payroll'}</span>

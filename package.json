@@ -39,6 +39,7 @@
     "test:topbar-profile-menu": "tsx scripts/verify-topbar-profile-menu.ts",
     "test:hero-pattern": "tsx scripts/verify-hero-pattern.ts",
     "test:hero-dashboard-executive": "tsx scripts/verify-hero-dashboard-executive.ts",
+    "test:hero-staff-finance": "tsx scripts/verify-hero-staff-finance.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
     "test:blank-marksheet-play": "tsx scripts/verify-blank-marksheet-play.ts",
     "test:pass-rate": "tsx scripts/verify-pass-rate.ts",
