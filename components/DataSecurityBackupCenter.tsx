@@ -19,6 +19,7 @@ import {
   Check,
   X
 } from 'lucide-react';
+import { PageHeader } from './ui/PageHeader';
 import {
   readCurrentLocalStoragePayload,
   extractSystemCounts,
@@ -378,88 +379,84 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
   return (
     <div className={`space-y-6 ${isModal ? 'p-4 sm:p-6' : 'max-w-6xl mx-auto'}`}>
       {/* Top Header & Reassuring Badges */}
- <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-indigo-900/40 relative overflow-hidden">
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
+      <PageHeader
+        tone="brand"
+        icon={ShieldCheck}
+        title="ডাটা সুরক্ষা, ব্যাকআপ ও রিস্টোর কেন্দ্র"
+        footer={(
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2.5">
- <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 ক্লাউড ডেটাবেস সক্রিয় ও নিরাপদ
               </span>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 flex items-center gap-1.5">
-                <ShieldCheck size={13} className="text-indigo-400" />
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 flex items-center gap-1.5">
+                <ShieldCheck size={13} className="text-indigo-600 dark:text-indigo-400" />
                 অ্যাডমিন: {authUser?.email || adminEmail || SUPER_ADMIN_EMAIL}
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-              <ShieldCheck className="text-emerald-400 shrink-0" size={28} />
-              ডাটা সুরক্ষা, ব্যাকআপ ও রিস্টোর কেন্দ্র
-            </h1>
-          </div>
 
-          <div className="flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
-            <button
-              onClick={handleCloudPush}
-              disabled={isCloudSyncing}
- className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={isCloudSyncing ? 'animate-spin' : ''} />
-              <span>{isCloudSyncing ? 'সিঙ্ক হচ্ছে...' : 'এখনই ক্লাউডে সিঙ্ক করুন'}</span>
-            </button>
-            <button
-              onClick={handleDownloadBackup}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 border border-white/20 transition-all cursor-pointer"
-            >
-              <Download size={14} />
-              <span>ব্যাকআপ ডাউনলোড</span>
-            </button>
-          </div>
-        </div>
+            {/* Live System Counter Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+                <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-1">
+                  <span>মোট শিক্ষার্থী</span>
+                </div>
+                <div className="text-3xl font-black text-slate-900 dark:text-white">
+                  {formatNumber(students.length, language)}
+                  <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">জন</span>
+                </div>
+              </div>
 
-        {/* Live System Counter Cards (Vibrant Aesthetic) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/10">
-          <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
-            <div className="flex items-center justify-between text-indigo-300 text-xs font-semibold mb-1">
-              <span>মোট শিক্ষার্থী</span>
-            </div>
-            <div className="text-3xl font-black text-white">
-              {formatNumber(students.length, language)}
-              <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">জন</span>
-            </div>
-          </div>
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+                <div className="flex items-center justify-between text-teal-600 dark:text-teal-400 text-xs font-semibold mb-1">
+                  <span>পরীক্ষা ও টার্ম</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  {formatNumber(exams.length, language)}
+                  <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
+                </div>
+              </div>
 
-          <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
-            <div className="flex items-center justify-between text-teal-300 text-xs font-semibold mb-1">
-              <span>পরীক্ষা ও টার্ম</span>
-            </div>
-            <div className="text-2xl font-black text-white">
-              {formatNumber(exams.length, language)}
-              <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
-            </div>
-          </div>
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+                <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 text-xs font-semibold mb-1">
+                  <span>নম্বর এন্ট্রি</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  {formatNumber(marks.length, language)}
+                  <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
+                </div>
+              </div>
 
-          <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
-            <div className="flex items-center justify-between text-amber-300 text-xs font-semibold mb-1">
-              <span>নম্বর এন্ট্রি</span>
-            </div>
-            <div className="text-2xl font-black text-white">
-              {formatNumber(marks.length, language)}
-              <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
-            </div>
-          </div>
-
-          <div className="bg-white/5 dark:bg-slate-900/5 backdrop-blur-xs rounded-2xl p-3.5 border border-white/10">
-            <div className="flex items-center justify-between text-rose-300 text-xs font-semibold mb-1">
-              <span>আর্থিক ভাউচার</span>
-            </div>
-            <div className="text-2xl font-black text-white">
-              {formatNumber(transactions.length, language)}
-              <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+                <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 text-xs font-semibold mb-1">
+                  <span>আর্থিক ভাউচার</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  {formatNumber(transactions.length, language)}
+                  <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">টি</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        )}
+      >
+        <button
+          onClick={handleCloudPush}
+          disabled={isCloudSyncing}
+          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={isCloudSyncing ? 'animate-spin' : ''} />
+          <span>{isCloudSyncing ? 'সিঙ্ক হচ্ছে...' : 'এখনই ক্লাউডে সিঙ্ক করুন'}</span>
+        </button>
+        <button
+          onClick={handleDownloadBackup}
+          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+        >
+          <Download size={14} />
+          <span>ব্যাকআপ ডাউনলোড</span>
+        </button>
+      </PageHeader>
 
       {/* Real-time Status / Notification Alert */}
       {statusMessage && (

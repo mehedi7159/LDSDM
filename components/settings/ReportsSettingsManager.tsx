@@ -46,6 +46,7 @@ import { DataSecurityBackupCenter } from '../DataSecurityBackupCenter';
 import { SuperAdminAuditPage } from '../SuperAdminAuditPage';
 import { CloudSyncWidget } from '../CloudSyncWidget';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
 import { ServerDataGate } from '../ui/ServerDataGate';
 import { useTheme } from '../../context/ThemeContext';
 import { SchoolProfile } from '../../types';
@@ -402,121 +403,104 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
       {/* ========================================================================= */}
       {/* TOP HERO BANNER & INSTITUTIONAL CONTROL BAR                               */}
       {/* ========================================================================= */}
- <div className="bg-slate-900 rounded-3xl p-6 sm:p-7 text-white border border-indigo-900/60 relative overflow-hidden print:hidden">
-
-        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <span>{schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ব্যবস্থাপনা সিস্টেম' : 'Madrasah Management')}</span>
-              {schoolProfile.logoUrl && (
-                <img 
-                  src={schoolProfile.logoUrl} 
-                  alt="Logo" 
- className="w-8 h-8 rounded-full object-cover border border-white/30"
-                />
-              )}
-            </h1>
-
-          </div>
-
-          {/* Quick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={handleQuickBackup}
- className="px-4 py-2.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer active:scale-95"
-            >
-              <Download size={14} />
-              <span>{isBn ? 'দ্রুত ব্যাকআপ (JSON)' : 'Quick Backup'}</span>
-            </button>
-
-            <button
+      <PageHeader
+        tone="brand"
+        icon={Settings}
+        title={schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ব্যবস্থাপনা সিস্টেম' : 'Madrasah Management')}
+        className="print:hidden"
+        footer={(
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* KPI 1: Notices */}
+            <div
               onClick={() => setActiveTab('notices')}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 transition-all border border-white/15 cursor-pointer active:scale-95"
+              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer"
             >
-              <Megaphone size={14} className="text-amber-400" />
-              <span>{isBn ? 'নতুন নোটিশ' : 'Post Notice'}</span>
-            </button>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{isBn ? 'প্রকাশিত নোটিশ' : 'Notices'}</span>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                {formatNumber(noticeStats.total, language)}
+                <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1.5">
+                  ({formatNumber(noticeStats.pinned, language)} {isBn ? 'পিন্ড' : 'pinned'})
+                </span>
+              </div>
+            </div>
 
-            <button
-              onClick={handlePrintInstitutionalReport}
- className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            {/* KPI 2: Profile Readiness */}
+            <div
+              onClick={() => setActiveTab('profile')}
+              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer"
             >
-              <Printer size={14} />
-              <span>{isBn ? 'প্রিন্ট' : 'Print'}</span>
-            </button>
-          </div>
-        </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{isBn ? 'প্রোফাইল পূর্ণতা' : 'Profile'}</span>
+              </div>
+              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5">
+                <span>{formatNumber(profileCompleteness, language)}%</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold">
+                  {profileCompleteness >= 80 ? (isBn ? 'পরিপূর্ণ' : 'Ready') : (isBn ? 'অসম্পূর্ণ' : 'Pending')}
+                </span>
+              </div>
+            </div>
 
-        {/* Live KPI & Institutional Health Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 mt-6 border-t border-white/10 relative z-10">
-          
-          {/* KPI 1: Notices */}
-          <div 
-            onClick={() => setActiveTab('notices')}
-            className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'প্রকাশিত নোটিশ' : 'Notices'}</span>
+            {/* KPI 3: Backup Vault Storage */}
+            <div
+              onClick={() => setActiveTab('backup')}
+              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{isBn ? 'ডাটা ব্যাকআপ' : 'Vault'}</span>
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
+                <span>{storageStats.usedFormatted}</span>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                  ({storageStats.quotaPercent}% {isBn ? 'কোটা' : 'quota'})
+                </span>
+              </div>
             </div>
-            <div className="text-2xl font-black text-white mt-1">
-              {formatNumber(noticeStats.total, language)}
-              <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1.5">
-                ({formatNumber(noticeStats.pinned, language)} {isBn ? 'পিন্ড' : 'pinned'})
-              </span>
-            </div>
-          </div>
 
-          {/* KPI 2: Profile Readiness */}
-          <div 
-            onClick={() => setActiveTab('profile')}
-            className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'প্রোফাইল পূর্ণতা' : 'Profile'}</span>
-            </div>
-            <div className="text-2xl font-black text-emerald-400 mt-1 flex items-center gap-1.5">
-              <span>{formatNumber(profileCompleteness, language)}%</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
-                {profileCompleteness >= 80 ? (isBn ? 'পরিপূর্ণ' : 'Ready') : (isBn ? 'অসম্পূর্ণ' : 'Pending')}
-              </span>
-            </div>
-          </div>
-
-          {/* KPI 3: Backup Vault Storage */}
-          <div 
-            onClick={() => setActiveTab('backup')}
-            className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'ডাটা ব্যাকআপ' : 'Vault'}</span>
-            </div>
-            <div className="text-2xl font-black text-white mt-1 flex items-center gap-1.5">
-              <span>{storageStats.usedFormatted}</span>
-              <span className="text-[10px] text-blue-300 font-bold">
-                ({storageStats.quotaPercent}% {isBn ? 'কোটা' : 'quota'})
-              </span>
+            {/* KPI 4: Security Tier */}
+            <div
+              onClick={() => setActiveTab('audit')}
+              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{isBn ? 'সিকিউরিটি' : 'Security'}</span>
+              </div>
+              <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1">
+                <span>{isSuperAdmin ? 'Tier-1 Root' : isAdmin ? 'Admin' : 'Restricted'}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 font-bold">
+                  RBAC
+                </span>
+              </div>
             </div>
           </div>
+        )}
+      >
+        <button
+          onClick={handleQuickBackup}
+          className="px-4 py-2.5 rounded-xl hover:opacity-90 text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+          style={{ backgroundColor: 'var(--color-brand)' }}
+        >
+          <Download size={14} />
+          <span>{isBn ? 'দ্রুত ব্যাকআপ (JSON)' : 'Quick Backup'}</span>
+        </button>
 
-          {/* KPI 4: Security Tier */}
-          <div 
-            onClick={() => setActiveTab('audit')}
-            className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{isBn ? 'সিকিউরিটি' : 'Security'}</span>
-            </div>
-            <div className="text-2xl font-black text-purple-300 mt-1 flex items-center gap-1">
-              <span>{isSuperAdmin ? 'Tier-1 Root' : isAdmin ? 'Admin' : 'Restricted'}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200 font-bold">
-                RBAC
-              </span>
-            </div>
-          </div>
+        <button
+          onClick={() => setActiveTab('notices')}
+          className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95"
+        >
+          <Megaphone size={14} className="text-amber-600 dark:text-amber-400" />
+          <span>{isBn ? 'নতুন নোটিশ' : 'Post Notice'}</span>
+        </button>
 
-        </div>
-      </div>
+        <button
+          onClick={handlePrintInstitutionalReport}
+          className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+        >
+          <Printer size={14} />
+          <span>{isBn ? 'প্রিন্ট' : 'Print'}</span>
+        </button>
+      </PageHeader>
 
       {/* ========================================================================= */}
       {/* UNIFIED SUB-TABS NAVIGATION BAR                                           */}

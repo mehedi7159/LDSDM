@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import { PageHeader } from './ui/PageHeader';
 import { formatSafeDateTime } from '../services/utils';
 
 export const SuperAdminAuditPage: React.FC = () => {
@@ -110,37 +111,30 @@ export const SuperAdminAuditPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header Banner */}
- <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-indigo-900/60 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
-              <span>{language === 'bn' ? 'সুপার এডমিন কন্ট্রোল ও অডিট লগ' : 'Super Admin Security Audit'}</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              {language === 'bn'
-                ? 'সকল মাদ্রাসা ও প্রতিষ্ঠানের কাস্টম রোল তৈরি, পারমিশন পরিবর্তন ও মেম্বারশিপ অ্যাসাইনমেন্টের অপরিবর্তনশীল (Immutable) অডিট হিস্টোরি।'
-                : 'Tamper-evident, immutable audit trail of all role mutations, permission updates, and membership assignments across all tenant institutions.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-700/80">
-              <span className="text-[10px] text-slate-400 block font-mono">VERIFIED SUPER ADMIN</span>
-              <span className="text-xs font-bold text-emerald-400 font-mono truncate max-w-[200px] block">
-                {verifiedEmail}
-              </span>
-            </div>
-            <button
-              onClick={loadLogs}
-              disabled={isLoading}
- className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl transition-all cursor-pointer disabled:opacity-50"
-              title="Refresh Logs"
-            >
-              <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-            </button>
-          </div>
+      <PageHeader
+        tone="brand"
+        icon={ShieldAlert}
+        title={language === 'bn' ? 'সুপার এডমিন কন্ট্রোল ও অডিট লগ' : 'Super Admin Security Audit'}
+        subtitle={language === 'bn'
+          ? 'সকল মাদ্রাসা ও প্রতিষ্ঠানের কাস্টম রোল তৈরি, পারমিশন পরিবর্তন ও মেম্বারশিপ অ্যাসাইনমেন্টের অপরিবর্তনশীল (Immutable) অডিট হিস্টোরি।'
+          : 'Tamper-evident, immutable audit trail of all role mutations, permission updates, and membership assignments across all tenant institutions.'}
+      >
+        <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+          <span className="text-[10px] text-slate-400 block font-mono">VERIFIED SUPER ADMIN</span>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono truncate max-w-[200px] block">
+            {verifiedEmail}
+          </span>
         </div>
-      </div>
+        <button
+          onClick={loadLogs}
+          disabled={isLoading}
+          className="p-3 hover:opacity-90 text-white rounded-2xl transition-all cursor-pointer disabled:opacity-50"
+          style={{ backgroundColor: 'var(--color-brand)' }}
+          title="Refresh Logs"
+        >
+          <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+        </button>
+      </PageHeader>
 
       {/* Control Toolbar */}
  <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row items-center justify-between gap-4">
