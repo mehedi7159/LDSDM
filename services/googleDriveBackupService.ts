@@ -1,8 +1,9 @@
-import { 
-  getCachedGoogleAccessToken, 
-  setCachedGoogleAccessToken, 
-  auth, 
-  googleProvider 
+import {
+  getCachedGoogleAccessToken,
+  setCachedGoogleAccessToken,
+  isCachedGoogleAccessTokenDrive,
+  auth,
+  driveGoogleProvider
 } from './firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import type {
@@ -130,19 +131,23 @@ export const saveGoogleDriveBackupSettings = (updates: Partial<GoogleDriveBackup
 };
 
 /**
- * Ensures user has active Google Drive OAuth access token
+ * Ensures user has active Google Drive OAuth access token.
+ * Only a token granted with Drive scopes counts: a scope-free login
+ * token must NOT be reused (Drive would 403). When none exists, the
+ * Drive permission is requested here — from the backup action's own
+ * popup, never at login time.
  */
 export const ensureGoogleDriveToken = async (): Promise<string> => {
   const cached = getCachedGoogleAccessToken();
-  if (cached) return cached;
+  if (cached && isCachedGoogleAccessTokenDrive()) return cached;
 
-  const result = await signInWithPopup(auth, googleProvider);
+  const result = await signInWithPopup(auth, driveGoogleProvider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
   if (!credential?.accessToken) {
     throw new Error('Google Drive Access Token unavailable. Please grant permission.');
   }
 
-  setCachedGoogleAccessToken(credential.accessToken);
+  setCachedGoogleAccessToken(credential.accessToken, true);
   return credential.accessToken;
 };
 
