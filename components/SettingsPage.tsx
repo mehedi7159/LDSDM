@@ -14,6 +14,7 @@ import {
   type NotificationPrefs
 } from '../services/userPreferences';
 import type { Language } from '../services/translations';
+import { DashboardArrangePanel } from './DashboardArrangePanel';
 import { Bell, Check, ClipboardList, Globe, Palette, RotateCcw, Save, X } from 'lucide-react';
 
 // Personal settings (Phase 1). Draft model, like the reference video:
@@ -393,6 +394,10 @@ export const SettingsPage: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* Dashboard arrange — per-user layout, saves immediately on
+          every change (NOT part of the draft/save bar below). */}
+      <DashboardArrangePanel />
 
       {/* Draft bottom bar */}
       {changes.length > 0 && (
