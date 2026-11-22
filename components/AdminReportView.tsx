@@ -12,6 +12,7 @@ import {
   Server
 } from 'lucide-react';
 import { getInstitutionRoles, getAllInstitutionMembers } from '../services/rbac';
+import { PageHeader } from './ui/PageHeader';
 
 export const AdminReportView: React.FC = () => {
   const { authUser, isSuperAdmin, isAdmin, schoolProfile, language, t } = useApp();
@@ -52,23 +53,21 @@ export const AdminReportView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight">
-            {language === 'bn' ? 'প্রশাসনিক রিপোর্ট ও সিস্টেম বিবরণী' : 'Administrative & System Report'}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-black flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <Printer size={15} />
-            <span>{language === 'bn' ? 'রিপোর্ট প্রিন্ট' : 'Print Report'}</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        tone="brand"
+        icon={Activity}
+        title={language === 'bn' ? 'প্রশাসনিক রিপোর্ট ও সিস্টেম বিবরণী' : 'Administrative & System Report'}
+        className="print:hidden"
+      >
+        <button
+          onClick={handlePrint}
+          className="px-4 py-2.5 rounded-xl text-white text-xs font-black flex items-center gap-2 transition-all cursor-pointer"
+          style={{ backgroundColor: 'var(--color-brand)' }}
+        >
+          <Printer size={15} />
+          <span>{language === 'bn' ? 'রিপোর্ট প্রিন্ট' : 'Print Report'}</span>
+        </button>
+      </PageHeader>
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

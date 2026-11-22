@@ -27,6 +27,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
+import { PageHeader } from './ui/PageHeader';
 
 export const StudentReportView: React.FC = () => {
   const { students = [], classes = [], schoolProfile, language, t } = useApp();
@@ -141,30 +142,28 @@ export const StudentReportView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight">
-            {language === 'bn' ? 'শিক্ষার্থী রিপোর্ট ও পরিসংখ্যান' : 'Student Comprehensive Report'}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCSV}
-            className="px-4 py-2.5 rounded-xl bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer border border-white/10"
-          >
-            <Download size={15} />
-            <span>{language === 'bn' ? 'CSV এক্সপোর্ট' : 'Export CSV'}</span>
-          </button>
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-blue-900 dark:text-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-xs font-black flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <Printer size={15} />
-            <span>{language === 'bn' ? 'রিপোর্ট প্রিন্ট' : 'Print Report'}</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        tone="brand"
+        icon={BarChart3}
+        title={language === 'bn' ? 'শিক্ষার্থী রিপোর্ট ও পরিসংখ্যান' : 'Student Comprehensive Report'}
+        className="print:hidden"
+      >
+        <button
+          onClick={handleExportCSV}
+          className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+        >
+          <Download size={15} />
+          <span>{language === 'bn' ? 'CSV এক্সপোর্ট' : 'Export CSV'}</span>
+        </button>
+        <button
+          onClick={handlePrint}
+          className="px-4 py-2.5 rounded-xl text-white text-xs font-black flex items-center gap-2 transition-all cursor-pointer"
+          style={{ backgroundColor: 'var(--color-brand)' }}
+        >
+          <Printer size={15} />
+          <span>{language === 'bn' ? 'রিপোর্ট প্রিন্ট' : 'Print Report'}</span>
+        </button>
+      </PageHeader>
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4">

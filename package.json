@@ -41,6 +41,7 @@
     "test:hero-dashboard-executive": "tsx scripts/verify-hero-dashboard-executive.ts",
     "test:hero-staff-finance": "tsx scripts/verify-hero-staff-finance.ts",
     "test:hero-exams": "tsx scripts/verify-hero-exams.ts",
+    "test:hero-reports-cards": "tsx scripts/verify-hero-reports-cards.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
     "test:blank-marksheet-play": "tsx scripts/verify-blank-marksheet-play.ts",
     "test:pass-rate": "tsx scripts/verify-pass-rate.ts",
