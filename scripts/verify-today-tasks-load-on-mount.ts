@@ -34,8 +34,9 @@
  *   (2) The refresh tick is a dep of the actionData memo.
  *   (3) The card shows a loading indicator while not loaded.
  *   (4) The all-clear message is gated on loaded (no false "all done").
- *   (5) The activeView dep is retained (admissions still re-read on
- *       view switch).
+ *   (5) The activeView dep is GONE (22 Nov 2026 unify: the view switcher
+ *       no longer exists, so the state is gone too; admissions re-read
+ *       on mount via the tick).
  *   (6) Overview untouched: no overview load-on-mount code added.
  *   (7) The action rows themselves are unchanged (same six categories).
  *
@@ -89,10 +90,12 @@ check('(4) all-clear message gated on loaded',
   /todayTasksLoaded && actionData\.badgeCount === 0 && \(/.test(dashboard),
   'the "সব কাজ সম্পন্ন" block must render only when todayTasksLoaded');
 
-// (5) activeView dep retained (admissions re-read on view switch).
-check('(5) activeView dep retained in actionData memo',
-  !!memoDeps && memoDeps[1].includes('activeView'),
-  'activeView must stay a dep of the actionData memo');
+// (5) activeView dep GONE with the view switcher (22 Nov 2026 unify:
+// no view switch exists anymore, so the state is gone; the mount tick
+// is the only refresh trigger).
+check('(5) activeView dep gone from actionData memo',
+  !!memoDeps && !memoDeps[1].includes('activeView'),
+  'activeView state is gone; it must not be a dep anymore');
 
 // (6) Overview untouched in this branch — no overview load-on-mount code.
 check('(6) no overview load-on-mount code added',

@@ -18,6 +18,13 @@
  * handlers and every data expression stay byte-identical; the native
  * <option> classes (bg-slate-900 text-white) stay — native dropdown.
  *
+ * 22 Nov 2026 update (Dashboard unify): the session/exam selectors
+ * moved OUT of the Dashboard hero into the Dashboard's academic
+ * section ('একাডেমিক চিত্র'), next to the cards they filter, and a
+ * class selector joined them. The checks below follow them there —
+ * the hero keeps only the live badge. Copy, option classes and
+ * handlers are byte-identical; only the location changed.
+ *
  * Scope of every check: the PageHeader block only (from `<PageHeader`
  * to `</PageHeader>` in each file), so the rest of the page — which is
  * already light — cannot trip or mask a check.
@@ -45,8 +52,19 @@ function heroBlock(src: string, file: string): string {
 
 const dashboard = readSource('components/DashboardDailyOverview.tsx');
 const executive = readSource('components/ExecutiveInstitutionalDashboard.tsx');
+const dashPage = readSource('components/Dashboard.tsx');
 const dashHero = heroBlock(dashboard, 'DashboardDailyOverview.tsx');
 const execHero = heroBlock(executive, 'ExecutiveInstitutionalDashboard.tsx');
+
+/** The Dashboard academic section: from its header to MadrasaReports. */
+function academicSection(src: string): string {
+  const start = src.indexOf('একাডেমিক চিত্র');
+  assert.ok(start >= 0, 'Dashboard.tsx: no একাডেমিক চিত্র section found');
+  const end = src.indexOf('<MadrasaReports />', start);
+  assert.ok(end >= 0, 'Dashboard.tsx: no <MadrasaReports /> found');
+  return src.slice(start, end);
+}
+const dashAcademic = academicSection(dashPage);
 
 let passed = 0;
 let failed = 0;
@@ -103,11 +121,17 @@ check('Dashboard hero: "সিস্টেম সক্রিয়" pill is light 
     assert.ok(dashHero.includes(frag), `light emerald pill fragment missing: ${frag}`);
   }
 });
-check('Dashboard hero: session/exam selector pills are light', () => {
-  const pills = dashHero.match(/bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/g);
-  assert.ok(pills && pills.length >= 2, `expected 2 light selector pills, found ${pills?.length ?? 0}`);
-  const texts = dashHero.match(/text-slate-700 dark:text-slate-200/g);
-  assert.ok(texts && texts.length >= 2, `expected selector pill text in 2 pills, found ${texts?.length ?? 0}`);
+check('Dashboard hero: no selector pills anymore (moved to academic section)', () => {
+  assert.ok(!dashHero.includes("'সেশন:'"), 'session selector still in the hero');
+  assert.ok(!dashHero.includes("'পরীক্ষা:'"), 'exam selector still in the hero');
+  assert.ok(!dashHero.includes('value={selectedAcademicYear}'), 'session <select> still in the hero');
+  assert.ok(!dashHero.includes("value={selectedExamId || ''}"), 'exam <select> still in the hero');
+});
+check('Academic section: session/exam/class selector pills are light', () => {
+  const pills = dashAcademic.match(/bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/g);
+  assert.ok(pills && pills.length >= 3, `expected 3 light selector pills, found ${pills?.length ?? 0}`);
+  const texts = dashAcademic.match(/text-slate-700 dark:text-slate-200/g);
+  assert.ok(texts && texts.length >= 3, `expected selector pill text in 3 pills, found ${texts?.length ?? 0}`);
 });
 
 // --- Executive hero: light replacements present ---
@@ -129,8 +153,13 @@ check('Dashboard hero: quick-action data + handlers unchanged', () => {
   assert.ok(dashHero.includes('heroActions.map((act)'), 'heroActions data expression changed');
   assert.ok(dashHero.includes('onNavigate(act.id)'), 'quick-action handler changed');
   assert.ok(dashHero.includes("'সিস্টেম সক্রিয়'"), '"সিস্টেম সক্রিয়" copy changed');
-  assert.ok(dashHero.includes("'সেশন:'"), '"সেশন:" copy changed');
-  assert.ok(dashHero.includes("'পরীক্ষা:'"), '"পরীক্ষা:" copy changed');
+});
+check('Academic section: selector copy unchanged (সেশন / পরীক্ষা / শ্রেণি)', () => {
+  assert.ok(dashAcademic.includes("'সেশন:'"), '"সেশন:" copy changed');
+  assert.ok(dashAcademic.includes("'পরীক্ষা:'"), '"পরীক্ষা:" copy changed');
+  assert.ok(dashAcademic.includes("'শ্রেণি:'"), '"শ্রেণি:" copy missing');
+  assert.ok(dashAcademic.includes("'সকল সেশন'"), '"সকল সেশন" copy changed');
+  assert.ok(dashAcademic.includes("'সকল শ্রেণি'"), '"সকল শ্রেণি" copy missing');
 });
 check('Executive hero: title/subtitle/copy/handlers unchanged', () => {
   assert.ok(execHero.includes("schoolProfile?.name || 'মাদ্রাসা ম্যানেজমেন্ট'"), 'title expression changed');
@@ -140,7 +169,7 @@ check('Executive hero: title/subtitle/copy/handlers unchanged', () => {
   assert.ok(execHero.includes('selectedExamId'), 'exam switcher binding changed');
 });
 check('Both heroes: native <option> dropdown classes stay dark (bg-slate-900 text-white)', () => {
-  assert.ok(dashHero.includes('bg-slate-900 text-white'), 'Dashboard <option> classes changed');
+  assert.ok(dashAcademic.includes('bg-slate-900 text-white'), 'Dashboard academic <option> classes changed');
   assert.ok(execHero.includes('bg-slate-900 text-white'), 'Executive <option> classes changed');
 });
 
