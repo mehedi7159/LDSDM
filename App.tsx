@@ -80,6 +80,7 @@ const AppContent = () => {
     authClaims,
     authRole,
     currentMember,
+    pinGuardianStudentId,
     logoutAdmin,
     isRecoveryModalOpen, 
     setIsRecoveryModalOpen,
@@ -89,7 +90,8 @@ const AppContent = () => {
   } = useApp();
   
   // User is authenticated if Firebase authUser OR role currentUser OR currentMember exists
-  const isAuthenticated = !!(authUser || currentUser || currentMember);
+  // — or a guardian PIN session is open (L7: no Firebase account, no role, just the PIN student id).
+  const isAuthenticated = !!(authUser || currentUser || currentMember || pinGuardianStudentId);
 
   // Debounced verification & redirection to prevent screen flashing/looping
   const debounceRedirectRef = useRef<NodeJS.Timeout | null>(null);
@@ -135,12 +137,17 @@ const AppContent = () => {
   const isNonAdminRole = useMemo(() => {
     if (isSuperAdmin || isAdmin || currentUser?.role === 'super_admin' || currentUser?.role === 'principal') return false;
     if (currentMember?.roleId === 'role_principal' || userRole === 'principal') return false;
+    // Guardian PIN session (L7): no role, no Firebase account — but it
+    // IS a non-admin guardian session: mobile gets StaffMobileApp's
+    // parent home, desktop gets the "mobile only" message, exactly
+    // like an email guardian.
+    if (pinGuardianStudentId) return true;
     const roleId = currentMember?.roleId || authRole || currentUser?.role || '';
     return roleId === 'role_teacher' || roleId === 'teacher' || 
            roleId === 'role_accountant' || roleId === 'accountant' || 
            roleId === 'role_guardian' || roleId === 'guardian' || roleId === 'parent' ||
            roleId === 'role_staff' || roleId === 'staff';
-  }, [isSuperAdmin, isAdmin, currentMember, authRole, currentUser, userRole]);
+  }, [isSuperAdmin, isAdmin, currentMember, authRole, currentUser, userRole, pinGuardianStudentId]);
 
   // Phase 1b: principal / super_admin get a dedicated mobile home at
   // phone widths (StaffMobileApp) while desktop keeps Layout+Dashboard
@@ -190,8 +197,11 @@ const AppContent = () => {
     // guardian alongside another role keeps the union behaviour).
     // 'dashboard' stays allowed so the debounced home redirect moves
     // them to guardian_portal exactly as before.
-    const isGuardianOnlySession = (effectiveRoles || []).includes('guardian')
-      && (effectiveRoles || []).every(r => r === 'guardian');
+    // A guardian PIN session (L7) is guardian-only too: it has no
+    // roles at all, so the role check alone would let it through the
+    // default-allow switch — it must be pinned to the same four tabs.
+    const isGuardianOnlySession = !!pinGuardianStudentId || ((effectiveRoles || []).includes('guardian')
+      && (effectiveRoles || []).every(r => r === 'guardian'));
     if (isGuardianOnlySession) {
       return tab === 'guardian_portal' || tab === 'notice_board' || tab === 'dashboard' || tab === 'user_settings';
     }
@@ -330,7 +340,10 @@ const AppContent = () => {
     || normalizeRoleKey((effectiveRoles || [])[0]);
   // A user holding principal as an ADDITIONAL role keeps the Dashboard:
   // the tab gate already treats them as principal throughout.
-  const homeTab = (isNonAdminRole && !(effectiveRoles || []).includes('principal'))
+  // A guardian PIN session (L7) lands on the guardian portal.
+  const homeTab = pinGuardianStudentId
+    ? 'guardian_portal'
+    : (isNonAdminRole && !(effectiveRoles || []).includes('principal'))
     ? roleHomeTab(primaryRoleKey)
     : 'dashboard';
   const isDesktopWidth = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
@@ -659,9 +672,9 @@ const AppContent = () => {
         // manager (the all-student guardian directory preview is an
         // office tool; it was previously what guardians landed on,
         // which let them browse every student).
-        const isGuardianSelfView = (effectiveRoles || []).includes('guardian')
+        const isGuardianSelfView = !!pinGuardianStudentId || ((effectiveRoles || []).includes('guardian')
           && !isAdmin && !isSuperAdmin && !isOwnerAdmin
-          && !(effectiveRoles || []).includes('principal');
+          && !(effectiveRoles || []).includes('principal'));
         return isGuardianSelfView
           ? <GuardianPortal />
           : <PortalsServicesManager initialSubTab="guardian_portal" onNavigateTab={(tab) => setActiveTab(tab)} />;
