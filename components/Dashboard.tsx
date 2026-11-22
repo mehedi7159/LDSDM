@@ -69,6 +69,14 @@ import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
 import { MadrasaReports } from './MadrasaReports';
 import { SectionCard } from './ui/SectionCard';
+import {
+  dashboardRoleKey,
+  defaultLayout,
+  loadDashboardLayout,
+  loadDashboardLayoutLocal,
+  resolveVisibleSections,
+  type DashboardLayout
+} from '../services/dashboardLayout';
 import { ProgressBar } from './ui/ProgressBar';
 import { calculateTotalDues, topDueEntries, localMonthStr, academicYearFallbackStartMonth, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
 import { getAdmissionApplications } from '../services/admissionApplicationsService';
@@ -467,6 +475,27 @@ export const Dashboard = () => {
   // drives the loading row (and gates the all-clear message).
   const [todayTasksRefreshTick, setTodayTasksRefreshTick] = useState(0);
   const [todayTasksLoaded, setTodayTasksLoaded] = useState(false);
+
+  // Dashboard layout (22 Nov 2026): each user arranges their own
+  // dashboard in My Settings; sections render in that order, hidden
+  // ones do not render. Cloud load on mount; the arrange panel in
+  // Settings dispatches 'dashboard-layout-changed' after every save.
+  const layoutUserId = currentUser?.id || 'anonymous';
+  const [dashboardLayout, setDashboardLayout] = useState<DashboardLayout>(() =>
+    loadDashboardLayoutLocal(layoutUserId) ?? defaultLayout()
+  );
+  useEffect(() => {
+    let cancelled = false;
+    loadDashboardLayout(layoutUserId).then(({ layout }) => { if (!cancelled) setDashboardLayout(layout); });
+    const onChanged = () => {
+      const local = loadDashboardLayoutLocal(layoutUserId);
+      if (local) setDashboardLayout(local);
+    };
+    window.addEventListener('dashboard-layout-changed', onChanged);
+    return () => { cancelled = true; window.removeEventListener('dashboard-layout-changed', onChanged); };
+  }, [layoutUserId]);
+  const dashboardRole = dashboardRoleKey(currentUser?.role, currentMember?.roleId, isOwnerAdmin || isSuperAdmin);
+  const visibleDashboardSections = resolveVisibleSections(dashboardLayout, dashboardRole, 'desktop');
   const [activeSectionTab, setActiveSectionTab] = useState<'overview' | 'student' | 'subjects' | 'merit'>('overview');
   const [meritSearchQuery, setMeritSearchQuery] = useState<string>('');
   const [dashboardMode, setDashboardMode] = useState<string>(() => {
@@ -955,25 +984,33 @@ export const Dashboard = () => {
   }, [topStudents, meritSearchQuery]);
 
   return (
-    <div id="madrasha-executive-dashboard" className="space-y-6 pb-12">
+    <div id="madrasha-executive-dashboard" className="flex flex-col gap-6 pb-12">
 
       {/* HERO — brand PageHeader (school name, date/session, quick-action
           tiles). Nothing renders above the hero anymore: the notice marquee
           banner that used to sit here was deleted at the owner's direction;
           urgent notices now appear as a compact card inside the Dashboard. */}
+      {visibleDashboardSections.includes('hero') && (
+        <div data-dashboard-section="hero" style={{ order: visibleDashboardSections.indexOf('hero') }}>
       <DashboardDailyOverview
         section="hero"
         onNavigate={setActiveTab}
         onOpenRecoveryModal={() => setIsRecoveryModalOpen(true)}
       />
+        </div>
+      )}
 
       {/* Urgent notices — compact card inside Overview (the alert content of
           the deleted above-hero banner lives here now; self-hides when none) */}
+      {visibleDashboardSections.includes('notices') && (
+        <div data-dashboard-section="notices" style={{ order: visibleDashboardSections.indexOf('notices') }}>
       <UrgentNoticesCard
         notices={urgentNotices}
         language={language}
         onOpenNoticeBoard={() => setActiveTab('notice_board')}
       />
+        </div>
+      )}
 
       {/* Pending approvals — admin notice card (Phase 1): applications
           used to wait silently with no notice to the admin. The count
@@ -983,7 +1020,8 @@ export const Dashboard = () => {
           it read "অনুমোদনের অপেক্ষায় 0 জন" plus a stale-list warning
           — a banner about nobody. The stale warning + Retry still show
           inside the banner when the list is non-empty. */}
-      {(isOwnerAdmin || isSuperAdmin || currentMember?.roleId === 'role_principal') && pendingMembers.length > 0 && (
+      {visibleDashboardSections.includes('approvals') && (isOwnerAdmin || isSuperAdmin || currentMember?.roleId === 'role_principal') && pendingMembers.length > 0 && (
+        <div data-dashboard-section="approvals" style={{ order: visibleDashboardSections.indexOf('approvals') }}>
         <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 rounded-3xl p-5 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h4 className="font-black text-slate-900 dark:text-white text-sm">
@@ -1018,8 +1056,11 @@ export const Dashboard = () => {
             </div>
           )}
         </div>
+        </div>
       )}
 
+      {visibleDashboardSections.includes('tasks') && (
+        <div data-dashboard-section="tasks" style={{ order: visibleDashboardSections.indexOf('tasks') }}>
       {/* TO-DO — pending work from live records only; a category with
           nothing pending simply does not appear. */}
       <SectionCard
@@ -1136,7 +1177,10 @@ export const Dashboard = () => {
           </div>
         )}
       </SectionCard>
-
+        </div>
+      )}
+      {visibleDashboardSections.includes('academic') && (
+        <div data-dashboard-section="academic" style={{ order: visibleDashboardSections.indexOf('academic') }}>
         <div className="space-y-6">
           {/* একাডেমিক চিত্র — সব একাডেমিক কার্ড এক জায়গায়। ফিল্টারগুলো
               এখানেই থাকে, কারণ সেশন/পরীক্ষা/শ্রেণি বদলালে নিচের সব কার্ড
@@ -1396,7 +1440,10 @@ export const Dashboard = () => {
           </div>
 
         </div>
-
+        </div>
+      )}
+      {visibleDashboardSections.includes('finance') && (
+        <div data-dashboard-section="finance" style={{ order: visibleDashboardSections.indexOf('finance') }}>
       {/* আর্থিক চিত্র — বকেয়া ফি অনুসরণ ও অভিভাবকের সাথে যোগাযোগ
           এক জায়গায়। */}
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1472,9 +1519,17 @@ export const Dashboard = () => {
           })}
         </SectionCard>
       )}
+        </div>
+      )}
 
+      {visibleDashboardSections.includes('reports') && (
+        <div data-dashboard-section="reports" style={{ order: visibleDashboardSections.indexOf('reports') }}>
       <MadrasaReports />
+        </div>
+      )}
 
+      {visibleDashboardSections.includes('doors') && (
+        <div data-dashboard-section="doors" style={{ order: visibleDashboardSections.indexOf('doors') }}>
       {/* REPORTS ACCESS — daily / weekly / monthly reporting lives in the
           existing report modules; these are direct doors to them from the
           Overview (no report engines rebuilt here). */}
@@ -1507,6 +1562,8 @@ export const Dashboard = () => {
           );
         })}
       </SectionCard>
+        </div>
+      )}
 
     </div>
   );

@@ -4,6 +4,14 @@ import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
 import { calculateSubjectGrade, calcPassRate } from '../services/gradingEngine';
 import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
 import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
+import {
+  dashboardRoleKeyFromMobileHome,
+  defaultLayout,
+  loadDashboardLayout,
+  loadDashboardLayoutLocal,
+  resolveVisibleSections,
+  type DashboardLayout
+} from '../services/dashboardLayout';
 import { resolveGuardianChildren } from '../services/guardianScope';
 import { PWAInstallButton } from './ui/PWAInstallButton';
 import { ServerDataGate } from './ui/ServerDataGate';
@@ -363,8 +371,29 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   }, [primaryHome, effectiveRoles]);
 
   const [homeOverride, setHomeOverride] = useState<MobileHome | null>(null);
+
+  // Dashboard layout (22 Nov 2026): the SAME per-user layout as the
+  // desktop Dashboard. On the mobile home only the hero and the stat
+  // cards map to layout sections; the other home cards are role-work
+  // cards (routine, class reports, collections, staff cards, parent
+  // children, next-task nudge), not report sections.
+  const mobileLayoutUserId = currentUser?.id || 'anonymous';
+  const [mobileLayout, setMobileLayout] = useState<DashboardLayout>(() =>
+    loadDashboardLayoutLocal(mobileLayoutUserId) ?? defaultLayout()
+  );
+  useEffect(() => {
+    let cancelled = false;
+    loadDashboardLayout(mobileLayoutUserId).then(({ layout }) => { if (!cancelled) setMobileLayout(layout); });
+    const onChanged = () => {
+      const local = loadDashboardLayoutLocal(mobileLayoutUserId);
+      if (local) setMobileLayout(local);
+    };
+    window.addEventListener('dashboard-layout-changed', onChanged);
+    return () => { cancelled = true; window.removeEventListener('dashboard-layout-changed', onChanged); };
+  }, [mobileLayoutUserId]);
   const userRole: MobileHome =
     homeOverride && availableHomes.includes(homeOverride) ? homeOverride : primaryHome;
+  const mobileVisibleSections = resolveVisibleSections(mobileLayout, dashboardRoleKeyFromMobileHome(userRole), 'mobile');
 
   const [activeBottomNav, setActiveBottomNav] = useState<string>('home');
   const [moreOpen, setMoreOpen] = useState(false);
@@ -4895,6 +4924,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
       <main className="flex-1 p-4 space-y-4 anim-stagger">
         <ServerDataGate dataNameBn="ড্যাশবোর্ড তথ্য" dataNameEn="Dashboard data">
+        {mobileVisibleSections.includes('hero') && (
+        <div data-dashboard-section="hero" style={{ order: mobileVisibleSections.indexOf('hero') }}>
         {/* HERO — light greeting + quick actions inside (Tutor App pattern:
             greeting, "Today at a glance", QUICK ACTIONS row) */}
         <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5">
@@ -4973,7 +5004,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </div>
           </div>
         </section>
-
+        </div>
+      )}
+      {mobileVisibleSections.includes('mobileStats') && (
+        <div data-dashboard-section="mobileStats" style={{ order: mobileVisibleSections.indexOf('mobileStats') }}>
         {/* STAT CARDS — icon chip on top, big value, soft label (Tutor App pattern) */}
         <section className="grid grid-cols-3 gap-3">
           {statsRow.map((s, i) => (
@@ -4983,6 +5017,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </div>
           ))}
         </section>
+        </div>
+      )}
 
         {/* PARENT: my children — the guardian's OWN child(ren) only.
             An unlinked guardian gets the honest no-link state, never
