@@ -325,7 +325,6 @@ interface AppContextType extends AppState {
   userRole: UserRole | null;
   updateAppUser: (user: AppUser) => Promise<{ success: boolean; message?: string }>;
   deleteAppUser: (userId: string) => Promise<{ success: boolean; message?: string }>;
-  loginWithEmailOrPhone: (identifier: string, password: string) => Promise<{ success: boolean; message?: string; user?: AppUser }>;
   logoutUser: () => Promise<void>;
   setActiveTab: (tab: string) => void;
   // One shared exam selection (21 Nov 2026): every pass-rate surface reads
@@ -1433,7 +1432,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       }
       // No users[] account for this Firebase user (e.g. deleted in the
       // 29 Oct incident) — fall back to the linked teacher record's
-      // designation, exactly like the loginWithEmailOrPhone heal, instead
+      // designation, instead
       // of stamping every unmatched Firebase login as 'teacher' (which
       // put the principal behind the mobile-only gate on desktop).
       const linkedTeacherForAuth = pickBestStaffRecord<AcademicTeacher>(
@@ -1714,227 +1713,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       return { success: true, message: 'ব্যবহারকারী রিসাইকেল বিনে পাঠানো হয়েছে। তবে member তথ্য মোছা যায়নি — আবার চেষ্টা করুন।' };
     }
     return { success: true, message: 'ব্যবহারকারী রিসাইকেল বিনে পাঠানো হয়েছে — প্রয়োজনে ফিরিয়ে আনা যাবে।' };
-  };
-
-  const loginWithEmailOrPhone = async (
-    identifier: string, 
-    password: string
-  ): Promise<{ success: boolean; message?: string; user?: AppUser }> => {
-    const cleanId = identifier.trim().toLowerCase();
-    const cleanPass = password.trim();
-
-    // Duplicate-safe: when several account records match the identifier
-    // (a leftover teacher-stamped duplicate next to the real account),
-    // the authoritative non-teacher record wins — never plain array
-    // order (see services/roleResolution.ts).
-    let user = pickAuthoritativeUser<AppUser>(users.filter(u =>
-      (u.phone && u.phone.trim() === cleanId) ||
-      (u.email && u.email.trim().toLowerCase() === cleanId)
-    ));
-
-    // If not found in users, check academic teachers (added by admin).
-    // Same duplicate rule for staff records: the record whose
-    // designation names a non-teacher role (e.g. the real Accountant
-    // record) beats a plain-teacher duplicate, in any order.
-    if (!user) {
-      const teacher = pickBestStaffRecord<AcademicTeacher>(teachers.filter(t =>
-        (t.phone && t.phone.trim() === cleanId) ||
-        (t.email && t.email.trim().toLowerCase() === cleanId)
-      ));
-      if (teacher) {
-        user = {
-          id: teacher.id,
-          name: teacher.name,
-          nameBn: teacher.nameBn || teacher.name,
-          phone: teacher.phone || '',
-          email: teacher.email || undefined,
-          authProvider: teacher.authProvider,
-          role: deriveRoleFromDesignation(teacher.designation),
-          additionalRoles: sanitizeAdditionalRoles(teacher.additionalRoles, deriveRoleFromDesignation(teacher.designation)) as UserRole[],
-          designation: teacher.designation || 'সহকারী শিক্ষক',
-          assignedClasses: teacher.assignedClasses || [],
-          assignedSubjects: teacher.assignedSubjects || [],
-          status: (teacher.status?.toUpperCase() === 'PENDING') ? 'pending' : 'active',
-          createdAt: teacher.createdAt || new Date().toISOString()
-        };
-        // Auto-persist in users
-        setUsers(prev => [user!, ...prev.filter(u => u.id !== user!.id)]);
-        try {
-          const stored = localStorage.getItem('madrasha_app_users');
-          const list = stored ? JSON.parse(stored) : [];
-          localStorage.setItem('madrasha_app_users', JSON.stringify([user, ...list.filter((u: any) => u.id !== user!.id)]));
-        } catch (e) {}
-      }
-    }
-
-    if (!user) {
-      const isPending = pendingMembers.some(m => 
-        (m.phone && m.phone.trim() === cleanId) || 
-        (m.email && m.email.trim().toLowerCase() === cleanId)
-      );
-      if (isPending) {
-        return {
-          success: false,
-          message: 'আপনার অ্যাকাউন্টটি এখনও অ্যাডমিনের অনুমোদনের অপেক্ষায় রয়েছে (Pending Admin Approval)। অ্যাডমিন প্যানেল থেকে অনুমোদন করলেই আপনি প্রবেশ করতে পারবেন।'
-        };
-      }
-
-      return {
-        success: false,
-        message: 'এই মোবাইল বা ইমেইলে কোনো ব্যবহারকারী খুঁজে পাওয়া যায়নি। সঠিক তথ্য দিন অথবা অ্যাডমিনের সাথে যোগাযোগ করুন।'
-      };
-    }
-
-    // Google-only accounts can never use password-login: they were
-    // never given a password, and no '123456' fallback may stand in
-    // for one (see approvalPasswordFor). This check runs before the
-    // password comparison, which skips password-less records.
-    if (isGoogleOnlyAccount(user)) {
-      return {
-        success: false,
-        message: GOOGLE_PASSWORD_LOGIN_DENIED
-      };
-    }
-
-    if (user.password && user.password !== cleanPass) {
-      return {
-        success: false,
-        message: 'ভুল পাসওয়ার্ড। আবার চেষ্টা করুন।'
-      };
-    }
-
-    if (user.status === 'pending') {
-      return {
-        success: false,
-        message: 'আপনার অ্যাকাউন্টটি অনুমোদনের অপেক্ষায় রয়েছে (Pending Approval)। অ্যাডমিন অনুমোদন করলেই আপনি ড্যাশবোর্ডে প্রবেশ করতে পারবেন।'
-      };
-    }
-
-    if (user.status === 'blocked') {
-      return {
-        success: false,
-        message: 'আপনার অ্যাকাউন্টটি স্থগিত (Blocked) করা হয়েছে। অ্যাডমিনের সাথে যোগাযোগ করুন।'
-      };
-    }
-
-    setActiveAppUserId(user.id);
-    try {
-      localStorage.setItem('madrasha_active_app_user_id', user.id);
-    } catch (e) {}
-
-    // Role portal session
-    const isOwner = (user.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-    const isAdministrative = user.role === 'super_admin' || user.role === 'principal' || isOwner;
-    // Portal-login self-heal (25 Oct 2026 follow-up): mirror the main
-    // login's self-heal — a staff member logging in through the portal
-    // gets a Firebase session too, so their writes sync to the cloud.
-    // Same gates: stored password matched, real email from the matched
-    // record (never the typed identifier, which may be a phone number),
-    // staff roles only. Guardians and every failure keep the local
-    // session exactly as before.
-    let portalAuthed = false;
-    const staffCanonical = getStaffCanonicalEmail(user.email, user.phone, user.id);
-    if (shouldHealPortalLogin(user.role, user.email, user.password, cleanPass, user.phone, user.id) && staffCanonical) {
-      try {
-        const signed = await signInWithEmailAndPassword(auth, staffCanonical, cleanPass);
-        setAuthUser(signed.user);
-        portalAuthed = true;
-      } catch (fbErr: any) {
-        if (fbErr?.code === 'auth/user-not-found' || fbErr?.code === 'auth/invalid-credential') {
-          try {
-            const healed = await createPrimaryFirebaseUser(auth, staffCanonical, cleanPass, user.phone, user.id);
-            if (healed === 'created' && auth.currentUser) {
-              setAuthUser(auth.currentUser);
-              portalAuthed = true;
-            }
-          } catch {}
-        }
-      }
-    }
-    if (!portalAuthed && !auth.currentUser) {
-      setAuthUser(null);
-    } else if (auth.currentUser) {
-      setAuthUser(auth.currentUser);
-    }
-    // Login gate (B) — same rule for the phone path: a Firebase
-    // session just healed from a stale local record must not survive
-    // when the cloud no longer backs the account. The local lists
-    // already produced this user, so only a fresh cloud read can
-    // catch a stale record; a failed read fails OPEN (the snapshot
-    // gate denies once cloud truth lands). On denial the local
-    // session set above is undone — nothing is left behind.
-    if (portalAuthed && auth.currentUser) {
-      let cloudBacked: boolean | null = null;
-      try {
-        const snap = await getDoc(doc(db, 'institution', 'main_store'));
-        const data = snap.data() as any;
-        const cloudUsers: any[] = Array.isArray(data?.users) ? data.users : [];
-        const cloudTeachers: any[] = Array.isArray(data?.teachers) ? data.teachers : [];
-        const cleanPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
-        const userEmailLower = (user.email || '').toLowerCase();
-        cloudBacked =
-          cloudUsers.some(u => u.id === user.id || (userEmailLower && u.email && String(u.email).toLowerCase() === userEmailLower) || (cleanPhoneDigits && (u.phone || '').replace(/[^0-9]/g, '') === cleanPhoneDigits)) ||
-          cloudTeachers.some(t => t.id === user.id || (userEmailLower && t.email && String(t.email).toLowerCase() === userEmailLower) || (cleanPhoneDigits && (t.phone || '').replace(/[^0-9]/g, '') === cleanPhoneDigits));
-      } catch (gateErr) {
-        console.warn('Login gate cloud check notice:', (gateErr as any)?.message || gateErr);
-      }
-      if (cloudBacked === false) {
-        try { await signOut(auth); } catch {}
-        setAuthUser(null);
-        setActiveAppUserId(null);
-        try {
-          localStorage.removeItem('madrasha_active_app_user_id');
-          localStorage.removeItem('madrasha_active_auth_session');
-        } catch {}
-        return { success: false, message: ACCOUNT_LOGIN_DENIED };
-      }
-    }
-    setAdminEmail(user.email || '');
-    setIsAdmin(isAdministrative);
-    setAuthRole(user.role);
-    setModeState(isAdministrative ? 'admin' : 'viewer');
-
-    const memberRecord: InstitutionMember = {
-      uid: user.id,
-      institutionId: 'inst_madrasah_primary',
-      email: user.email || `${user.phone}@madrasha.local`,
-      displayName: user.nameBn || user.name,
-      roleId: `role_${user.role}`,
-      additionalRoleIds: (user.additionalRoles || []).map(r => roleKeyToRoleId(r)),
-      status: 'active',
-      assignedClasses: user.assignedClasses || [],
-      assignedSubjects: user.assignedSubjects || [],
-      createdAt: user.createdAt,
-      updatedAt: new Date().toISOString()
-    };
-    setCurrentMember(memberRecord);
-
-    if (user.role === 'guardian') {
-      setActiveTabState('guardian_portal');
-    } else if (user.role === 'teacher') {
-      setActiveTabState('marks');
-    } else if (user.role === 'accountant') {
-      setActiveTabState('finance');
-    } else {
-      setActiveTabState('dashboard');
-    }
-
-    try {
-      localStorage.setItem('madrasha_active_auth_session', JSON.stringify({
-        uid: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        roleId: `role_${user.role}`,
-        additionalRoleIds: memberRecord.additionalRoleIds
-      }));
-    } catch (e) {}
-
-    return {
-      success: true,
-      message: 'লগইন সফল হয়েছে!',
-      user
-    };
   };
 
   const logoutUser = async () => {
@@ -5991,7 +5769,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // teachers[]/users[]/members but there is no deleteUser without a
   // service account), so Firebase-first login used to mint a
   // teacher-stamped session for a deleted person. Two layers close it:
-  //  (A) signInWithEmail / loginWithEmailOrPhone deny at login time
+  //  (A) signInWithEmail denies at login time
   //      (fresh cloud read when local lists do not back the account);
   //  (C) this effect denies restored sessions as soon as the first
   //      cloud snapshot lands. Owner always passes; users[]-matched
@@ -8881,7 +8659,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       rejectMember,
       updateAppUser,
       deleteAppUser,
-      loginWithEmailOrPhone,
       logoutUser,
       t
     }}>
