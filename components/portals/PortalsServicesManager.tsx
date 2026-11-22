@@ -43,6 +43,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
 import { 
   calculateTotalGPA, 
   calculateGrade, 
@@ -642,91 +643,86 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
     <div className={`p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto ${isBn ? 'font-bangla' : ''}`}>
       
       {/* 1. MASTER HEADER & SUITE HERO */}
- <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-teal-800/40 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white flex items-center gap-3">
-              <Globe className="text-teal-400 shrink-0" size={32} />
-              <span>{isBn ? 'পোর্টাল, এসএমএস ও বিশেষ সেবা কেন্দ্র' : 'Portals, SMS & Special Services Hub'}</span>
-            </h1>
-          </div>
-
-          {/* Quick Metrics Matrix */}
+      <PageHeader
+        tone="brand"
+        icon={Globe}
+        title={isBn ? 'পোর্টাল, এসএমএস ও বিশেষ সেবা কেন্দ্র' : 'Portals, SMS & Special Services Hub'}
+        footer={(
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
-              <span className="text-[11px] font-semibold text-teal-200 block uppercase">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3 text-center">
+              <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 block uppercase">
                 {isBn ? 'অভিভাবক' : 'Guardians'}
               </span>
-              <span className="text-3xl font-black text-white mt-0.5 block">
+              <span className="text-3xl font-black text-slate-900 dark:text-white mt-0.5 block">
                 {formatNumber(students.length, language)}
               </span>
             </div>
-            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
-              <span className="text-[11px] font-semibold text-teal-200 block uppercase">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3 text-center">
+              <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 block uppercase">
                 {isBn ? 'আবাসিক' : 'Boarding'}
               </span>
-              <span className="text-2xl font-black text-white mt-0.5 block">
+              <span className="text-2xl font-black text-slate-900 dark:text-white mt-0.5 block">
                 {formatNumber(residentialStudents.length, language)}
               </span>
             </div>
-            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
-              <span className="text-[11px] font-semibold text-teal-200 block uppercase">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3 text-center">
+              <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 block uppercase">
                 {isBn ? 'ভর্তি আবেদন' : 'Admissions'}
               </span>
-              <span className="text-2xl font-black text-white mt-0.5 block">
+              <span className="text-2xl font-black text-slate-900 dark:text-white mt-0.5 block">
                 {formatNumber(admissions.length, language)}
               </span>
             </div>
-            <div className="bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 text-center">
-              <span className="text-[11px] font-semibold text-teal-200 block uppercase">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3 text-center">
+              <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 block uppercase">
                 {isBn ? 'এসএমএস রেডি' : 'SMS Ready'}
               </span>
-              <span className="text-xs font-bold text-emerald-400 mt-1 inline-flex items-center gap-1">
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 inline-flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>Active</span>
               </span>
             </div>
           </div>
-        </div>
+        )}
+      />
 
-        {/* 2. SUB-TAB NAVIGATION BAR */}
-        <div className="mt-8 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2 pb-1">
-          {[
-            { id: 'guardian_portal', labelBn: 'অভিভাবক', labelEn: 'Guardian', icon: Users, badge: formatNumber(students.length, language) },
-            { id: 'online_admissions', labelBn: 'ভর্তি', labelEn: 'Admissions', icon: FileText, badge: formatNumber(admissions.length, language) },
-            { id: 'web_results', labelBn: 'রেজাল্ট', labelEn: 'Results', icon: QrCode, badge: 'Live' },
-            { id: 'sms_gateway', labelBn: 'SMS', labelEn: 'SMS', icon: MessageSquare },
-            { id: 'boarding_mess', labelBn: 'হোস্টেল', labelEn: 'Hostel', icon: Home, badge: formatNumber(residentialStudents.length, language) },
-            { id: 'islamic_welfare', labelBn: 'কল্যাণ', labelEn: 'Welfare', icon: HeartHandshake }
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeSubTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveSubTab(tab.id as PortalSubTab);
-                  if (onNavigateTab) onNavigateTab(tab.id);
-                }}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                  isActive 
- ? 'bg-teal-500 text-slate-950'
-                    : 'bg-white/5 dark:bg-slate-900/5 hover:bg-white/10 dark:hover:bg-slate-900/10 text-slate-300 hover:text-white border border-white/5'
-                }`}
-              >
-                <Icon size={16} />
-                <span>{isBn ? tab.labelBn : tab.labelEn}</span>
-                {tab.badge && (
-                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
-                    isActive ? 'bg-slate-950/20 text-slate-950' : 'bg-white/10 dark:bg-slate-900/10 text-teal-300'
-                  }`}>
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+      {/* 2. SUB-TAB NAVIGATION BAR */}
+      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center gap-2">
+        {[
+          { id: 'guardian_portal', labelBn: 'অভিভাবক', labelEn: 'Guardian', icon: Users, badge: formatNumber(students.length, language) },
+          { id: 'online_admissions', labelBn: 'ভর্তি', labelEn: 'Admissions', icon: FileText, badge: formatNumber(admissions.length, language) },
+          { id: 'web_results', labelBn: 'রেজাল্ট', labelEn: 'Results', icon: QrCode, badge: 'Live' },
+          { id: 'sms_gateway', labelBn: 'SMS', labelEn: 'SMS', icon: MessageSquare },
+          { id: 'boarding_mess', labelBn: 'হোস্টেল', labelEn: 'Hostel', icon: Home, badge: formatNumber(residentialStudents.length, language) },
+          { id: 'islamic_welfare', labelBn: 'কল্যাণ', labelEn: 'Welfare', icon: HeartHandshake }
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeSubTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveSubTab(tab.id as PortalSubTab);
+                if (onNavigateTab) onNavigateTab(tab.id);
+              }}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-teal-500 text-slate-950'
+                  : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <Icon size={16} />
+              <span>{isBn ? tab.labelBn : tab.labelEn}</span>
+              {tab.badge && (
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                  isActive ? 'bg-slate-950/20 text-slate-950' : 'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400'
+                }`}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ========================================================================= */}
@@ -1296,23 +1292,23 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Public Result Simulator Header */}
- <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-indigo-800/40">
+ <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8">
             <div className="max-w-2xl space-y-3">
-              <h2 className="text-xl sm:text-2xl font-black text-white">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                 {isBn ? 'পাবলিক রেজাল্ট পোর্টাল ও তাত্ক্ষণিক ভেরিফিকেশন' : 'Public Result Search & Instant Verification'}
               </h2>
             </div>
 
             {/* Public Search Form Simulator */}
-            <form onSubmit={handleSearchPublicResult} className="mt-6 bg-white/10 dark:bg-slate-900/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <form onSubmit={handleSearchPublicResult} className="mt-6 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
-                <label className="text-[11px] font-bold text-indigo-200 block mb-1">
+                <label className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
                   {isBn ? 'পরীক্ষা নির্বাচন' : 'Select Exam'}
                 </label>
                 <select
                   value={qrQueryExamId}
                   onChange={(e) => setQrQueryExamId(e.target.value)}
-                  className="w-full p-2 bg-slate-900/90 text-white rounded-xl text-xs border border-white/20 focus:outline-teal-400"
+                  className="w-full p-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl text-xs border border-slate-200 dark:border-slate-700 focus:outline-teal-400"
                 >
                   {exams.map(e => (
                     <option key={e.id} value={e.id}>{e.name || e.academicYear}</option>
@@ -1321,13 +1317,13 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-indigo-200 block mb-1">
+                <label className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
                   {isBn ? 'শ্রেণি' : 'Class'}
                 </label>
                 <select
                   value={qrQueryClass}
                   onChange={(e) => setQrQueryClass(e.target.value)}
-                  className="w-full p-2 bg-slate-900/90 text-white rounded-xl text-xs border border-white/20 focus:outline-teal-400"
+                  className="w-full p-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl text-xs border border-slate-200 dark:border-slate-700 focus:outline-teal-400"
                 >
                   <option value="all">{isBn ? 'সকল শ্রেণি' : 'All Classes'}</option>
                   {classes.map(c => (
@@ -1337,7 +1333,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-indigo-200 block mb-1">
+                <label className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
                   {isBn ? 'রোল বা স্টুডেন্ট আইডি' : 'Roll or Student ID'}
                 </label>
                 <input
@@ -1345,7 +1341,7 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                   placeholder={isBn ? 'রোল নং (যেমন: ১, ২)' : 'e.g. 1, 2, STD-001'}
                   value={qrQueryRoll}
                   onChange={(e) => setQrQueryRoll(e.target.value)}
-                  className="w-full p-2 bg-slate-900/90 text-white rounded-xl text-xs border border-white/20 focus:outline-teal-400"
+                  className="w-full p-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl text-xs border border-slate-200 dark:border-slate-700 focus:outline-teal-400"
                 />
               </div>
 
