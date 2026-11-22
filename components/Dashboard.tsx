@@ -72,7 +72,7 @@ import { SectionCard } from './ui/SectionCard';
 import { ProgressBar } from './ui/ProgressBar';
 import { calculateTotalDues, topDueEntries, localMonthStr, academicYearFallbackStartMonth, getDueReminderMessage, type StudentDueProfile } from '../services/studentDuesService';
 import { getAdmissionApplications } from '../services/admissionApplicationsService';
-import { Phone, MessageCircle, LayoutDashboard, UserPlus } from 'lucide-react';
+import { Phone, MessageCircle, UserPlus } from 'lucide-react';
 
 // =========================================================================
 // TYPES FOR MEMOIZED SUB-COMPONENTS
@@ -460,12 +460,9 @@ export const Dashboard = () => {
   });
 
   const [selectedClass, setSelectedClass] = useState<string>('All');
-  // Top-level dashboard split (owner directive): 'overview' = whole-madrasa
-  // monitoring + reports; 'action' = AI Master advisor + live to-do list.
-  const [activeView, setActiveView] = useState<'overview' | 'action'>('overview');
   // "আজকের করণীয়" mount load (16–17 Nov audit): the actionData memo
-  // below only re-reads the non-React admission store when activeView
-  // changes, so the first paint could stay blank until a tab click.
+  // below only re-reads the non-React admission store when the refresh
+  // tick bumps, so the first paint could stay blank until mount.
   // The tick forces one fresh recompute right after mount; the flag
   // drives the loading row (and gates the all-clear message).
   const [todayTasksRefreshTick, setTodayTasksRefreshTick] = useState(0);
@@ -922,12 +919,12 @@ export const Dashboard = () => {
       pendingLeaves,
       badgeCount
     };
-    // activeView is a deliberate dep: admission applications live outside
-    // React state (canonical local store), so re-read them on view switches.
-    // todayTasksRefreshTick is a deliberate dep too: the mount effect bumps
-    // it once so the first paint recomputes instead of waiting for a click.
+    // todayTasksRefreshTick is a deliberate dep: admission applications
+    // live outside React state (canonical local store), so the mount
+    // effect bumps it once and the first paint recomputes instead of
+    // waiting for a click. (No view switch anymore — one unified page.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classes, students, dailyStudentAttendance, examEvaluationMatrix, feeStructures, feeTypes, academicYears, transactions, staffLeaves, activeView, todayTasksRefreshTick]);
+  }, [classes, students, dailyStudentAttendance, examEvaluationMatrix, feeStructures, feeTypes, academicYears, transactions, staffLeaves, todayTasksRefreshTick]);
 
   // WhatsApp fee-reminder link — the same pattern as StaffMobileApp.
   const duesWhatsappLink = (profile: StudentDueProfile) => {
@@ -963,66 +960,12 @@ export const Dashboard = () => {
       {/* HERO — brand PageHeader (school name, date/session, quick-action
           tiles). Nothing renders above the hero anymore: the notice marquee
           banner that used to sit here was deleted at the owner's direction;
-          urgent notices now appear as a compact card inside Overview. */}
+          urgent notices now appear as a compact card inside the Dashboard. */}
       <DashboardDailyOverview
         section="hero"
         onNavigate={setActiveTab}
-        selectedAcademicYear={selectedAcademicYear}
-        onSelectAcademicYear={setSelectedAcademicYear}
-        academicYears={academicYears}
-        selectedExamId={selectedExamId}
-        onSelectExamId={setSelectedExamId}
-        yearExams={yearExams}
         onOpenRecoveryModal={() => setIsRecoveryModalOpen(true)}
       />
-
-      {/* VIEW SWITCHER — the two dashboard halves (owner directive):
-          Overview for whole-madrasa monitoring, Action & Advice for the
-          AI Master + live to-do list. Directly below the hero. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          onClick={() => setActiveView('overview')}
-          style={activeView === 'overview' ? { backgroundColor: 'var(--color-brand)', borderColor: 'var(--color-brand)' } : undefined}
-          className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
-            activeView === 'overview'
-              ? 'text-white'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-[var(--color-brand-ring)]'
-          }`}
-        >
-          <span
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'overview' ? 'bg-white/15 text-white' : ''}`}
-            style={activeView === 'overview' ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}
-          >
-            <LayoutDashboard size={20} />
-          </span>
-          <span className="font-black text-base sm:text-lg">{language === 'bn' ? 'ওভারভিউ' : 'Overview'}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveView('action')}
-          style={activeView === 'action' ? { backgroundColor: 'var(--color-brand)', borderColor: 'var(--color-brand)' } : undefined}
-          className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-3xl border text-left transition-all cursor-pointer active:scale-[0.99] ${
-            activeView === 'action'
-              ? 'text-white'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 hover:border-[var(--color-brand-ring)]'
-          }`}
-        >
-          <span
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${activeView === 'action' ? 'bg-white/15 text-white' : ''}`}
-            style={activeView === 'action' ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}
-          >
-            <ListChecks size={20} />
-          </span>
-          <span className="font-black text-base sm:text-lg flex-1">{language === 'bn' ? 'আজকের করণীয়' : "Today's Tasks"}</span>
-          {actionData.badgeCount > 0 && (
-            <span className="rounded-full px-3 py-1 text-xs font-black bg-rose-500 text-white shrink-0">
-              {toBanglaDigits(actionData.badgeCount, language)}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {activeView === 'overview' && (<>
 
       {/* Urgent notices — compact card inside Overview (the alert content of
           the deleted above-hero banner lives here now; self-hides when none) */}
@@ -1077,44 +1020,195 @@ export const Dashboard = () => {
         </div>
       )}
 
-      <MadrasaReports />
-
-      {/* REPORTS ACCESS — daily / weekly / monthly reporting lives in the
-          existing report modules; these are direct doors to them from the
-          Overview (no report engines rebuilt here). */}
+      {/* TO-DO — pending work from live records only; a category with
+          nothing pending simply does not appear. */}
       <SectionCard
-        title={language === 'bn' ? 'প্রতিবেদন' : 'Reports'}
-        icon={FileSpreadsheet}
-        iconTone="brand"
-        bodyClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+        title={language === 'bn' ? 'আজকের করণীয়' : "Today's To-Do"}
+        icon={ListChecks}
+        iconTone="amber"
+        bodyClassName="space-y-2.5"
+        action={actionData.badgeCount > 0 ? (
+          <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+            {toBanglaDigits(actionData.badgeCount, language)} {language === 'bn' ? 'টি বাকি' : 'pending'}
+          </span>
+        ) : undefined}
       >
-        {[
-          { tab: 'admin_reports', bn: 'প্রাতিষ্ঠানিক রিপোর্ট', en: 'Institutional Reports', icon: Building2, box: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300', hover: 'hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30' },
-          { tab: 'finance_reports', bn: 'আর্থিক রিপোর্ট', en: 'Finance Reports', icon: Wallet, box: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300', hover: 'hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30' },
-          { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck, box: 'bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-300', hover: 'hover:border-teal-300 dark:hover:border-teal-600 hover:bg-teal-50/60 dark:hover:bg-teal-950/30' },
-          { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users, box: 'bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-300', hover: 'hover:border-sky-300 dark:hover:border-sky-600 hover:bg-sky-50/60 dark:hover:bg-sky-950/30' },
-          { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen, box: 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300', hover: 'hover:border-amber-300 dark:hover:border-amber-600 hover:bg-amber-50/60 dark:hover:bg-amber-950/30' }
-        ].map(r => {
-          const RIcon = r.icon;
-          return (
-            <button
-              key={r.tab}
-              data-report-tile={r.tab}
-              onClick={() => setActiveTab(r.tab)}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/60 ${r.hover} transition-all text-center cursor-pointer`}
-            >
-              <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${r.box}`}>
-                <RIcon size={22} />
-              </span>
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">{language === 'bn' ? r.bn : r.en}</span>
-            </button>
-          );
-        })}
+        {!todayTasksLoaded && (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm font-semibold text-slate-400">
+            <Loader2 size={18} className="animate-spin" />
+            <span>{language === 'bn' ? 'আজকের করণীয় লোড হচ্ছে…' : 'Loading today’s tasks…'}</span>
+          </div>
+        )}
+
+        {actionData.attendancePendingClasses.length > 0 && (
+          <ActionRow
+            icon={UserCheck}
+            iconCls="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300"
+            title={language === 'bn' ? 'আজকের হাজিরা নেওয়া হয়নি' : "Today's attendance not taken"}
+            detail={
+              actionData.attendancePendingClasses.slice(0, 4).map(c => language === 'bn' ? (c.nameBn || c.name) : c.name).join(', ') +
+              (actionData.attendancePendingClasses.length > 4 ? ` +${toBanglaDigits(actionData.attendancePendingClasses.length - 4, language)}` : '')
+            }
+            count={actionData.attendancePendingClasses.length}
+            language={language}
+            onClick={() => setActiveTab('attendance')}
+          />
+        )}
+
+        {actionData.marksPendingExams.length > 0 && (
+          <ActionRow
+            icon={PenTool}
+            iconCls="bg-[var(--color-brand-light)] text-[var(--color-brand)]"
+            title={language === 'bn' ? 'নম্বর এন্ট্রি বাকি' : 'Marks entry pending'}
+            detail={language === 'bn'
+              ? `মোট ${toBanglaDigits(actionData.totalPendingMarks, language)}টি নম্বর বাকি`
+              : `${actionData.totalPendingMarks} entries pending in total`}
+            count={actionData.marksPendingExams.length}
+            language={language}
+            onClick={() => {
+              const first = actionData.marksPendingExams[0];
+              if (first) setSelectedExamId(first.examId);
+              setActiveTab('marks');
+            }}
+          />
+        )}
+
+        {actionData.dueProfiles.length > 0 && (
+          <ActionRow
+            icon={Wallet}
+            iconCls="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300"
+            title={language === 'bn' ? 'বকেয়া ফি অনুসরণ' : 'Fee dues follow-up'}
+            detail={language === 'bn'
+              ? `মোট বকেয়া ৳${toBanglaDigits(actionData.duesSummary.totalDue.toLocaleString(), language)}`
+              : `Total due ৳${actionData.duesSummary.totalDue.toLocaleString()}`}
+            count={actionData.dueProfiles.length}
+            language={language}
+            onClick={() => setActiveTab('finance')}
+          />
+        )}
+
+        {actionData.pendingAdmissions.length > 0 && (
+          <ActionRow
+            icon={UserPlus}
+            iconCls="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300"
+            title={language === 'bn' ? 'ভর্তির আবেদন অপেক্ষমাণ' : 'Admission applications pending'}
+            count={actionData.pendingAdmissions.length}
+            language={language}
+            onClick={() => setActiveTab('admission_applications')}
+          />
+        )}
+
+        {actionData.pendingLeaves.length > 0 && (
+          <ActionRow
+            icon={Calendar}
+            iconCls="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300"
+            title={language === 'bn' ? 'ছুটির আবেদন অপেক্ষমাণ' : 'Leave applications pending'}
+            detail={
+              actionData.pendingLeaves.slice(0, 2).map(l => l.teacherName).join(', ') +
+              (actionData.pendingLeaves.length > 2 ? '…' : '')
+            }
+            count={actionData.pendingLeaves.length}
+            language={language}
+            onClick={() => setActiveTab('staff_leaves')}
+          />
+        )}
+
+        {actionData.readyToFinalizeExams.length > 0 && (
+          <ActionRow
+            icon={CheckCheck}
+            iconCls="bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-300"
+            title={language === 'bn' ? 'ফলাফল চূড়ান্ত করার অপেক্ষায়' : 'Results ready to finalize'}
+            detail={actionData.readyToFinalizeExams.map(m => language === 'bn' ? (m.examNameBn || m.examName) : m.examName).join(', ')}
+            count={actionData.readyToFinalizeExams.length}
+            language={language}
+            onClick={() => {
+              const first = actionData.readyToFinalizeExams[0];
+              if (first) setSelectedExamId(first.examId);
+              setActiveTab('results');
+            }}
+          />
+        )}
+
+        {todayTasksLoaded && actionData.badgeCount === 0 && (
+          <div className="text-center py-8 text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+            <CheckCircle2 size={18} />
+            <span>{language === 'bn' ? 'সব কাজ সম্পন্ন — আজ আর কিছু বাকি নেই।' : 'All clear — nothing pending today.'}</span>
+          </div>
+        )}
       </SectionCard>
 
         <div className="space-y-6">
+          {/* একাডেমিক চিত্র — সব একাডেমিক কার্ড এক জায়গায়। ফিল্টারগুলো
+              এখানেই থাকে, কারণ সেশন/পরীক্ষা/শ্রেণি বদলালে নিচের সব কার্ড
+              (শ্রেণি, গ্রেড, পাস/ফেল, মেধা, ঝুঁকি) একসাথে বদলায়। */}
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
+                <GraduationCap size={20} />
+              </span>
+              <div>
+                <h2 className="font-black text-lg text-slate-900 dark:text-white">{language === 'bn' ? 'একাডেমিক চিত্র' : 'Academic Overview'}</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{language === 'bn' ? 'শ্রেণি, পরীক্ষা ও সেশন অনুযায়ী ফলাফল' : 'Results by class, exam and session'}</p>
+                {/* এক নজরে — সংখ্যাগুলো একাডেমিক হিসাবেই আছে, এখানে নতুন
+                    করে কিছু হিসাব করা হয়নি। */}
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{toBanglaDigits(topStudents.length, language)} {language === 'bn' ? 'জন মূল্যায়িত' : 'evaluated'} • {toBanglaDigits(academicHealth.passRate, language)}% {language === 'bn' ? 'পাস' : 'pass'} • {language === 'bn' ? 'গড় GPA' : 'Avg GPA'} {toBanglaDigits(academicHealth.overallAverageGpa.toFixed(2), language)} • A+ {toBanglaDigits(academicHealth.aPlusCount, language)} {language === 'bn' ? 'জন' : ''}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-200">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{language === 'bn' ? 'সেশন:' : 'Session:'}</span>
+                <select
+                  value={selectedAcademicYear}
+                  onChange={(e) => setSelectedAcademicYear(e.target.value)}
+                  className="bg-transparent text-slate-700 dark:text-slate-200 font-bold outline-none cursor-pointer text-xs"
+                >
+                  <option value="ALL" className="bg-slate-900 text-white">{language === 'bn' ? 'সকল সেশন' : 'All'}</option>
+                  {academicYears.map(y => (
+                    <option key={y.id} value={y.name} className="bg-slate-900 text-white">
+                      {toBanglaDigits(y.name, language)}
+                    </option>
+                  ))}
+                  {academicYears.length === 0 && (
+                    <option value={selectedAcademicYear} className="bg-slate-900 text-white">{toBanglaDigits(selectedAcademicYear, language)}</option>
+                  )}
+                </select>
+              </div>
+              {yearExams.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-200">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{language === 'bn' ? 'পরীক্ষা:' : 'Exam:'}</span>
+                  <select
+                    value={selectedExamId || ''}
+                    onChange={(e) => setSelectedExamId(e.target.value)}
+                    className="bg-transparent text-slate-700 dark:text-slate-200 font-bold outline-none cursor-pointer text-xs max-w-[120px] truncate"
+                  >
+                    {yearExams.map(e => (
+                      <option key={e.id} value={e.id} className="bg-slate-900 text-white">
+                        {language === 'bn' ? (e.nameBn || e.name) : e.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-200">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</span>
+                <select
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                  className="bg-transparent text-slate-700 dark:text-slate-200 font-bold outline-none cursor-pointer text-xs max-w-[120px] truncate"
+                >
+                  <option value="All" className="bg-slate-900 text-white">{language === 'bn' ? 'সকল শ্রেণি' : 'All classes'}</option>
+                  {(classes || []).map(c => (
+                    <option key={c.id} value={c.name} className="bg-slate-900 text-white">
+                      {language === 'bn' ? (c.nameBn || c.name) : c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* Class Grid */}
-          <ClassGrid classCards={classCards} language={language} />
+          <ClassGrid classCards={selectedClass === 'All' ? classCards : classCards.filter(c => classNamesMatch(c.name, selectedClass))} language={language} />
 
           {/* Dual Visual Analytics Cards: Grade Tiers & Pass/Fail Ratio */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1302,190 +1396,117 @@ export const Dashboard = () => {
           </div>
 
         </div>
-      </>)}
 
-      {activeView === 'action' && (<>
+      {/* আর্থিক চিত্র — বকেয়া ফি অনুসরণ ও অভিভাবকের সাথে যোগাযোগ
+          এক জায়গায়। */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
+            <Wallet size={20} />
+          </span>
+          <div>
+            <h2 className="font-black text-lg text-slate-900 dark:text-white">{language === 'bn' ? 'আর্থিক চিত্র' : 'Finance Overview'}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বকেয়া ফি অনুসরণ ও অভিভাবকের সাথে যোগাযোগ' : 'Fee dues follow-up and guardian contact'}</p>
+          </div>
+        </div>
+      </div>
 
-        {/* TO-DO — pending work from live records only; a category with
-            nothing pending simply does not appear. */}
+      {/* TOP DUES — the five largest follow-ups, with call / WhatsApp
+          (same reminder pattern as the staff mobile app). */}
+      {actionData.topDueProfiles.length > 0 && (
         <SectionCard
-          title={language === 'bn' ? 'আজকের করণীয়' : "Today's To-Do"}
-          icon={ListChecks}
-          iconTone="amber"
-          bodyClassName="space-y-2.5"
-          action={actionData.badgeCount > 0 ? (
+          title={language === 'bn' ? 'সর্বোচ্চ বকেয়া (শীর্ষ ৫)' : 'Top Fee Dues (Top 5)'}
+          icon={Wallet}
+          iconTone="rose"
+          bodyClassName="space-y-2"
+          action={
             <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-              {toBanglaDigits(actionData.badgeCount, language)} {language === 'bn' ? 'টি বাকি' : 'pending'}
+              ৳{toBanglaDigits(actionData.duesSummary.totalDue.toLocaleString(), language)}
             </span>
-          ) : undefined}
+          }
         >
-          {!todayTasksLoaded && (
-            <div className="flex items-center justify-center gap-2 py-8 text-sm font-semibold text-slate-400">
-              <Loader2 size={18} className="animate-spin" />
-              <span>{language === 'bn' ? 'আজকের করণীয় লোড হচ্ছে…' : 'Loading today’s tasks…'}</span>
-            </div>
-          )}
-
-          {actionData.attendancePendingClasses.length > 0 && (
-            <ActionRow
-              icon={UserCheck}
-              iconCls="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300"
-              title={language === 'bn' ? 'আজকের হাজিরা নেওয়া হয়নি' : "Today's attendance not taken"}
-              detail={
-                actionData.attendancePendingClasses.slice(0, 4).map(c => language === 'bn' ? (c.nameBn || c.name) : c.name).join(', ') +
-                (actionData.attendancePendingClasses.length > 4 ? ` +${toBanglaDigits(actionData.attendancePendingClasses.length - 4, language)}` : '')
-              }
-              count={actionData.attendancePendingClasses.length}
-              language={language}
-              onClick={() => setActiveTab('attendance')}
-            />
-          )}
-
-          {actionData.marksPendingExams.length > 0 && (
-            <ActionRow
-              icon={PenTool}
-              iconCls="bg-[var(--color-brand-light)] text-[var(--color-brand)]"
-              title={language === 'bn' ? 'নম্বর এন্ট্রি বাকি' : 'Marks entry pending'}
-              detail={language === 'bn'
-                ? `মোট ${toBanglaDigits(actionData.totalPendingMarks, language)}টি নম্বর বাকি`
-                : `${actionData.totalPendingMarks} entries pending in total`}
-              count={actionData.marksPendingExams.length}
-              language={language}
-              onClick={() => {
-                const first = actionData.marksPendingExams[0];
-                if (first) setSelectedExamId(first.examId);
-                setActiveTab('marks');
-              }}
-            />
-          )}
-
-          {actionData.dueProfiles.length > 0 && (
-            <ActionRow
-              icon={Wallet}
-              iconCls="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300"
-              title={language === 'bn' ? 'বকেয়া ফি অনুসরণ' : 'Fee dues follow-up'}
-              detail={language === 'bn'
-                ? `মোট বকেয়া ৳${toBanglaDigits(actionData.duesSummary.totalDue.toLocaleString(), language)}`
-                : `Total due ৳${actionData.duesSummary.totalDue.toLocaleString()}`}
-              count={actionData.dueProfiles.length}
-              language={language}
-              onClick={() => setActiveTab('finance')}
-            />
-          )}
-
-          {actionData.pendingAdmissions.length > 0 && (
-            <ActionRow
-              icon={UserPlus}
-              iconCls="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300"
-              title={language === 'bn' ? 'ভর্তির আবেদন অপেক্ষমাণ' : 'Admission applications pending'}
-              count={actionData.pendingAdmissions.length}
-              language={language}
-              onClick={() => setActiveTab('admission_applications')}
-            />
-          )}
-
-          {actionData.pendingLeaves.length > 0 && (
-            <ActionRow
-              icon={Calendar}
-              iconCls="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300"
-              title={language === 'bn' ? 'ছুটির আবেদন অপেক্ষমাণ' : 'Leave applications pending'}
-              detail={
-                actionData.pendingLeaves.slice(0, 2).map(l => l.teacherName).join(', ') +
-                (actionData.pendingLeaves.length > 2 ? '…' : '')
-              }
-              count={actionData.pendingLeaves.length}
-              language={language}
-              onClick={() => setActiveTab('staff_leaves')}
-            />
-          )}
-
-          {actionData.readyToFinalizeExams.length > 0 && (
-            <ActionRow
-              icon={CheckCheck}
-              iconCls="bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-300"
-              title={language === 'bn' ? 'ফলাফল চূড়ান্ত করার অপেক্ষায়' : 'Results ready to finalize'}
-              detail={actionData.readyToFinalizeExams.map(m => language === 'bn' ? (m.examNameBn || m.examName) : m.examName).join(', ')}
-              count={actionData.readyToFinalizeExams.length}
-              language={language}
-              onClick={() => {
-                const first = actionData.readyToFinalizeExams[0];
-                if (first) setSelectedExamId(first.examId);
-                setActiveTab('results');
-              }}
-            />
-          )}
-
-          {todayTasksLoaded && actionData.badgeCount === 0 && (
-            <div className="text-center py-8 text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-              <CheckCircle2 size={18} />
-              <span>{language === 'bn' ? 'সব কাজ সম্পন্ন — আজ আর কিছু বাকি নেই।' : 'All clear — nothing pending today.'}</span>
-            </div>
-          )}
-        </SectionCard>
-
-        {/* TOP DUES — the five largest follow-ups, with call / WhatsApp
-            (same reminder pattern as the staff mobile app). */}
-        {actionData.topDueProfiles.length > 0 && (
-          <SectionCard
-            title={language === 'bn' ? 'সর্বোচ্চ বকেয়া (শীর্ষ ৫)' : 'Top Fee Dues (Top 5)'}
-            icon={Wallet}
-            iconTone="rose"
-            bodyClassName="space-y-2"
-            action={
-              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                ৳{toBanglaDigits(actionData.duesSummary.totalDue.toLocaleString(), language)}
-              </span>
-            }
-          >
-            {actionData.topDueProfiles.map(e => {
-              const p = e.profile;
-              const waLink = duesWhatsappLink(p);
-              const rawPhone = String(p.student.guardianPhone || '').replace(/[^0-9]/g, '');
-              return (
-                <div
-                  key={p.student.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 text-xs"
-                >
-                  <div className="min-w-0">
-                    <span className="font-bold text-slate-900 dark:text-white block truncate">
-                      {language === 'bn' ? p.student.nameBn || p.student.name : p.student.name}
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      {p.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(p.student.roll || '-', language)} • {language === 'bn' ? `${toBanglaDigits(e.dueMonthCount, language)} মাসের বকেয়া` : `${e.dueMonthCount}-month due`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-black text-rose-600 dark:text-rose-300">
-                      ৳{toBanglaDigits(e.totalDue.toLocaleString(), language)}
-                    </span>
-                    {rawPhone && (
-                      <a
-                        href={`tel:${rawPhone}`}
-                        className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center justify-center"
-                        aria-label="Call guardian"
-                      >
-                        <Phone size={14} />
-                      </a>
-                    )}
-                    {waLink && (
-                      <a
-                        href={waLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center"
-                        aria-label="WhatsApp reminder"
-                      >
-                        <MessageCircle size={14} />
-                      </a>
-                    )}
-                  </div>
+          {actionData.topDueProfiles.map(e => {
+            const p = e.profile;
+            const waLink = duesWhatsappLink(p);
+            const rawPhone = String(p.student.guardianPhone || '').replace(/[^0-9]/g, '');
+            return (
+              <div
+                key={p.student.id}
+                className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 text-xs"
+              >
+                <div className="min-w-0">
+                  <span className="font-bold text-slate-900 dark:text-white block truncate">
+                    {language === 'bn' ? p.student.nameBn || p.student.name : p.student.name}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    {p.classLevel} • {language === 'bn' ? 'রোল:' : 'Roll:'} {toBanglaDigits(p.student.roll || '-', language)} • {language === 'bn' ? `${toBanglaDigits(e.dueMonthCount, language)} মাসের বকেয়া` : `${e.dueMonthCount}-month due`}
+                  </span>
                 </div>
-              );
-            })}
-          </SectionCard>
-        )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-black text-rose-600 dark:text-rose-300">
+                    ৳{toBanglaDigits(e.totalDue.toLocaleString(), language)}
+                  </span>
+                  {rawPhone && (
+                    <a
+                      href={`tel:${rawPhone}`}
+                      className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center justify-center"
+                      aria-label="Call guardian"
+                    >
+                      <Phone size={14} />
+                    </a>
+                  )}
+                  {waLink && (
+                    <a
+                      href={waLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center"
+                      aria-label="WhatsApp reminder"
+                    >
+                      <MessageCircle size={14} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </SectionCard>
+      )}
 
-      </>)}
+      <MadrasaReports />
+
+      {/* REPORTS ACCESS — daily / weekly / monthly reporting lives in the
+          existing report modules; these are direct doors to them from the
+          Overview (no report engines rebuilt here). */}
+      <SectionCard
+        title={language === 'bn' ? 'প্রতিবেদন' : 'Reports'}
+        icon={FileSpreadsheet}
+        iconTone="brand"
+        bodyClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+      >
+        {[
+          { tab: 'admin_reports', bn: 'প্রাতিষ্ঠানিক রিপোর্ট', en: 'Institutional Reports', icon: Building2, box: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300', hover: 'hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30' },
+          { tab: 'finance_reports', bn: 'আর্থিক রিপোর্ট', en: 'Finance Reports', icon: Wallet, box: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300', hover: 'hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30' },
+          { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck, box: 'bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-300', hover: 'hover:border-teal-300 dark:hover:border-teal-600 hover:bg-teal-50/60 dark:hover:bg-teal-950/30' },
+          { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users, box: 'bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-300', hover: 'hover:border-sky-300 dark:hover:border-sky-600 hover:bg-sky-50/60 dark:hover:bg-sky-950/30' },
+          { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen, box: 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300', hover: 'hover:border-amber-300 dark:hover:border-amber-600 hover:bg-amber-50/60 dark:hover:bg-amber-950/30' }
+        ].map(r => {
+          const RIcon = r.icon;
+          return (
+            <button
+              key={r.tab}
+              data-report-tile={r.tab}
+              onClick={() => setActiveTab(r.tab)}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/60 ${r.hover} transition-all text-center cursor-pointer`}
+            >
+              <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${r.box}`}>
+                <RIcon size={22} />
+              </span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">{language === 'bn' ? r.bn : r.en}</span>
+            </button>
+          );
+        })}
+      </SectionCard>
 
     </div>
   );

@@ -52,30 +52,19 @@ const toBanglaDigits = (num: number | string | undefined | null, language: strin
 
 interface DashboardDailyOverviewProps {
   onNavigate: (tab: string) => void;
-  selectedAcademicYear: string;
-  onSelectAcademicYear?: (year: string) => void;
-  academicYears?: Array<{ id: string; name: string; isCurrent: boolean }>;
-  selectedExamId?: string;
-  onSelectExamId?: (examId: string) => void;
-  yearExams?: Array<{ id: string; name: string; nameBn?: string }>;
   onOpenRecoveryModal?: () => void;
   /**
    * 'hero' renders only the brand PageHeader; 'stats' renders only the
    * sections below it; 'all' (default) renders the full legacy composition.
-   * The dashboard splits hero/stats so the Overview / Action-&-Advice view
-   * switcher can sit directly under the hero.
+   * The dashboard splits hero/stats so the hero can render alone above
+   * the single unified page (view switcher removed 22 Nov 2026; the
+   * session/exam selectors now live in the academic section).
    */
   section?: 'all' | 'hero' | 'stats';
 }
 
 export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
   onNavigate,
-  selectedAcademicYear = '2026',
-  onSelectAcademicYear,
-  academicYears = [],
-  selectedExamId,
-  onSelectExamId,
-  yearExams = [],
   onOpenRecoveryModal,
   section = 'all'
 }) => {
@@ -421,45 +410,6 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
           <span>{isBn ? 'সিস্টেম সক্রিয়' : 'Live Sync'}</span>
         </span>
 
-        {/* Session selector */}
-        {onSelectAcademicYear && (
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-200">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{isBn ? 'সেশন:' : 'Session:'}</span>
-            <select
-              value={selectedAcademicYear}
-              onChange={(e) => onSelectAcademicYear(e.target.value)}
-              className="bg-transparent text-slate-700 dark:text-slate-200 font-bold outline-none cursor-pointer text-xs"
-            >
-              <option value="ALL" className="bg-slate-900 text-white">{isBn ? 'সকল সেশন' : 'All'}</option>
-              {academicYears.map(y => (
-                <option key={y.id} value={y.name} className="bg-slate-900 text-white">
-                  {toBanglaDigits(y.name, language)}
-                </option>
-              ))}
-              {academicYears.length === 0 && (
-                <option value={selectedAcademicYear} className="bg-slate-900 text-white">{toBanglaDigits(selectedAcademicYear, language)}</option>
-              )}
-            </select>
-          </div>
-        )}
-
-        {/* Exam selector */}
-        {onSelectExamId && yearExams.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-200">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{isBn ? 'পরীক্ষা:' : 'Exam:'}</span>
-            <select
-              value={selectedExamId || ''}
-              onChange={(e) => onSelectExamId(e.target.value)}
-              className="bg-transparent text-slate-700 dark:text-slate-200 font-bold outline-none cursor-pointer text-xs max-w-[120px] truncate"
-            >
-              {yearExams.map(e => (
-                <option key={e.id} value={e.id} className="bg-slate-900 text-white">
-                  {isBn ? (e.nameBn || e.name) : e.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </PageHeader>
       </>)}
 
