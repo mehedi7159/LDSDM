@@ -21,6 +21,7 @@ import {
   Eye, 
   ShieldCheck, 
   TrendingUp, 
+  Trophy,
   Calendar,
   AlertCircle,
   HelpCircle,
@@ -44,6 +45,7 @@ const ClassResultView = lazyWithRetry(() => import('../ClassResultView').then(m 
 import { WebResultView } from '../WebResultView';
 import { ResultSmsNotificationModal } from '../ResultSmsNotificationModal';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
 import { SkeletonTable } from '../ui/ShimmerSkeleton';
 
 export type ExamSubTab = 
@@ -265,87 +267,79 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner Header: Step 6 • Exams & Results Suite */}
-      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 relative overflow-hidden print:hidden">
-        {/* Ambient Glow */}
+      <PageHeader
+        tone="brand"
+        icon={Trophy}
+        title={isBn ? 'পরীক্ষা, নম্বর মূল্যায়ন ও ডিজিটাল ফলাফল কেন্দ্র' : 'Examination & Results Hub'}
+        className="print:hidden"
+        footer={
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'মোট পরীক্ষা ও টার্ম' : 'Total Exams'}</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.totalExamsCount, 'bn')} টি</div>
+              <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold truncate">{kpis.activeExamName}</div>
+            </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <span>🏆</span>
-              <span>{isBn ? 'পরীক্ষা, নম্বর মূল্যায়ন ও ডিজিটাল ফলাফল কেন্দ্র' : 'Examination & Results Hub'}</span>
-            </h1>
-          </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'মূল্যায়নকৃত নম্বর' : 'Recorded Marks'}</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.totalMarksEntries, 'bn')} টি</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{formatNumber(kpis.evaluatedStudentsCount, 'bn')} জন শিক্ষার্থী</div>
+            </div>
 
-          <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('marks')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
-            >
-              <PenTool size={14} className="text-indigo-300" />
-              <span>{isBn ? 'নম্বর এন্ট্রি' : 'Marks Entry'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('tabulation')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-200 border border-indigo-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileSpreadsheet size={14} />
-              <span>{isBn ? 'ট্যাবুলেশন শিট' : 'Tabulation Sheet'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('web_results')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <QrCode size={14} />
-              <span>{isBn ? 'অনলাইন রেজাল্ট' : 'Web Results'}</span>
-            </button>
-          </div>
-        </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'প্রাতিষ্ঠানিক পাশের হার' : 'Avg Pass Rate'}</div>
+              <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{kpis.passRate}%</div>
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{isBn ? 'নির্বাচিত পরীক্ষায়' : 'Selected Exam'}</div>
+            </div>
 
-        {/* Real-Time KPI Metrics Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট পরীক্ষা ও টার্ম' : 'Total Exams'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.totalExamsCount, 'bn')} টি</div>
-            <div className="text-[11px] text-indigo-200 font-semibold truncate">{kpis.activeExamName}</div>
-          </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'জিপিএ ৫.০০ (মুমতাজ)' : 'GPA 5.0 (A+)'}</div>
+              <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">{formatNumber(kpis.gpa5Count, 'bn')} জন</div>
+            </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মূল্যায়নকৃত নম্বর' : 'Recorded Marks'}</div>
-            <div className="text-xl font-black text-indigo-300 mt-0.5">{formatNumber(kpis.totalMarksEntries, 'bn')} টি</div>
-            <div className="text-[11px] text-slate-300 font-semibold">{formatNumber(kpis.evaluatedStudentsCount, 'bn')} জন শিক্ষার্থী</div>
-          </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'কিউআর ভেরিফিকেশন' : 'QR Verification'}</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-center gap-1.5">
+                <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400" />
+                <span>{isBn ? 'সক্রিয়' : 'Active'}</span>
+              </div>
+            </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'প্রাতিষ্ঠানিক পাশের হার' : 'Avg Pass Rate'}</div>
-            <div className="text-xl font-black text-emerald-300 mt-0.5">{kpis.passRate}%</div>
-            <div className="text-[11px] text-emerald-300 font-semibold">{isBn ? 'নির্বাচিত পরীক্ষায়' : 'Selected Exam'}</div>
-          </div>
-
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'জিপিএ ৫.০০ (মুমতাজ)' : 'GPA 5.0 (A+)'}</div>
-            <div className="text-xl font-black text-amber-300 mt-0.5">{formatNumber(kpis.gpa5Count, 'bn')} জন</div>
-          </div>
-
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'কিউআর ভেরিফিকেশন' : 'QR Verification'}</div>
-            <div className="text-xl font-black text-cyan-300 mt-0.5 flex items-center gap-1.5">
-              <ShieldCheck size={18} className="text-cyan-400" />
-              <span>{isBn ? 'সক্রিয়' : 'Active'}</span>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'ফলাফল SMS সিস্টেম' : 'SMS Alert'}</div>
+              <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5 flex items-center gap-1.5">
+                <MessageSquare size={18} className="text-rose-600 dark:text-rose-400" />
+                <span>{isBn ? 'রেডি' : 'Ready'}</span>
+              </div>
             </div>
           </div>
-
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'ফলাফল SMS সিস্টেম' : 'SMS Alert'}</div>
-            <div className="text-xl font-black text-rose-300 mt-0.5 flex items-center gap-1.5">
-              <MessageSquare size={18} className="text-rose-400" />
-              <span>{isBn ? 'রেডি' : 'Ready'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('marks')}
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <PenTool size={14} className="text-indigo-600 dark:text-indigo-400" />
+          <span>{isBn ? 'নম্বর এন্ট্রি' : 'Marks Entry'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('tabulation')}
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <FileSpreadsheet size={14} />
+          <span>{isBn ? 'ট্যাবুলেশন শিট' : 'Tabulation Sheet'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('web_results')}
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <QrCode size={14} />
+          <span>{isBn ? 'অনলাইন রেজাল্ট' : 'Web Results'}</span>
+        </button>
+      </PageHeader>
 
       {/* Sub-Tabs Navigation Bar */}
       <div className="bg-white p-2 rounded-2xl border border-slate-200 print:hidden">
