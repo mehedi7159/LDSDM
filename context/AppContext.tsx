@@ -47,6 +47,7 @@ import {
 } from '../services/rbac';
 import { generateId, ensureUniqueVoucherNo, deriveRoleFromDesignation } from '../services/utils';
 import { signInGateForStatus } from '../services/staffRole';
+import { verifyGuardianPin, readGuardianPinSession, clearGuardianPinSession } from '../services/guardianPin';
 import {
   normalizeRoleKey,
   bestDesignationRole,
@@ -479,6 +480,12 @@ interface AppContextType extends AppState {
   seedDemoMadrashaData: () => void;
   loginWithGoogle: () => Promise<boolean>;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  // Guardian PIN login (L7): Student ID + 4-digit PIN, no Firebase
+  // account — the session holds only the student's internal id and is
+  // scoped to that child (GuardianPortal + mobile parent home).
+  loginWithGuardianPin: (studentId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
+  logoutGuardianPin: () => void;
+  pinGuardianStudentId: string | null;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   logoutAdmin: () => Promise<void>;
   authDeniedMessage: string | null;
@@ -1400,6 +1407,26 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     } catch (e) {}
     return null;
   });
+
+  // Guardian PIN session (Job L7, 22 Nov 2026): Student ID + 4-digit
+  // PIN login for guardians without email. Holds ONLY the student's
+  // internal id — no Firebase account, no role. Restored from
+  // storage on boot; cleared if the student no longer exists once
+  // the student list has loaded.
+  const [pinGuardianStudentId, setPinGuardianStudentId] = useState<string | null>(() => {
+    try { return readGuardianPinSession()?.studentId ?? null; } catch { return null; }
+  });
+
+  // A PIN session for a deleted/trashed student is a dead end — clear
+  // it once the list has loaded (length 0 = not loaded yet, skip).
+  useEffect(() => {
+    if (!pinGuardianStudentId) return;
+    if (students.length === 0) return;
+    if (!students.some(s => s.id === pinGuardianStudentId)) {
+      clearGuardianPinSession();
+      setPinGuardianStudentId(null);
+    }
+  }, [pinGuardianStudentId, students]);
 
   const currentUser: AppUser | null = React.useMemo(() => {
     if (authUser) {
@@ -5735,6 +5762,26 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   // Password Reset
+  // Guardian PIN login (Job L7, 22 Nov 2026): Student ID + 4-digit PIN
+  // for guardians without email. No Firebase account is created — the
+  // session is scoped to that student only (GuardianPortal + the
+  // mobile parent home read pinGuardianStudentId). The real check
+  // lives in services/guardianPin (5 wrong tries lock the ID for
+  // 15 minutes). Email/password guardian login is untouched.
+  const loginWithGuardianPin = async (studentId: string, pin: string): Promise<{ success: boolean; error?: string }> => {
+    const result = verifyGuardianPin(studentId, pin, studentsRef.current);
+    if (!result.success || !result.student) {
+      return { success: false, error: result.message };
+    }
+    setPinGuardianStudentId(result.student.id);
+    return { success: true };
+  };
+
+  const logoutGuardianPin = () => {
+    clearGuardianPinSession();
+    setPinGuardianStudentId(null);
+  };
+
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
       await sendPasswordResetEmail(auth, email.trim());
@@ -5763,6 +5810,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     setActiveAppUserId(null);
     localStorage.removeItem('madrasha_active_app_user_id');
     localStorage.removeItem('madrasha_active_auth_session');
+    clearGuardianPinSession();
+    setPinGuardianStudentId(null);
     localStorage.setItem('madrasha_app_mode', 'viewer');
     localStorage.setItem('madrasha_active_tab', 'dashboard');
   };
@@ -8627,6 +8676,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       seedDemoMadrashaData,
       loginWithGoogle,
       signInWithEmail,
+      loginWithGuardianPin,
+      logoutGuardianPin,
+      pinGuardianStudentId,
       resetPassword,
       logoutAdmin,
       authDeniedMessage,

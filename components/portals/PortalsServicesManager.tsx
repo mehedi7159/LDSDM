@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { STUDENTS_CLOUD_FAILURE_MESSAGE } from '../../services/cloudConfirm';
 import { calculateTotalDues, localMonthStr, academicYearFallbackStartMonth } from '../../services/studentDuesService';
+import { getStudentPin } from '../../services/guardianPin';
 import { 
   Users, 
   Globe, 
@@ -995,18 +996,12 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
- <span className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded-xl border border-teal-300 dark:border-teal-700 font-mono font-black text-sm text-teal-900 dark:text-teal-200 tracking-widest">
-                          {activeStudent.studentId ? activeStudent.studentId.slice(-4) : '7890'}
+                        <span className="px-3 py-1.5 bg-white dark:bg-slate-900 rounded-xl border border-teal-300 dark:border-teal-700 font-mono font-black text-sm text-teal-900 dark:text-teal-200 tracking-widest">
+                          {getStudentPin(activeStudent)}
                         </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => showSuccess(isBn ? 'অভিভাবকের ফোনে অ্যাক্সেস লিংক পাঠানো হয়েছে!' : 'Access PIN sent to guardian phone!')}
-                          className="text-xs rounded-xl"
-                        >
-                          <Send size={12} className="mr-1" />
-                          <span>{isBn ? 'পিন পাঠান' : 'Send PIN'}</span>
-                        </Button>
+                        <span className="text-[11px] text-teal-700 dark:text-teal-400">
+                          {isBn ? 'PIN বদলাতে Student Manager-এ যান।' : 'Change the PIN in Student Manager.'}
+                        </span>
                       </div>
                     </div>
 

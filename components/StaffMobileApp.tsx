@@ -258,6 +258,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     language,
     setLanguage,
     hasPermission,
+    pinGuardianStudentId,
     logoutAdmin,
     setActiveTab,
   } = useApp();
@@ -299,6 +300,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   };
 
   const primaryHome = useMemo<MobileHome>(() => {
+    // Guardian PIN session (L7): no account, no role — the parent
+    // home is the only home that makes sense (the PIN student is the
+    // guardian's only child).
+    if (pinGuardianStudentId) return 'parent';
     // (a) account role, then (b) member roleId — non-teacher wins.
     const accountHome = homeForRoleKey(currentUser?.role);
     if (accountHome && accountHome !== 'teacher') return accountHome;
@@ -340,7 +345,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       }
     } catch { /* keep default below */ }
     return 'teacher'; // (f) Default role for standard instructors
-  }, [currentMember, currentUser, currentRole, hasPermission, teachers, authUser]);
+  }, [currentMember, currentUser, currentRole, hasPermission, teachers, authUser, pinGuardianStudentId]);
 
   // Multi-role: every effective role that has a mobile home is offered
   // in the switcher; the primary role's home comes first and is the
@@ -491,12 +496,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // above stay exactly as they are for those homes). An unlinked
   // guardian resolves to an EMPTY list, never a fallback student.
   const guardianChildren = useMemo(() => {
+    // Guardian PIN session (L7): the PIN student is the only child.
+    if (pinGuardianStudentId) return students.filter(s => s.id === pinGuardianStudentId);
     if (!(effectiveRoles || []).includes('guardian')) return null;
     return resolveGuardianChildren(currentUser, students, {
       phones: [currentMember?.phone],
       emails: [currentMember?.email, authUser?.email]
     });
-  }, [effectiveRoles, currentUser, currentMember, authUser, students]);
+  }, [pinGuardianStudentId, effectiveRoles, currentUser, currentMember, authUser, students]);
 
   // Recorded-only attendance aggregate over the guardian's children
   // (present / recorded days — no records anywhere means rate 0 with

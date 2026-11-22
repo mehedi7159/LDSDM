@@ -70,6 +70,12 @@ export interface Student {
   guardianName?: string;
   guardianPhone?: string;
   guardianEmail?: string;
+  // Guardian login PIN (4 digits, set by the admin in Student Manager).
+  // Blank = default last 4 digits of the student ID — the value the
+  // portal already displayed. NOT a secret: the public portal shows
+  // results by student ID with no login, so this PIN is ease + light
+  // gating for guardians without email, not data hiding.
+  guardianPin?: string;
   address?: string;
 
   // Media

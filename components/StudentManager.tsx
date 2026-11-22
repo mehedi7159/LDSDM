@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import type { TrashItem } from '../context/AppContext';
 import { Student } from '../types';
 import { formatNumber, getStudentRoll } from '../services/utils';
+import { normalizeGuardianPin } from '../services/guardianPin';
 import { showSecondName } from '../services/displayNames';
 import { Button } from './ui/Button';
 import { SegmentedControl } from './ui/SegmentedControl';
@@ -227,6 +228,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     guardianName: string;
     guardianPhone: string;
     guardianEmail: string;
+    guardianPin: string;
     address: string;
     classLevel: string;
     group: string;
@@ -256,6 +258,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     guardianName: '',
     guardianPhone: '',
     guardianEmail: '',
+    guardianPin: '',
     address: '',
     classLevel: '',
     group: '',
@@ -302,6 +305,15 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     if (!valResult.isValid) {
       const firstErr = Object.values(valResult.errors)[0];
       setError(firstErr);
+      return false;
+    }
+
+    // Guardian PIN (L7): empty = default (last 4 of the student ID);
+    // a custom PIN must be exactly 4 digits, otherwise a half-typed
+    // value would silently fall back to the default.
+    const pinDigits = normalizeGuardianPin(formData.guardianPin || '');
+    if (formData.guardianPin && pinDigits.length !== 4) {
+      setError(language === 'bn' ? 'অভিভাবকের PIN ঠিক ৪ সংখ্যার হতে হবে (অথবা খালি রাখুন — তাহলে আইডির শেষ ৪ সংখ্যাই PIN হবে)।' : 'Guardian PIN must be exactly 4 digits (or leave blank for the default).');
       return false;
     }
 
@@ -377,6 +389,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       studentId: autoStudentId,
       roll: cleanRoll || undefined,
       rollNumber: cleanRoll || undefined,
+      // Guardian PIN (L7): digits only, exactly 4; empty = default
+      // (last 4 of the student ID) — stored as undefined so the
+      // reader falls back to the default.
+      guardianPin: normalizeGuardianPin(formData.guardianPin) || undefined,
       isFormer,
       status: finalStatus,
       // Tuition fee arrangement, normalized (payable = base - waiver - fund,
@@ -538,6 +554,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       guardianName: student.guardianName || '',
       guardianPhone: student.guardianPhone || '',
       guardianEmail: student.guardianEmail || '',
+      guardianPin: student.guardianPin || '',
       address: student.address || '',
       classLevel: student.classLevel || '',
       group: student.group || '',
@@ -581,6 +598,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       guardianName: '',
       guardianPhone: '',
       guardianEmail: '',
+      guardianPin: '',
       address: '',
       classLevel: defaultClass,
       group: '',
@@ -2238,6 +2256,24 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       onChange={e => setFormData({...formData, address: e.target.value})} 
                       placeholder={language === 'bn' ? 'গ্রাম, ডাকঘর, উপজেলা, জেলা' : 'Village, Post, Upazila, District'}
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'অভিভাবকের লগইন PIN (৪ সংখ্যা)' : 'Guardian Login PIN (4 digits)'}</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                      value={formData.guardianPin || ''}
+                      onChange={e => setFormData({...formData, guardianPin: e.target.value.replace(/[^0-9]/g, '').slice(0, 4)})}
+                      placeholder={language === 'bn' ? 'খালি = আইডির শেষ ৪ সংখ্যা' : 'Blank = last 4 of student ID'}
+                    />
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {language === 'bn' ? 'খালি রাখলে ছাত্রের আইডির শেষ ৪ সংখ্যাই PIN হবে। PIN বদলালে অভিভাবককে জানিয়ে দিন।' : 'Blank means the last 4 digits of the student ID. Tell the guardian if you change it.'}
+                    </p>
                   </div>
                 </div>
               </div>

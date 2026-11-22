@@ -60,6 +60,7 @@ export const GuardianPortal: React.FC = () => {
     feeTypes = [],
     academicYears = [],
     dailyStudentAttendance = [],
+    pinGuardianStudentId,
     logoutUser,
     language
   } = useApp();
@@ -73,13 +74,18 @@ export const GuardianPortal: React.FC = () => {
   // phone/email matches; siblings included). An unlinked account
   // resolves to an EMPTY set and gets the no-link state below — the
   // old `students[0]` "demo" fallback (which showed a stranger's
-  // child as the guardian's own) is gone.
+  // child as the guardian's own) is gone. A guardian PIN session
+  // (L7) has no account at all: its children are exactly the PIN
+  // student — never the email/phone linkage, never a fallback.
   const children = useMemo(() => {
+    if (pinGuardianStudentId) {
+      return students.filter(s => s.id === pinGuardianStudentId);
+    }
     return resolveGuardianChildren(currentUser, students, {
       phones: [currentMember?.phone],
       emails: [currentMember?.email, authUser?.email]
     });
-  }, [currentUser, currentMember, authUser, students]);
+  }, [pinGuardianStudentId, currentUser, currentMember, authUser, students]);
 
   const [selectedChildId, setSelectedChildId] = useState<string>('');
   const linkedStudent = useMemo(() => {

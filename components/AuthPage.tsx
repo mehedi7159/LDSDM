@@ -43,6 +43,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
     setLanguage,
     loginWithGoogle, 
     signInWithEmail, 
+    loginWithGuardianPin,
     resetPassword,
     authDeniedMessage,
     students = [],
@@ -63,6 +64,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   // Login State
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  // Guardian PIN login (L7): Student ID + 4-digit PIN.
+  const [pinStudentId, setPinStudentId] = useState('');
+  const [pinCode, setPinCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -115,6 +119,30 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
       const res = await signInWithEmail(loginEmail, loginPassword);
       if (!res.success) {
         setErrorMessage(res.error || (language === 'bn' ? 'লগইন ব্যর্থ হয়েছে। ইমেইল বা পাসওয়ার্ড সঠিক কিনা পরীক্ষা করুন।' : 'Login failed. Please check credentials.'));
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Login error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Guardian PIN login (L7): Student ID + 4-digit PIN — for guardians
+  // without email. On success the session is scoped to that child
+  // only (App.tsx routes it to the guardian portal).
+  const handleGuardianPinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinStudentId.trim() || pinCode.length !== 4) {
+      setErrorMessage(language === 'bn' ? 'ছাত্রের আইডি ও ৪ সংখ্যার PIN দিন।' : 'Please enter the student ID and 4-digit PIN.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+    try {
+      const res = await loginWithGuardianPin(pinStudentId.trim(), pinCode);
+      if (!res.success) {
+        setErrorMessage(res.error || (language === 'bn' ? 'ভুল আইডি বা PIN।' : 'Wrong ID or PIN.'));
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Login error occurred.');
@@ -498,6 +526,71 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   </div>
                 </form>
               )}
+
+              {/* Guardian PIN login (L7): Student ID + 4-digit PIN for
+                  guardians without email. Scoped to that child only.
+                  The public portal already shows results by ID with no
+                  login, so this is ease + light gating, not hiding. */}
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-3">
+                  অভিভাবক? ইমেইল নেই? ছাত্রের আইডি ও PIN দিয়ে প্রবেশ করুন
+                </p>
+                <form onSubmit={handleGuardianPinSubmit} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      ছাত্রের আইডি (Student ID)
+                    </label>
+                    <div className="relative">
+                      <GraduationCap size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                      <input
+                        type="text"
+                        required
+                        inputMode="numeric"
+                        placeholder="যেমন: 2026001"
+                        value={pinStudentId}
+                        onChange={(e) => setPinStudentId(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      PIN (৪ সংখ্যা)
+                    </label>
+                    <div className="relative">
+                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                      <input
+                        type="password"
+                        required
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="••••"
+                        value={pinCode}
+                        onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
+                      />
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                      ডিফল্ট PIN: ছাত্রের আইডির শেষ ৪ সংখ্যা। PIN বদলাতে অফিসে যোগাযোগ করুন।
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110 active:scale-98"
+                    style={{ backgroundColor: 'var(--color-brand)' }}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Lock size={16} />
+                        <span>PIN দিয়ে প্রবেশ করুন</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
 
               {/* Bottom Direct Switch to Results & Student Profile */}
               <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
