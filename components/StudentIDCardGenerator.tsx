@@ -23,6 +23,7 @@ import {
   User
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { PageHeader } from './ui/PageHeader';
 
 type CardDocType = 'id_card' | 'admit_card' | 'testimonial';
 
@@ -78,30 +79,24 @@ export const StudentIDCardGenerator: React.FC = () => {
       {/* Control Panel (Hidden during Print) */}
       <div className="print:hidden space-y-4">
         {/* Banner */}
- <div className="bg-teal-800 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
-          <div>
-            <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">
-              <CreditCard size={16} className="text-amber-400" />
-              <span>{language === 'bn' ? 'ডকুমেন্ট ও কার্ড জেনারেটর' : 'Student Cards & Documents'}</span>
-            </div>
-            <h1 className="text-2xl font-black tracking-tight">
-              {language === 'bn' ? 'আইডি কার্ড, প্রবেশপত্র ও প্রশংসাপত্র' : 'ID Cards, Admit Cards & Testimonials'}
-            </h1>
-            <p className="text-xs text-indigo-100/80 mt-1 max-w-xl">
-              {language === 'bn' 
-                ? 'এক ক্লিকেই শিক্ষার্থীদের ডিজিটাল আইডি কার্ড, পরীক্ষার প্রবেশপত্র বা প্রত্যয়নপত্র তৈরি ও প্রিন্ট করুন।'
-                : 'Instantly generate and print official student ID cards, exam admit cards, and character certificates.'}
-            </p>
-          </div>
-
+        <PageHeader
+          tone="brand"
+          icon={CreditCard}
+          eyebrow={language === 'bn' ? 'ডকুমেন্ট ও কার্ড জেনারেটর' : 'Student Cards & Documents'}
+          title={language === 'bn' ? 'আইডি কার্ড, প্রবেশপত্র ও প্রশংসাপত্র' : 'ID Cards, Admit Cards & Testimonials'}
+          subtitle={language === 'bn'
+            ? 'এক ক্লিকেই শিক্ষার্থীদের ডিজিটাল আইডি কার্ড, পরীক্ষার প্রবেশপত্র বা প্রত্যয়নপত্র তৈরি ও প্রিন্ট করুন।'
+            : 'Instantly generate and print official student ID cards, exam admit cards, and character certificates.'}
+        >
           <Button
             onClick={handlePrint}
- className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer"
+            className="px-5 py-2.5 text-white font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer"
+            style={{ backgroundColor: 'var(--color-brand)' }}
           >
             <Printer size={16} />
             <span>{language === 'bn' ? 'প্রিন্ট করুন (Print)' : 'Print Documents'}</span>
           </Button>
-        </div>
+        </PageHeader>
 
         {/* Toolbar Filters */}
  <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
