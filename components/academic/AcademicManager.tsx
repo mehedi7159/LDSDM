@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../services/utils';
 import { academicScheduleService } from '../../services/academicScheduleService';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
 import { 
   BookOpen, 
   Layers, 
@@ -115,77 +116,68 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Academic Hub Header */}
-      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 relative overflow-hidden">
-        {/* Islamic & Academic Ambient Accents */}
+      {/* KPI Strip */}
+      <PageHeader
+        tone="brand"
+        icon={BookOpen}
+        title={isBn ? 'একাডেমিক ব্যবস্থাপনা ও কারিকুলাম সিস্টেম' : 'Academic & Curriculum Management'}
+        footer={(
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'মোট সক্রিয় বিষয়' : 'Subjects'}</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.totalSubjects, 'bn')} টি</div>
+              <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">{formatNumber(kpis.coreSubjects, 'bn')} আবশ্যক • {formatNumber(kpis.electiveSubjects, 'bn')} ঐচ্ছিক</div>
+            </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <span>📚</span>
-              <span>{isBn ? 'একাডেমিক ব্যবস্থাপনা ও কারিকুলাম সিস্টেম' : 'Academic & Curriculum Management'}</span>
-            </h1>
-          </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'শ্রেণি ও জামাত' : 'Classes'}</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.totalClasses, 'bn')} টি</div>
+              <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">{formatNumber(students.length, 'bn')} শিক্ষার্থী</div>
+            </div>
 
-          <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('routine')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
-            >
-              <Clock size={14} className="text-teal-300" />
-              <span>{isBn ? 'রুটিন ভিউ' : 'Timetable'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('calendar')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Calendar size={14} />
-              <span>{isBn ? 'ছুটির দিনপঞ্জি' : 'Calendar'}</span>
-            </button>
-          </div>
-        </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'পাঠদানকারী শিক্ষক' : 'Faculty'}</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.totalTeachers, 'bn')} জন</div>
+              <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">{isBn ? 'সকল বিষয় বণ্টনকৃত' : 'Active faculty'}</div>
+            </div>
 
-        {/* KPI Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-white/10">
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'মোট সক্রিয় বিষয়' : 'Subjects'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.totalSubjects, 'bn')} টি</div>
-            <div className="text-[10px] text-teal-300 font-medium">{formatNumber(kpis.coreSubjects, 'bn')} আবশ্যক • {formatNumber(kpis.electiveSubjects, 'bn')} ঐচ্ছিক</div>
-          </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'সাপ্তাহিক পিরিয়ড' : 'Weekly Periods'}</div>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.weeklyPeriods, 'bn')} টি</div>
+              <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">{isBn ? 'শনি - বৃহস্পতি' : 'Sat - Thu'}</div>
+            </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'শ্রেণি ও জামাত' : 'Classes'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.totalClasses, 'bn')} টি</div>
-            <div className="text-[10px] text-teal-300 font-medium">{formatNumber(students.length, 'bn')} শিক্ষার্থী</div>
-          </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'সিলেবাস অগ্রগতি' : 'Syllabus'}</div>
+              <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{formatNumber(kpis.syllabusRate, 'bn')}%</div>
+              <div className="text-[10px] text-slate-400 font-medium">{isBn ? 'পাঠ পরিকল্পনা সম্পন্ন' : 'Completed'}</div>
+            </div>
 
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'পাঠদানকারী শিক্ষক' : 'Faculty'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.totalTeachers, 'bn')} জন</div>
-            <div className="text-[10px] text-teal-300 font-medium">{isBn ? 'সকল বিষয় বণ্টনকৃত' : 'Active faculty'}</div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'বাৎসরিক মোট ছুটি' : 'Holidays'}</div>
+              <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">{formatNumber(kpis.holidayDays, 'bn')} দিন</div>
+              <div className="text-[10px] text-slate-400 font-medium">{isBn ? 'ইসলামিক ও জাতীয়' : 'Annual off days'}</div>
+            </div>
           </div>
-
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'সাপ্তাহিক পিরিয়ড' : 'Weekly Periods'}</div>
-            <div className="text-xl font-black text-white mt-0.5">{formatNumber(kpis.weeklyPeriods, 'bn')} টি</div>
-            <div className="text-[10px] text-teal-300 font-medium">{isBn ? 'শনি - বৃহস্পতি' : 'Sat - Thu'}</div>
-          </div>
-
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'সিলেবাস অগ্রগতি' : 'Syllabus'}</div>
-            <div className="text-xl font-black text-emerald-300 mt-0.5">{formatNumber(kpis.syllabusRate, 'bn')}%</div>
-            <div className="text-[10px] text-slate-400 font-medium">{isBn ? 'পাঠ পরিকল্পনা সম্পন্ন' : 'Completed'}</div>
-          </div>
-
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-2xs">
-            <div className="text-[11px] text-slate-300 font-semibold">{isBn ? 'বাৎসরিক মোট ছুটি' : 'Holidays'}</div>
-            <div className="text-xl font-black text-rose-300 mt-0.5">{formatNumber(kpis.holidayDays, 'bn')} দিন</div>
-            <div className="text-[10px] text-slate-400 font-medium">{isBn ? 'ইসলামিক ও জাতীয়' : 'Annual off days'}</div>
-          </div>
-        </div>
-      </div>
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('routine')}
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <Clock size={14} className="text-teal-600 dark:text-teal-400" />
+          <span>{isBn ? 'রুটিন ভিউ' : 'Timetable'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('calendar')}
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <Calendar size={14} />
+          <span>{isBn ? 'ছুটির দিনপঞ্জি' : 'Calendar'}</span>
+        </button>
+      </PageHeader>
 
       {/* Sub-Navigation Tabs */}
       <div className="flex flex-wrap border-b border-slate-200 bg-white rounded-2xl p-1.5 gap-1">
