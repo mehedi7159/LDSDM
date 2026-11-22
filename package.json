@@ -43,6 +43,7 @@
     "test:hero-exams": "tsx scripts/verify-hero-exams.ts",
     "test:hero-reports-cards": "tsx scripts/verify-hero-reports-cards.ts",
     "test:hero-settings-portals-admin": "tsx scripts/verify-hero-settings-portals-admin.ts",
+    "test:hero-mobile": "tsx scripts/verify-hero-mobile.ts",
     "test:duplicate-student-id": "tsx scripts/verify-duplicate-student-id.ts",
     "test:blank-marksheet-play": "tsx scripts/verify-blank-marksheet-play.ts",
     "test:pass-rate": "tsx scripts/verify-pass-rate.ts",
