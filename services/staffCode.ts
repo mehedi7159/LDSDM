@@ -25,3 +25,38 @@ export function nextEmployeeCode(
   trashBin.forEach(t => scan(t.data?.employeeCode));
   return `MDR-T${String(max + 1).padStart(3, '0')}`;
 }
+
+export interface StaffLink {
+  id?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+/**
+ * The staff code (employeeCode, e.g. MDR-T001) of the teacher record
+ * describing one person — for the topbar profile menu (22 Nov 2026).
+ * Same linkage AppContext uses for linkedStaffRecord: login-account id
+ * (or Auth uid) first, then email, then phone. A match without a code
+ * falls through to the next criterion; no match returns undefined
+ * (the owner holds no staff record, so no code is shown).
+ */
+export function findLinkedEmployeeCode(
+  staff: { id?: string; userId?: string; email?: string; phone?: string; employeeCode?: string }[],
+  link: StaffLink
+): string | undefined {
+  const email = (link.email || '').trim().toLowerCase();
+  const withCode = (t?: { employeeCode?: string }) => t?.employeeCode || undefined;
+  if (link.id) {
+    const byId = staff.find(t => t.id === link.id || t.userId === link.id);
+    if (withCode(byId)) return byId!.employeeCode;
+  }
+  if (email) {
+    const byEmail = staff.find(t => t.email && t.email.toLowerCase() === email);
+    if (withCode(byEmail)) return byEmail!.employeeCode;
+  }
+  if (link.phone) {
+    const byPhone = staff.find(t => t.phone && t.phone === link.phone);
+    if (withCode(byPhone)) return byPhone!.employeeCode;
+  }
+  return undefined;
+}

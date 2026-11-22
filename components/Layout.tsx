@@ -1,5 +1,7 @@
 import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import { normalizeRoleKey, roleHomeTab } from '../services/roleResolution';
+import { roleLabelBn } from '../services/staffRole';
+import { findLinkedEmployeeCode } from '../services/staffCode';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
@@ -103,6 +105,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     userRole,
     effectiveRoles,
     currentMember,
+    teachers,
     pendingMembers = [],
     logoutAdmin 
   } = useApp();
@@ -122,6 +125,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     || normalizeRoleKey(userRole)
     || normalizeRoleKey((effectiveRoles || [])[0]);
   const homeTab = isAdminTier ? 'dashboard' : roleHomeTab(primaryRoleKey);
+
+  // Topbar profile menu (22 Nov 2026): the signed-in person's own info
+  // for the dropdown panel — same name chain the identity chip shows.
+  const profileName = currentUser?.name || currentMember?.displayName || authUser?.displayName || (authUser?.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser?.email?.split('@')[0]) || '';
+  const profileEmail = currentUser?.email || authUser?.email || '';
+  const profilePhone = currentUser?.phone || currentMember?.phone || '';
+  const profileStaffCode = findLinkedEmployeeCode(teachers || [], { id: currentUser?.id, email: profileEmail, phone: profilePhone });
 
   // Guardian-ONLY session (guardian is the user's only role): their
   // entire menu is the self-service portal (own children only) plus
@@ -144,6 +154,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const [isRailExpanded, setIsRailExpanded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
+
+  // Topbar profile menu: the identity chip is a button that toggles a
+  // small panel with the signed-in user's own info (name, role, staff
+  // code, email, phone) — info only, no actions.
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Student Management smart flyout submenu (BOTH rail states): a floating
   // panel beside the row — no layout shift, no content squeeze, no rail
@@ -189,8 +205,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     closeTimer.current = window.setTimeout(() => setFlyoutOpen(false), 150);
   };
   // The flyout is transient: any navigation, and any rail expand/collapse
-  // (which unmounts the anchor row), closes it.
-  useEffect(() => { setFlyoutOpen(false); }, [activeTab]);
+  // (which unmounts the anchor row), closes it. Same for the profile menu.
+  useEffect(() => { setFlyoutOpen(false); setIsProfileMenuOpen(false); }, [activeTab]);
   useEffect(() => { setFlyoutOpen(false); }, [isRailExpanded]);
 
   // ESC: first press closes the flyout (if open); next press collapses
@@ -204,6 +220,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [flyoutOpen]);
+
+  // Profile menu: outside tap/click and Escape close it (same pattern
+  // as RailFlyoutMenu). The button itself is inside profileMenuRef,
+  // so the toggle click never counts as an outside tap.
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (profileMenuRef.current?.contains(target)) return;
+      setIsProfileMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsProfileMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isProfileMenuOpen]);
 
   // Helper function: Strictly check if a navigation item should be visible to the current user's role
   const isMenuVisible = (menu: MainMenuItem): boolean => {
@@ -809,15 +847,51 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 <span className="text-[11px] font-bold">{language === 'en' ? 'বাং' : 'EN'}</span>
               </button>
 
-              {/* User identity (compact) + logout (icon only, same action) */}
+              {/* User identity (compact) — a button: opens the my-info panel */}
               {authUser && (
-                <div className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs shrink-0">
-                  <div className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
-                    {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
-                  </div>
-                  <span className="hidden xs:inline font-bold text-slate-800 dark:text-slate-200 truncate max-w-[90px]">
-                    {authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
-                  </span>
+                <div ref={profileMenuRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileMenuOpen(v => !v)}
+                    aria-expanded={isProfileMenuOpen}
+                    aria-label={language === 'bn' ? 'আমার তথ্য' : 'My info'}
+                    title={language === 'bn' ? 'আমার তথ্য দেখুন' : 'View my info'}
+                    className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-brand)] shrink-0"
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
+                      {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
+                    </span>
+                    <span className="hidden xs:inline font-bold text-slate-800 dark:text-slate-200 truncate max-w-[90px]">
+                      {authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
+                    </span>
+                  </button>
+                  {isProfileMenuOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-4 z-50 text-left">
+                      <span className="inline-flex items-center rounded-full bg-[var(--color-brand)] text-white text-sm font-extrabold px-3 py-1">
+                        {roleLabelBn(primaryRoleKey)}
+                      </span>
+                      <div className="mt-2 text-base font-extrabold text-slate-900 dark:text-white truncate">
+                        {profileName}
+                      </div>
+                      <div className="mt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                        {profileStaffCode && (
+                          <div className="flex justify-between gap-2">
+                            <span>{language === 'bn' ? 'স্টাফ কোড' : 'Staff code'}</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{profileStaffCode}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-2">
+                          <span>{language === 'bn' ? 'ইমেইল' : 'Email'}</span>
+                          <span className="font-bold text-slate-900 dark:text-white truncate">{profileEmail || '—'}</span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span>{language === 'bn' ? 'ফোন' : 'Phone'}</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{profilePhone || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* topbar-profile-menu: end */}
                 </div>
               )}
 
