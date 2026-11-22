@@ -397,16 +397,16 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         title={schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ম্যানেজমেন্ট সিস্টেম' : 'Madrasah Management')}
         subtitle={`${formattedToday}${schoolProfile.address ? ` • ${schoolProfile.addressBn || schoolProfile.address}` : ''}`}
         footer={
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2 pt-5 mt-5 border-t border-white/15">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
             {heroActions.map((act) => {
               const Icon = act.icon;
               return (
                 <button
                   key={act.id}
                   onClick={() => onNavigate(act.id)}
-                  className="flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 px-1 bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all cursor-pointer active:scale-95"
+                  className="flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 px-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-teal-500 text-slate-700 dark:text-slate-200 transition-all cursor-pointer active:scale-95"
                 >
-                  <Icon size={18} />
+                  <Icon size={18} className="text-teal-600 dark:text-teal-400" />
                   <span className="text-[11px] font-semibold text-center leading-tight">
                     {isBn ? act.labelBn : act.labelEn}
                   </span>
@@ -416,19 +416,19 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
           </div>
         }
       >
-        <span className="text-xs font-semibold text-emerald-200 bg-white/10 border border-white/20 px-3 py-2 rounded-xl flex items-center gap-1.5">
+        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-3 py-2 rounded-xl flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
           <span>{isBn ? 'সিস্টেম সক্রিয়' : 'Live Sync'}</span>
         </span>
 
         {/* Session selector */}
         {onSelectAcademicYear && (
-          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl text-xs border border-white/20">
-            <span className="text-[11px] text-white/75 font-bold">{isBn ? 'সেশন:' : 'Session:'}</span>
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-200">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{isBn ? 'সেশন:' : 'Session:'}</span>
             <select
               value={selectedAcademicYear}
               onChange={(e) => onSelectAcademicYear(e.target.value)}
-              className="bg-transparent text-white font-bold outline-none cursor-pointer text-xs"
+              className="bg-transparent text-slate-700 dark:text-slate-200 font-bold outline-none cursor-pointer text-xs"
             >
               <option value="ALL" className="bg-slate-900 text-white">{isBn ? 'সকল সেশন' : 'All'}</option>
               {academicYears.map(y => (
@@ -445,12 +445,12 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
 
         {/* Exam selector */}
         {onSelectExamId && yearExams.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl text-xs border border-white/20">
-            <span className="text-[11px] text-white/75 font-bold">{isBn ? 'পরীক্ষা:' : 'Exam:'}</span>
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-200">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{isBn ? 'পরীক্ষা:' : 'Exam:'}</span>
             <select
               value={selectedExamId || ''}
               onChange={(e) => onSelectExamId(e.target.value)}
-              className="bg-transparent text-white font-bold outline-none cursor-pointer text-xs max-w-[120px] truncate"
+              className="bg-transparent text-slate-700 dark:text-slate-200 font-bold outline-none cursor-pointer text-xs max-w-[120px] truncate"
             >
               {yearExams.map(e => (
                 <option key={e.id} value={e.id} className="bg-slate-900 text-white">
