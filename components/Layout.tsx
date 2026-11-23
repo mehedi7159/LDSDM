@@ -2,6 +2,7 @@ import { SUPER_ADMIN_EMAIL } from '../services/appConfig';
 import { normalizeRoleKey, roleHomeTab } from '../services/roleResolution';
 import { roleLabelBn } from '../services/staffRole';
 import { findLinkedEmployeeCode } from '../services/staffCode';
+import { topbarAvatarKind } from '../services/profileAvatar';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
@@ -161,6 +162,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // inside 23 Nov 2026 — no open logout button sits in the topbar).
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  // Gmail photo in the topbar button (23 Nov 2026): show
+  // authUser.photoURL when present; a load error falls back to the
+  // initials, never a broken image.
+  const [profilePhotoFailed, setProfilePhotoFailed] = useState(false);
 
   // Student Management smart flyout submenu (BOTH rail states): a floating
   // panel beside the row — no layout shift, no content squeeze, no rail
@@ -209,6 +214,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // (which unmounts the anchor row), closes it. Same for the profile menu.
   useEffect(() => { setFlyoutOpen(false); setIsProfileMenuOpen(false); }, [activeTab]);
   useEffect(() => { setFlyoutOpen(false); }, [isRailExpanded]);
+  // A new photo URL gets a fresh load attempt (a past failure must not
+  // stick to a different account's picture).
+  useEffect(() => { setProfilePhotoFailed(false); }, [authUser?.photoURL]);
 
   // ESC: first press closes the flyout (if open); next press collapses
   // the expanded rail (replaces the old drawer Esc-close).
@@ -859,9 +867,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                     title={language === 'bn' ? 'আমার তথ্য দেখুন' : 'View my info'}
                     className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-brand)] shrink-0"
                   >
-                    <span className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
-                      {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
-                    </span>
+                    {topbarAvatarKind(authUser.photoURL, profilePhotoFailed) === 'photo' ? (
+                      <img
+                        src={authUser.photoURL ?? undefined}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        onError={() => setProfilePhotoFailed(true)}
+                        className="w-6 h-6 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <span className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
+                        {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
+                      </span>
+                    )}
                     <span className="hidden xs:inline font-bold text-slate-800 dark:text-slate-200 truncate max-w-[90px]">
                       {authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
                     </span>
