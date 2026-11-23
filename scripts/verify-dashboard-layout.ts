@@ -104,7 +104,8 @@ check('(1) mobileStats is mobile-only',
 // (2) Default layout.
 const def = model.defaultLayout();
 check('(2) default order holds every section', ids.every(id => (def.order as string[]).includes(id)), `order: ${def.order.join(',')}`);
-check('(2) default layout hides nothing', def.hidden.length === 0);
+check('(2) default layout hides only incomeExpense (no transactions yet)',
+  def.hidden.length === 1 && def.hidden[0] === 'incomeExpense');
 check('(2) default order starts with hero', def.order[0] === 'hero');
 
 // (3) normalizeLayout.

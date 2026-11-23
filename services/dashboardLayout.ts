@@ -40,6 +40,9 @@ export type DashboardSectionId =
   | 'tasks'
   | 'academic'
   | 'finance'
+  | 'attendance'
+  | 'incomeExpense'
+  | 'feeCollection'
   | 'reports'
   | 'doors'
   | 'mobileStats';
@@ -76,13 +79,22 @@ export const DASHBOARD_SECTIONS: DashboardSectionDef[] = [
   { id: 'tasks', titleBn: 'আজকের করণীয়', titleEn: "Today's To-Do", roles: STAFF_ROLES, surfaces: ['desktop'] },
   { id: 'academic', titleBn: 'একাডেমিক চিত্র', titleEn: 'Academic Overview', subtitleBn: 'এক নজরে, পরীক্ষার রিপোর্ট, মেধা তালিকা, নজর দেওয়ার তালিকা', roles: STAFF_ROLES, surfaces: ['desktop'] },
   { id: 'finance', titleBn: 'আর্থিক চিত্র — সর্বোচ্চ বকেয়া', titleEn: 'Finance — Top Fee Dues', subtitleBn: 'বকেয়া রিপোর্ট', roles: STAFF_ROLES, surfaces: ['desktop'] },
+  { id: 'attendance', titleBn: 'হাজিরা রিপোর্ট', titleEn: 'Attendance Report', subtitleBn: 'আজকের হাজিরা, শ্রেণি অনুযায়ী', roles: STAFF_ROLES, surfaces: ['desktop'] },
+  { id: 'incomeExpense', titleBn: 'আয়-ব্যয় রিপোর্ট', titleEn: 'Income-Expense Report', subtitleBn: 'এই সেশনের আয়, ব্যয় ও নিট', roles: ['admin', 'principal', 'accountant'], surfaces: ['desktop'] },
+  { id: 'feeCollection', titleBn: 'ফি আদায় ও ব্যাচ', titleEn: 'Fee Collection & Batch', subtitleBn: 'শ্রেণি অনুযায়ী আদায়', roles: ['admin', 'principal', 'accountant', 'teacher'], surfaces: ['desktop'] },
   { id: 'reports', titleBn: 'মাদ্রাসা রিপোর্ট', titleEn: 'Madrasa Reports', roles: STAFF_ROLES, surfaces: ['desktop'] },
   { id: 'doors', titleBn: 'প্রতিবেদন (দরজা)', titleEn: 'Reports (doors)', roles: STAFF_ROLES, surfaces: ['desktop'] }
 ];
 
 export const DEFAULT_DASHBOARD_ORDER: DashboardSectionId[] = [
-  'hero', 'mobileStats', 'notices', 'approvals', 'tasks', 'academic', 'finance', 'reports', 'doors'
+  'hero', 'mobileStats', 'notices', 'approvals', 'tasks', 'academic', 'finance', 'attendance', 'incomeExpense', 'feeCollection', 'reports', 'doors'
 ];
+
+// Default-hidden: incomeExpense only — on the 22 Nov audit the
+// transaction count was 0, so it stays hidden until real
+// transactions exist (the reference app hid it too). Attendance and
+// fee collection show real data (even ৳0 collected), so they show.
+export const DEFAULT_HIDDEN_SECTIONS: DashboardSectionId[] = ['incomeExpense'];
 
 export interface DashboardLayout {
   order: DashboardSectionId[];
@@ -91,7 +103,7 @@ export interface DashboardLayout {
 }
 
 export function defaultLayout(): DashboardLayout {
-  return { order: [...DEFAULT_DASHBOARD_ORDER], hidden: [], updatedAt: new Date().toISOString() };
+  return { order: [...DEFAULT_DASHBOARD_ORDER], hidden: [...DEFAULT_HIDDEN_SECTIONS], updatedAt: new Date().toISOString() };
 }
 
 const KNOWN_IDS = new Set<string>(DASHBOARD_SECTIONS.map(s => s.id));

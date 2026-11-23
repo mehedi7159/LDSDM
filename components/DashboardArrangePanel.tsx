@@ -15,10 +15,12 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
+  Banknote,
   BarChart3,
   Bell,
   ChevronDown,
   ChevronUp,
+  ClipboardCheck,
   FileSpreadsheet,
   GraduationCap,
   LayoutGrid,
@@ -27,6 +29,7 @@ import {
   Minus,
   Plus,
   RotateCcw,
+  Scale,
   UserCheck,
   Wallet,
   type LucideIcon
@@ -53,6 +56,9 @@ const ICONS: Record<DashboardSectionId, LucideIcon> = {
   tasks: ListChecks,
   academic: GraduationCap,
   finance: Wallet,
+  attendance: ClipboardCheck,
+  incomeExpense: Scale,
+  feeCollection: Banknote,
   reports: FileSpreadsheet,
   doors: LayoutTemplate
 };

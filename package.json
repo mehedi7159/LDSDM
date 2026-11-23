@@ -89,8 +89,9 @@
     "test:job8-leaves-split": "tsx scripts/verify-job8-leaves-split.ts",
     "test:job12-students-split": "tsx scripts/verify-job12-students-split.ts",
     "test:hero-attendance-academic": "tsx scripts/verify-hero-attendance-academic.ts",
-    "test:dashboard-arrange": "tsx scripts/verify-dashboard-arrange.ts",
-    "test:dashboard-layout": "tsx scripts/verify-dashboard-layout.ts"
+    "test:dashboard-new-sections": "tsx scripts/verify-dashboard-new-sections.ts",
+    "test:dashboard-layout": "tsx scripts/verify-dashboard-layout.ts",
+    "test:dashboard-arrange": "tsx scripts/verify-dashboard-arrange.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

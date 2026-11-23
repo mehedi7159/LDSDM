@@ -68,6 +68,9 @@ import { SubjectPerformanceAnalytics } from './SubjectPerformanceAnalytics';
 import { StudentPerformanceCard } from './StudentPerformanceCard';
 import { DashboardDailyOverview } from './DashboardDailyOverview';
 import { MadrasaReports } from './MadrasaReports';
+import { DashboardAttendanceReport } from './DashboardAttendanceReport';
+import { DashboardIncomeExpenseReport } from './DashboardIncomeExpenseReport';
+import { DashboardFeeCollectionReport } from './DashboardFeeCollectionReport';
 import { SectionCard } from './ui/SectionCard';
 import {
   dashboardRoleKey,
@@ -700,7 +703,7 @@ export const Dashboard = () => {
       .filter(tx => tx.type === 'EXPENSE' || tx.type === 'OUTFLOW')
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
 
-    return { totalIncome: inc, totalExpense: exp, netBalance: inc - exp };
+    return { totalIncome: inc, totalExpense: exp, netBalance: inc - exp, transactionCount: yearTransactions.length };
   }, [transactions, selectedAcademicYear]);
 
   // 5. Structure Metrics
@@ -1519,6 +1522,22 @@ export const Dashboard = () => {
           })}
         </SectionCard>
       )}
+        </div>
+      )}
+
+      {visibleDashboardSections.includes('attendance') && (
+        <div data-dashboard-section="attendance" style={{ order: visibleDashboardSections.indexOf('attendance') }}>
+          <DashboardAttendanceReport records={dailyStudentAttendance} students={students} classes={classes} language={language} />
+        </div>
+      )}
+      {visibleDashboardSections.includes('incomeExpense') && (
+        <div data-dashboard-section="incomeExpense" style={{ order: visibleDashboardSections.indexOf('incomeExpense') }}>
+          <DashboardIncomeExpenseReport totalIncome={financeMetrics.totalIncome} totalExpense={financeMetrics.totalExpense} netBalance={financeMetrics.netBalance} transactionCount={financeMetrics.transactionCount} language={language} />
+        </div>
+      )}
+      {visibleDashboardSections.includes('feeCollection') && (
+        <div data-dashboard-section="feeCollection" style={{ order: visibleDashboardSections.indexOf('feeCollection') }}>
+          <DashboardFeeCollectionReport transactions={transactions} classes={classes} language={language} />
         </div>
       )}
 
