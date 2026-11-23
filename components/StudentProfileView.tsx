@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { NoticeBoardAlertBanner } from './NoticeBoard';
-import { calculateFeeAging, academicYearFallbackStartMonth, monthlyExpectedFor } from '../services/studentDuesService';
+import { calculateFeeAging, academicYearFallbackStartMonth, monthlyExpectedFor, localMonthStr } from '../services/studentDuesService';
 import { feeArrangementOf, hasFeeArrangement, FEE_DISCOUNT_TYPE_LABELS } from '../services/studentFeeArrangement';
 import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
 import { paymentMethodLabel } from '../services/paymentMethod';
@@ -224,7 +224,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             currentStudent,
             feeStructures,
             transactions,
-            undefined,
+            localMonthStr(),
             feeTypes,
             academicYearFallbackStartMonth(academicYears)
           )
@@ -303,14 +303,20 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       grossAged = monthlyExpected * Math.max(0, finishedMonths);
     }
     const tuitionApplied = Math.max(0, grossAged - totalAged);
-    const due = totalAged + examPending;
-    const total = totalPaid + due;
+    // "বকেয়া" is the ONE shared dues figure — finished months' tuition
+    // only (totalAged), the same number the dashboard, fee page and
+    // reports show. Pending exam fee is NOT monthly dues: it stays in
+    // its own row and in the ledger's total balance (totalBalance),
+    // never inside the dues figure.
+    const due = totalAged;
+    const totalBalance = totalAged + examPending;
+    const total = totalPaid + totalBalance;
     const otherPaid = Math.max(0, totalPaid - tuitionApplied - examPaid);
     const rows: Array<{ key: 'tuition' | 'exam' | 'other'; total: number; paid: number; due: number }> = [];
     if (grossAged > 0 || totalAged > 0) rows.push({ key: 'tuition', total: grossAged, paid: tuitionApplied, due: totalAged });
     if (examPending > 0 || examPaid > 0) rows.push({ key: 'exam', total: examPaid + examPending, paid: examPaid, due: examPending });
     if (otherPaid > 0) rows.push({ key: 'other', total: otherPaid, paid: otherPaid, due: 0 });
-    return { totalPaid, totalAged, examPending, due, total, rows };
+    return { totalPaid, totalAged, examPending, due, totalBalance, total, rows };
   }, [currentStudent, myTransactions, pendingExamFees, feeAging, monthlyExpected]);
 
   // Real attendance records for this student (newest first).
@@ -1657,8 +1663,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               </div>
               <p className="text-[11px] text-slate-500 mt-2">
                 {language === 'bn'
-                  ? 'মোট = পরিশোধিত + বকেয়া (আজ পর্যন্ত)। পরিশোধিত-এ চলতি মাসের আদায়ও আছে; বকেয়ায় চলতি অসমাপ্ত মাসের ফি ধরা হয়নি।'
-                  : 'Total = paid + due (to date). Paid includes current-month collections; due excludes the current unfinished month.'}
+                  ? 'মোট = পরিশোধিত + বকেয়া + পরীক্ষার ফি বাকি। বকেয়া শুধু সমাপ্ত মাসের মাসিক বেতন — অফিসের ড্যাশবোর্ডের মোট বকেয়ার সমান। পরিশোধিত-এ চলতি মাসের আদায়ও আছে; বকেয়ায় চলতি অসমাপ্ত মাসের ফি ধরা হয়নি।'
+                  : 'Total = paid + dues + pending exam fee. Dues are finished months’ tuition only — the same as the office dashboard’s total dues. Paid includes current-month collections; dues exclude the current unfinished month.'}
               </p>
 
               {feeSummary.rows.length > 0 && (
@@ -1696,7 +1702,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                           <td className="py-1.5 pr-2 font-black">{language === 'bn' ? 'মোট' : 'Total'}</td>
                           <td className="py-1.5 pr-2 text-right font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</td>
                           <td className="py-1.5 pr-2 text-right font-black text-emerald-700">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</td>
-                          <td className="py-1.5 text-right font-black text-rose-600">৳{toBn(feeSummary.due.toLocaleString('en-US'))}</td>
+                          <td className="py-1.5 text-right font-black text-rose-600">৳{toBn(feeSummary.totalBalance.toLocaleString('en-US'))}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1723,7 +1729,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'মোট' : 'Total'}</div><div className="text-xs font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div></div>
                         <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div><div className="text-xs font-black text-emerald-700">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</div></div>
-                        <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600">৳{toBn(feeSummary.due.toLocaleString('en-US'))}</div></div>
+                        <div><div className="text-[10px] text-slate-500">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600">৳{toBn(feeSummary.totalBalance.toLocaleString('en-US'))}</div></div>
                       </div>
                     </div>
                   </div>

@@ -24,7 +24,7 @@ import { calculateTotalGPA, calculateGrade, formatBanglaNumber, toBengali } from
 import { classNamesMatch } from '../services/classNames';
 import { resolveGuardianChildren } from '../services/guardianScope';
 import { calculateStudentAttendanceForExamFromRecords } from '../services/dailyAttendanceService';
-import { calculateSingleStudentDue, calculateFeeAging, localMonthStr, academicYearFallbackStartMonth } from '../services/studentDuesService';
+import { calculateTotalDues, localMonthStr, academicYearFallbackStartMonth } from '../services/studentDuesService';
 import { VerifiedResultModal } from './VerifiedResultModal';
 
 type GuardianPortalTab = 'results' | 'attendance' | 'fees';
@@ -113,22 +113,27 @@ export const GuardianPortal: React.FC = () => {
   // (the same figures the office and the mobile app show), replacing
   // the old ad-hoc "monthly tuition x 10 months, default 800" estimate.
   // The tab used to show the current month only (dueThisMonth); the
-  // shared total (dueThisMonth + finished months, with its month count)
-  // is shown beside it, so the guardian sees the same figure as the
-  // office (21 Nov 2026 audit: portal said one month, office said the
-  // total). The month is the shared local month, not UTC.
+  // shared total (finished months only, with its month count) is shown
+  // beside it, so the guardian sees the same figure as the office
+  // (21 Nov 2026 audit: portal said one month, office said the
+  // total). The current month's fee is shown in its own card as
+  // "চলতি মাসের ফি" — it is not dues yet (a month's fee becomes due
+  // only after that month ends). The month is the shared local month,
+  // not UTC.
   const feeSummary = useMemo(() => {
     if (!linkedStudent) return { paid: 0, due: 0, totalDue: 0, dueMonthCount: 0, monthlyExpected: 0, transactions: [] as typeof transactions };
     const studentTx = transactions.filter(t => t.studentId === linkedStudent.id || (t.studentCode && t.studentCode === linkedStudent.studentId));
     const month = localMonthStr();
-    const profile = calculateSingleStudentDue(linkedStudent, feeStructures, transactions, month, feeTypes);
-    const aging = calculateFeeAging(linkedStudent, feeStructures, transactions, month, feeTypes, academicYearFallbackStartMonth(academicYears, month));
+    const summary = calculateTotalDues(
+      [linkedStudent], feeStructures, transactions, month, feeTypes,
+      academicYearFallbackStartMonth(academicYears, month));
+    const entry = summary.entries[0];
     return {
-      paid: profile.totalPaidLifetime,
-      due: profile.dueThisMonth,
-      totalDue: profile.dueThisMonth + aging.totalAged,
-      dueMonthCount: (profile.dueThisMonth > 0 ? 1 : 0) + aging.byMonth.length,
-      monthlyExpected: profile.monthlyExpected,
+      paid: entry?.profile.totalPaidLifetime ?? 0,
+      due: entry?.profile.dueThisMonth ?? 0,
+      totalDue: entry?.totalDue ?? 0,
+      dueMonthCount: entry?.dueMonthCount ?? 0,
+      monthlyExpected: entry?.profile.monthlyExpected ?? 0,
       transactions: studentTx
     };
   }, [linkedStudent, transactions, feeStructures, feeTypes, academicYears]);
@@ -425,15 +430,15 @@ export const GuardianPortal: React.FC = () => {
               </div>
 
               <div className="bg-amber-50 border border-amber-200 p-5 rounded-3xl">
-                <span className="text-xs font-bold text-amber-800 block">চলতি মাসের বকেয়া (যদি থাকে)</span>
+                <span className="text-xs font-bold text-amber-800 block">চলতি মাসের ফি (যদি থাকে)</span>
                 <span className="text-3xl font-black text-amber-900 font-mono mt-1 block">
                   ৳ {formatBanglaNumber(feeSummary.due)}
                 </span>
                 <span className="text-[11px] text-amber-700 mt-1 block">নিয়মিত বেতন পরিশোধে সহযোগিতা করুন</span>
               </div>
 
-              {/* Shared total — the same figure the office sees (current
-                  month + finished months), with its month count. */}
+              {/* Shared total — the same figure the office sees (finished
+                  months only), with its month count. */}
               <div className="bg-rose-50 border border-rose-200 p-5 rounded-3xl sm:col-span-2">
                 <span className="text-xs font-bold text-rose-800 block">মোট বকেয়া</span>
                 <span className="text-3xl font-black text-rose-900 font-mono mt-1 block">

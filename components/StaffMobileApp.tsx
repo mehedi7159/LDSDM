@@ -25,7 +25,7 @@ import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
 import { STAFF_LEAVE_TYPE_OPTIONS, computeLeaveDays, buildStaffLeaveRequest, sanitizeProfileEdit } from '../services/staffSelfService';
 import { DAYS_OF_WEEK } from '../services/academicScheduleService';
 import { DayOfWeek } from '../types/academic';
-import { calculateClassDuesSummary, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, academicYearFallbackStartMonth, StudentDueProfile, FeeAging } from '../services/studentDuesService';
+import { calculateClassDuesSummary, calculateTotalDues, topDueEntries, calculateSingleStudentDue, getDueReminderMessage, calculateFeeAging, academicYearFallbackStartMonth, StudentDueProfile, FeeAging } from '../services/studentDuesService';
 import { Student, MarkRecord, Exam, Subject, FinanceTransaction, PaymentMethod, StaffLeaveRecord, TrashItem } from '../types';
 import {
   Home,
@@ -507,17 +507,31 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return students.filter(s => s.status === 'Active' && !s.isFormer);
   }, [students, selectedClass, userRole]);
 
-  // Dues Summary for the teacher's class
-  const classDuesSummary = useMemo(() => {
-    return calculateClassDuesSummary(classStudents, feeStructures, transactions, undefined, feeTypes);
-  }, [classStudents, feeStructures, transactions, feeTypes]);
+  // Dateless students accrue from the current academic year's January
+  // (approved 2 Nov 2026); a real admission/created/paid start always wins.
+  // Defined here (above the dues summaries) so the shared totals below
+  // can use it — same fallback the desktop callers pass.
+  const agingFallbackStart = useMemo(
+    () => academicYearFallbackStartMonth(academicYears, localMonthStr()),
+    [academicYears]
+  );
 
-  // All-students dues (accountant)
+  // Dues Summary for the teacher's class — the ONE shared dues total
+  // (calculateTotalDues): finished months' unpaid dues ONLY. A month's
+  // fee becomes due only after that month ends, so the current month's
+  // unpaid fee is never inside totalDue; it stays available as
+  // currentMonthDue for the collection views. The per-month ledger
+  // (viewDuesSummary) keeps its own current-month summary below.
+  const classDuesSummary = useMemo(() => {
+    return calculateTotalDues(classStudents, feeStructures, transactions, localMonthStr(), feeTypes, agingFallbackStart);
+  }, [classStudents, feeStructures, transactions, feeTypes, agingFallbackStart]);
+
+  // All-students dues (accountant) — the same shared total.
   const allDuesSummary = useMemo(() => {
     if (userRole === 'teacher') return classDuesSummary;
     const active = students.filter(s => s.status === 'Active' && !s.isFormer);
-    return calculateClassDuesSummary(active, feeStructures, transactions, undefined, feeTypes);
-  }, [userRole, classDuesSummary, students, feeStructures, transactions, feeTypes]);
+    return calculateTotalDues(active, feeStructures, transactions, localMonthStr(), feeTypes, agingFallbackStart);
+  }, [userRole, classDuesSummary, students, feeStructures, transactions, feeTypes, agingFallbackStart]);
 
   // Guardian scope: the signed-in guardian's OWN child(ren), resolved
   // by the single linkage in services/guardianScope.ts. Null for
@@ -550,13 +564,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   // This month's dues summed over the guardian's children only (the
   // parent home previously showed the WHOLE institution's dues here).
+  // Finished months only — the same shared figure the guardian portal
+  // shows (a month's fee becomes due only after that month ends).
   const guardianDuesTotal = useMemo(() => {
     if (!guardianChildren) return 0;
     return guardianChildren.reduce(
-      (sum, child) => sum + calculateSingleStudentDue(child, feeStructures, transactions, undefined, feeTypes).dueThisMonth,
+      (sum, child) => sum + calculateFeeAging(child, feeStructures, transactions, localMonthStr(), feeTypes, agingFallbackStart).totalAged,
       0
     );
-  }, [guardianChildren, feeStructures, transactions, feeTypes]);
+  }, [guardianChildren, feeStructures, transactions, feeTypes, agingFallbackStart]);
 
   // Portal tab hint for the guardian self-service portal (consumed by
   // GuardianPortal's initial tab — see its sessionStorage bridge).
@@ -1386,9 +1402,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // Phase 3: fee-month view — the dues list can be viewed for a past
   // month (calculateSingleStudentDue's existing targetMonth param).
   // Past months use the CURRENT class fee structure (same stated
-  // limitation as fee aging); the TOTAL DUE banner always shows the
-  // live overall position (current month + aged).
-  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  // limitation as fee aging). This view is the SELECTED month's ledger
+  // only (labelled by the month picker); the TOTAL DUE banner always
+  // shows the live overall position (finished months' dues only).
+  const currentMonthStr = localMonthStr();
   const [duesViewMonth, setDuesViewMonth] = useState<string>(currentMonthStr);
   const feeMonthOptions = useMemo(() => {
     const out: string[] = [];
@@ -1400,9 +1417,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return out;
   }, []);
   const viewDuesSummary = useMemo(() => {
-    if (duesViewMonth === currentMonthStr) return classDuesSummary;
+    // Always the selected month's own ledger (calculateClassDuesSummary):
+    // the class summary above is the shared TOTAL now, so it must not
+    // stand in for a single month's view.
     return calculateClassDuesSummary(classStudents, feeStructures, transactions, duesViewMonth, feeTypes);
-  }, [duesViewMonth, currentMonthStr, classDuesSummary, classStudents, feeStructures, transactions, feeTypes]);
+  }, [duesViewMonth, classStudents, feeStructures, transactions, feeTypes]);
 
   const filteredDuesProfiles = useMemo(() => {
     return viewDuesSummary.profiles.filter(p => {
@@ -1701,10 +1720,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   }, [transactions]);
 
   const topDueProfiles = useMemo(() => {
-    return [...allDuesSummary.profiles]
-      .filter(p => p.dueThisMonth > 0)
-      .sort((a, b) => b.dueThisMonth - a.dueThisMonth)
-      .slice(0, 5);
+    return topDueEntries(allDuesSummary.entries);
   }, [allDuesSummary]);
 
   // -------------------------------------------------------------
@@ -1713,13 +1729,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // metrics, no desktop-screen behaviour change. Fee aging is the
   // additive calculateFeeAging only (see services/studentDuesService).
   // -------------------------------------------------------------
-  // Dateless students accrue from the current academic year's January
-  // (approved 2 Nov 2026); a real admission/created/paid start always wins.
-  const agingFallbackStart = useMemo(
-    () => academicYearFallbackStartMonth(academicYears, undefined),
-    [academicYears]
-  );
-
   // Fee aging per student (transactions pre-grouped once, so this is
   // not O(students x transactions) through the service filter).
   const agingByStudent = useMemo(() => {
@@ -1735,7 +1744,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     students.forEach(st => {
       const mine = [...(byId.get(st.id) || [])];
       if (st.studentId && st.studentId !== st.id) mine.push(...(byId.get(st.studentId) || []));
-      out.set(st.id, calculateFeeAging(st, feeStructures, mine, undefined, feeTypes, agingFallbackStart));
+      out.set(st.id, calculateFeeAging(st, feeStructures, mine, localMonthStr(), feeTypes, agingFallbackStart));
     });
     return out;
   }, [students, feeStructures, transactions, feeTypes, agingFallbackStart]);
@@ -1858,18 +1867,18 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     };
   }, [userRole, transactions, classes, dailyStudentAttendance]);
 
-  // Principal stat cards: whole-madrasa figures. Total dues = the
-  // existing current-month dues total + the Phase 2 aged total
-  // (calculateFeeAging, reused as-is over all active students).
+  // Principal stat cards: whole-madrasa figures. Total dues = the ONE
+  // shared dues total (calculateTotalDues, finished months only) — the
+  // aged total is already inside it, never added on top.
   const principalStatCards = useMemo(() => {
     const activeCount = students.filter(s => s.status === 'Active' && !s.isFormer).length;
-    const totalDue = allDuesSummary.totalDue + cashierAging.totalAged;
+    const totalDue = allDuesSummary.totalDue;
     return [
       { value: toBn(activeCount) + ' জন', label: 'মোট শিক্ষার্থী', Icon: Users, cls: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
       { value: '৳' + toBn(cashierFigures.todayIncome.toLocaleString()), label: 'আজকের আদায়', Icon: Wallet, cls: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
       { value: '৳' + toBn(totalDue.toLocaleString()), label: 'মোট বকেয়া', Icon: TrendingUp, cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' }
     ];
-  }, [students, allDuesSummary, cashierAging, cashierFigures]);
+  }, [students, allDuesSummary, cashierFigures]);
 
   // Teacher: this month's attendance rate per assigned class (same
   // recorded-only counting as monthlyAttendance, per class).
@@ -3224,9 +3233,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
               <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25">
                 <span className="text-[11px] font-bold text-[#dc2626] dark:text-rose-300 block">মোট বকেয়া (সব মাস মিলিয়ে)</span>
-                <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn((classDuesSummary.totalDue + teacherAging.totalAged).toLocaleString())}</span>
+                <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn(classDuesSummary.totalDue.toLocaleString())}</span>
                 <p className="text-[11px] text-[#dc2626]/80 dark:text-rose-300/80 font-medium">
-                  চলতি মাস ৳{toBn(classDuesSummary.totalDue.toLocaleString())} + পুরনো ৳{toBn(teacherAging.totalAged.toLocaleString())} (১ মাস আগের ৳{toBn(teacherAging.oneMonthOld.toLocaleString())} • ২+ মাস আগের ৳{toBn(teacherAging.twoPlus.toLocaleString())})
+                  চলতি মাসের ফি ৳{toBn(classDuesSummary.currentMonthDue.toLocaleString())} • পুরনো বকেয়া ৳{toBn(teacherAging.totalAged.toLocaleString())} (১ মাস আগের ৳{toBn(teacherAging.oneMonthOld.toLocaleString())} • ২+ মাস আগের ৳{toBn(teacherAging.twoPlus.toLocaleString())})
                 </p>
               </div>
 
@@ -3323,7 +3332,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           <span className={`text-[11px] font-black px-2.5 py-1.5 rounded-xl shrink-0 ${
                             hasDue ? 'bg-[#fee2e2] text-[#991b1b] dark:bg-rose-500/15 dark:text-rose-300' : 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300'
                           }`}>
-                            {hasDue ? `বকেয়া ৳${toBn(p.dueThisMonth.toLocaleString())}` : 'পরিশোধিত ✓'}
+                            {hasDue ? `${duesViewMonth === currentMonthStr ? 'চলতি মাসের ফি' : 'বকেয়া'} ৳${toBn(p.dueThisMonth.toLocaleString())}` : 'পরিশোধিত ✓'}
                           </span>
                         </div>
 
@@ -3339,7 +3348,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         </div>
                         {agedTotal > 0 && aging && (
                           <p className="text-[11px] font-semibold text-[#d97706] dark:text-amber-300">
-                            এর মধ্যে পুরনো বকেয়া: ৳{toBn(agedTotal.toLocaleString())} (১ মাস আগের ৳{toBn(aging.oneMonthOld.toLocaleString())} • ২+ মাস আগের ৳{toBn(aging.twoPlusMonthsOld.toLocaleString())})
+                            পুরনো বকেয়া: ৳{toBn(agedTotal.toLocaleString())} (১ মাস আগের ৳{toBn(aging.oneMonthOld.toLocaleString())} • ২+ মাস আগের ৳{toBn(aging.twoPlusMonthsOld.toLocaleString())})
                           </p>
                         )}
 
@@ -4125,9 +4134,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
                   <div className="p-4 space-y-1 rounded-[24px] bg-[#fee2e2] dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25">
                     <span className="text-[11px] font-bold text-[#dc2626] dark:text-rose-300 block">{isEn ? 'TOTAL DUE (all months)' : 'মোট বকেয়া (সব মাস মিলিয়ে)'}</span>
-                    <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn((allDuesSummary.totalDue + cashierAging.totalAged).toLocaleString())}</span>
+                    <span className="text-2xl font-black text-[#991b1b] dark:text-rose-200">৳{toBn(allDuesSummary.totalDue.toLocaleString())}</span>
                     <p className="text-[11px] text-[#dc2626]/80 dark:text-rose-300/80 font-medium">
-                      {isEn ? 'This month' : 'চলতি মাস'} ৳{toBn(allDuesSummary.totalDue.toLocaleString())} + {isEn ? 'old' : 'পুরনো'} ৳{toBn(cashierAging.totalAged.toLocaleString())}
+                      {isEn ? 'This month\'s fee' : 'চলতি মাসের ফি'} ৳{toBn(allDuesSummary.currentMonthDue.toLocaleString())} • {isEn ? 'old due' : 'পুরনো বকেয়া'} ৳{toBn(cashierAging.totalAged.toLocaleString())}
                     </p>
                   </div>
 
@@ -4196,7 +4205,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             <span className={`text-[11px] font-black px-2.5 py-1.5 rounded-xl shrink-0 ${
                               hasDue ? 'bg-[#fee2e2] text-[#991b1b] dark:bg-rose-500/15 dark:text-rose-300' : 'bg-[#d1fae5] text-[#065f46] dark:bg-emerald-500/15 dark:text-emerald-300'
                             }`}>
-                              {hasDue ? `${isEn ? 'Due' : 'বকেয়া'} ৳${toBn(p.dueThisMonth.toLocaleString())}` : (isEn ? 'Paid ✓' : 'পরিশোধিত ✓')}
+                              {hasDue ? `${cashierViewMonth === localMonthStr() ? (isEn ? "This month's fee" : 'চলতি মাসের ফি') : (isEn ? 'Due' : 'বকেয়া')} ৳${toBn(p.dueThisMonth.toLocaleString())}` : (isEn ? 'Paid ✓' : 'পরিশোধিত ✓')}
                             </span>
                             <ChevronRight size={15} className="text-[#c3c9d9] shrink-0" />
                           </button>
@@ -5041,6 +5050,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="space-y-2">
                 {guardianChildren.map(child => {
                   const due = calculateSingleStudentDue(child, feeStructures, transactions, undefined, feeTypes);
+                  // The badge is the shared dues figure (finished months
+                  // only). A child owing only the current month's fee
+                  // shows that fee, labelled as such — never "বকেয়া",
+                  // never "পরিশোধিত" while the month's fee is unpaid.
+                  const totalDue = agingByStudent.get(child.id)?.totalAged || 0;
                   return (
                     <button
                       key={child.id}
@@ -5057,11 +5071,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         </span>
                       </span>
                       <span className={`px-2 py-1 rounded-lg text-[10px] font-black shrink-0 ${
-                        due.dueThisMonth > 0
+                        totalDue > 0
                           ? 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300'
-                          : 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300'
+                          : due.dueThisMonth > 0
+                            ? 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#b45309] dark:text-amber-300'
+                            : 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300'
                       }`}>
-                        {due.dueThisMonth > 0 ? `${isEn ? 'Due' : 'বকেয়া'} ৳${toBn(due.dueThisMonth.toLocaleString())}` : (isEn ? 'Paid' : 'পরিশোধিত')}
+                        {totalDue > 0
+                          ? `${isEn ? 'Due' : 'বকেয়া'} ৳${toBn(totalDue.toLocaleString())}`
+                          : due.dueThisMonth > 0
+                            ? `${isEn ? "This month's fee" : 'চলতি মাসের ফি'} ৳${toBn(due.dueThisMonth.toLocaleString())}`
+                            : (isEn ? 'Paid' : 'পরিশোধিত')}
                       </span>
                       <ChevronRight size={15} className="text-[#c3c9d9] shrink-0" />
                     </button>
@@ -5305,30 +5325,30 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </h3>
             <div className="space-y-2.5">
               {topDueProfiles.map(p => (
-                <div key={p.student.id} className="flex items-center gap-3">
+                <div key={p.profile.student.id} className="flex items-center gap-3">
                   <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
-                    {(p.student.nameBn || p.student.name || 'শ').charAt(0)}
+                    {(p.profile.student.nameBn || p.profile.student.name || 'শ').charAt(0)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-bold truncate">{p.student.nameBn || p.student.name}</p>
-                    <p className="text-[11px] text-[#8a93a8]">{p.student.classLevel || ''}</p>
+                    <p className="text-[13px] font-bold truncate">{p.profile.student.nameBn || p.profile.student.name}</p>
+                    <p className="text-[11px] text-[#8a93a8]">{p.profile.student.classLevel || ''} • {toBn(p.dueMonthCount)} {isEn ? 'mo due' : 'মাসের বকেয়া'}</p>
                   </div>
-                  <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(p.dueThisMonth.toLocaleString())}</span>
+                  <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(p.totalDue.toLocaleString())}</span>
                   {/* Phase 2: one-tap Collect reuses the existing collect
                       flow (preselects the student, same receipt path). */}
                   {canCollectFees && (
                     <button
-                      onClick={() => { handleSelectFeeStudent(p); handleOpenModule('cashier_collect'); }}
+                      onClick={() => { handleSelectFeeStudent(p.profile); handleOpenModule('cashier_collect'); }}
                       className="px-3 h-9 rounded-full bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 text-[11px] font-black flex items-center gap-1 shrink-0 active:scale-95 transition-all cursor-pointer"
                     >
                       <Wallet size={13} />
                       {isEn ? 'Collect' : 'আদায়'}
                     </button>
                   )}
-                  {p.guardianPhone && (
+                  {p.profile.student.guardianPhone && (
                     <>
                       <a
-                        href={whatsappLink(p)}
+                        href={whatsappLink(p.profile)}
                         target="_blank"
                         rel="noreferrer"
                         aria-label="WhatsApp reminder"
@@ -5373,7 +5393,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'This month' : 'চলতি মাস'}</p>
-                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(classDuesSummary.totalDue.toLocaleString())}</p>
+                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(classDuesSummary.currentMonthDue.toLocaleString())}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '1 month old' : '১ মাস আগের'}</p>
@@ -5526,7 +5546,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'This month' : 'চলতি মাস'}</p>
-                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(allDuesSummary.totalDue.toLocaleString())}</p>
+                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(allDuesSummary.currentMonthDue.toLocaleString())}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '1 month old' : '১ মাস আগের'}</p>
@@ -5604,7 +5624,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               {isEn ? 'My children — reports' : 'সন্তানের রিপোর্ট'}
             </h3>
             {guardianChildReports.map(r => {
-              const totalDue = r.due.dueThisMonth + (r.aging ? r.aging.totalAged : 0);
+              const totalDue = r.aging ? r.aging.totalAged : 0;
               return (
                 <button
                   key={r.child.id}
@@ -5633,8 +5653,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                       <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'Total due' : 'মোট বকেয়া'}</p>
                       <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(totalDue.toLocaleString())}</p>
-                      {r.aging && r.aging.totalAged > 0 && (
-                        <p className="text-[10px] text-[#8a93a8] mt-0.5">{isEn ? 'incl. old' : 'এর মধ্যে পুরনো'} ৳{toBn(r.aging.totalAged.toLocaleString())}</p>
+                      {r.due.dueThisMonth > 0 && (
+                        <p className="text-[10px] text-[#8a93a8] mt-0.5">{isEn ? "This month's fee" : 'চলতি মাসের ফি'} ৳{toBn(r.due.dueThisMonth.toLocaleString())}</p>
                       )}
                     </div>
                     <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
@@ -5843,7 +5863,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'This month' : 'চলতি মাস'}</p>
-                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(allDuesSummary.totalDue.toLocaleString())}</p>
+                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(allDuesSummary.currentMonthDue.toLocaleString())}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '1 month old' : '১ মাস আগের'}</p>

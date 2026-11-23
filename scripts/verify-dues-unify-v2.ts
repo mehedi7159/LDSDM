@@ -29,30 +29,35 @@
  *       disagreed with the shared total on the same page.
  *
  * Fix: every one of those reads the ONE shared dues total
- * (calculateTotalDues / its entries: totalDue = dueThisMonth +
- * totalAged), and every per-student line labels how many months the
- * figure covers (dueMonthCount). The shared total itself (৳19,55,800
- * on live data) is NOT changed — only the displays are unified.
+ * (calculateTotalDues / its entries: totalDue = totalAged — finished
+ * months only; a month's fee becomes due only after that month ends,
+ * Sagor's rule 23 Nov 2026), and every per-student line labels how
+ * many months the figure covers (dueMonthCount). The current
+ * (unfinished) month's unpaid fee is NOT in the total — it stays
+ * visible as the current month's payable where collection needs it.
+ * One month's unpaid fees drop out of the live total by definition
+ * (the ৳19,55,800 figure falls by ≈ one month's dues); nothing else
+ * about the total changes.
  *
  * Cases (asOf 2026-11, monthly ৳1,500):
- *   (1) Dateless never-paid student: shared total 16,500 (11 months);
- *       alerts long-dues (last 12 of shared aging) 15,000 / 10 months;
- *       computeDueHistory with the Jan-2026 fallback start: 10 months,
- *       15,000, Nov-Dec 2025 'na'.
- *   (2) Student admitted Oct 2026, never paid: shared total 3,000
- *       (2 months); NOT in the 3+ months alerts list.
+ *   (1) Dateless never-paid student: shared total 15,000 (10 finished
+ *       months); alerts long-dues 15,000 / 10 months (the old hand
+ *       math said 12 months ৳18,000); computeDueHistory with the
+ *       Jan-2026 fallback start: 10 months, 15,000, Nov-Dec 2025 'na'.
+ *   (2) Student admitted Oct 2026, never paid: shared total 1,500
+ *       (1 finished month — Oct); NOT in the 3+ months alerts list.
  *   (3) Current month paid, 10 aged months owed: shared total 15,000
  *       (10 months), dueThisMonth 0 — the fee table must still show
  *       the 15,000 with a Collect button, never "পরিশোধিত ✅".
  *   (4) Fully paid student: total 0, no dues anywhere.
  *   (5) Source checks: alerts derive longDues from duesSummary.entries
- *       (no hand-rolled paidByKey / finishedMonths recompute); fee table
- *       column shows item.totalDue + month count and hasDue uses
- *       totalDue; portal manager calls calculateTotalDues (no
- *       estimatedYearlyBill, no || 500 / || 2500 fallbacks) and labels
- *       the month count; guardian feeSummary carries the shared total
- *       + month count and uses localMonthStr(); computeDueHistory
- *       accepts the fallback start.
+ *       (no hand-rolled paidByKey / finishedMonths recompute, no
+ *       12-month slice); fee table column shows item.totalDue + month
+ *       count and hasDue uses totalDue; portal manager calls
+ *       calculateTotalDues (no estimatedYearlyBill, no || 500 / ||
+ *       2500 fallbacks) and labels the month count; guardian
+ *       feeSummary carries the shared total + month count and uses
+ *       localMonthStr(); computeDueHistory accepts the fallback start.
  *
  * Run: npx tsx scripts/verify-dues-unify-v2.ts
  */
@@ -100,18 +105,16 @@ const summaryFor = (students: Student[], transactions: FinanceTransaction[] = []
   calculateTotalDues(students, STRUCTS, transactions, AS_OF, FEE_TYPES, FALLBACK);
 
 /** The alerts derivation, exactly as the component must compute it: the
- *  last 12 finished months of the SHARED aging, never a hand-rolled
- *  recompute. Mirrors components/MadrasaReports.tsx longDues. */
+ *  shared total and its month count straight from the entries — never a
+ *  hand-rolled recompute, never a 12-month slice. Mirrors
+ *  components/MadrasaReports.tsx longDues. */
 const sharedLongDues = (students: Student[], transactions: FinanceTransaction[] = []) =>
   summaryFor(students, transactions).entries
-    .map(e => {
-      const last12 = e.aging.byMonth.slice(-12);
-      return {
-        student: e.profile.student,
-        dueMonths: last12.length,
-        dueAmount: last12.reduce((s, m) => s + m.due, 0),
-      };
-    })
+    .map(e => ({
+      student: e.profile.student,
+      dueMonths: e.dueMonthCount,
+      dueAmount: e.totalDue,
+    }))
     .filter(d => d.dueMonths >= 3)
     .sort((a, b) => b.dueMonths - a.dueMonths || b.dueAmount - a.dueAmount);
 
@@ -119,8 +122,8 @@ const sharedLongDues = (students: Student[], transactions: FinanceTransaction[] 
 {
   const s = summaryFor([stu('mim')]);
   const e = s.entries[0];
-  eq('(1) Dateless never-paid shared total is 16,500', e?.totalDue, 16500);
-  eq('(1) Dateless never-paid dueMonthCount is 11', e?.dueMonthCount, 11);
+  eq('(1) Dateless never-paid shared total is 15,000 (10 finished months)', e?.totalDue, 15000);
+  eq('(1) Dateless never-paid dueMonthCount is 10', e?.dueMonthCount, 10);
   eq('(1) Dateless never-paid aged is 15,000 (10 finished months)', e?.aging.totalAged, 15000);
   const ld = sharedLongDues([stu('mim')]);
   eq('(1) Alerts long-dues for the same student is 15,000, not 18,000', ld[0]?.dueAmount, 15000);
@@ -133,11 +136,11 @@ const sharedLongDues = (students: Student[], transactions: FinanceTransaction[] 
     `got ${JSON.stringify(h.months.filter(m => m.month < FALLBACK).map(m => m.status))}`);
 }
 
-// (2) Admitted Oct 2026, never paid: 2 months, below the alerts threshold.
+// (2) Admitted Oct 2026, never paid: 1 finished month, below the alerts threshold.
 {
   const s = summaryFor([stu('oct', '2026-10-10')]);
-  eq('(2) Oct-admitted never-paid shared total is 3,000', s.entries[0]?.totalDue, 3000);
-  eq('(2) Oct-admitted never-paid dueMonthCount is 2', s.entries[0]?.dueMonthCount, 2);
+  eq('(2) Oct-admitted never-paid shared total is 1,500', s.entries[0]?.totalDue, 1500);
+  eq('(2) Oct-admitted never-paid dueMonthCount is 1', s.entries[0]?.dueMonthCount, 1);
   eq('(2) Oct-admitted student is NOT in the 3+ months alerts list',
     sharedLongDues([stu('oct', '2026-10-10')]).length, 0);
 }
@@ -162,15 +165,20 @@ const sharedLongDues = (students: Student[], transactions: FinanceTransaction[] 
   eq('(4) Fully paid student is not in the alerts list', sharedLongDues([stu('paid', '2026-01-10')], allMonths.map(m => tx('paid', m, 1500))).length, 0);
 }
 
-// (5) The shared total is one number: portal/profile figure
-//     (dueThisMonth + totalAged) equals calculateTotalDues totalDue.
+// (5) The shared total is one number: the finished-months aging
+//     (totalAged) equals calculateTotalDues totalDue. The current
+//     month's payable (dueThisMonth) is kept outside the total.
 {
   const student = stu('mim');
   const profile = calculateSingleStudentDue(student, STRUCTS, [], AS_OF, FEE_TYPES);
   const aging = calculateFeeAging(student, STRUCTS, [], AS_OF, FEE_TYPES, FALLBACK);
   const s = summaryFor([student]);
-  eq('(5) dueThisMonth + totalAged equals the shared totalDue',
-    profile.dueThisMonth + aging.totalAged, s.entries[0]?.totalDue);
+  eq('(5) totalAged equals the shared totalDue',
+    aging.totalAged, s.entries[0]?.totalDue);
+  eq('(5) The current month payable (1,500) is outside the total',
+    profile.dueThisMonth, 1500);
+  eq('(5) The shared summary still exposes the current-month payable separately',
+    s.currentMonthDue, 1500);
   eq('(5) Academic-year fallback start is 2026-01',
     academicYearFallbackStartMonth(YEARS, AS_OF), '2026-01');
   eq('(5) localMonthStr is the local YYYY-MM', localMonthStr(),
@@ -188,6 +196,8 @@ const read = (p: string) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8
     !rep.includes('paidByKey'), 'the hand-rolled paidByKey recompute must be gone');
   check('(6) Reports alerts no longer build their own finishedMonths list',
     !/const finishedMonths: string\[\]/.test(rep), 'the hand-rolled finishedMonths list must be gone');
+  check('(6) Reports alerts no longer slice the last 12 months',
+    !rep.includes('byMonth.slice(-12)'), 'the 12-month slice must be gone — the box shows the full shared total');
   check('(6) Reports alerts still show the month count',
     /dueMonths/.test(rep) && /মাস/.test(rep), 'alerts rows must label the month count');
 
@@ -219,8 +229,11 @@ const read = (p: string) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8
   check('(6) Guardian portal shows the shared total as "মোট বকেয়া"',
     /মোট বকেয়া/.test(portal), 'the fee tab must show a মোট বকেয়া figure');
   check('(6) Guardian portal uses the shared local month, not UTC',
-    /const month = localMonthStr\(\);[\s\S]{0,300}calculateSingleStudentDue\(linkedStudent, feeStructures, transactions, month, feeTypes\)/.test(portal),
-    'calculateSingleStudentDue must be passed localMonthStr()');
+    /const month = localMonthStr\(\);[\s\S]{0,400}calculateTotalDues\(\s*\[linkedStudent\], feeStructures, transactions, month, feeTypes/.test(portal),
+    'calculateTotalDues must be passed localMonthStr()');
+  check('(6) Guardian portal no longer hand-adds dueThisMonth + totalAged',
+    !/dueThisMonth \+ .*totalAged/.test(portal),
+    'the hand-add of the current month onto the aged dues must be gone');
 
   const hist = read('services/studentDuesHistory.ts');
   check('(6) computeDueHistory accepts the fallback start',

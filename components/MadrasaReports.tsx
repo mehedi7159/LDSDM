@@ -122,11 +122,12 @@ export const MadrasaReports: React.FC = () => {
   );
 
   // ---------- DUES: THE ONE SHARED TOTAL ----------
-  // calculateTotalDues: this month's unpaid + every finished month's
-  // unpaid, same student set / month / feeTypes as the dashboard, the
-  // finance header and the fee page. (The old call was current-month
-  // only, without feeTypes, over a looser student set — so the header
-  // disagreed with the dashboard.)
+  // calculateTotalDues: finished months' unpaid dues ONLY — a month's
+  // fee becomes due only after that month ends, so the current
+  // (unfinished) month is never inside the total. Same student set /
+  // month / feeTypes as the dashboard, the finance header and the fee
+  // page. (The old call was current-month only, without feeTypes, over
+  // a looser student set — so the header disagreed with the dashboard.)
   const duesSummary = useMemo(
     () => calculateTotalDues(
       activeStudents.filter(s => s.status === 'Active' && !s.isFormer),
@@ -137,7 +138,7 @@ export const MadrasaReports: React.FC = () => {
   // ---------- ALERTS (Pragya-inspired, LDSDM-adapted, read-only) ----------
   // Owner thresholds (27 Oct 2026): class attendance < 60% (this month so
   // far, recorded-only, min 10 recorded student-days); dues 3+ finished
-  // months (last 12 finished months, admission-guarded, feeMonth-aware);
+  // months (the shared total, admission-guarded, feeMonth-aware);
   // ABSENT on each of the last 7 days the student's class attendance was
   // taken. A day with no record for the student is NOT counted as absent:
   // not marked is not the same as absent. Nothing here writes data.
@@ -156,22 +157,21 @@ export const MadrasaReports: React.FC = () => {
       .filter(c => c.recorded >= 10 && c.pct < 60)
       .sort((a, b) => a.pct - b.pct);
 
-    // Dues: the ONE shared dues total — the last 12 finished months of
-    // the shared aging (calculateTotalDues entries: admission-guarded,
-    // Jan-2026 fallback for dateless students, tuition money only). The
-    // old hand-rolled recompute counted 12 finished months with NO
-    // fallback start, so a dateless never-paid student showed 12 x
-    // ৳1,500 = ৳18,000 here while the shared total said ৳15,000
-    // (21 Nov 2026 audit). Threshold stays 3+ months.
+    // Dues: the ONE shared dues total — each student's FULL total
+    // (calculateTotalDues entries: admission-guarded, Jan-2026
+    // fallback for dateless students, tuition money only, finished
+    // months only). The old derivation sliced the last 12 finished
+    // months, so a student with 22 finished months of dues showed
+    // ৳18,000 here while the dashboard showed the full ৳33,000
+    // (23 Nov 2026). Threshold stays 3+ months.
     const longDues: Array<{ student: (typeof activeStudents)[number]; classLevel: string; dueMonths: number; dueAmount: number }> =
       (duesSummary.entries || [])
         .map(e => {
-          const last12 = e.aging.byMonth.slice(-12);
           return {
             student: e.profile.student,
             classLevel: e.profile.classLevel,
-            dueMonths: last12.length,
-            dueAmount: last12.reduce((s, m) => s + m.due, 0),
+            dueMonths: e.dueMonthCount,
+            dueAmount: e.totalDue,
           };
         })
         .filter(d => d.dueMonths >= 3)
@@ -253,7 +253,7 @@ export const MadrasaReports: React.FC = () => {
   // over all finished months (a month's fee becomes due only after that
   // month ends), honoring the fee-arrangement payable via the shared
   // Top debtors — the ONE shared dues total (calculateTotalDues
-  // entries: current month + finished months), via the shared
+  // entries: finished months only), via the shared
   // topDueEntries helper. This list used to map each student to
   // calculateFeeAging(...).totalAged — finished months only — while
   // the Dashboard করণীয় card showed the current month only, so the
@@ -398,7 +398,7 @@ export const MadrasaReports: React.FC = () => {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? '৩ মাস+ বকেয়া' : 'Dues over 3 months'}</div>
-                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'গত ১২ সমাপ্ত মাসের হিসাবে' : 'Over the last 12 finished months'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'সমাপ্ত মাসের মোট বকেয়া' : 'Total dues over finished months'}</div>
                   </div>
                   <span className="text-xs font-black bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-2 py-1 rounded-full shrink-0">{num(alerts.longDues.length)} {isBn ? 'জন' : ''}</span>
                 </div>
@@ -423,7 +423,7 @@ export const MadrasaReports: React.FC = () => {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? '৩ মাস+ বকেয়া' : 'Dues over 3 months'}</div>
-                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'গত ১২ সমাপ্ত মাসের হিসাবে' : 'Over the last 12 finished months'}</div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'সমাপ্ত মাসের মোট বকেয়া' : 'Total dues over finished months'}</div>
                   </div>
                   <span className="text-xs font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-full shrink-0">{isBn ? 'ঠিক আছে' : 'OK'}</span>
                 </div>

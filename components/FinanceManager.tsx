@@ -126,12 +126,13 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
     const netBalance = totalIncome - totalExpense;
 
-    // Pending dues — the ONE shared dues total (calculateTotalDues): this
-    // month's unpaid + every finished month's unpaid, same student set /
-    // month / feeTypes as the dashboard, fee page and reports. (The old
-    // per-student current-month loop was the same math for the current
-    // month only — the aged backlog was missing, so the header disagreed
-    // with the fee page and the reports.)
+    // Pending dues — the ONE shared dues total (calculateTotalDues):
+    // finished months' unpaid dues ONLY (a month's fee becomes due
+    // only after that month ends), same student set / month / feeTypes
+    // as the dashboard, fee page and reports. (The old per-student
+    // current-month loop was the same math for the current month only
+    // — the aged backlog was missing, so the header disagreed with the
+    // fee page and the reports.)
     const month = localMonthStr();
     const totalDues = calculateTotalDues(
       students.filter(st => st.status === 'Active' && !st.isFormer),

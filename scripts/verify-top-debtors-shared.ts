@@ -18,18 +18,21 @@
  * shared definition.
  *
  * Fix (Fix #4 pattern — the ONE shared dues total):
- *   মোট বকেয়া = চলতি মাসের বাকি + শেষ হওয়া সব মাসের বকেয়া
+ *   মোট বকেয়া = শেষ হওয়া সব মাসের বকেয়া (finished months only;
+ *   a month's fee becomes due only after that month ends — Sagor's
+ *   rule 23 Nov 2026). The current month's unpaid fee is NOT dues
+ *   yet; it stays visible as the current month's payable.
  * calculateTotalDues(...).entries[].totalDue already IS that number,
  * so both cards now read the same entries through one shared helper,
  * topDueEntries(entries, 5) (totalDue desc, top 5), and each row
  * labels how many months the figure covers
- * (dueMonthCount = finished months owed + current month when owed).
+ * (dueMonthCount = finished months owed).
  * The fee RULE is unchanged — only the two displays are unified.
  *
  * Cases (asOf 2026-11, monthly ৳1,500, admission Jan 2026):
- *   (1) Never-paid student: totalDue 16,500 (10 aged + 1 current),
- *       dueMonthCount 11
- *   (2) Admitted Oct 2026, never paid: totalDue 3,000, dueMonthCount 2
+ *   (1) Never-paid student: totalDue 15,000 (10 finished months),
+ *       dueMonthCount 10
+ *   (2) Admitted Oct 2026, never paid: totalDue 1,500, dueMonthCount 1
  *   (3) Current month paid, aged months owed: totalDue is aged only,
  *       dueMonthCount counts aged months only
  *   (4) Fully paid student: totalDue 0, excluded from topDueEntries
@@ -76,17 +79,17 @@ const summaryFor = (students: Student[], transactions: FinanceTransaction[] = []
   calculateTotalDues(students, structures, transactions, AS_OF, feeTypes,
     academicYearFallbackStartMonth(years, AS_OF) || FALLBACK);
 
-// (1) Never-paid, admitted Jan 2026: 10 finished months + current.
+// (1) Never-paid, admitted Jan 2026: 10 finished months only.
 {
   const s = summaryFor([stu('mim', '2026-01-10')]);
-  eq('(1) Never-paid totalDue is 11 months', s.entries[0]?.totalDue, 16500);
-  eq('(1) Never-paid dueMonthCount is 11', s.entries[0]?.dueMonthCount, 11);
+  eq('(1) Never-paid totalDue is 10 months', s.entries[0]?.totalDue, 15000);
+  eq('(1) Never-paid dueMonthCount is 10', s.entries[0]?.dueMonthCount, 10);
 }
-// (2) Admitted Oct 2026, never paid: Oct aged + Nov current.
+// (2) Admitted Oct 2026, never paid: Oct finished, Nov not yet.
 {
   const s = summaryFor([stu('new', '2026-10-03')]);
-  eq('(2) Oct admission totalDue is 2 months', s.entries[0]?.totalDue, 3000);
-  eq('(2) Oct admission dueMonthCount is 2', s.entries[0]?.dueMonthCount, 2);
+  eq('(2) Oct admission totalDue is 1 month', s.entries[0]?.totalDue, 1500);
+  eq('(2) Oct admission dueMonthCount is 1', s.entries[0]?.dueMonthCount, 1);
 }
 // (3) Current month paid, aged months owed.
 {
@@ -109,10 +112,10 @@ const summaryFor = (students: Student[], transactions: FinanceTransaction[] = []
   eq('(5) Top 5 of 6 debtors', top.length, 5);
   check('(5) Sorted by totalDue desc',
     top.every((e, i) => i === 0 || e.totalDue <= top[i - 1].totalDue));
-  eq('(5) Highest first is the Jan student', top[0]?.totalDue, 16500);
-  eq('(5) Lowest in top 5 is the Jun student (9,000)', top[4]?.totalDue, 9000);
-  check('(5) Oct student (3,000) is 6th, outside the top 5',
-    !top.some(e => e.totalDue === 3000));
+  eq('(5) Highest first is the Jan student', top[0]?.totalDue, 15000);
+  eq('(5) Lowest in top 5 is the Jun student (7,500)', top[4]?.totalDue, 7500);
+  check('(5) Oct student (1,500) is 6th, outside the top 5',
+    !top.some(e => e.totalDue === 1500));
 }
 
 // (6) Source checks: both cards read the same shared entries.

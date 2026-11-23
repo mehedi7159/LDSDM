@@ -295,14 +295,15 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
 
   // =========================================================================
   // 1. ADVANCED STUDENT DUE & BEHAVIORAL PROFILING CALCULATION
-  //    — the ONE shared dues total (calculateTotalDues): this month's
-  //    unpaid + every finished month's unpaid. The old inline math
-  //    invented ৳700 for a missing fee structure, ignored fee
-  //    arrangements and per-student overrides, always added boarding,
-  //    and matched payments by internal id only — that is why this page
-  //    disagreed with the dashboard and the header. Behavior labels
-  //    still describe THIS month's payment; the displayed due is the
-  //    combined total (dueThisMonth + agedDue).
+  //    — the ONE shared dues total (calculateTotalDues): finished
+  //    months' unpaid dues ONLY (a month's fee becomes due only after
+  //    that month ends). The old inline math invented ৳700 for a
+  //    missing fee structure, ignored fee arrangements and per-student
+  //    overrides, always added boarding, and matched payments by
+  //    internal id only — that is why this page disagreed with the
+  //    dashboard and the header. Behavior labels still describe THIS
+  //    month's payment; the displayed due is the shared total
+  //    (finished months only).
   // =========================================================================
   // Aging fallback start, shared by the summary above and the 12-month
   // history grid below, so both count from the same first month.
@@ -392,8 +393,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
 
   // Aggregate Stats — read straight off the ONE shared dues total, so the
   // header cards can never disagree with the dashboard or the header KPI.
-  // totalDueFees is the combined total (this month + aged); the split is
-  // shown under the card. Collection rate stays this month's.
+  // totalDueFees is the shared total (finished months only); the
+  // current month's fee is shown separately under the card, labelled
+  // as not-yet-due. Collection rate stays this month's.
   const aggregateMetrics = useMemo(() => {
     const chronicDefaulterCount = studentFeeProfiles.filter(p => p.behavior === 'CHRONIC_DUE').length;
 
@@ -507,8 +509,8 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
       classMap[cName].expected += p.monthlyExpected;
       classMap[cName].collected += p.paidThisMonth;
       // Current-month slice only (expected − collected = due, and the rate
-      // is this month's): the header total adds the aged backlog on top,
-      // shown there as the চলতি + পুরনো split.
+      // is this month's): the selected month's collection status, not
+      // the total dues — the header card shows the shared total.
       classMap[cName].due += p.dueThisMonth;
     });
 
@@ -645,26 +647,26 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
     showToast(isBn ? `${student.nameBn || student.name}-এর ফি গ্রহণের ফর্ম লোড হয়েছে` : `Loaded fee form for ${student.name}`);
   };
 
-  // Copy Reminder SMS to clipboard — the ONE shared dues total (this
-  // month + finished months) with its month count, so the message never
+  // Copy Reminder SMS to clipboard — the ONE shared dues total
+  // (finished months only) with its month count, so the message never
   // says ৳0 for a student who owes only old months.
   const handleCopyReminderSMS = (item: typeof studentFeeProfiles[0]) => {
     const s = item.student;
-    const totalMonths = item.agedMonths + (item.dueThisMonth > 0 ? 1 : 0);
+    const totalMonths = item.agedMonths;
     const msg = `সম্মানিত অভিভাবক, আপনার সন্তান ${s.nameBn || s.name} (শ্রেণি: ${s.classLevel})-এর ${totalMonths} মাসের ফি বাবদ মোট ৳${item.totalDue.toLocaleString()} বকেয়া রয়েছে। মাদ্রাসার পরিচালনা ও উস্তাদদের বেতন নিয়মিত রাখতে দ্রুত ফি পরিশোধের অনুরোধ করা হচ্ছে। ধন্যবাদ।`;
     navigator.clipboard.writeText(msg);
     showToast(isBn ? 'তাগাদা মেসেজ ক্লিপবোর্ডে কপি হয়েছে!' : 'Reminder notice copied to clipboard!');
   };
 
   // WhatsApp reminder for a dues-directory row: the ONE shared dues total
-  // (this month + finished months), so the message never says ৳0 for a
+  // (finished months only), so the message never says ৳0 for a
   // student who owes only old months.
   const duesWhatsappLink = (item: typeof studentFeeProfiles[0]) => {
     const s = item.student;
     const phone = String(s.guardianPhone || '').replace(/[^0-9]/g, '');
     if (!phone) return null;
     const intl = phone.startsWith('880') ? phone : '880' + phone.replace(/^0/, '');
-    const totalMonths = item.agedMonths + (item.dueThisMonth > 0 ? 1 : 0);
+    const totalMonths = item.agedMonths;
     const totalAmount = item.totalDue;
     if (totalMonths === 0) return null;
     const msg = `সম্মানিত অভিভাবক, আপনার সন্তান ${s.nameBn || s.name} (শ্রেণি: ${s.classLevel})-এর ${totalMonths} মাসের ফি বাবদ মোট ৳${totalAmount.toLocaleString()} বকেয়া রয়েছে। অনুগ্রহ করে দ্রুত পরিশোধ করবেন। ধন্যবাদ।`;
@@ -890,7 +892,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
               {isBn ? 'প্রদেয় মোট বাজেট:' : 'Total Expected:'} <strong className="text-slate-800 dark:text-slate-100 font-mono">৳{isBn ? formatBanglaNumber(aggregateMetrics.totalExpectedFees) : aggregateMetrics.totalExpectedFees.toLocaleString()}</strong>
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {isBn ? `চলতি মাস ৳${formatBanglaNumber(aggregateMetrics.currentMonthDueFees)} + পুরনো ৳${formatBanglaNumber(aggregateMetrics.agedDueFees)}` : `This month ৳${aggregateMetrics.currentMonthDueFees.toLocaleString()} + old ৳${aggregateMetrics.agedDueFees.toLocaleString()}`}
+              {isBn ? `চলতি মাসের ফি ৳${formatBanglaNumber(aggregateMetrics.currentMonthDueFees)} (এই মাস শেষে বকেয়া হবে)` : `This month's fee ৳${aggregateMetrics.currentMonthDueFees.toLocaleString()} (becomes due when the month ends)`}
             </p>
           </div>
 
@@ -1538,7 +1540,8 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                     const s = item.student;
                     // Shared total: a student owing only old months still has dues.
                     const hasDue = item.totalDue > 0;
-                    const dueMonthCount = item.agedMonths + (item.dueThisMonth > 0 ? 1 : 0);
+                    // Finished months only — the current month is not dues yet.
+                    const dueMonthCount = item.agedMonths;
                     const hist = dueHistoryById.get(s.id);
                     const waLink = duesWhatsappLink(item);
                     return (

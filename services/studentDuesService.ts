@@ -403,17 +403,21 @@ export function calculateFeeAging(
 }
 
 // ---------------------------------------------------------------------------
-// ONE shared dues total (fee-totals fix, Nov 2026 — 7 Nov audit §14).
-// Definition: মোট বকেয়া = চলতি মাসের বাকি + শেষ হওয়া সব মাসের বকেয়া
-// (this month's unpaid balance + every finished month's unpaid balance).
-// A finished month enters only after it ends (calculateFeeAging); the
-// current month is the amount still to collect now. Monthly expected
-// comes from the one hook (monthlyExpectedFor); exam / admission /
-// session / book / registration / form-fillup never enter it, and a
-// missing fee structure means expected 0 — never an invented ৳700.
-// The dashboard, the finance header, the fee-page cards and the reports
-// header all call this one function with the same student set, month,
-// feeTypes and aging fallback, so they show the same number.
+// ONE shared dues total (fee-totals fix, Nov 2026 — 7 Nov audit §14;
+// completed-months rule, 23 Nov 2026 — Sagor's rule).
+// Definition: মোট বকেয়া = শেষ হওয়া সব মাসের বকেয়া (finished months'
+// unpaid balance ONLY). A month's fee becomes due only after that month
+// ends — November's fee is not dues while November runs; it starts
+// counting on 1 December. The current month's still-payable amount is
+// NOT dues: it stays visible separately (currentMonthDue /
+// profile.dueThisMonth) for the collection views, so paying the current
+// month in advance still works and never reduces old dues.
+// Monthly expected comes from the one hook (monthlyExpectedFor); exam /
+// admission / session / book / registration / form-fillup never enter
+// it, and a missing fee structure means expected 0 — never an invented
+// ৳700. The dashboard, the finance header, the fee-page cards and the
+// reports header all call this one function with the same student set,
+// month, feeTypes and aging fallback, so they show the same number.
 // ---------------------------------------------------------------------------
 
 /** Local (device-timezone) YYYY-MM — one definition of "this month", so
@@ -425,25 +429,33 @@ export function localMonthStr(d = new Date()): string {
 }
 
 export interface TotalDueEntry {
-  profile: StudentDueProfile; // current-month profile
+  profile: StudentDueProfile; // current-month profile (payable now)
   aging: FeeAging; // finished-months aging as of the target month
-  totalDue: number; // profile.dueThisMonth + aging.totalAged
+  totalDue: number; // aging.totalAged ONLY — finished months' unpaid dues.
+  // The current (unfinished) month's fee becomes due only after that
+  // month ends, so it is never inside totalDue; it stays visible as
+  // the current month's payable (profile.dueThisMonth /
+  // summary.currentMonthDue) for the collection views.
   // How many months the totalDue covers: finished months still owed
-  // (aging.byMonth) + the current month when it is still owed. Shown
-  // beside the amount so "৳16,500" reads as "১১ মাসের বকেয়া", never
-  // as one month's fee.
+  // (aging.byMonth). Shown beside the amount so "৳15,000" reads as
+  // "১০ মাসের বকেয়া", never as one month's fee.
   dueMonthCount: number;
 }
 
 export interface TotalDuesSummary {
-  totalDue: number; // current-month due + aged due, over all students
-  currentMonthDue: number;
-  agedDue: number;
+  totalDue: number; // finished months' unpaid dues, over all students
+  // (the current month's unpaid fee is NOT dues yet — it becomes due
+  // only after the month ends — so it is not inside totalDue).
+  currentMonthDue: number; // current month's still-payable amount
+  // (collection views use this; it is never a "বকেয়া" figure).
+  agedDue: number; // == totalDue (finished months' unpaid dues)
   totalExpected: number; // target month's expected monthly fees
   totalPaid: number; // target month's recorded payments
   totalStudents: number;
   dueStudentsCount: number; // students with totalDue > 0
-  paidStudentsCount: number; // students with nothing due this month
+  paidStudentsCount: number; // students with totalDue == 0 (nothing
+  // due at all — a student who paid this month but still owes old
+  // months is NOT counted as paid here).
   profiles: StudentDueProfile[]; // current-month profiles (as before)
   entries: TotalDueEntry[]; // per-student combined totals
 }
@@ -458,32 +470,38 @@ export function calculateTotalDues(
 ): TotalDuesSummary {
   // Same month into both halves. The UTC default is kept here so the
   // inner functions behave exactly as their other callers expect; the
-  // four headline call sites pass localMonthStr() explicitly.
+  // headline call sites pass localMonthStr() explicitly.
   const month = targetMonth || new Date().toISOString().slice(0, 7);
   const summary = calculateClassDuesSummary(students, feeStructures, transactions, month, feeTypes);
   let agedDue = 0;
   let dueStudentsCount = 0;
   const entries: TotalDueEntry[] = summary.profiles.map(profile => {
     const aging = calculateFeeAging(profile.student, feeStructures, transactions, month, feeTypes, fallbackStartMonth);
-    const totalDue = profile.dueThisMonth + aging.totalAged;
+    // FINISHED months only: a month's fee becomes due only after that
+    // month ends, so the current (unfinished) month's unpaid fee
+    // (profile.dueThisMonth) is NEVER inside totalDue — it stays
+    // visible as the current month's payable (summary.currentMonthDue)
+    // for the collection views. A November payment therefore never
+    // reduces old dues, and an exam-fee payment never reduces dues.
+    const totalDue = aging.totalAged;
     agedDue += aging.totalAged;
     if (totalDue > 0) dueStudentsCount += 1;
     return {
       profile,
       aging,
       totalDue,
-      dueMonthCount: (profile.dueThisMonth > 0 ? 1 : 0) + aging.byMonth.length,
+      dueMonthCount: aging.byMonth.length,
     };
   });
   return {
-    totalDue: summary.totalDue + agedDue,
+    totalDue: agedDue,
     currentMonthDue: summary.totalDue,
     agedDue,
     totalExpected: summary.totalExpected,
     totalPaid: summary.totalPaid,
     totalStudents: students.length,
     dueStudentsCount,
-    paidStudentsCount: summary.paidStudentsCount,
+    paidStudentsCount: summary.totalStudents - dueStudentsCount,
     profiles: summary.profiles,
     entries,
   };

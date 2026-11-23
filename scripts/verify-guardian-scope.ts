@@ -104,7 +104,7 @@ check(
   portalSrc.includes('No student linked yet — please contact the office')
 );
 check('GuardianPortal attendance is recorded-only (dailyAttendanceService)', portalSrc.includes('calculateStudentAttendanceForExam'));
-check('GuardianPortal dues come from the canonical dues service', portalSrc.includes('calculateSingleStudentDue'));
+check('GuardianPortal dues come from the canonical dues service', portalSrc.includes('calculateTotalDues'));
 
 const appSrc = fs.readFileSync(path.join(ROOT, 'App.tsx'), 'utf8');
 check('App.tsx gate has the guardian-only block', appSrc.includes('isGuardianOnlySession'));

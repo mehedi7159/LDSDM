@@ -13,8 +13,9 @@
  * Inactive/Former, and it counted exam/admission money as collected.
  * On the live data of 13 Nov (173 active students, 0 transactions) the
  * old inline total is exactly ৳193,200, while the shared total as of
- * Nov 2026 is ৳1,955,800 (current ৳177,800 + aged ৳1,778,000 — the
- * approved Jan-2026 fallback for 171 dateless students). So even after
+ * Nov 2026 is ৳1,778,000 (aged only — the current month's ৳177,800 is
+ * the current month's payable, not dues; Sagor's rule 23 Nov 2026: a
+ * month's fee becomes due only after that month ends). So even after
  * the PWA update banner is restored, this card would still disagree
  * with the banner unless it is wired to the shared total too.
  *
@@ -22,9 +23,10 @@
  * (same student set / month / feeTypes / aging fallback as the banner),
  * threads feeTypes + academicYears through FinanceManager ->
  * FinanceOverview -> HighImpactSummaryCards, and relabels the card to
- * "মোট বকেয়া ফি" with the চলতি + পুরনো split, like the fee card.
- * The momentum card's "collected this month" keeps reading the shared
- * totalPaid, so it stays this month's figure.
+ * "মোট বকেয়া ফি" with the current month's fee shown separately
+ * (labelled "চলতি মাসের ফি ... এই মাস শেষে বকেয়া হবে", never as
+ * dues). The momentum card's "collected this month" keeps reading
+ * the shared totalPaid, so it stays this month's figure.
  *
  * Checks:
  *   (1) On a fixture where the old formula and the shared total differ
@@ -91,7 +93,7 @@ const student = (over: Partial<Student> = {}): Student => ({
   const s4 = student({ id: 's4', status: 'Former' }); // excluded everywhere
   const actives = [s1, s2, s3, s4].filter(s => s.status === 'Active' && !(s as any).isFormer);
   const shared = calculateTotalDues(actives, STRUCT, [] as FinanceTransaction[], AS_OF, FEE_TYPES, FALLBACK);
-  eq('(1) shared totalDue (10000 + 3000 + 0)', shared.totalDue, 13000);
+  eq('(1) shared totalDue (9000 + 2700 + 0)', shared.totalDue, 11700);
   eq('(1) shared currentMonthDue (1000 + 300 + 0)', shared.currentMonthDue, 1300);
   eq('(1) shared agedDue (9000 + 2700 + 0)', shared.agedDue, 11700);
   eq('(1) shared dueStudentsCount', shared.dueStudentsCount, 2);
@@ -117,7 +119,11 @@ const student = (over: Partial<Student> = {}): Student => ({
   check('(2) invented ৳700 fallback is gone', !card.includes('|| 700'), 'no || 700 may remain in the card');
   check('(2) old feeMap is gone', !card.includes('feeMap'), 'the inline struct map must be gone');
   check('(2) card label is the combined total, not current-month only', card.includes('মোট বকেয়া ফি'), 'label must say মোট বকেয়া ফি');
-  check('(2) card shows the current + aged split', card.includes('চলতি মাস') && card.includes('পুরনো'), 'card must show the চলতি + পুরনো split');
+  check('(2) card shows the current month fee separately, labelled not-yet-due',
+    card.includes('চলতি মাসের ফি') && card.includes('এই মাস শেষে বকেয়া হবে'),
+    'card must label the current month fee as not-yet-due');
+  check('(2) card no longer shows the চলতি + পুরনো split as if both were dues',
+    !/চলতি মাস ৳/.test(card), 'the old "চলতি মাস ৳X + পুরনো ৳Y" split must be gone');
   const overview = readSource('components/finance/FinanceOverview.tsx');
   check('(2) FinanceOverview threads feeTypes to the cards', overview.includes('feeTypes={feeTypes}'), 'FinanceOverview must pass feeTypes down');
   check('(2) FinanceOverview threads academicYears to the cards', overview.includes('academicYears={academicYears}'), 'FinanceOverview must pass academicYears down');

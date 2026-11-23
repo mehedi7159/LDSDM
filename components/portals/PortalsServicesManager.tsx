@@ -218,7 +218,8 @@ export const PortalsServicesManager: React.FC<PortalsServicesManagerProps> = ({
   }, [activeStudent, activeExam, marks, subjects]);
 
   // Student financial calculation — the ONE shared dues total
-  // (calculateTotalDues: current month + finished months). The old math
+  // (calculateTotalDues: finished months only — a month's fee becomes
+  // due only after that month ends). The old math
   // invented a yearly bill ((500 fallback for tuition) + boarding) x 10 minus
   // ALL lifetime payments and labelled it "চলতি বকেয়া" — that is the
   // ৳5,000 figure the 21 Nov 2026 audit saw for a student whose shared
