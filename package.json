@@ -37,6 +37,7 @@
     "test:login-drive-scope-on-backup-only": "tsx scripts/verify-login-drive-scope-on-backup-only.ts",
     "test:guardian-pin-login": "tsx scripts/verify-guardian-pin-login.ts",
     "test:topbar-profile-menu": "tsx scripts/verify-topbar-profile-menu.ts",
+    "test:profile-logout-inside": "tsx scripts/verify-profile-logout-inside.ts",
     "test:hero-pattern": "tsx scripts/verify-hero-pattern.ts",
     "test:hero-dashboard-executive": "tsx scripts/verify-hero-dashboard-executive.ts",
     "test:hero-staff-finance": "tsx scripts/verify-hero-staff-finance.ts",

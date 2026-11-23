@@ -12,9 +12,11 @@
  * user's own info — name, role (BIG teal badge, the point of the
  * job), staff code (when the person has a linked teacher record),
  * email, phone. Second click closes it; outside click closes it;
- * Escape closes it; navigating closes it. Info only — no logout,
- * no settings links, no other action. No auth/login change, no data
- * change, no result/marksheet file touched.
+ * Escape closes it; navigating closes it. Info plus one action: the
+ * logout button at the bottom of the panel (moved inside 23 Nov 2026
+ * on Sagor's word — the topbar next to the chip holds no open logout
+ * button any more). No settings links, no other action. No auth/login
+ * change, no data change, no result/marksheet file touched.
  *
  * Reuse (house rule): the role label comes from the existing
  * roleLabelBn() in services/staffRole.ts (the same labels the staff
@@ -199,8 +201,8 @@ check('navigating to another tab closes the menu', () => {
   assert.ok(layout.slice(Math.max(0, tabEffect - 200), tabEffect).includes('setIsProfileMenuOpen(false)'),
     'the activeTab effect must close the profile menu');
 });
-check('panel is info-only: no logout, no navigation, no settings link inside it', () => {
-  assert.ok(!panel.includes('logoutAdmin'), 'panel must not contain a logout action');
+check('panel holds only the logout action (no navigation, no settings link)', () => {
+  assert.ok(panel.includes('logoutAdmin()'), 'panel must hold the logout button');
   assert.ok(!panel.includes('handleTabClick'), 'panel must not navigate anywhere');
   assert.ok(!panel.includes('setActiveTab'), 'panel must not change tabs');
   assert.ok(!panel.includes('settings'), 'panel must not link to settings');
@@ -209,9 +211,10 @@ check('panel reads only the signed-in person (no other-users list)', () => {
   assert.ok(!panel.includes('users.'), 'panel must not read the users list');
   assert.ok(!panel.includes('.map('), 'panel must not render a list of people');
 });
-check('the standalone logout button is untouched (still outside the panel)', () => {
+check('the logout button lives inside the panel (no standalone topbar button)', () => {
   const logoutCount = (layout.match(/logoutAdmin/g) || []).length;
-  assert.strictEqual(logoutCount, 2, `logoutAdmin must appear exactly twice (destructure + logout button), found ${logoutCount}`);
+  assert.strictEqual(logoutCount, 2, `logoutAdmin must appear exactly twice (destructure + panel button), found ${logoutCount}`);
+  assert.ok(panel.includes('logoutAdmin()'), 'the logout call must be inside the panel');
 });
 check('auth/login logic untouched', () => {
   assert.ok(!layout.includes('signInWithEmail'), 'Layout must not touch sign-in logic');
