@@ -111,20 +111,19 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
     : 0;
 
   // 2. Dynamic Calculations: Total Pending Fees — the ONE shared dues
-  //    total (calculateTotalDues, Fix #4): this month's unpaid + every
-  //    finished month's unpaid, same student set / month / feeTypes as
-  //    the dashboard, the finance header KPI and the fee page. The old
-  //    inline math (struct tuition with an invented 700 fallback for a
-  //    missing structure, current month only, any status but
-  //    Inactive/Former) was a fourth dues figure on the fee page: on
-  //    live data it showed ৳193,200 while the header showed ৳177,800.
-  //    Collection rate stays this month's.
+  //    total (calculateTotalDues, Fix #4): finished months' unpaid dues
+  //    ONLY (a month's fee becomes due only after that month ends), same
+  //    student set / month / feeTypes as the dashboard, the finance
+  //    header KPI and the fee page. The old inline math (struct tuition
+  //    with an invented 700 fallback for a missing structure, current
+  //    month only, any status but Inactive/Former) was a fourth dues
+  //    figure on the fee page: on live data it showed ৳193,200 while
+  //    the header showed ৳177,800. Collection rate stays this month's.
   const {
     totalExpectedTuition,
     totalCollectedFeesThisMonth,
     totalPendingFees,
     currentMonthDueFees,
-    agedDueFees,
     activeStudentsCount,
     paidStudentsCount,
     pendingStudentsCount,
@@ -229,8 +228,8 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
             <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 font-medium flex items-center gap-1.5">
               <span>
                 {isBn
-                  ? `চলতি মাস ৳${formatBanglaNumber(currentMonthDueFees)} + পুরনো ৳${formatBanglaNumber(agedDueFees)}`
-                  : `This month ৳${currentMonthDueFees.toLocaleString()} + old ৳${agedDueFees.toLocaleString()}`}
+                  ? `চলতি মাসের ফি ৳${formatBanglaNumber(currentMonthDueFees)} (এই মাস শেষে বকেয়া হবে)`
+                  : `This month's fee ৳${currentMonthDueFees.toLocaleString()} (becomes due when the month ends)`}
               </span>
             </div>
             <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 font-medium flex items-center gap-1.5">

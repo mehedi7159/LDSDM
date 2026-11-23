@@ -902,14 +902,17 @@ export const Dashboard = () => {
     const readyToFinalizeExams = (examEvaluationMatrix || []).filter(m => !m.isFinalized && m.expectedMarks > 0 && m.progress >= 100);
 
     // 3. Fee dues follow-up — the ONE shared dues total (calculateTotalDues):
-    //    this month's unpaid + every finished month's unpaid, same student
-    //    set / month / feeTypes as Finance, the fee page and Reports.
-    //    The follow-up list itself stays current-month (the reminder text
-    //    is about this month's fee). The top-5 card, though, shows the
-    //    SHARED total (topDueEntries on the summary's entries) — it used
-    //    to show the current month only, while the Overview list showed
-    //    finished months only, so the same 5 students showed ৳1,500 in
-    //    one place and ৳15,000 in the other (20 Nov 2026 audit).
+    //    finished months' unpaid dues ONLY (a month's fee becomes due
+    //    only after that month ends — the current month is never inside
+    //    the total), same student set / month / feeTypes as Finance,
+    //    the fee page and Reports. The follow-up list itself stays
+    //    current-month (the reminder text is about this month's fee,
+    //    which the office collects during the month). The top-5 card,
+    //    though, shows the SHARED total (topDueEntries on the
+    //    summary's entries) — it used to show the current month only,
+    //    while the Overview list showed finished months only, so the
+    //    same 5 students showed ৳1,500 in one place and ৳15,000 in
+    //    the other (20 Nov 2026 audit).
     const activeStudents = (students || []).filter(s => s && s.status === 'Active' && !s.isFormer);
     const month = localMonthStr();
     const duesSummary = calculateTotalDues(activeStudents, feeStructures, transactions, month, feeTypes, academicYearFallbackStartMonth(academicYears, month));
