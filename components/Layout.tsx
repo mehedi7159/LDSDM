@@ -157,7 +157,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
   // Topbar profile menu: the identity chip is a button that toggles a
   // small panel with the signed-in user's own info (name, role, staff
-  // code, email, phone) — info only, no actions.
+  // code, email, phone) plus the logout button at the bottom (moved
+  // inside 23 Nov 2026 — no open logout button sits in the topbar).
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -889,20 +890,23 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                           <span className="font-bold text-slate-900 dark:text-white">{profilePhone || '—'}</span>
                         </div>
                       </div>
+                      {/* Logout lives inside the panel (23 Nov 2026) — the
+                          topbar next to the chip holds no open logout button. */}
+                      <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => logoutAdmin()}
+                          className="w-full py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-rose-500"
+                        >
+                          <LogOut size={15} />
+                          <span>{language === 'bn' ? 'লগ আউট' : 'Logout'}</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                   {/* topbar-profile-menu: end */}
                 </div>
               )}
-
-              <button
-                type="button"
-                onClick={() => logoutAdmin()}
-                title={language === 'bn' ? 'লগআউট' : 'Logout'}
-                className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 flex items-center justify-center transition-colors cursor-pointer active:scale-95 shrink-0"
-              >
-                <LogOut size={15} />
-              </button>
             </div>
           </div>
         </header>
