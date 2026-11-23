@@ -5073,7 +5073,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         )}
 
         {/* TEACHER: today's attendance progress */}
-        {userRole === 'teacher' && (
+        {mobileVisibleSections.includes('attendance') && userRole === 'teacher' && (
           <section className={`${cardCls} p-5 space-y-3`}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">
@@ -5232,7 +5232,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         )}
 
         {/* CASHIER: today's income vs expense */}
-        {userRole === 'cashier' && (
+        {mobileVisibleSections.includes('incomeExpense') && userRole === 'cashier' && (
           <section className={`${cardCls} p-5 space-y-4`}>
             <h3 className="text-sm font-black flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
@@ -5270,7 +5270,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         )}
 
         {/* CASHIER: recent collections */}
-        {userRole === 'cashier' && (
+        {mobileVisibleSections.includes('feeCollection') && userRole === 'cashier' && (
           <section className={`${cardCls} p-5 space-y-3`}>
             <h3 className="text-sm font-black">{isEn ? 'Recent Collections' : 'সাম্প্রতিক আদায়'}</h3>
             {cashierFigures.recent.length === 0 ? (
@@ -5295,7 +5295,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         )}
 
         {/* CASHIER: top dues with one-tap tagada */}
-        {userRole === 'cashier' && topDueProfiles.length > 0 && (
+        {mobileVisibleSections.includes('finance') && userRole === 'cashier' && topDueProfiles.length > 0 && (
           <section className={`${cardCls} p-5 space-y-3`}>
             <h3 className="text-sm font-black flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 flex items-center justify-center">
@@ -5467,7 +5467,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
         {/* CASHIER: fee collection trend — last 6 months, real INCOME
             rows by receipt date, plus this month's expected vs paid. */}
-        {userRole === 'cashier' && (
+        {mobileVisibleSections.includes('feeCollection') && userRole === 'cashier' && (
           <section className={`${cardCls} p-5 space-y-3`}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">
@@ -5507,7 +5507,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         )}
 
         {/* CASHIER: Due report with aging buckets (Tutor pattern). */}
-        {userRole === 'cashier' && (
+        {mobileVisibleSections.includes('feeCollection') && userRole === 'cashier' && (
           <section className={`${cardCls} p-5 space-y-3`}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">

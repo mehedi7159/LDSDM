@@ -138,7 +138,7 @@ check('(10) move up in settings -> Dashboard order changes',
   < model.resolveVisibleSections(def, 'admin', 'desktop').indexOf('finance'));
 check('(10) reset restores the default order',
   JSON.stringify(model.resetLayout().order) === JSON.stringify(def.order)
-  && model.resetLayout().hidden.length === 0);
+  && JSON.stringify([...model.resetLayout().hidden].sort()) === JSON.stringify([...def.hidden].sort()));
 check('(10) a second user layout is independent',
   (() => {
     store.clear();
