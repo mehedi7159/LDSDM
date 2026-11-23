@@ -12,7 +12,7 @@
 // mobile home) re-reads the layout at once. There is no save button
 // here. The status line says honestly whether the layout reached the
 // cloud or stayed on this device only.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Banknote,
@@ -42,6 +42,7 @@ import {
   loadDashboardLayoutLocal,
   moveSection,
   resetLayout,
+  retryDashboardLayoutCloudSave,
   saveDashboardLayout,
   toggleSectionHidden,
   type DashboardLayout,
@@ -73,13 +74,40 @@ export const DashboardArrangePanel: React.FC = () => {
     loadDashboardLayoutLocal(userId) ?? defaultLayout()
   );
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'cloud' | 'local'>('idle');
+  // Fresh status for the background listeners without re-subscribing.
+  const saveStatusRef = useRef(saveStatus);
+  saveStatusRef.current = saveStatus;
 
   useEffect(() => {
     let cancelled = false;
-    loadDashboardLayout(userId).then(({ layout: cloudLayout }) => {
-      if (!cancelled) setLayout(cloudLayout);
+    loadDashboardLayout(userId).then(({ layout: cloudLayout, source }) => {
+      if (cancelled) return;
+      setLayout(cloudLayout);
+      if (source !== 'cloud') {
+        // Cloud has no layout for this user (or the read failed) but
+        // this device kept one: push it now. Before this, a single
+        // failed save stayed local forever — the next manual change
+        // was the only retry, so "পরে আবার চেষ্টা হবে" never happened.
+        void retryDashboardLayoutCloudSave(userId).then(where => {
+          if (!cancelled && where !== 'none') setSaveStatus(where);
+        });
+      }
     });
-    return () => { cancelled = true; };
+    const onRetry = () => {
+      if (saveStatusRef.current === 'local') {
+        void retryDashboardLayoutCloudSave(userId).then(where => {
+          if (!cancelled && where !== 'none') setSaveStatus(where);
+        });
+      }
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') onRetry(); };
+    window.addEventListener('online', onRetry);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('online', onRetry);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [userId]);
 
   const apply = (next: DashboardLayout) => {

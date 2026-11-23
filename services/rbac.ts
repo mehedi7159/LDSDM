@@ -357,7 +357,7 @@ export async function getInstitutionMember(
 
   try {
     const memberDocRef = doc(db, 'institutions', institutionId, 'members', uid);
-    const snap = await withTimeout(getDoc(memberDocRef), 2000, null as any);
+    const snap = await withTimeout(getDoc(memberDocRef), 10000, null as any);
     if (snap && snap.exists && snap.exists()) {
       return snap.data() as InstitutionMember;
     }
@@ -414,11 +414,14 @@ export async function setInstitutionMember(
 /**
  * Fetch all members of an institution
  *
- * The Firestore read has a quick timeout and the function never throws:
- * on timeout/error it returns the local-store merge. Callers that must
- * tell the user "update failed" apart from "no pending applicants" read
- * getLastMembersSyncStatus() right after awaiting this — it reports
- * whether the Firestore leg of the most recent call actually landed.
+ * The Firestore read has a 10 s timeout (was 2 s — on a slow/cold
+ * connection the first read tripped it and the approval list showed a
+ * false "আপডেট হয়নি" banner even when the cloud was fine) and the
+ * function never throws: on timeout/error it returns the local-store
+ * merge. Callers that must tell the user "update failed" apart from
+ * "no pending applicants" read getLastMembersSyncStatus() right after
+ * awaiting this — it reports whether the Firestore leg of the most
+ * recent call actually landed.
  */
 let lastMembersCloudOk = true;
 export function getLastMembersSyncStatus(): { cloudOk: boolean } {
@@ -444,7 +447,7 @@ export async function getAllInstitutionMembers(institutionId: string): Promise<I
   // 2. Read from Firestore with quick timeout
   try {
     const membersCol = collection(db, 'institutions', institutionId, 'members');
-    const snap = await withTimeout(getDocs(membersCol), 2000, null as any);
+    const snap = await withTimeout(getDocs(membersCol), 10000, null as any);
     if (snap && snap.docs) {
       snap.docs.forEach((d: any) => {
         const data = d.data() as InstitutionMember;
