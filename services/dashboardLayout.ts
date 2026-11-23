@@ -282,3 +282,17 @@ export async function saveDashboardLayout(
     return 'local';
   }
 }
+
+/** Push a locally-kept layout to cloud (call on mount / online /
+ *  foreground). Before this, a single failed save stayed local
+ *  forever — the only retry was the next manual change, so the
+ *  panel's "পরে আবার চেষ্টা হবে" never happened. Returns 'cloud'
+ *  when it landed, 'local' when it is still only on this device,
+ *  'none' when there is no local layout to push. */
+export async function retryDashboardLayoutCloudSave(
+  userId: string
+): Promise<'cloud' | 'local' | 'none'> {
+  const local = loadDashboardLayoutLocal(userId);
+  if (!local) return 'none';
+  return saveDashboardLayout(userId, local);
+}

@@ -93,7 +93,8 @@
     "test:hero-attendance-academic": "tsx scripts/verify-hero-attendance-academic.ts",
     "test:dashboard-new-sections": "tsx scripts/verify-dashboard-new-sections.ts",
     "test:dashboard-layout": "tsx scripts/verify-dashboard-layout.ts",
-    "test:dashboard-arrange": "tsx scripts/verify-dashboard-arrange.ts"
+    "test:dashboard-arrange": "tsx scripts/verify-dashboard-arrange.ts",
+    "test:cloud-sync-root-cause": "tsx scripts/verify-cloud-sync-root-cause.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
