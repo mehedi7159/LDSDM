@@ -328,6 +328,33 @@ export function removePendingPayloadRecords(field: string, keys: string[]): void
   writePendingPayloads(next);
 }
 
+/**
+ * Drop queued DELETE payloads covering these ids for one field.
+ * Used when a delete is undone locally (its cloud confirm failed and
+ * the record was restored): without this, the next snapshot's
+ * preserveQueuedPayloads would hide the restored record again, and
+ * the queue retry would delete a record the user was told is back.
+ * Other payloads (upserts, other fields, other ids) are untouched.
+ */
+export function removePendingDeletePayload(field: string, ids: string[]): void {
+  const idSet = new Set(ids);
+  const items = readPendingPayloads();
+  const next: PendingPayloadItem[] = [];
+  for (const item of items) {
+    if (item.op === 'delete' && item.removals) {
+      const remainingRemovals = item.removals
+        .map((r) => (r.field === field ? { ...r, ids: r.ids.filter((id) => !idSet.has(id)) } : r))
+        .filter((r) => r.ids.length > 0);
+      if (remainingRemovals.length > 0) {
+        next.push({ ...item, removals: remainingRemovals });
+      }
+      continue;
+    }
+    next.push(item);
+  }
+  writePendingPayloads(next);
+}
+
 /** All keys the queue currently covers for one field (badging + diff-skip). */
 export function queuedKeysForField(field: string, items?: PendingPayloadItem[]): Set<string> {
   const list = items || readPendingPayloads();

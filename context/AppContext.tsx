@@ -192,6 +192,7 @@ import {
   clearPendingPayload,
   clearPendingPayloadsForField,
   removePendingPayloadRecords,
+  removePendingDeletePayload,
   queuedKeysForField,
   mergeQueuedIntoList,
   hasQueuedUpsertForField,
@@ -357,7 +358,7 @@ interface AppContextType extends AppState {
   addStudent: (student: Omit<Student, 'id'>) => { student: Student | null; students: Student[]; error?: string };
   updateStudent: (student: Student) => { student: Student; students: Student[]; error?: string };
   bulkUpdateStudents: (nextStudents: Student[]) => Student[];
-  deleteStudent: (id: string) => { students: Student[]; trashBin: TrashItem[] } | null;
+  deleteStudent: (id: string) => Promise<{ success: boolean; message?: string; students?: Student[]; trashBin?: TrashItem[] }>;
   addSubject: (subject: Omit<Subject, 'id'>) => { subject: Subject | null; subjects: Subject[]; error?: string };
   updateSubject: (subject: Subject) => { subject: Subject; subjects: Subject[]; error?: string };
   archiveSubject: (id: string) => void;
@@ -453,6 +454,8 @@ interface AppContextType extends AppState {
   pendingPayloads: PendingPayloadItem[];
   pendingSyncCount: number;
   isRecordUnconfirmed: (field: string, key: string) => boolean;
+  removePendingPayloadRecords: (field: string, keys: string[]) => void;
+  refreshPendingPayloads: () => void;
   discardPendingPayload: (id: string) => void;
   addNotice: (notice: Omit<NoticeItem, 'id' | 'createdAt'>) => NoticeItem;
   updateNotice: (notice: NoticeItem) => NoticeItem;
@@ -3055,7 +3058,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // resurrecting deleted records (e.g. Arafat MDR-T002). Job 13: the
     // same set also hides a record whose collection deleteDoc failed
     // (plan point 2 — the doc stays, the filter hides it).
-    const trashedIds = collectTrashedIds(data.trashBin, trashBin);
+    // trashBinRef, not the render-time trashBin: the listener effect has
+    // [] deps, so its closure holds the FIRST render's bin forever and
+    // a trash entry created by a later delete is invisible to the
+    // filter — the next snapshot resurrects the record (24 Nov audit).
+    const trashedIds = collectTrashedIds(data.trashBin, trashBinRef.current);
 
     if (data.schoolProfile && !hasQueuedUpsertForField('schoolProfile')) {
       // Job 14: main_store profile applies only while the settings
@@ -6202,14 +6209,39 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     return nextStudents;
   };
 
-  const deleteStudent = (id: string) => {
+  // Truthful delete (24 Nov 2026, deleteTeacher template): the cloud
+  // delete is confirmed BEFORE success is reported. Previously this
+  // removed the student locally and returned at once while the real
+  // write lived in the dialog's confirm — on failure the record stayed
+  // deleted on screen and came back on the next snapshot. On failure
+  // the record is restored visibly and its queued delete payload is
+  // dropped, so the next snapshot cannot hide it again.
+  const deleteStudent = async (id: string): Promise<{ success: boolean; message?: string; students?: Student[]; trashBin?: TrashItem[] }> => {
     const st = students.find(s => s.id === id);
-    if (!st) return null;
-    const trashEntry: TrashItem = { id: generateId(), type: 'student', data: st, deletedAt: new Date().toLocaleString() };
-    const nextTrashBin = [trashEntry, ...trashBin];
+    if (!st) return { success: false, message: 'শিক্ষার্থীটি তালিকায় পাওয়া যায়নি।' };
+    // Dedupe: reuse an existing trash entry for this student instead of
+    // minting a duplicate on every re-delete (deleteTeacher pattern).
+    const existingEntry = trashBin.find(t => t.type === 'student' && t.data?.id === id);
+    const trashEntry: TrashItem = existingEntry ?? { id: generateId(), type: 'student', data: st, deletedAt: new Date().toLocaleString() };
+    const nextTrashBin = existingEntry ? trashBin : [trashEntry, ...trashBin];
     const nextStudents = students.filter(s => s.id !== id);
     setTrashBin(nextTrashBin);
     setStudents(nextStudents);
+    const result = await confirmStudentDeleteCloudSync(nextStudents, nextTrashBin);
+    if (!result.success) {
+      // Restore the record visibly — never a vanishing-then-returning
+      // record. Functional updates: a snapshot may have re-added the
+      // student meanwhile, so never duplicate it.
+      setStudents(prev => (prev.some(s => s.id === id) ? prev : [...prev, st]));
+      if (!existingEntry) {
+        setTrashBin(prev => prev.filter(t => t.id !== trashEntry.id));
+      }
+      removePendingDeletePayload('students', [id]);
+      clearPendingConfirm('studentDelete');
+      refreshPendingPayloads();
+      setCloudStatus('error');
+      return { success: false, message: result.message || STUDENT_DELETE_CLOUD_FAILURE_MESSAGE };
+    }
     if (authUser) {
       recordStudentAuditEvent({
         action: 'STUDENT_ARCHIVED',
@@ -6217,7 +6249,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         actor: { uid: authUser.uid, email: authUser.email || '', role: authRole || 'admin' }
       });
     }
-    return { students: nextStudents, trashBin: nextTrashBin };
+    setCloudStatus('connected');
+    setCloudLastSynced(new Date().toLocaleTimeString());
+    return { success: true, students: nextStudents, trashBin: nextTrashBin };
   };
 
   const bulkPromoteStudents = async (
@@ -8642,6 +8676,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       pendingPayloads,
       pendingSyncCount,
       isRecordUnconfirmed,
+      removePendingPayloadRecords,
+      refreshPendingPayloads,
       discardPendingPayload,
       updateTransaction,
       deleteTransaction,
