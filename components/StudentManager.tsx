@@ -102,9 +102,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     students, 
     addStudent, 
     updateStudent, 
+    bulkUpdateStudents,
     deleteStudent, 
     confirmStudentsCloudSync,
-    confirmStudentDeleteCloudSync,
+    removePendingPayloadRecords,
+    refreshPendingPayloads,
     isRecordUnconfirmed,
     classes, 
     feeStructures,
@@ -202,9 +204,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   // confirm re-queues, so the badge outlives this window until it lands).
   const [recentStudentSaveIds, setRecentStudentSaveIds] = useState<string[]>([]);
   const isStudentRowBadged = (id: string) => isRecordUnconfirmed('students', id) || recentStudentSaveIds.includes(id);
-  const [pendingStudentDelete, setPendingStudentDelete] = useState<{ students: Student[]; trashBin: TrashItem[] } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isStudentDeleting, setIsStudentDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Modals for moving to former, restoring, and deleting
   const [studentToMoveFormer, setStudentToMoveFormer] = useState<Student | null>(null);
@@ -356,7 +358,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   // 'cloud-এ যায়নি' badge, and the list banner offers Retry. Modal
   // closing means 'saved on this device, syncing' — never a false
   // 'saved to cloud'.
-  const handleSave = (stayInModal: boolean = false) => {
+  const handleSave = async (stayInModal: boolean = false) => {
     setError(null);
     setSuccess(false);
     setPendingStudentSave(null);
@@ -405,6 +407,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       feeFundSource: feeArrangement.fundSource || undefined,
       feePayableAmount: feeArrangement.payableAmount,
     };
+
+    // The list before this save — a failed edit reverts to it, so the
+    // old (cloud-confirmed) value stays visible instead of a false
+    // "saved" that reverts on reload.
+    const prevStudents = students;
 
     // Local mutation first — the list updates and the modal closes at
     // once. The cloud confirm below never blocks this path.
@@ -471,9 +478,54 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       }
     }
 
-    // Honest local feedback: saved on this device, cloud sync running
-    // in the background. The list banner below shows this briefly; the
-    // per-record badge is the real cloud state.
+    if (editingId) {
+      // Truthful edit save (24 Nov 2026, teacher-edit pattern): the
+      // cloud write is confirmed BEFORE any success is shown. On
+      // failure the local edit is reverted (old value stays visible),
+      // its queued upsert is dropped so the revert sticks, and the
+      // modal stays open with the error + retry — the edited values
+      // stay in the form, so nothing is lost.
+      setIsSaving(true);
+      try {
+        const confirmResult = await confirmStudentsCloudSync(nextStudents);
+        if (confirmResult.success) {
+          setSuccess(true);
+          setTimeout(() => setSuccess(false), 2000);
+          if (stayInModal) {
+            const currentClass = formData.classLevel;
+            resetForm(currentClass);
+            setTimeout(() => nameInputRef.current?.focus(), 0);
+          } else {
+            setIsModalOpen(false);
+            resetForm();
+          }
+        } else {
+          bulkUpdateStudents(prevStudents);
+          removePendingPayloadRecords('students', [savedStudentId]);
+          refreshPendingPayloads();
+          setPendingStudentSave(nextStudents);
+          setPendingStudentId(savedStudentId);
+          setPendingSaveError(confirmErrorMessage(confirmResult));
+          setError(confirmErrorMessage(confirmResult));
+        }
+      } catch (err) {
+        console.error('Student edit cloud confirm failed:', err);
+        bulkUpdateStudents(prevStudents);
+        removePendingPayloadRecords('students', [savedStudentId]);
+        refreshPendingPayloads();
+        setPendingStudentSave(nextStudents);
+        setPendingStudentId(savedStudentId);
+        setPendingSaveError(STUDENTS_CLOUD_FAILURE_MESSAGE);
+        setError(STUDENTS_CLOUD_FAILURE_MESSAGE);
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // Add path — unchanged: honest local feedback (saved on this
+    // device, cloud sync running in the background); the per-record
+    // badge is the real cloud state.
     setSuccess(true);
     setTimeout(() => setSuccess(false), 2000);
 
@@ -515,6 +567,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     try {
       const result = await confirmStudentsCloudSync(pendingStudentSave);
       if (result.success) {
+        // The failed edit was reverted locally — re-apply the pending
+        // list now that the cloud has it.
+        bulkUpdateStudents(pendingStudentSave);
         setPendingStudentSave(null);
         setPendingStudentId(null);
         setPendingSaveError(null);
@@ -528,7 +583,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSave(false);
+    void handleSave(false);
   };
 
   const handleEdit = (student: Student) => {
@@ -2346,12 +2401,13 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <Button 
                     type="button" 
                     variant="secondary" 
+                    disabled={isSaving}
                     onClick={() => handleSave(true)}
                   >
                     {t('saveAndAddAnother' as any) || 'Save & Add Another'}
                   </Button>
                 )}
-                <Button type="submit">{t('save')}</Button>
+                <Button type="submit" disabled={isSaving}>{t('save')}</Button>
               </div>
             </form>
           </div>
@@ -2361,25 +2417,17 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!studentToDelete}
-        onClose={() => { setStudentToDelete(null); setDeleteError(null); setPendingStudentDelete(null); }}
+        onClose={() => { setStudentToDelete(null); setDeleteError(null); }}
         onConfirm={async () => {
           if (!studentToDelete) return;
-          // Truthful delete (Step 2): the local delete runs once, then
-          // the awaited cloud confirmation decides. On failure the
-          // dialog stays open showing the honest error, and the confirm
-          // button becomes a retry for the already-local delete.
+          // Truthful delete (24 Nov 2026): deleteStudent confirms the
+          // cloud delete before reporting success. On failure the record
+          // is restored visibly and the dialog stays open with the
+          // honest error — its confirm button retries the delete.
           setIsStudentDeleting(true);
           try {
-            const pending = pendingStudentDelete ?? (() => {
-              const res = deleteStudent(studentToDelete.id);
-              if (!res) { setStudentToDelete(null); return null; }
-              setPendingStudentDelete(res);
-              return res;
-            })();
-            if (!pending) return;
-            const result = await confirmStudentDeleteCloudSync(pending.students, pending.trashBin);
+            const result = await deleteStudent(studentToDelete.id);
             if (result.success) {
-              setPendingStudentDelete(null);
               setDeleteError(null);
               setStudentToDelete(null);
             } else {

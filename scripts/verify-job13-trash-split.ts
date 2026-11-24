@@ -410,7 +410,10 @@ console.log('--- Trash filter covers the already-split fields ---');
 check('applyRemoteData builds the trashed-ids set with the shared helper', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('collectTrashedIds'), 'AppContext must use collectTrashedIds');
-  assert.ok(src.includes('collectTrashedIds(data.trashBin, trashBin)'), 'the set must cover the remote list and local state');
+  // 24 Nov 2026 (student delete cloud-confirm fix): the local bin is
+  // read from trashBinRef.current, not the stale trashBin closure —
+  // the set still covers the remote list AND local state, fresher.
+  assert.ok(src.includes('collectTrashedIds(data.trashBin, trashBinRef.current)'), 'the set must cover the remote list and local state');
 });
 
 check('notices are hidden when their record is trashed (failed deleteDoc path)', () => {

@@ -659,7 +659,18 @@ export function deriveStudentDeleteOp(
         'Refusing instead of guessing which students to remove.'
     );
   }
-  return { deletedIds, trashEntries: (trashBin || []).filter((t) => t && t.id) as { id: string }[] };
+  // Carry ONLY the deleted students' entries — the writer merges them
+  // into the cloud bin by id, so older entries already there stay.
+  // Carrying the whole bin made every student delete re-write every
+  // trash entry (one sequential setDoc each) inside the 40 s confirm
+  // timeout; the teacher path carries only its new entries.
+  const deletedSet = new Set(deletedIds);
+  return {
+    deletedIds,
+    trashEntries: (trashBin || []).filter(
+      (t) => t && t.id && t.type === 'student' && t.data?.id && deletedSet.has(String(t.data.id))
+    ) as { id: string }[],
+  };
 }
 
 /**
