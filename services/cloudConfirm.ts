@@ -647,9 +647,14 @@ export function deriveStudentDeleteOp(
   trashBin: { id: string; type?: string; data?: any }[]
 ): { deletedIds: string[]; trashEntries: { id: string }[] } {
   const studentIds = new Set((students || []).map((s) => s.id));
+  // Reload-race fix (25 Nov 2026): the bin can hold two entries for
+  // one student (minted before the PR #72 delete dedupe). Carry one
+  // id and one entry per student — the writer merges trash entries
+  // by entry id, so carrying both would re-add the duplicate to the
+  // cloud bin on every delete write.
   const deletedIds: string[] = [];
   (trashBin || []).forEach((t) => {
-    if (t && t.type === 'student' && t.data && t.data.id && !studentIds.has(t.data.id)) {
+    if (t && t.type === 'student' && t.data && t.data.id && !studentIds.has(t.data.id) && !deletedIds.includes(String(t.data.id))) {
       deletedIds.push(String(t.data.id));
     }
   });
@@ -665,11 +670,16 @@ export function deriveStudentDeleteOp(
   // trash entry (one sequential setDoc each) inside the 40 s confirm
   // timeout; the teacher path carries only its new entries.
   const deletedSet = new Set(deletedIds);
+  const seenTrashFor = new Set<string>();
   return {
     deletedIds,
-    trashEntries: (trashBin || []).filter(
-      (t) => t && t.id && t.type === 'student' && t.data?.id && deletedSet.has(String(t.data.id))
-    ) as { id: string }[],
+    trashEntries: (trashBin || []).filter((t) => {
+      if (!t || !t.id || t.type !== 'student' || !t.data?.id || !deletedSet.has(String(t.data.id))) return false;
+      const k = String(t.data.id);
+      if (seenTrashFor.has(k)) return false;
+      seenTrashFor.add(k);
+      return true;
+    }) as { id: string }[],
   };
 }
 
