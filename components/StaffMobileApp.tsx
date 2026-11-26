@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
+import { useTheme, ACCENT_THEMES, CURATED_ACCENTS } from '../context/ThemeContext';
 import { calculateSubjectGrade, calcPassRate } from '../services/gradingEngine';
 import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
 import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
@@ -270,7 +270,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     setActiveTab,
   } = useApp();
 
-  const { accentTheme, setAccentTheme, darkMode, setDarkMode, toggleDarkMode } = useTheme();
+  const { accentTheme, setAccentTheme, darkMode, setDarkMode } = useTheme();
   const isEn = language === 'en';
 
   // 1. Determine the mobile home for this person.
@@ -423,6 +423,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // Tutor-style accent + mode picker in the shell top bar (all roles).
   // Popup stays open on selection (like Tutor) — only an outside tap closes it.
   const [showThemePicker, setShowThemePicker] = useState(false);
+  // S7: pickers show 5 curated accents first; the rest behind "আরও".
+  const [showAllAccents, setShowAllAccents] = useState(false);
+  const visibleAccents = showAllAccents
+    ? ACCENT_THEMES
+    : ACCENT_THEMES.filter(t => CURATED_ACCENTS.includes(t.id));
   const themePickerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onOutsideTap = (e: MouseEvent) => {
@@ -1121,16 +1126,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const roleStats = useMemo(() => {
     if (userRole === 'teacher') {
       return {
-        stat1Value: toBn(teacherClasses.length) + 'টি', stat1Label: 'আমার ক্লাস', stat1Icon: GraduationCap, stat1Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
-        stat2Value: toBn(classStudents.length) + ' জন', stat2Label: 'শ্রেণির শিক্ষার্থী', stat2Icon: Users, stat2Cls: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300',
-        stat3Value: '৳' + toBn(classDuesSummary.totalDue.toLocaleString()), stat3Label: 'শ্রেণির বকেয়া', stat3Icon: Wallet, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
+        stat1Value: toBn(teacherClasses.length) + 'টি', stat1Label: 'আমার ক্লাস',
+        stat2Value: toBn(classStudents.length) + ' জন', stat2Label: 'শ্রেণির শিক্ষার্থী',
+        stat3Value: '৳' + toBn(classDuesSummary.totalDue.toLocaleString()), stat3Label: 'শ্রেণির বকেয়া',
         nextTaskTime: 'আজকের কাজ',
       };
     } else if (userRole === 'cashier') {
       return {
-        stat1Value: '৳' + toBn(cashierFigures.todayIncome.toLocaleString()), stat1Label: 'আজকের আদায়', stat1Icon: Wallet, stat1Cls: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300',
-        stat2Value: toBn(cashierFigures.todayReceipts) + 'টি', stat2Label: 'আজকের রসিদ', stat2Icon: Receipt, stat2Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
-        stat3Value: '৳' + toBn(allDuesSummary.totalDue.toLocaleString()), stat3Label: 'মোট বকেয়া', stat3Icon: TrendingUp, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
+        stat1Value: '৳' + toBn(cashierFigures.todayIncome.toLocaleString()), stat1Label: 'আজকের আদায়',
+        stat2Value: toBn(cashierFigures.todayReceipts) + 'টি', stat2Label: 'আজকের রসিদ',
+        stat3Value: '৳' + toBn(allDuesSummary.totalDue.toLocaleString()), stat3Label: 'মোট বকেয়া',
         nextTaskTime: 'ক্যাশিয়ার ডেস্ক',
       };
     } else if (userRole === 'parent') {
@@ -1140,16 +1145,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       // whole institution's dues total.)
       const hasChildren = !!guardianChildren && guardianChildren.length > 0;
       return {
-        stat1Value: !hasChildren ? '—' : (guardianAttendance.recorded > 0 ? `${toBn(guardianAttendance.rate)}%` : 'রেকর্ড নেই'), stat1Label: 'সন্তানের হাজিরা', stat1Icon: CheckSquare, stat1Cls: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300',
-        stat2Value: exams.length > 0 ? (exams[0].name || 'পরীক্ষা') : 'সাময়িক', stat2Label: 'চলমান পরীক্ষা', stat2Icon: Award, stat2Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
-        stat3Value: '৳' + toBn(guardianDuesTotal.toLocaleString()), stat3Label: 'বকেয়া ফি', stat3Icon: Wallet, stat3Cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300',
+        stat1Value: !hasChildren ? '—' : (guardianAttendance.recorded > 0 ? `${toBn(guardianAttendance.rate)}%` : 'রেকর্ড নেই'), stat1Label: 'সন্তানের হাজিরা',
+        stat2Value: exams.length > 0 ? (exams[0].name || 'পরীক্ষা') : 'সাময়িক', stat2Label: 'চলমান পরীক্ষা',
+        stat3Value: '৳' + toBn(guardianDuesTotal.toLocaleString()), stat3Label: 'বকেয়া ফি',
         nextTaskTime: 'অভিভাবক ডায়েরি',
       };
     }
     return {
-      stat1Value: toBn(students.filter(s => s.status === 'Active').length) + ' জন', stat1Label: 'মোট শিক্ষার্থী', stat1Icon: Users, stat1Cls: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300',
-      stat2Value: toBn(classes.length) + 'টি', stat2Label: 'মোট শ্রেণি', stat2Icon: GraduationCap, stat2Cls: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300',
-      stat3Value: toBn(notices.length) + 'টি', stat3Label: 'সক্রিয় নোটিশ', stat3Icon: Bell, stat3Cls: 'bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-300',
+      stat1Value: toBn(students.filter(s => s.status === 'Active').length) + ' জন', stat1Label: 'মোট শিক্ষার্থী',
+      stat2Value: toBn(classes.length) + 'টি', stat2Label: 'মোট শ্রেণি',
+      stat3Value: toBn(notices.length) + 'টি', stat3Label: 'সক্রিয় নোটিশ',
       nextTaskTime: 'অফিস প্রশাসন',
     };
   }, [userRole, teacherClasses, classStudents, classDuesSummary, allDuesSummary, cashierFigures, students, exams, notices, selectedClass, attendanceStats, guardianChildren, guardianAttendance, guardianDuesTotal]);
@@ -1850,9 +1855,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     const activeCount = students.filter(s => s.status === 'Active' && !s.isFormer).length;
     const totalDue = allDuesSummary.totalDue;
     return [
-      { value: toBn(activeCount) + ' জন', label: 'মোট শিক্ষার্থী', Icon: Users, cls: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
-      { value: '৳' + toBn(cashierFigures.todayIncome.toLocaleString()), label: 'আজকের আদায়', Icon: Wallet, cls: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-      { value: '৳' + toBn(totalDue.toLocaleString()), label: 'মোট বকেয়া', Icon: TrendingUp, cls: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' }
+      { value: toBn(activeCount) + ' জন', label: 'মোট শিক্ষার্থী' },
+      { value: '৳' + toBn(cashierFigures.todayIncome.toLocaleString()), label: 'আজকের আদায়' },
+      { value: '৳' + toBn(totalDue.toLocaleString()), label: 'মোট বকেয়া' }
     ];
   }, [students, allDuesSummary, cashierFigures]);
 
@@ -2309,7 +2314,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // -------------------------------------------------------------
   const brandCss = (
     <style>{`
-      .brand-grad { background-color: var(--color-brand) !important; }
+      .brand-flat { background-color: var(--color-brand) !important; }
       .brand-soft { background-color: var(--color-brand-light) !important; color: var(--color-brand) !important; }
       .brand-text { color: var(--color-brand) !important; }
       .brand-bg { background-color: var(--color-brand) !important; }
@@ -2429,7 +2434,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               >
                 <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   isActive
-                    ? 'brand-grad text-white'
+                    ? 'brand-flat text-white'
                     : 'bg-white dark:bg-[#161c2e] brand-text border border-[#e8ecf4] dark:border-white/10'
                 }`}>
                   <ItemIcon size={19} />
@@ -2475,7 +2480,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           onClick={() => setSelectedClass(clsName)}
           className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
             selectedClass === clsName
-              ? 'brand-grad text-white'
+              ? 'brand-flat text-white'
               : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
           }`}
         >
@@ -2506,7 +2511,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </span>
             <span className="text-[10px] text-[#8a93a8]">{schoolProfile.nameBn || schoolProfile.name}</span>
           </div>
-          <div className="w-9 h-9 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm">
+          <div className="w-9 h-9 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm">
             {initialLetter}
           </div>
         </header>
@@ -2750,7 +2755,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           <button
                             onClick={handleSaveAttendance}
                             disabled={attendanceSaving}
-                            className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                            className="w-full py-3.5 px-4 rounded-[20px] brand-flat text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                           >
                             <Save size={17} />
                             <span>{attendanceSaving ? (isEn ? 'Saving…' : 'সংরক্ষণ হচ্ছে…') : (isEn ? 'Save attendance' : 'হাজিরা সংরক্ষণ করুন')}</span>
@@ -2769,7 +2774,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         type="button"
                         onClick={() => window.print()}
                         disabled={classStudents.length === 0}
-                        className="flex-1 h-11 px-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 text-white whitespace-nowrap disabled:opacity-50 brand-grad cursor-pointer"
+                        className="flex-1 h-11 px-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 text-white whitespace-nowrap disabled:opacity-50 brand-flat cursor-pointer"
                       >
                         <Printer size={16} /> {isEn ? 'Print' : 'প্রিন্ট'}
                       </button>
@@ -3221,7 +3226,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <select
                     value={duesViewMonth}
                     onChange={e => setDuesViewMonth(e.target.value)}
-                    className="flex-1 py-3 px-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-violet-400 cursor-pointer"
+                    className="flex-1 py-3 px-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
                   >
                     {feeMonthOptions.map(m => (
                       <option key={m} value={m}>{bnMonthLabel(m)}{m === currentMonthStr ? ' (চলতি)' : ''}</option>
@@ -3247,7 +3252,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     value={duesSearchQuery}
                     onChange={e => setDuesSearchQuery(e.target.value)}
                     placeholder="রোল, নাম বা মোবাইল দিয়ে খুঁজুন..."
-                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                   />
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -3261,7 +3266,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       onClick={() => setDuesFilterMode(mode)}
                       className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                         duesFilterMode === mode
-                          ? 'brand-grad text-white'
+                          ? 'brand-flat text-white'
                           : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
                       }`}
                     >
@@ -3297,7 +3302,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div>
@@ -3427,7 +3432,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <select
                       value={selectedExamId}
                       onChange={e => setSelectedExamId(e.target.value)}
-                      className={`w-full ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-400 dark:[color-scheme:dark]`}
+                      className={`w-full ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] dark:[color-scheme:dark]`}
                     >
                       {exams.map(e => (
                         <option key={e.id} value={e.id}>{e.name}</option>
@@ -3439,7 +3444,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <select
                       value={selectedSubjectId}
                       onChange={e => setSelectedSubjectId(e.target.value)}
-                      className={`w-full ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-400 dark:[color-scheme:dark]`}
+                      className={`w-full ${softBg} border border-[#e8ecf4] dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] dark:[color-scheme:dark]`}
                     >
                       {classSubjects.map(s => (
                         <option key={s.id} value={s.id}>{s.nameBn || s.name}</option>
@@ -3465,7 +3470,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   return (
                     <div key={st.id} className={`${cardCls} p-3.5 flex items-center justify-between gap-3`}>
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                        <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                           {(st.nameBn || st.name || 'শ').charAt(0)}
                         </span>
                         <div className="overflow-hidden">
@@ -3485,7 +3490,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           value={currentVal}
                           onChange={e => setMarksInputMap(prev => ({ ...prev, [st.id]: e.target.value }))}
                           placeholder="০"
-                          className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black focus:outline-none focus:ring-2 focus:ring-violet-400 shrink-0"
+                          className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] shrink-0"
                         />
                       ) : (
                         <div className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-dashed border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black text-[#5b6478] dark:text-slate-300 shrink-0">
@@ -3527,7 +3532,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <button
                     onClick={handleSaveMarks}
                     disabled={marksSaving}
-                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-flat text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Save size={17} />
                     <span>{marksSaving ? 'সংরক্ষণ হচ্ছে…' : 'নম্বর সংরক্ষণ করুন'}</span>
@@ -3573,7 +3578,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         return (
                           <div key={st.id} className="p-3 rounded-2xl bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 overflow-hidden">
-                              <span className="w-9 h-9 rounded-full brand-grad text-white font-bold flex items-center justify-center text-xs shrink-0">
+                              <span className="w-9 h-9 rounded-full brand-flat text-white font-bold flex items-center justify-center text-xs shrink-0">
                                 {(st.nameBn || st.name || 'শ').charAt(0)}
                               </span>
                               <div className="overflow-hidden">
@@ -3642,7 +3647,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   return (
                     <div key={st.id} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shrink-0">
+                        <span className="w-11 h-11 rounded-full brand-flat text-white font-bold flex items-center justify-center text-[15px] shrink-0">
                           {(st.nameBn || st.name || 'শ').charAt(0)}
                         </span>
                         <div className="min-w-0">
@@ -3720,7 +3725,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={r.student.id} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="w-7 text-center text-sm font-black text-[#8a93a8] shrink-0">{toBn(idx + 1)}</span>
-                          <span className="w-11 h-11 rounded-full brand-grad text-white font-bold flex items-center justify-center text-[15px] shrink-0">
+                          <span className="w-11 h-11 rounded-full brand-flat text-white font-bold flex items-center justify-center text-[15px] shrink-0">
                             {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                           </span>
                           <div className="min-w-0">
@@ -3814,7 +3819,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         onClick={() => setRoutineDay(d.en)}
                         className={`px-3 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                           isSelected
-                            ? 'brand-grad text-white'
+                            ? 'brand-flat text-white'
                             : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
                         }`}
                       >
@@ -3953,7 +3958,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </div>
                   <button
                     onClick={() => { setLastReceipt(null); setFeeStudentId(null); setFeeAmount(''); setFeeSearchQuery(''); }}
-                    className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-flat text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <Wallet size={17} />
                     <span>{isEn ? 'Collect another fee' : 'আরেকটি ফি আদায় করুন'}</span>
@@ -3970,7 +3975,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <ArrowLeft size={14} /> {isEn ? 'Back to student list' : 'তালিকায় ফিরুন'}
                     </button>
                     <div className="flex items-center gap-3">
-                      <span className="w-12 h-12 rounded-full brand-grad text-white font-bold flex items-center justify-center text-base shrink-0">
+                      <span className="w-12 h-12 rounded-full brand-flat text-white font-bold flex items-center justify-center text-base shrink-0">
                         {(selectedFeeProfile.student.nameBn || selectedFeeProfile.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="min-w-0">
@@ -4003,7 +4008,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <select
                         value={feeCollectMonth}
                         onChange={e => setFeeCollectMonth(e.target.value)}
-                        className="w-full py-3 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-violet-400 cursor-pointer"
+                        className="w-full py-3 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
                       >
                         {feeMonthOptions.map(m => (
                           <option key={m} value={m}>{bnMonthLabel(m)}{m === localMonthStr() ? (isEn ? ' (current)' : ' (চলতি)') : ''}</option>
@@ -4020,7 +4025,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         value={feeAmount}
                         onChange={e => { setFeeAmount(e.target.value); setFeeFormError(null); }}
                         placeholder="০"
-                        className="w-full py-3 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-base font-black focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        className="w-full py-3 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-base font-black focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                       />
                       {selectedFeeProfile.dueThisMonth > 0 && (
                         <button
@@ -4043,7 +4048,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             onClick={() => setFeeMethod(m.id)}
                             className={`px-3.5 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                               feeMethod === m.id
-                                ? 'brand-grad text-white'
+                                ? 'brand-flat text-white'
                                 : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
                             }`}
                           >
@@ -4061,7 +4066,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           value={feeRefNo}
                           onChange={e => setFeeRefNo(e.target.value)}
                           placeholder={isEn ? 'e.g. TrxID' : 'যেমন: TrxID'}
-                          className="w-full py-2.5 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-400"
+                          className="w-full py-2.5 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                         />
                       </div>
                     )}
@@ -4072,7 +4077,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         type="text"
                         value={feeNote}
                         onChange={e => setFeeNote(e.target.value)}
-                        className="w-full py-2.5 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        className="w-full py-2.5 px-3.5 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                       />
                     </div>
                   </div>
@@ -4088,7 +4093,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <button
                         onClick={handleCollectFee}
                         disabled={!feeAmount || Number(feeAmount) <= 0 || feeCollecting}
-                        className="w-full py-3.5 px-4 rounded-[20px] brand-grad text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3.5 px-4 rounded-[20px] brand-flat text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Receipt size={17} />
                         <span>{feeCollecting ? (isEn ? 'Collecting…' : 'আদায় হচ্ছে…') : (isEn ? 'Collect fee & save receipt' : 'ফি গ্রহণ করে রসিদ সংরক্ষণ করুন')}</span>
@@ -4121,7 +4126,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <select
                       value={cashierViewMonth}
                       onChange={e => setCashierViewMonth(e.target.value)}
-                      className="flex-1 py-3 px-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-violet-400 cursor-pointer"
+                      className="flex-1 py-3 px-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
                     >
                       {feeMonthOptions.map(m => (
                         <option key={m} value={m}>{bnMonthLabel(m)}{m === currentMonthStr ? (isEn ? ' (current)' : ' (চলতি)') : ''}</option>
@@ -4143,7 +4148,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       value={feeSearchQuery}
                       onChange={e => setFeeSearchQuery(e.target.value)}
                       placeholder={isEn ? 'Search by name, roll, class or phone…' : 'নাম, রোল, শ্রেণি বা মোবাইল দিয়ে খুঁজুন...'}
-                      className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                     />
                   </div>
 
@@ -4164,7 +4169,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                             onClick={() => handleSelectFeeStudent(p)}
                             className={`w-full text-left ${cardCls} p-4 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all`}
                           >
-                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div className="flex-1 min-w-0">
@@ -4226,7 +4231,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     <button
                       type="button"
                       onClick={() => handleOpenModule('student_admission')}
-                      className="flex-1 py-3 rounded-2xl brand-grad text-white text-xs font-bold active:scale-[0.98] transition-all cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl brand-flat text-white text-xs font-bold active:scale-[0.98] transition-all cursor-pointer"
                     >
                       + {isEn ? 'New student' : 'নতুন শিক্ষার্থী'}
                     </button>
@@ -4249,14 +4254,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     value={studentsSearch}
                     onChange={e => setStudentsSearch(e.target.value)}
                     placeholder={isEn ? 'Search by name, roll, class or phone…' : 'নাম, রোল, শ্রেণি বা মোবাইল দিয়ে খুঁজুন...'}
-                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                   />
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                   <button
                     type="button"
                     onClick={() => setStudentsClass('all')}
-                    className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === 'all' ? 'brand-grad text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                    className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === 'all' ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                   >
                     {isEn ? 'All classes' : 'সব শ্রেণি'}
                   </button>
@@ -4265,7 +4270,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       key={cn}
                       type="button"
                       onClick={() => setStudentsClass(cn)}
-                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === cn ? 'brand-grad text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === cn ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                     >
                       {cn}
                     </button>
@@ -4281,7 +4286,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       key={mode}
                       type="button"
                       onClick={() => setStudentsStatus(mode)}
-                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsStatus === mode ? 'brand-grad text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsStatus === mode ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                     >
                       {label}
                     </button>
@@ -4304,7 +4309,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <div key={st.id} className={`${cardCls} p-4 flex flex-col gap-3`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-3 min-w-0">
-                            <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                            <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                               {(st.nameBn || st.name || 'শ').charAt(0)}
                             </span>
                             <div className="min-w-0">
@@ -4411,7 +4416,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         <main className="p-4 space-y-4">
           <ServerDataGate dataNameBn="প্রোফাইল তথ্য" dataNameEn="Profile data">
           <div className={`${cardCls} p-5 flex flex-col items-center text-center space-y-3`}>
-            <div className="w-20 h-20 rounded-[26px] brand-grad text-white font-black flex items-center justify-center text-3xl">
+            <div className="w-20 h-20 rounded-[26px] brand-flat text-white font-black flex items-center justify-center text-3xl">
               {initialLetter}
             </div>
             <div>
@@ -4493,7 +4498,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 <button
                   type="button"
                   onClick={startProfileEdit}
-                  className="w-full py-3 rounded-2xl text-xs font-bold brand-grad text-white active:scale-[0.98] transition-all cursor-pointer"
+                  className="w-full py-3 rounded-2xl text-xs font-bold brand-flat text-white active:scale-[0.98] transition-all cursor-pointer"
                 >
                   {isEn ? 'Edit' : 'সম্পাদনা করুন'}
                 </button>
@@ -4531,7 +4536,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <button
                     type="button"
                     onClick={handleSaveProfileEdit}
-                    className="py-3 rounded-2xl text-xs font-bold brand-grad text-white active:scale-[0.98] transition-all cursor-pointer"
+                    className="py-3 rounded-2xl text-xs font-bold brand-flat text-white active:scale-[0.98] transition-all cursor-pointer"
                   >
                     {isEn ? 'Save' : 'সংরক্ষণ করুন'}
                   </button>
@@ -4557,13 +4562,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setDarkMode(false)}
-                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${!darkMode ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${!darkMode ? 'brand-flat text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   <Sun size={15} /> {isEn ? 'Light' : 'লাইট'}
                 </button>
                 <button
                   onClick={() => setDarkMode(true)}
-                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${darkMode ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${darkMode ? 'brand-flat text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   <Moon size={15} /> {isEn ? 'Dark' : 'ডার্ক'}
                 </button>
@@ -4572,8 +4577,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
             <div>
               <p className="text-xs font-bold mb-2.5">{isEn ? 'Accent Colour' : 'অ্যাকসেন্ট রঙ'}</p>
-              <div className="flex items-start gap-3">
-                {ACCENT_THEMES.map(t => (
+              <div className="flex flex-wrap items-start gap-3">
+                {visibleAccents.map(t => (
                   <button
                     key={t.id}
                     onClick={() => setAccentTheme(t.id)}
@@ -4590,6 +4595,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </button>
                 ))}
               </div>
+              {!showAllAccents && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllAccents(true)}
+                  className="mt-2 text-[11px] font-bold underline underline-offset-2 cursor-pointer"
+                  style={{ color: 'var(--color-brand)' }}
+                >
+                  {isEn ? 'More colours' : 'আরও রঙ'}
+                </button>
+              )}
             </div>
 
             <div>
@@ -4599,13 +4614,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setLanguage('bn')}
-                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${!isEn ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${!isEn ? 'brand-flat text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   বাংলা
                 </button>
                 <button
                   onClick={() => setLanguage('en')}
-                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${isEn ? 'brand-grad text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
+                  className={`py-3 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-[0.98] ${isEn ? 'brand-flat text-white' : `${softBg} text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10`}`}
                 >
                   English
                 </button>
@@ -4724,7 +4739,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <button
                 type="submit"
                 disabled={leaveSubmitting}
-                className="w-full py-3.5 rounded-[20px] brand-grad text-white text-sm font-bold active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                className="w-full py-3.5 rounded-[20px] brand-flat text-white text-sm font-bold active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
                 {leaveSubmitting ? (isEn ? 'Submitting…' : 'জমা হচ্ছে…') : (isEn ? 'Submit leave request' : 'ছুটির আবেদন জমা দিন')}
               </button>
@@ -4786,9 +4801,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // Principal uses the whole-madrasa cards above (roleStats cannot see
   // cashierAging — it is defined after roleStats in this file).
   const statsRow = userRole === 'principal' ? principalStatCards : [
-    { value: roleStats.stat1Value, label: roleStats.stat1Label, Icon: roleStats.stat1Icon, cls: roleStats.stat1Cls },
-    { value: roleStats.stat2Value, label: roleStats.stat2Label, Icon: roleStats.stat2Icon, cls: roleStats.stat2Cls },
-    { value: roleStats.stat3Value, label: roleStats.stat3Label, Icon: roleStats.stat3Icon, cls: roleStats.stat3Cls }
+    { value: roleStats.stat1Value, label: roleStats.stat1Label },
+    { value: roleStats.stat2Value, label: roleStats.stat2Label },
+    { value: roleStats.stat3Value, label: roleStats.stat3Label }
   ];
 
   const attendanceTakenPct = attendanceStats.total > 0 ? Math.round((attendanceStats.takenCount / attendanceStats.total) * 100) : 0;
@@ -4799,20 +4814,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] text-[#1e2433] dark:text-slate-100 flex flex-col pb-24">
       {/* Top bar — sticky with soft blur */}
       <header className="sticky top-0 z-40 bg-[#f4f6fb]/85 dark:bg-[#0e1220]/85 backdrop-blur-xl px-4 pt-4 pb-3 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-[16px] brand-grad text-white font-black flex items-center justify-center text-lg shrink-0">
+        <div className="w-12 h-12 rounded-[16px] brand-flat text-white font-black flex items-center justify-center text-lg shrink-0">
           {initialLetter}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-[#5b6478] dark:text-slate-400">{todayGreeting.greeting} 👋</p>
           <h1 className="text-lg font-black leading-tight truncate">{displayName}</h1>
         </div>
-        <button
-          onClick={toggleDarkMode}
-          aria-label="Toggle light/dark mode"
-          className="w-10 h-10 rounded-2xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 flex items-center justify-center text-[#5b6478] dark:text-amber-300 cursor-pointer active:scale-95 transition-all shrink-0"
-        >
-          {darkMode ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
         {/* Tutor-style accent + mode picker — one tap applies app-wide
             via ThemeContext (accent + dark mode persist to localStorage). */}
         <div className="relative shrink-0" ref={themePickerRef}>
@@ -4831,7 +4839,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 {isEn ? 'Accent color' : 'অ্যাকসেন্ট কালার'}
               </p>
               <div className="flex flex-wrap items-center gap-2.5 mb-4">
-                {ACCENT_THEMES.map(t => (
+                {visibleAccents.map(t => (
                   <button
                     key={t.id}
                     onClick={() => setAccentTheme(t.id)}
@@ -4848,6 +4856,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </button>
                 ))}
               </div>
+              {!showAllAccents && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllAccents(true)}
+                  className="mb-4 text-[13px] font-bold underline underline-offset-2 cursor-pointer"
+                  style={{ color: 'var(--color-brand)' }}
+                >
+                  {isEn ? 'More colours' : 'আরও রঙ'}
+                </button>
+              )}
 
               <p className="text-[13px] font-semibold mb-2.5 text-[#1e2433] dark:text-slate-100">
                 {isEn ? 'Mode' : 'মোড'}
@@ -4913,7 +4931,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         <div data-dashboard-section="hero" style={{ order: mobileVisibleSections.indexOf('hero') }}>
         {/* HERO — light greeting + quick actions inside (Tutor App pattern:
             greeting, "Today at a glance", QUICK ACTIONS row) */}
-        <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5">
+        <section className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5">
           <div>
             <p className="text-[13px] font-medium text-slate-500 dark:text-slate-400">{todayGreeting.fullDateText}</p>
             <h2 className="text-[22px] font-black mt-0.5 leading-snug text-slate-900 dark:text-white">{roleTitleBengali[userRole]}</h2>
@@ -5096,7 +5114,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </p>
             <button
               onClick={() => handleOpenModule('teacher_attendance')}
-              className="w-full py-3.5 rounded-2xl brand-grad text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
+              className="w-full py-3.5 rounded-2xl brand-flat text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
             >
               <CheckSquare size={16} />
               <span>{attendanceStats.takenCount >= attendanceStats.total && attendanceStats.total > 0 ? (isEn ? 'Attendance done — review' : 'হাজিরা সম্পন্ন ✓ — আবার দেখুন') : (isEn ? 'Take attendance' : 'হাজিরা নিতে যান')}</span>
@@ -5197,7 +5215,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
-                  <div className="h-full rounded-full brand-grad" style={{ width: `${classResultReport ? classResultReport.passRate : 0}%` }} />
+                  <div className="h-full rounded-full brand-flat" style={{ width: `${classResultReport ? classResultReport.passRate : 0}%` }} />
                 </div>
                 <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
                   {classResultReport
@@ -5302,7 +5320,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             <div className="space-y-2.5">
               {topDueProfiles.map(p => (
                 <div key={p.profile.student.id} className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                  <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                     {(p.profile.student.nameBn || p.profile.student.name || 'শ').charAt(0)}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -5390,7 +5408,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
                   return (
                     <div key={r.student.id} className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                      <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                         {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -5543,7 +5561,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
                   return (
                     <div key={r.student.id} className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                      <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                         {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -5674,7 +5692,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       </div>
                       <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden">
                         <div
-                          className="h-full rounded-full brand-grad"
+                          className="h-full rounded-full brand-flat"
                           style={{ width: `${Math.round((c.count / Math.max(...staffByClass.map(x => x.count), 1)) * 100)}%` }}
                         />
                       </div>
@@ -5860,7 +5878,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
                   return (
                     <div key={r.student.id} className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full brand-grad text-white font-bold flex items-center justify-center text-sm shrink-0">
+                      <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
                         {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
                       </span>
                       <div className="flex-1 min-w-0">

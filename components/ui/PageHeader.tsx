@@ -61,7 +61,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 </div>
               )}
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-800 dark:text-white tracking-tight">
+                <h1 className="text-[17px] font-black text-slate-800 dark:text-white tracking-tight">
                   {title}
                 </h1>
                 {subtitle && (
@@ -111,7 +111,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white truncate">
+              <h1 className="text-[17px] font-bold text-slate-800 dark:text-white truncate">
                 {title}
               </h1>
               {subtitle && (

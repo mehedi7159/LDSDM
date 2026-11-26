@@ -299,10 +299,10 @@ const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
     <SectionCard
       title={language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী ও পারফরম্যান্স খতিয়ান' : 'Class Enrolment & Performance Grid'}
       icon={GraduationCap}
-      iconTone="purple"
+      iconTone="brand"
       bodyClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"
       action={
-        <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800">
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full border" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}>
           {toBanglaDigits(classCards.length, language)} {language === 'bn' ? 'শ্রেণি' : 'Classes'}
         </span>
       }
@@ -328,7 +328,7 @@ const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
               </div>
               <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-slate-400 block text-[10px] font-medium">{language === 'bn' ? 'গড় GPA' : 'Avg GPA'}</span>
-                <span className="font-bold text-indigo-700 dark:text-indigo-300 text-xs">{toBanglaDigits(clsCard.averageGpa.toFixed(2), language)}</span>
+                <span className="font-bold text-[var(--color-brand)] dark:text-teal-300 text-xs">{toBanglaDigits(clsCard.averageGpa.toFixed(2), language)}</span>
               </div>
             </div>
           </div>
@@ -1137,7 +1137,7 @@ export const Dashboard = () => {
         {actionData.pendingAdmissions.length > 0 && (
           <ActionRow
             icon={UserPlus}
-            iconCls="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300"
+            iconCls="bg-[var(--color-brand-light)] text-[var(--color-brand)]"
             title={language === 'bn' ? 'ভর্তির আবেদন অপেক্ষমাণ' : 'Admission applications pending'}
             count={actionData.pendingAdmissions.length}
             language={language}
@@ -1357,7 +1357,7 @@ export const Dashboard = () => {
               action={
                 <button
                   onClick={() => setActiveSectionTab('merit')}
-                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-semibold text-[var(--color-brand)] dark:text-teal-300 hover:opacity-80 flex items-center gap-1 cursor-pointer"
                 >
                   <span>{language === 'bn' ? 'সম্পূর্ণ তালিকা' : 'View All'}</span>
                   <ChevronRight size={13} />
@@ -1389,7 +1389,7 @@ export const Dashboard = () => {
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="font-bold text-indigo-700 dark:text-indigo-300 block">
+                      <span className="font-bold text-[var(--color-brand)] dark:text-teal-300 block">
                         GPA {toBanglaDigits(st.gpa.toFixed(2), language)}
                       </span>
                       <span className="text-[11px] text-slate-400">
@@ -1502,7 +1502,7 @@ export const Dashboard = () => {
                   {rawPhone && (
                     <a
                       href={`tel:${rawPhone}`}
-                      className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center justify-center"
+                      className="w-8 h-8 rounded-lg bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100 border border-[var(--color-brand-ring)] dark:border-slate-700 flex items-center justify-center"
                       aria-label="Call guardian"
                     >
                       <Phone size={14} />
@@ -1562,11 +1562,11 @@ export const Dashboard = () => {
         bodyClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
       >
         {[
-          { tab: 'admin_reports', bn: 'প্রাতিষ্ঠানিক রিপোর্ট', en: 'Institutional Reports', icon: Building2, box: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300', hover: 'hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30' },
-          { tab: 'finance_reports', bn: 'আর্থিক রিপোর্ট', en: 'Finance Reports', icon: Wallet, box: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300', hover: 'hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30' },
-          { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck, box: 'bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-300', hover: 'hover:border-teal-300 dark:hover:border-teal-600 hover:bg-teal-50/60 dark:hover:bg-teal-950/30' },
-          { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users, box: 'bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-300', hover: 'hover:border-sky-300 dark:hover:border-sky-600 hover:bg-sky-50/60 dark:hover:bg-sky-950/30' },
-          { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen, box: 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300', hover: 'hover:border-amber-300 dark:hover:border-amber-600 hover:bg-amber-50/60 dark:hover:bg-amber-950/30' }
+          { tab: 'admin_reports', bn: 'প্রাতিষ্ঠানিক রিপোর্ট', en: 'Institutional Reports', icon: Building2, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' },
+          { tab: 'finance_reports', bn: 'আর্থিক রিপোর্ট', en: 'Finance Reports', icon: Wallet, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' },
+          { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' },
+          { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' },
+          { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' }
         ].map(r => {
           const RIcon = r.icon;
           return (

@@ -45,7 +45,7 @@ export const ToastContainer: React.FC = () => {
                 </div>
               )}
               {isInfo && (
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl border flex items-center justify-center" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}>
                   <Info size={16} />
                 </div>
               )}
@@ -82,7 +82,7 @@ export const ToastContainer: React.FC = () => {
             <button
               type="button"
               onClick={() => removeToast(toast.id)}
-              className="shrink-0 p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
+              className="shrink-0 p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Close toast"
             >
               <X size={14} />

@@ -111,11 +111,11 @@ export const RailFlyoutMenu: React.FC<RailFlyoutMenuProps> = ({
                 ? 'text-white font-bold'
                 : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
-            style={item.active ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+            style={item.active ? { backgroundColor: 'var(--color-brand, #0d9488)' } : undefined}
           >
             <span
               className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${item.active ? 'bg-white/20 text-white' : ''}`}
-              style={item.active ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+              style={item.active ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #0d9488)' }}
             >
               <Icon size={15} />
             </span>

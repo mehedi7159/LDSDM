@@ -138,8 +138,8 @@ export const DashboardArrangePanel: React.FC = () => {
       </h2>
       <p className="text-xs text-slate-500 mb-1">
         {isBn
-          ? 'কোন অংশ কোথায় থাকবে আর কোনটা দেখাবে না — নিজের মতো সাজিয়ে নিন। বদলালেই সেভ হয়ে যাবে।'
-          : 'Choose which parts show and in what order — arrange it your way. It saves as soon as you change it.'}
+          ? 'বদলালেই সেভ হয়ে যাবে।'
+          : 'It saves as soon as you change it.'}
       </p>
       {statusText && (
         <p className={`text-xs font-bold mb-2 ${saveStatus === 'local' ? 'text-amber-600' : 'text-teal-700'}`}>{statusText}</p>

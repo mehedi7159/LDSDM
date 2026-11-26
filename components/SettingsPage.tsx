@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { useTheme, ACCENT_THEMES } from '../context/ThemeContext';
+import { useTheme, ACCENT_THEMES, CURATED_ACCENTS } from '../context/ThemeContext';
 import type { AccentThemeId } from '../context/ThemeContext';
 import { SegmentedControl } from './ui/SegmentedControl';
 import {
@@ -58,6 +58,9 @@ type Strings = {
   textSize: string;
   corner: string;
   accent: string;
+  displayMode: string;
+  light: string;
+  dark: string;
   push: string;
   messages: string;
   promos: string;
@@ -88,6 +91,9 @@ const STR: Record<Language, Strings> = {
     textSize: 'টেক্সট সাইজ',
     corner: 'কর্নার স্টাইল',
     accent: 'অ্যাকসেন্ট রঙ',
+    displayMode: 'ডিসপ্লে মোড (শুধু মোবাইলে)',
+    light: 'লাইট',
+    dark: 'ডার্ক',
     push: 'পুশ নোটিফিকেশন',
     messages: 'মেসেজ',
     promos: 'প্রমোশন',
@@ -116,6 +122,9 @@ const STR: Record<Language, Strings> = {
     textSize: 'Text size',
     corner: 'Corner style',
     accent: 'Accent colour',
+    displayMode: 'Display mode (mobile only)',
+    light: 'Light',
+    dark: 'Dark',
     push: 'Push notifications',
     messages: 'Messages',
     promos: 'Promotions',
@@ -144,6 +153,9 @@ const STR: Record<Language, Strings> = {
     textSize: 'حجم النص',
     corner: 'نمط الزوايا',
     accent: 'لون التمييز',
+    displayMode: 'وضع العرض (للجوال فقط)',
+    light: 'فاتح',
+    dark: 'داكن',
     push: 'إشعارات الدفع',
     messages: 'الرسائل',
     promos: 'العروض',
@@ -202,10 +214,15 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
 
 export const SettingsPage: React.FC = () => {
   const { language, setLanguage } = useApp();
-  const { accentTheme, setAccentTheme, showSuccess } = useTheme();
+  const { accentTheme, setAccentTheme, darkMode, setDarkMode, showSuccess } = useTheme();
   const [saved, setSaved] = useState<Draft | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [showReview, setShowReview] = useState(false);
+  // S7: accent dots show 5 curated accents first; the rest behind "আরও".
+  const [showAllAccents, setShowAllAccents] = useState(false);
+  const visibleAccents = showAllAccents
+    ? ACCENT_ORDER
+    : ACCENT_ORDER.filter((id) => CURATED_ACCENTS.includes(id));
   const savedRef = useRef<Draft | null>(null);
 
   // Initialise draft from saved values (app language + accent + prefs).
@@ -351,7 +368,7 @@ export const SettingsPage: React.FC = () => {
         />
         <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4">{s.accent}</p>
         <div className="flex flex-wrap items-center gap-3">
-          {ACCENT_ORDER.map((id) => {
+          {visibleAccents.map((id) => {
             const theme = ACCENT_THEMES.find((a) => a.id === id)!;
             const active = draft.accent === id;
             return (
@@ -371,7 +388,31 @@ export const SettingsPage: React.FC = () => {
             );
           })}
           <span className="text-xs font-bold text-slate-600">{s.accentName(draft.accent)}</span>
+          {!showAllAccents && (
+            <button
+              type="button"
+              onClick={() => setShowAllAccents(true)}
+              className="text-xs font-bold underline underline-offset-2 cursor-pointer"
+              style={{ color: 'var(--color-brand)' }}
+            >
+              {draft.language === 'bn' ? 'আরও রঙ' : draft.language === 'ar' ? 'ألوان أخرى' : 'More colours'}
+            </button>
+          )}
         </div>
+        {/* Light / Dark — inside Appearance (theme settings), never a
+            standalone button. Applies at once via ThemeContext (the dark
+            preference is owned there, not by the draft); mobile only —
+            desktop always stays light. */}
+        <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4">{s.displayMode}</p>
+        <SegmentedControl
+          ariaLabel={s.displayMode}
+          value={darkMode ? 'dark' : 'light'}
+          onChange={(id) => setDarkMode(id === 'dark')}
+          options={[
+            { id: 'light', label: s.light },
+            { id: 'dark', label: s.dark }
+          ]}
+        />
       </section>
 
       {/* Notifications (stored preferences only) */}

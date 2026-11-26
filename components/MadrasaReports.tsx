@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import {
-  CalendarCheck2, Banknote, Receipt, CalendarOff, Wallet, Scale,
+  CalendarCheck2, Banknote, Wallet, Scale,
   Users, GraduationCap, Phone, MessageCircle, ClipboardList, TrendingUp, BarChart3,
   BellRing, CalendarX2, UserX, ShieldCheck
 } from 'lucide-react';
@@ -29,7 +29,7 @@ const DAY_LABELS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const SectionHead: React.FC<{ icon: React.ElementType; title: string; right?: string }> = ({ icon: Icon, title, right }) => (
   <div className="flex items-center gap-2.5 mb-3">
-    <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+    <span className="w-8 h-8 rounded-xl bg-[var(--color-brand)] text-white flex items-center justify-center shrink-0">
       <Icon size={16} />
     </span>
     <h3 className="font-black text-slate-900 dark:text-white text-base flex-1">{title}</h3>
@@ -38,13 +38,13 @@ const SectionHead: React.FC<{ icon: React.ElementType; title: string; right?: st
 );
 
 const StatCard: React.FC<{
-  icon: React.ElementType; iconCls: string; label: string; value: string; sub?: string;
-}> = ({ icon: Icon, iconCls, label, value, sub }) => (
+  label: string; value: string; sub?: string;
+}> = ({ label, value, sub }) => (
   <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800">
     <div className="mb-2">
       <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{label}</span>
     </div>
-    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">{value}</div>
+    <div className="text-2xl font-black text-slate-900 dark:text-white leading-tight">{value}</div>
     {sub && <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">{sub}</div>}
   </div>
 );
@@ -431,16 +431,16 @@ export const MadrasaReports: React.FC = () => {
               </div>
             )}
             {alerts.longAbsent.length > 0 ? (
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-violet-200 dark:border-violet-900/60 flex flex-col">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
-                  <span className="w-9 h-9 rounded-2xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+                  <span className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
                     <UserX size={17} />
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'টানা ৭ দিন অনুপস্থিত' : 'Absent 7 days straight'}</div>
                     <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? 'শ্রেণির হাজিরা নেওয়া শেষ ৭ দিনে' : 'Over the last 7 days attendance was taken'}</div>
                   </div>
-                  <span className="text-xs font-black bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 px-2 py-1 rounded-full shrink-0">{num(alerts.longAbsent.length)} {isBn ? 'জন' : ''}</span>
+                  <span className="text-xs font-black px-2 py-1 rounded-full shrink-0" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>{num(alerts.longAbsent.length)} {isBn ? 'জন' : ''}</span>
                 </div>
                 <ul className="space-y-1 mb-3">
                   {alerts.longAbsent.slice(0, 3).map(a => (
@@ -453,7 +453,7 @@ export const MadrasaReports: React.FC = () => {
                     <li className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{isBn ? `+আরো ${num(alerts.longAbsent.length - 3)} জন` : `+${alerts.longAbsent.length - 3} more students`}</li>
                   )}
                 </ul>
-                <button onClick={() => setActiveTab('students')} className="mt-auto w-full py-2 rounded-2xl bg-violet-600 text-white text-xs font-bold">{isBn ? 'শিক্ষার্থী দেখুন' : 'View students'}</button>
+                <button onClick={() => setActiveTab('students')} className="mt-auto w-full py-2 rounded-2xl bg-[var(--color-brand)] text-white text-xs font-bold">{isBn ? 'শিক্ষার্থী দেখুন' : 'View students'}</button>
               </div>
             ) : (
               <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
@@ -478,8 +478,6 @@ export const MadrasaReports: React.FC = () => {
         <SectionHead icon={CalendarCheck2} title={isBn ? 'আজকের প্রতিবেদন' : "Today's Report"} right={dateLabel} />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
-            icon={CalendarCheck2}
-            iconCls="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300"
             label={isBn ? 'ছাত্র হাজিরা' : 'Student Attendance'}
             value={todayAtt.totalStudents > 0 ? `${num(todayAtt.attendancePercentage)}%` : (isBn ? 'নেওয়া হয়নি' : 'Not taken')}
             sub={todayAtt.totalStudents > 0
@@ -489,22 +487,16 @@ export const MadrasaReports: React.FC = () => {
               : (isBn ? 'আজ এখনো কোনো ক্লাসের হাজিরা রেকর্ড হয়নি' : 'No class attendance recorded yet today')}
           />
           <StatCard
-            icon={Banknote}
-            iconCls="bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300"
             label={isBn ? 'আজকের আদায়' : "Today's Collection"}
             value={money(todayTx.income)}
             sub={isBn ? `${num(todayTx.incomeCount)}টি লেনদেন` : `${num(todayTx.incomeCount)} transactions`}
           />
           <StatCard
-            icon={Receipt}
-            iconCls="bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300"
             label={isBn ? 'আজকের খরচ' : "Today's Expense"}
             value={money(todayTx.expense)}
             sub={isBn ? `আজকের নিট ${money(todayTx.income - todayTx.expense)}` : `Net today ${money(todayTx.income - todayTx.expense)}`}
           />
           <StatCard
-            icon={CalendarOff}
-            iconCls="bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300"
             label={isBn ? 'আজ ছুটিতে শিক্ষক' : 'Teachers on Leave Today'}
             value={`${num(leavesToday.length)} ${isBn ? 'জন' : ''}`}
             sub={[
@@ -517,7 +509,7 @@ export const MadrasaReports: React.FC = () => {
         {/* Last 7 days collection */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 mt-3">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-300" />
+            <TrendingUp size={16} className="text-[var(--color-brand)]" />
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'গত ৭ দিনের আদায়' : 'Collection — Last 7 Days'}</h4>
           </div>
           <div className="flex items-end gap-2 sm:gap-3 h-32">
@@ -528,11 +520,11 @@ export const MadrasaReports: React.FC = () => {
                 </span>
                 <div className="w-full max-w-12 flex items-end h-20">
                   <div
-                    className={`w-full rounded-t-xl ${d.isToday ? 'bg-indigo-600' : 'bg-indigo-200 dark:bg-indigo-900'}`}
+                    className={`w-full rounded-t-xl ${d.isToday ? 'bg-[var(--color-brand)]' : 'bg-slate-200 dark:bg-slate-700'}`}
                     style={{ height: `${Math.max(4, Math.round((d.amount / last7Max) * 100))}%` }}
                   />
                 </div>
-                <span className={`text-[11px] font-bold ${d.isToday ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}`}>{d.label}</span>
+                <span className={`text-[11px] font-bold ${d.isToday ? 'text-[var(--color-brand)]' : 'text-slate-500 dark:text-slate-400'}`}>{d.label}</span>
               </div>
             ))}
           </div>
@@ -638,7 +630,7 @@ export const MadrasaReports: React.FC = () => {
           {/* Students by class */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2 mb-4">
-              <Users size={16} className="text-indigo-600 dark:text-indigo-300" />
+              <Users size={16} className="text-[var(--color-brand)]" />
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'ক্লাসভিত্তিক শিক্ষার্থী' : 'Students by Class'}</h4>
             </div>
             <div className="space-y-2.5">
@@ -646,7 +638,7 @@ export const MadrasaReports: React.FC = () => {
                 <div key={c.name} className="flex items-center gap-2 text-xs">
                   <span className="w-20 shrink-0 font-bold text-slate-700 dark:text-slate-200 truncate">{c.name}</span>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.round((c.count / classMax) * 100)}%` }} />
+                    <div className="h-full bg-[var(--color-brand)] rounded-full" style={{ width: `${Math.round((c.count / classMax) * 100)}%` }} />
                   </div>
                   <span className="w-8 text-right font-black text-slate-900 dark:text-white">{num(c.count)}</span>
                 </div>
@@ -680,7 +672,7 @@ export const MadrasaReports: React.FC = () => {
                         <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noreferrer" className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center" aria-label="WhatsApp">
                           <MessageCircle size={13} />
                         </a>
-                        <a href={`tel:+${waPhone}`} className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center" aria-label="Call">
+                        <a href={`tel:+${waPhone}`} className="w-7 h-7 rounded-lg bg-[var(--color-brand)] text-white flex items-center justify-center" aria-label="Call">
                           <Phone size={13} />
                         </a>
                       </span>
@@ -699,7 +691,7 @@ export const MadrasaReports: React.FC = () => {
           {/* Latest exam */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2 mb-4">
-              <GraduationCap size={16} className="text-violet-600 dark:text-violet-300" />
+              <GraduationCap size={16} className="text-[var(--color-brand)]" />
               <h4 className="font-bold text-sm text-slate-900 dark:text-white">{isBn ? 'সাম্প্রতিক পরীক্ষার ফলাফল' : 'Latest Exam Result'}</h4>
             </div>
             {latestExamSummary ? (
@@ -718,8 +710,8 @@ export const MadrasaReports: React.FC = () => {
                         <div className="text-base font-black text-emerald-600 dark:text-emerald-300">{num(latestExamSummary.passRate)}%</div>
                         <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{isBn ? 'পাসের হার' : 'Pass Rate'}</div>
                       </div>
-                      <div className="p-2.5 rounded-2xl bg-violet-50 dark:bg-violet-950/40">
-                        <div className="text-base font-black text-violet-600 dark:text-violet-300">{num(Math.round(latestExamSummary.avgGpa * 100) / 100)}</div>
+                      <div className="p-2.5 rounded-2xl" style={{ backgroundColor: 'var(--color-brand-light)' }}>
+                        <div className="text-base font-black" style={{ color: 'var(--color-brand)' }}>{num(Math.round(latestExamSummary.avgGpa * 100) / 100)}</div>
                         <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{isBn ? 'গড় GPA' : 'Avg GPA'}</div>
                       </div>
                     </div>

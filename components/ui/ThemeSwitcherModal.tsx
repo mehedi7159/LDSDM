@@ -1,6 +1,6 @@
-import React from 'react';
-import { Palette, Check, X } from 'lucide-react';
-import { useTheme, ACCENT_THEMES, AccentThemeId } from '../../context/ThemeContext';
+import React, { useState } from 'react';
+import { Palette, Check, X, Sun, Moon } from 'lucide-react';
+import { useTheme, ACCENT_THEMES, CURATED_ACCENTS, AccentThemeId } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
 
 interface ThemeSwitcherModalProps {
@@ -9,8 +9,13 @@ interface ThemeSwitcherModalProps {
 }
 
 export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, onClose }) => {
-  const { accentTheme, setAccentTheme, showSuccess } = useTheme();
+  const { accentTheme, setAccentTheme, darkMode, setDarkMode, showSuccess } = useTheme();
   const { language } = useApp();
+  // Curated accents first (S7); the rest behind "আরও".
+  const [showAllAccents, setShowAllAccents] = useState(false);
+  const visibleAccents = showAllAccents
+    ? ACCENT_THEMES
+    : ACCENT_THEMES.filter(t => CURATED_ACCENTS.includes(t.id));
 
   if (!isOpen) return null;
 
@@ -61,7 +66,7 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
           </label>
 
           <div className="grid grid-cols-5 gap-x-2 gap-y-4">
-            {ACCENT_THEMES.map(theme => {
+            {visibleAccents.map(theme => {
               const isSelected = accentTheme === theme.id;
               const title = isBn ? theme.nameBn : theme.nameEn;
 
@@ -99,6 +104,48 @@ export const ThemeSwitcherModal: React.FC<ThemeSwitcherModalProps> = ({ isOpen, 
             <span className="font-bold" style={{ color: 'var(--color-brand)' }}>
               {isBn ? selectedTheme.nameBn : selectedTheme.nameEn}
             </span>
+            {!showAllAccents && (
+              <>
+                {' • '}
+                <button
+                  type="button"
+                  onClick={() => setShowAllAccents(true)}
+                  className="font-bold underline underline-offset-2 cursor-pointer"
+                  style={{ color: 'var(--color-brand)' }}
+                >
+                  {isBn ? 'আরও রঙ' : 'More colours'}
+                </button>
+              </>
+            )}
+          </p>
+        </div>
+
+        {/* Day / Night — inside the theme modal, never a standalone button.
+            Mobile only: on desktop the app stays light even when Dark is on. */}
+        <div className="space-y-3">
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+            {isBn ? 'ডিসপ্লে মোড (শুধু মোবাইলে প্রযোজ্য):' : 'Display mode (mobile only):'}
+          </label>
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
+            <button
+              type="button"
+              onClick={() => setDarkMode(false)}
+              aria-pressed={!darkMode}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${!darkMode ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              <Sun size={15} /> {isBn ? 'দিন (লাইট)' : 'Day (Light)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDarkMode(true)}
+              aria-pressed={darkMode}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${darkMode ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              <Moon size={15} /> {isBn ? 'রাত (ডার্ক)' : 'Night (Dark)'}
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center">
+            {isBn ? 'ডেস্কটপে সবসময় লাইট থাকবে।' : 'Desktop always stays light.'}
           </p>
         </div>
 

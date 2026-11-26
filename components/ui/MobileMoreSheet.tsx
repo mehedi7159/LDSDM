@@ -19,7 +19,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { useTheme, ACCENT_THEMES } from '../../context/ThemeContext';
+import { useTheme, ACCENT_THEMES, CURATED_ACCENTS } from '../../context/ThemeContext';
 
 interface MobileMoreSheetProps {
   isOpen: boolean;
@@ -37,62 +37,88 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
   const { language, setLanguage, logoutAdmin, currentUser, isOwnerAdmin, isSuperAdmin } = useApp();
   const { accentTheme, setAccentTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  // Curated accents first (S7); the rest behind "আরও".
+  const [showAllAccents, setShowAllAccents] = useState(false);
+  const visibleAccents = showAllAccents
+    ? ACCENT_THEMES
+    : ACCENT_THEMES.filter(t => CURATED_ACCENTS.includes(t.id));
 
   if (!isOpen) return null;
 
   const isBn = language === 'bn';
 
-  const modules = [
+  // S7: the 8 modules grouped (প্রশাসন / একাডেমিক / অর্থ / সেবা). The
+  // অর্থ group has no module in this sheet — Finance lives in the
+  // bottom nav for permitted roles — so only non-empty groups render.
+  // Subtitles are kept in the data for search only (S9: not rendered).
+  type ModuleGroup = 'প্রশাসন' | 'একাডেমিক' | 'অর্থ' | 'সেবা';
+  const modules: { id: string; title: string; subtitle: string; icon: typeof Award; badge?: string; group: ModuleGroup }[] = [
     {
       id: 'results',
       title: isBn ? 'ফলাফল ও মার্কশিট' : 'Results & Marksheets',
       subtitle: isBn ? 'মেধা তালিকা, গ্রেডিং ও নম্বরপত্র' : 'Tabulation & Report Cards',
       icon: Award,
-      badge: 'Protected'
+      badge: 'Protected',
+      group: 'একাডেমিক'
     },
     {
       id: 'staff',
       title: isBn ? 'শিক্ষক ও স্টাফ ডিরেক্টরি' : 'Staff & HR Directory',
       subtitle: isBn ? 'আসাতেযা তালিকা ও ছুটি' : 'Faculty, Leave & Duties',
-      icon: Briefcase
+      icon: Briefcase,
+      group: 'প্রশাসন'
     },
     {
       id: 'routine',
       title: isBn ? 'ক্লাস রুটিন ও সময়সূচি' : 'Timetable & Routine',
       subtitle: isBn ? 'সাপ্তাহিক পিরিয়ড বণ্টন' : 'Class Schedules',
-      icon: CalendarDays
+      icon: CalendarDays,
+      group: 'একাডেমিক'
     },
     {
       id: 'notices',
       title: isBn ? 'নোটিশ বোর্ড ও পরিপত্র' : 'Notice Board',
       subtitle: isBn ? 'বিজ্ঞপ্তি ও জরুরি বার্তা' : 'Official Bulletins',
-      icon: Megaphone
+      icon: Megaphone,
+      group: 'সেবা'
     },
     {
       id: 'portals_hub',
       title: isBn ? 'পোর্টাল ও সেবা হাব' : 'Portals & Services',
       subtitle: isBn ? 'অভিভাবক কর্নার ও ছাত্রাবাস' : 'Guardian Portal & Mess',
-      icon: Globe
+      icon: Globe,
+      group: 'সেবা'
     },
     {
       id: 'backup_recovery',
       title: isBn ? 'ডাটা সুরক্ষা ও ব্যাকআপ হাব' : 'Data Backup & Safety',
       subtitle: isBn ? 'ক্লাউড ও লোকাল ব্যাকআপ' : 'Export & Recovery',
-      icon: ShieldCheck
+      icon: ShieldCheck,
+      group: 'প্রশাসন'
     },
     {
       id: 'recycle_bin',
       title: isBn ? 'রিসাইকেল বিন' : 'Recycle Bin',
       subtitle: isBn ? 'মুছে ফেলা তথ্য ফিরিয়ে আনুন' : 'Restore deleted items',
-      icon: Trash2
+      icon: Trash2,
+      group: 'প্রশাসন'
     },
     {
       id: 'settings',
       title: isBn ? 'প্রাতিষ্ঠানিক সেটিংস' : 'System Settings',
       subtitle: isBn ? 'মাদ্রাসার প্রোফাইল ও কনফিগ' : 'Institution Profile',
-      icon: Settings
+      icon: Settings,
+      group: 'প্রশাসন'
     }
   ];
+
+  const GROUP_ORDER: ModuleGroup[] = ['প্রশাসন', 'একাডেমিক', 'অর্থ', 'সেবা'];
+  const GROUP_LABEL: Record<ModuleGroup, { bn: string; en: string }> = {
+    'প্রশাসন': { bn: 'প্রশাসন', en: 'Administration' },
+    'একাডেমিক': { bn: 'একাডেমিক', en: 'Academic' },
+    'অর্থ': { bn: 'অর্থ', en: 'Finance' },
+    'সেবা': { bn: 'সেবা', en: 'Services' }
+  };
 
   const filteredModules = modules.filter(m => {
     if (!searchQuery.trim()) return true;
@@ -150,62 +176,119 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder={isBn ? 'মডিউল খুঁজুন...' : 'Search modules...'}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white border-0 focus:ring-2 focus:ring-indigo-500 min-h-[44px]"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white border-0 focus:ring-2 focus:ring-[var(--color-brand-ring)] min-h-[44px]"
             />
           </div>
         </div>
 
-        {/* Modules List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          <div className="grid grid-cols-1 gap-2">
-            {filteredModules.map(mod => {
-              const Icon = mod.icon;
-              const isActive = activeTab === mod.id;
+        {/* Modules List — grouped (S7); flat while searching */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {searchQuery.trim() ? (
+            <div className="grid grid-cols-1 gap-2">
+              {filteredModules.map(mod => {
+                const Icon = mod.icon;
+                const isActive = activeTab === mod.id;
 
-              return (
-                <button
-                  key={mod.id}
-                  type="button"
-                  onClick={() => handleSelect(mod.id)}
-                  className={`w-full min-h-[52px] p-3 rounded-2xl border transition-all text-left flex items-center justify-between group cursor-pointer active:scale-[0.99] ${
-                    isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-200'
-                      : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        isActive
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      <Icon size={18} />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                          {mod.title}
-                        </span>
-                        {mod.badge && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
-                            {mod.badge}
-                          </span>
-                        )}
+                return (
+                  <button
+                    key={mod.id}
+                    type="button"
+                    onClick={() => handleSelect(mod.id)}
+                    className={`w-full min-h-[52px] p-3 rounded-2xl border transition-all text-left flex items-center justify-between group cursor-pointer active:scale-[0.99] ${
+                      isActive
+                        ? 'bg-[var(--color-brand-light)] dark:bg-slate-800 border-[var(--color-brand-ring)] dark:border-slate-700 text-slate-900 dark:text-white'
+                        : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                          isActive
+                            ? 'bg-[var(--color-brand)] text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        <Icon size={18} />
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {mod.subtitle}
-                      </p>
-                    </div>
-                  </div>
 
-                  <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition" />
-                </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                            {mod.title}
+                          </span>
+                          {mod.badge && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
+                              {mod.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition" />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            GROUP_ORDER.map(group => {
+              const groupModules = modules.filter(m => m.group === group);
+              if (groupModules.length === 0) return null;
+              return (
+                <div key={group}>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block px-1 mb-2">
+                    {isBn ? GROUP_LABEL[group].bn : GROUP_LABEL[group].en}
+                  </span>
+                  <div className="grid grid-cols-1 gap-2">
+                    {groupModules.map(mod => {
+                      const Icon = mod.icon;
+                      const isActive = activeTab === mod.id;
+
+                      return (
+                        <button
+                          key={mod.id}
+                          type="button"
+                          onClick={() => handleSelect(mod.id)}
+                          className={`w-full min-h-[52px] p-3 rounded-2xl border transition-all text-left flex items-center justify-between group cursor-pointer active:scale-[0.99] ${
+                            isActive
+                              ? 'bg-[var(--color-brand-light)] dark:bg-slate-800 border-[var(--color-brand-ring)] dark:border-slate-700 text-slate-900 dark:text-white'
+                              : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                isActive
+                                  ? 'bg-[var(--color-brand)] text-white'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                              }`}
+                            >
+                              <Icon size={18} />
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                                  {mod.title}
+                                </span>
+                                {mod.badge && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
+                                    {mod.badge}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
-            })}
-          </div>
+            })
+          )}
 
           {/* Quick Settings Bar inside Sheet */}
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
@@ -213,9 +296,9 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
               {isBn ? 'থিম ও পছন্দসমূহ' : 'Preferences & Accent'}
             </span>
 
-            {/* Accent Theme Switcher Chips */}
-            <div className="flex items-center gap-2 px-1 overflow-x-auto py-1">
-              {ACCENT_THEMES.map(theme => (
+            {/* Accent Theme Switcher Chips — curated first (S7), rest behind "আরও" */}
+            <div className="flex flex-wrap items-center gap-2 px-1 py-1">
+              {visibleAccents.map(theme => (
                 <button
                   key={theme.id}
                   type="button"
@@ -233,6 +316,15 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
                   <span>{isBn ? theme.nameBn.split(' ')[0] : theme.nameEn.split(' ')[0]}</span>
                 </button>
               ))}
+              {!showAllAccents && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllAccents(true)}
+                  className="min-h-[44px] px-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300 transition cursor-pointer shrink-0"
+                >
+                  {isBn ? 'আরও' : 'More'}
+                </button>
+              )}
             </div>
 
             {/* Language toggle */}
@@ -242,7 +334,7 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
                 onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')}
                 className="w-full min-h-[44px] p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition cursor-pointer"
               >
-                <Languages size={15} className="text-indigo-600 dark:text-indigo-400" />
+                <Languages size={15} className="text-[var(--color-brand)]" />
                 <span>{language === 'en' ? 'বাংলা সংস্করণ' : 'English Version'}</span>
               </button>
             </div>

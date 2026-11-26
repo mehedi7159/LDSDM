@@ -215,7 +215,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
           {(canManage || isViewerMode) && (
             <button
               onClick={handleNewNoticeClick}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus size={14} />
               <span>{language === 'bn' ? 'নতুন নোটিশ' : 'Post Notice'}</span>
@@ -283,7 +283,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
         <button
           onClick={() => setActiveFilter('holiday')}
           className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeFilter === 'holiday' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+            activeFilter === 'holiday' ? 'bg-[var(--color-brand)] text-white' : 'bg-[var(--color-brand-light)] text-[var(--color-brand)] hover:opacity-80'
           }`}
         >
           {language === 'bn' ? '📅 পরীক্ষা ও ছুটি' : 'Exam & Holidays'}
@@ -309,7 +309,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
                   isUrgent 
                     ? 'bg-rose-50/30 border-rose-200/80 hover:border-rose-400' 
-                    : 'bg-slate-50/50 border-slate-200/80 hover:border-indigo-300 hover:bg-white'
+                    : 'bg-slate-50/50 border-slate-200/80 hover:border-[var(--color-brand-ring)] hover:bg-white'
                 }`}
               >
                 <div>
@@ -326,7 +326,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                         </span>
                       )}
                       {notice.targetClass && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold">
+                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
                           {notice.targetClass}
                         </span>
                       )}
@@ -337,7 +337,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   </div>
 
                   {/* Title */}
-                  <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1 group-hover:text-[var(--color-brand)] transition-colors">
                     {notice.title}
                   </h3>
                   {/* Job 2: background cloud confirm failed — local-only until retry. */}
@@ -354,7 +354,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 {/* Card Footer */}
                 <div className="pt-3 mt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400">
                   <span className="truncate max-w-[150px]">✍️ {notice.authorName || 'প্রশাসন'}</span>
-                  <span className="text-indigo-600 font-bold group-hover:underline flex items-center gap-0.5 shrink-0">
+                  <span className="text-[var(--color-brand)] font-bold group-hover:underline flex items-center gap-0.5 shrink-0">
                     <span>{language === 'bn' ? 'বিস্তারিত' : 'Read'}</span>
                     <ChevronRight size={12} />
                   </span>
@@ -401,7 +401,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   {selectedNoticeForModal.title}
                 </h2>
                 {selectedNoticeForModal.targetClass && (
-                  <p className="text-xs text-indigo-600 font-bold mt-1">
+                  <p className="text-xs text-[var(--color-brand)] font-bold mt-1">
                     শ্রেণি/বিভাগ: {selectedNoticeForModal.targetClass}
                   </p>
                 )}
@@ -466,7 +466,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   placeholder={language === 'bn' ? 'যেমন: পবিত্র শবে বরাত উপলক্ষে মাদ্রাসা ছুটি' : 'e.g. Ramadan Holiday Announcement'}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                 />
               </div>
 
@@ -554,7 +554,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   placeholder={language === 'bn' ? 'বিজ্ঞপ্তির বিস্তারিত বা ডায়েরির বাড়ির কাজ এখানে লিখুন...' : 'Write the detailed announcement or homework activity here...'}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla"
                 />
               </div>
 
@@ -575,7 +575,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                     type="checkbox"
                     checked={isPinned}
                     onChange={(e) => setIsPinned(e.target.checked)}
-                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                    className="rounded text-[var(--color-brand)] focus:ring-[var(--color-brand-ring)]"
                   />
                   <span>{language === 'bn' ? 'উপরে পিন করুন' : 'Pin to top'}</span>
                 </label>

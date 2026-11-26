@@ -155,10 +155,10 @@ export const GuardianPortal: React.FC = () => {
   // student's data and never the full directory as a fallback.
   if (!linkedStudent) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
- <div className="bg-white p-6 rounded-3xl text-center max-w-sm w-full space-y-3">
+      <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] flex items-center justify-center p-4">
+ <div className="bg-white dark:bg-[#161c2e] p-6 rounded-3xl text-center max-w-sm w-full space-y-3">
           <AlertCircle size={36} className="text-amber-500 mx-auto" />
-          <h3 className="font-bold text-slate-800">
+          <h3 className="font-bold text-slate-800 dark:text-slate-100">
             {language === 'en'
               ? 'No student linked yet — please contact the office'
               : 'কোনো শিক্ষার্থী যুক্ত করা হয়নি — অফিসে যোগাযোগ করুন'}
@@ -170,7 +170,7 @@ export const GuardianPortal: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-20 md:pb-6">
+    <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] flex flex-col font-bangla pb-20 md:pb-6">
       {/* Top Mobile-First App Header */}
       <header className="bg-emerald-900 text-white sticky top-0 z-30 shadow-md">
         <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between">
@@ -250,7 +250,7 @@ export const GuardianPortal: React.FC = () => {
             is scoped to the selected child only. */}
         {children.length > 1 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-500">{language === 'en' ? 'My children:' : 'আমার সন্তান:'}</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{language === 'en' ? 'My children:' : 'আমার সন্তান:'}</span>
             {children.map(child => (
               <button
                 key={child.id}
@@ -258,7 +258,7 @@ export const GuardianPortal: React.FC = () => {
                 className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
                   linkedStudent.id === child.id
                     ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400'
+                    : 'bg-white dark:bg-[#161c2e] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/10 hover:border-emerald-400 dark:hover:border-emerald-400'
                 }`}
               >
                 {child.nameBn || child.name} • {child.classLevel}
@@ -271,13 +271,13 @@ export const GuardianPortal: React.FC = () => {
         {activeTab === 'results' && (
           <div className="space-y-4">
             {/* Exam selector filter */}
- <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+ <div className="bg-white dark:bg-[#161c2e] p-4 rounded-2xl border border-slate-200/80 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700">পরীক্ষা নির্বাচন:</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">পরীক্ষা নির্বাচন:</span>
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-[#161c2e] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   {exams.map(ex => (
                     <option key={ex.id} value={ex.id}>{ex.nameBn || ex.name}</option>
@@ -288,7 +288,7 @@ export const GuardianPortal: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowQrModal(true)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <QrCode size={14} />
                   <span>ভেরিফিকেশন QR</span>
@@ -305,7 +305,7 @@ export const GuardianPortal: React.FC = () => {
 
             {/* Performance Snapshot Card */}
             {resultData && (
- <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden">
+ <div className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200/90 dark:border-white/10 overflow-hidden">
                 <div className="bg-emerald-800 text-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-emerald-200 tracking-wider">অ্যাকাডেমিক মূল্যায়ন</span>
@@ -327,9 +327,9 @@ export const GuardianPortal: React.FC = () => {
 
                 {/* Subject-wise Marks Table */}
                 <div className="p-4 sm:p-6">
-                  <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                  <div className="overflow-x-auto border border-slate-200 dark:border-white/10 rounded-2xl">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+                      <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 font-bold">
                         <tr>
                           <th className="p-3">বিষয়</th>
                           <th className="p-3 text-center">পূর্ণমান</th>
@@ -340,31 +340,31 @@ export const GuardianPortal: React.FC = () => {
                           <th className="p-3 text-center">পয়েন্ট</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 dark:divide-white/10">
                         {resultData.subjects.map(sub => {
                           const mark = marks.find(m => m.studentId === linkedStudent.id && m.subjectId === sub.id && m.examId === selectedExam.id);
                           const obtained = mark?.obtained ?? 0;
                           const { grade, gpa } = calculateGrade(obtained, sub.fullMarks || 100);
 
                           return (
-                            <tr key={sub.id} className="hover:bg-slate-50">
-                              <td className="p-3 font-semibold text-slate-800">
+                            <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
+                              <td className="p-3 font-semibold text-slate-800 dark:text-slate-100">
                                 {sub.nameBn || sub.name} {sub.isOptional ? '(৪র্থ বিষয়)' : ''}
                               </td>
-                              <td className="p-3 text-center font-mono text-slate-600">{formatBanglaNumber(sub.fullMarks || 100)}</td>
-                              <td className="p-3 text-center font-mono text-slate-600">{mark?.obtainedCQ !== undefined ? formatBanglaNumber(mark.obtainedCQ) : '-'}</td>
-                              <td className="p-3 text-center font-mono text-slate-600">{mark?.obtainedMCQ !== undefined ? formatBanglaNumber(mark.obtainedMCQ) : '-'}</td>
-                              <td className="p-3 text-center font-mono font-bold text-slate-900">{mark?.isAbsent ? 'অনুপস্থিত' : formatBanglaNumber(obtained)}</td>
+                              <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-300">{formatBanglaNumber(sub.fullMarks || 100)}</td>
+                              <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-300">{mark?.obtainedCQ !== undefined ? formatBanglaNumber(mark.obtainedCQ) : '-'}</td>
+                              <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-300">{mark?.obtainedMCQ !== undefined ? formatBanglaNumber(mark.obtainedMCQ) : '-'}</td>
+                              <td className="p-3 text-center font-mono font-bold text-slate-900 dark:text-slate-100">{mark?.isAbsent ? 'অনুপস্থিত' : formatBanglaNumber(obtained)}</td>
                               <td className="p-3 text-center font-bold">
                                 <span className={`px-2 py-0.5 rounded-md text-[11px] ${
                                   grade === 'A+' ? 'bg-emerald-100 text-emerald-800' :
                                   grade === 'F' ? 'bg-rose-100 text-rose-800' :
-                                  'bg-blue-50 text-blue-800'
+                                  'bg-blue-50 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300'
                                 }`}>
                                   {grade}
                                 </span>
                               </td>
-                              <td className="p-3 text-center font-mono font-semibold text-slate-700">{gpa.toFixed(2)}</td>
+                              <td className="p-3 text-center font-mono font-semibold text-slate-700 dark:text-slate-200">{gpa.toFixed(2)}</td>
                             </tr>
                           );
                         })}
@@ -383,33 +383,33 @@ export const GuardianPortal: React.FC = () => {
             {attendanceSummary && attendanceSummary.workingDays > 0 ? (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
- <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                    <span className="text-xs font-semibold text-slate-400 block">রেকর্ডকৃত দিন</span>
-                    <span className="text-3xl font-black text-slate-800 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.workingDays)} দিন</span>
+ <div className="bg-white dark:bg-[#161c2e] p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+                    <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 block">রেকর্ডকৃত দিন</span>
+                    <span className="text-3xl font-black text-slate-800 dark:text-slate-100 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.workingDays)} দিন</span>
                   </div>
- <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                    <span className="text-xs font-semibold text-emerald-600 block">উপস্থিত</span>
-                    <span className="text-3xl font-black text-emerald-700 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.totalPresent)} দিন</span>
+ <div className="bg-white dark:bg-[#161c2e] p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block">উপস্থিত</span>
+                    <span className="text-3xl font-black text-emerald-700 dark:text-emerald-400 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.totalPresent)} দিন</span>
                   </div>
- <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                    <span className="text-xs font-semibold text-rose-600 block">অনুপস্থিত</span>
-                    <span className="text-3xl font-black text-rose-700 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.totalAbsent)} দিন</span>
+ <div className="bg-white dark:bg-[#161c2e] p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+                    <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 block">অনুপস্থিত</span>
+                    <span className="text-3xl font-black text-rose-700 dark:text-rose-400 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.totalAbsent)} দিন</span>
                   </div>
- <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                    <span className="text-xs font-semibold text-blue-600 block">উপস্থিতির হার</span>
-                    <span className="text-4xl font-black text-blue-700 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.attendancePercentage)}%</span>
+ <div className="bg-white dark:bg-[#161c2e] p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 block">উপস্থিতির হার</span>
+                    <span className="text-4xl font-black text-blue-700 dark:text-blue-400 font-mono mt-1 block">{formatBanglaNumber(attendanceSummary.attendancePercentage)}%</span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   {language === 'en'
                     ? 'Calculated from recorded attendance days only.'
                     : 'হিসাবটি শুধু রেকর্ডকৃত হাজিরার দিনের ভিত্তিতে।'}
                 </p>
               </>
             ) : (
- <div className="bg-white rounded-3xl p-6 border border-slate-200/80 text-center space-y-2">
+ <div className="bg-white dark:bg-[#161c2e] rounded-3xl p-6 border border-slate-200/80 dark:border-white/10 text-center space-y-2">
                 <AlertCircle size={28} className="text-slate-300 mx-auto" />
-                <p className="text-sm font-bold text-slate-700">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {language === 'en' ? 'No attendance records yet' : 'এখনো কোনো হাজিরার রেকর্ড নেই'}
                 </p>
               </div>
@@ -421,47 +421,47 @@ export const GuardianPortal: React.FC = () => {
         {activeTab === 'fees' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-3xl">
-                <span className="text-xs font-bold text-emerald-800 block">মোট পরিশোধিত বেতন ও ফি</span>
-                <span className="text-3xl font-black text-emerald-900 font-mono mt-1 block">
+              <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-5 rounded-3xl">
+                <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 block">মোট পরিশোধিত বেতন ও ফি</span>
+                <span className="text-3xl font-black text-emerald-900 dark:text-emerald-200 font-mono mt-1 block">
                   ৳ {formatBanglaNumber(feeSummary.paid)}
                 </span>
-                <span className="text-[11px] text-emerald-700 mt-1 block">চলতি শিক্ষাবর্ষের আদায়</span>
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 block">চলতি শিক্ষাবর্ষের আদায়</span>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 p-5 rounded-3xl">
-                <span className="text-xs font-bold text-amber-800 block">চলতি মাসের ফি (যদি থাকে)</span>
-                <span className="text-3xl font-black text-amber-900 font-mono mt-1 block">
+              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 p-5 rounded-3xl">
+                <span className="text-xs font-bold text-amber-800 dark:text-amber-300 block">চলতি মাসের ফি (যদি থাকে)</span>
+                <span className="text-3xl font-black text-amber-900 dark:text-amber-200 font-mono mt-1 block">
                   ৳ {formatBanglaNumber(feeSummary.due)}
                 </span>
-                <span className="text-[11px] text-amber-700 mt-1 block">নিয়মিত বেতন পরিশোধে সহযোগিতা করুন</span>
+                <span className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 block">নিয়মিত বেতন পরিশোধে সহযোগিতা করুন</span>
               </div>
 
               {/* Shared total — the same figure the office sees (finished
                   months only), with its month count. */}
-              <div className="bg-rose-50 border border-rose-200 p-5 rounded-3xl sm:col-span-2">
-                <span className="text-xs font-bold text-rose-800 block">মোট বকেয়া</span>
-                <span className="text-3xl font-black text-rose-900 font-mono mt-1 block">
+              <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 p-5 rounded-3xl sm:col-span-2">
+                <span className="text-xs font-bold text-rose-800 dark:text-rose-300 block">মোট বকেয়া</span>
+                <span className="text-3xl font-black text-rose-900 dark:text-rose-200 font-mono mt-1 block">
                   ৳ {formatBanglaNumber(feeSummary.totalDue)}
                 </span>
-                <span className="text-[11px] text-rose-700 mt-1 block">{feeSummary.dueMonthCount > 0 ? `${formatBanglaNumber(feeSummary.dueMonthCount)} মাসের বকেয়া` : 'কোনো বকেয়া নেই'}</span>
+                <span className="text-[11px] text-rose-700 dark:text-rose-400 mt-1 block">{feeSummary.dueMonthCount > 0 ? `${formatBanglaNumber(feeSummary.dueMonthCount)} মাসের বকেয়া` : 'কোনো বকেয়া নেই'}</span>
               </div>
             </div>
 
             {/* Transactions History */}
- <div className="bg-white rounded-3xl p-5 border border-slate-200/80 space-y-3">
-              <h4 className="text-sm font-bold text-slate-900">মানি রিসিট ও জমার ইতিহাস</h4>
+ <div className="bg-white dark:bg-[#161c2e] rounded-3xl p-5 border border-slate-200/80 dark:border-white/10 space-y-3">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">মানি রিসিট ও জমার ইতিহাস</h4>
               {feeSummary.transactions.length === 0 ? (
-                <p className="text-xs text-slate-400 py-3 text-center">এখনো কোনো ফি জমার ট্রানজেকশন নেই।</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 py-3 text-center">এখনো কোনো ফি জমার ট্রানজেকশন নেই।</p>
               ) : (
-                <div className="divide-y divide-slate-100 text-xs">
+                <div className="divide-y divide-slate-100 dark:divide-white/10 text-xs">
                   {feeSummary.transactions.map(t => (
                     <div key={t.id} className="py-3 flex items-center justify-between">
                       <div>
-                        <span className="font-bold text-slate-800 block">{t.categoryName || 'মাসিক ছাত্র বেতন'}</span>
-                        <span className="text-[11px] text-slate-400 font-mono">রিসিট নং: {t.voucherNo} | তারিখ: {t.date}</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-100 block">{t.categoryName || 'মাসিক ছাত্র বেতন'}</span>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">রিসিট নং: {t.voucherNo} | তারিখ: {t.date}</span>
                       </div>
-                      <span className="font-bold text-emerald-700 font-mono text-sm">৳ {formatBanglaNumber(t.amount)}</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono text-sm">৳ {formatBanglaNumber(t.amount)}</span>
                     </div>
                   ))}
                 </div>

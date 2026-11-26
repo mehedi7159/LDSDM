@@ -504,7 +504,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 isRailExpanded ? 'w-full px-3 py-2.5 justify-start' : 'w-10 h-10 justify-center'
               }`}
               title={schoolProfile.nameBn || schoolProfile.name}
-              style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
+              style={{ backgroundColor: 'var(--color-brand, #0d9488)' }}
             >
               <GraduationCap size={20} className="shrink-0" />
               {isRailExpanded && (
@@ -556,13 +556,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
  ? 'font-bold '
                         : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
-                    style={isActive ? { color: 'var(--color-brand, #4f46e5)', backgroundColor: 'var(--color-brand-light)' } : undefined}
+                    style={isActive ? { color: 'var(--color-brand, #0d9488)', backgroundColor: 'var(--color-brand-light)' } : undefined}
                   >
                     <Icon size={18} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
                     {isActive && (
                       <span
                         className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full"
-                        style={{ backgroundColor: 'var(--color-brand, #4f46e5)' }}
+                        style={{ backgroundColor: 'var(--color-brand, #0d9488)' }}
                       />
                     )}
                     {menu.badge && (
@@ -591,7 +591,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                       aria-expanded={flyoutOpen}
                       title={language === 'bn' ? 'সাবমেনু' : 'Submenu'}
  className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center border border-white dark:border-slate-900 cursor-pointer"
-                      style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                      style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #0d9488)' }}
                     >
                       <ChevronDown size={11} />
                     </button>
@@ -617,12 +617,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
  ? 'text-white font-bold'
                         : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
-                    style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+                    style={isActive ? { backgroundColor: 'var(--color-brand, #0d9488)' } : undefined}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
-                        style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                        style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #0d9488)' }}
                       >
                         <Icon size={15} />
                       </div>
@@ -652,7 +652,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                   >
                     <div
  className={`w-full rounded-xl flex items-stretch transition-all ${isActive ? 'text-white font-bold' : ''}`}
-                      style={isActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+                      style={isActive ? { backgroundColor: 'var(--color-brand, #0d9488)' } : undefined}
                     >
                       <button
                         type="button"
@@ -661,7 +661,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                       >
                         <div
                           className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20 text-white' : ''}`}
-                          style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                          style={isActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #0d9488)' }}
                         >
                           <Icon size={15} />
                         </div>
@@ -697,11 +697,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                         type="button"
                         onClick={() => handleTabClick('student_profile')}
  className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 text-left cursor-pointer transition-all ${isProfileActive ? 'text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                        style={isProfileActive ? { backgroundColor: 'var(--color-brand, #4f46e5)' } : undefined}
+                        style={isProfileActive ? { backgroundColor: 'var(--color-brand, #0d9488)' } : undefined}
                       >
                         <div
                           className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${isProfileActive ? 'bg-white/20 text-white' : ''}`}
-                          style={isProfileActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #4f46e5)' }}
+                          style={isProfileActive ? undefined : { backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand, #0d9488)' }}
                         >
                           <User size={13} />
                         </div>
@@ -790,7 +790,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             (Data Safety & Backup, after Settings & System) and the
             mobile More sheet; address line removed; name click goes
             home from any tab). */}
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 z-30 print:hidden shadow-xs sticky top-0 transition-colors">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 z-30 print:hidden sticky top-0 transition-colors">
           <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 gap-2">
 
             {/* Left: madrasa name only — click goes home from any tab */}
@@ -839,7 +839,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               <button
                 type="button"
                 onClick={() => setIsThemeModalOpen(true)}
-                className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 title={language === 'bn' ? 'ডিজাইন ও কালার থিম' : 'Accent Theme'}
               >
                 <Palette size={16} className="text-[var(--color-brand)]" />
@@ -849,7 +849,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               <button
                 type="button"
                 onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')}
-                className="h-9 min-w-[52px] px-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1 transition-colors cursor-pointer shrink-0"
+                className="h-11 min-w-[52px] px-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1 transition-colors cursor-pointer shrink-0"
                 title="Switch Language"
               >
                 <Languages size={15} className="text-[var(--color-brand)] shrink-0" />
@@ -873,14 +873,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                         alt=""
                         referrerPolicy="no-referrer"
                         onError={() => setProfilePhotoFailed(true)}
-                        className="w-6 h-6 rounded-lg object-cover shrink-0"
+                        className="w-10 h-10 rounded-lg object-cover shrink-0"
                       />
                     ) : (
-                      <span className="w-6 h-6 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
+                      <span className="w-10 h-10 rounded-lg bg-[var(--color-brand)] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
                         {(authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'M' : authUser.email) || 'U')[0].toUpperCase()}
                       </span>
                     )}
-                    <span className="hidden xs:inline font-bold text-slate-800 dark:text-slate-200 truncate max-w-[90px]">
+                    <span className="hidden sm:inline font-bold text-slate-800 dark:text-slate-200 truncate max-w-[90px]">
                       {authUser.displayName || (authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Mehedi Hasan Sagor' : authUser.email?.split('@')[0])}
                     </span>
                   </button>
@@ -942,10 +942,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               onClick={() => handleTabClick('dashboard')}
               className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'dashboard'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  ? 'text-[var(--color-brand)] font-bold scale-105'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
-              style={activeTab === 'dashboard' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
               <LayoutDashboard size={19} className={activeTab === 'dashboard' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'ড্যাশবোর্ড' : 'Home'}</span>
@@ -956,10 +955,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               onClick={() => handleTabClick('students')}
               className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'students'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  ? 'text-[var(--color-brand)] font-bold scale-105'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
-              style={activeTab === 'students' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
               <Users size={19} className={activeTab === 'students' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'শিক্ষার্থী' : 'Students'}</span>
@@ -970,10 +968,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               onClick={() => handleTabClick('attendance')}
               className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'attendance'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  ? 'text-[var(--color-brand)] font-bold scale-105'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
-              style={activeTab === 'attendance' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
               <UserCheck size={19} className={activeTab === 'attendance' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'হাজিরা' : 'Attendance'}</span>
@@ -984,10 +981,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               onClick={() => handleTabClick('results')}
               className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'results'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                  ? 'text-[var(--color-brand)] font-bold scale-105'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
-              style={activeTab === 'results' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
             >
               <Award size={19} className={activeTab === 'results' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] mt-0.5">{language === 'bn' ? 'ফলাফল' : 'Results'}</span>
@@ -999,10 +995,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 onClick={() => handleTabClick('finance')}
                 className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                   activeTab === 'finance'
-                    ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                    ? 'text-[var(--color-brand)] font-bold scale-105'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
-                style={activeTab === 'finance' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
               >
                 <Wallet size={19} className={activeTab === 'finance' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
                 <span className="text-[10px] mt-0.5">{language === 'bn' ? 'হিসাব' : 'Finance'}</span>
@@ -1012,10 +1007,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 onClick={() => handleTabClick('marks')}
                 className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                   activeTab === 'marks'
-                    ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                    ? 'text-[var(--color-brand)] font-bold scale-105'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
-                style={activeTab === 'marks' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
               >
                 <PenTool size={19} className={activeTab === 'marks' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
                 <span className="text-[10px] mt-0.5">{language === 'bn' ? 'নম্বর' : 'Marks'}</span>
@@ -1025,10 +1019,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 onClick={() => handleTabClick('notices')}
                 className={`min-h-[48px] min-w-[48px] flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
                   activeTab === 'notices'
-                    ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-105'
+                    ? 'text-[var(--color-brand)] font-bold scale-105'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
-                style={activeTab === 'notices' ? { color: 'var(--color-brand, #4f46e5)' } : undefined}
               >
                 <Megaphone size={19} className={activeTab === 'notices' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
                 <span className="text-[10px] mt-0.5">{language === 'bn' ? 'নোটিশ' : 'Notices'}</span>

@@ -14,22 +14,13 @@ export interface AccentThemeOption {
 
 export const ACCENT_THEMES: AccentThemeOption[] = [
   {
-    id: 'indigo',
-    nameEn: 'Linear Indigo',
-    nameBn: 'লিনিয়ার ইন্ডিগো',
-    primary: '#4f46e5',
-    hover: '#4338ca',
-    light: '#eef2ff',
-    ring: '#6366f1'
-  },
-  {
-    id: 'blue',
-    nameEn: 'Stripe Blue',
-    nameBn: 'স্ট্রাইপ ব্লু',
-    primary: '#2563eb',
-    hover: '#1d4ed8',
-    light: '#eff6ff',
-    ring: '#3b82f6'
+    id: 'teal',
+    nameEn: 'Nordic Teal',
+    nameBn: 'নর্ডিক টিল',
+    primary: '#0d9488',
+    hover: '#0f766e',
+    light: '#f0fdfa',
+    ring: '#14b8a6'
   },
   {
     id: 'emerald',
@@ -41,6 +32,15 @@ export const ACCENT_THEMES: AccentThemeOption[] = [
     ring: '#10b981'
   },
   {
+    id: 'blue',
+    nameEn: 'Stripe Blue',
+    nameBn: 'স্ট্রাইপ ব্লু',
+    primary: '#2563eb',
+    hover: '#1d4ed8',
+    light: '#eff6ff',
+    ring: '#3b82f6'
+  },
+  {
     id: 'amber',
     nameEn: 'Warm Amber',
     nameBn: 'ওয়ার্ম অ্যাম্বার',
@@ -50,15 +50,6 @@ export const ACCENT_THEMES: AccentThemeOption[] = [
     ring: '#f59e0b'
   },
   {
-    id: 'teal',
-    nameEn: 'Nordic Teal',
-    nameBn: 'নর্ডিক টিল',
-    primary: '#0d9488',
-    hover: '#0f766e',
-    light: '#f0fdfa',
-    ring: '#14b8a6'
-  },
-  {
     id: 'rose',
     nameEn: 'Rose Red',
     nameBn: 'রোজ রেড',
@@ -66,6 +57,15 @@ export const ACCENT_THEMES: AccentThemeOption[] = [
     hover: '#e11d48',
     light: '#fff1f2',
     ring: '#fb7185'
+  },
+  {
+    id: 'indigo',
+    nameEn: 'Linear Indigo',
+    nameBn: 'লিনিয়ার ইন্ডিগো',
+    primary: '#4f46e5',
+    hover: '#4338ca',
+    light: '#eef2ff',
+    ring: '#6366f1'
   },
   {
     id: 'purple',
@@ -104,6 +104,11 @@ export const ACCENT_THEMES: AccentThemeOption[] = [
     ring: '#f472b6'
   }
 ];
+
+// Curated picker set (S7): the 5 accents shown first in every theme
+// picker — teal default, the rest behind an "আরও" disclosure. The full
+// 10-theme list above stays available; nothing is removed.
+export const CURATED_ACCENTS: AccentThemeId[] = ['teal', 'emerald', 'blue', 'amber', 'rose'];
 
 export interface ToastMessage {
   id: string;
@@ -150,8 +155,49 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return 'teal';
   });
 
-  // Permanently locked to light mode
-  const darkMode = false;
+  // Night mode — MOBILE ONLY (26 Nov 2026 decision): the preference is
+  // persisted, but the `dark` class is applied only on phone viewports
+  // (max-width 767px, matching the `block md:hidden` mobile shell).
+  // Desktop always stays light, even with the preference on.
+  const [darkMode, setDarkModeState] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('ldsdm_dark_mode') === 'true';
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(max-width: 767px)').matches;
+    }
+    return false;
+  });
+
+  // Track the viewport live (rotation / resize / devtools) so the gate
+  // follows the actual width, not the width at first load.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = (e: MediaQueryListEvent) => setIsMobileViewport(e.matches);
+    setIsMobileViewport(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Apply the `dark` class only when the preference is on AND the
+  // viewport is mobile. Tailwind Play CDN is class-based
+  // (darkMode: 'class' in index.html), so this is what wakes the
+  // existing `dark:` variants.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (darkMode && isMobileViewport) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [darkMode, isMobileViewport]);
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -167,27 +213,29 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('ldsdm_accent_theme', accentTheme);
   }, [accentTheme]);
 
-  // Permanently remove dark mode class from document root and clean storage
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove('dark');
+  const setAccentTheme = useCallback((id: AccentThemeId) => {
+    setAccentThemeState(id);
+  }, []);
+
+  const setDarkMode = useCallback((dark: boolean) => {
+    setDarkModeState(dark);
     try {
-      localStorage.removeItem('ldsdm_dark_mode');
+      localStorage.setItem('ldsdm_dark_mode', dark ? 'true' : 'false');
     } catch {
       // ignore
     }
   }, []);
 
-  const setAccentTheme = useCallback((id: AccentThemeId) => {
-    setAccentThemeState(id);
-  }, []);
-
-  const setDarkMode = useCallback((_dark: boolean) => {
-    // Night mode permanently disabled
-  }, []);
-
   const toggleDarkMode = useCallback(() => {
-    // Night mode permanently disabled
+    setDarkModeState(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ldsdm_dark_mode', next ? 'true' : 'false');
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   }, []);
 
   const removeToast = useCallback((id: string) => {

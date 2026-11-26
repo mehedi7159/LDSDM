@@ -438,9 +438,6 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                   <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
                     <CountUpNumber target={Math.round(Number(attendanceMetrics.rate) || 0)} suffix="%" />
                   </h3>
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                    <span>{isBn ? 'সন্তোষজনক' : 'Good'}</span>
-                  </span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
                   {isBn

@@ -74,10 +74,7 @@ export const StickyActionFooter: React.FC<StickyActionFooterProps> = ({
             type="button"
             onClick={onSave}
             disabled={disabled || isSaving}
-            className="min-h-[44px] min-w-[100px] px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-            style={{
-              backgroundColor: 'var(--color-brand, #4f46e5)'
-            }}
+            className="min-h-[44px] min-w-[100px] px-5 py-2.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] active:opacity-90 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
           >
             {isSaving ? (
               <>

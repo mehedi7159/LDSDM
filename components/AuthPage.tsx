@@ -251,7 +251,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   }, [searchedStudent, activeExam, subjects, marks, exams]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-bangla selection:bg-indigo-600 selection:text-white relative">
       
       {/* Subtle Top Ambient Lighting */}
 

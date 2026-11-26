@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 interface StatCardProps {
@@ -7,7 +7,6 @@ interface StatCardProps {
   value: number | string;
   prefix?: string;
   suffix?: string;
-  icon?: LucideIcon;
   trend?: {
     value: string | number;
     isPositive?: boolean;
@@ -68,7 +67,6 @@ export const StatCard: React.FC<StatCardProps> = ({
   value,
   prefix = '',
   suffix = '',
-  icon: Icon,
   trend,
   subtitle,
   badge,
@@ -89,7 +87,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal block">
             {label}
           </span>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white flex items-baseline gap-1">
+          <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-baseline gap-1">
             {isNumeric ? (
               <CountUpNumber target={value as number} prefix={prefix} suffix={suffix} />
             ) : (

@@ -29,25 +29,25 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div className={`p-8 sm:p-12 text-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 flex flex-col items-center justify-center max-w-lg mx-auto ${className}`}>
-      {/* Icon with soft animated glow */}
+      {/* Icon in a brand-soft tile (no pulse) */}
       <div className="relative mb-4">
-        <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-          <Icon size={32} className="text-indigo-600 animate-pulse" />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
+          <Icon size={32} />
         </div>
         {badge && (
-          <span className="absolute -top-1.5 -right-2 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider">
+          <span className="absolute -top-1.5 -right-2 px-2 py-0.5 rounded-full text-white text-[10px] font-black uppercase tracking-wider" style={{ backgroundColor: 'var(--color-brand)' }}>
             {badge}
           </span>
         )}
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-black text-slate-800 tracking-tight">
+      <h3 className="text-[15px] font-bold text-slate-800 tracking-tight">
         {title}
       </h3>
 
       {/* Description */}
-      <p className="text-xs text-slate-500 mt-1.5 max-w-sm leading-relaxed">
+      <p className="text-[13px] text-slate-500 mt-1.5 max-w-sm leading-relaxed">
         {description}
       </p>
 

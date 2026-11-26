@@ -22,10 +22,10 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'Anek Bangla', 'sans-serif'],
+              sans: ['Anek Bangla', 'Inter', 'sans-serif'],
               inter: ['Inter', 'sans-serif'],
               bangla: ['Anek Bangla', 'sans-serif'],
-              mono: ['Inter', 'Anek Bangla', 'monospace']
+              mono: ['Anek Bangla', 'Inter', 'monospace']
             },
             boxShadow: {
               'soft': '0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.02)',
@@ -53,7 +53,12 @@
       })();
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Alkatra:wght@400;500;600;700&family=Anek+Bangla:wght@300;400;500;600;700;800&family=Atma:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700;800&family=Galada&family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Mina:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tiro+Bangla:ital@0;1&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+      /* Anek Bangla + Inter only (+ IBM Plex Sans Arabic for Arabic mode).
+         The old 9-family import (Alkatra, Atma, Baloo Da 2, Galada, Hind
+         Siliguri, Mina, Tiro Bangla) is gone: Hind Siliguri was purged
+         system-wide (clipped digits) and the display faces were dead
+         weight — their .font-* utilities fall back to Anek Bangla. */
       
       :root {
         --color-brand: #0d9488;
@@ -62,9 +67,14 @@
         --color-brand-ring: #14b8a6;
         --bangla-font: 'Anek Bangla', sans-serif;
         --bangla-num-font: 'Anek Bangla', sans-serif;
-        /* On-screen UI font: Latin from Inter; Bengali glyphs and Bengali
-           digits render with Anek Bangla (crystal-clear, never clips numbers). */
-        --ui-font: 'Inter', 'Anek Bangla', sans-serif;
+        /* On-screen UI font: Anek Bangla first (system rule since 24 Oct
+           2026), Inter second for Latin. Bengali glyphs and digits
+           render with Anek Bangla (crystal-clear, never clips numbers).
+           NOTE: App.tsx re-sets --ui-font at runtime from the saved
+           schoolProfile.uiFont (currently 'Tiro Bangla' in the cloud
+           profile) — that saved choice still wins live; this is the
+           default / first-paint stack. */
+        --ui-font: 'Anek Bangla', 'Inter', sans-serif;
       }
 
       [data-theme="indigo"] {
@@ -107,7 +117,7 @@
       }
 
       html.dark body {
-        background-color: #0b0f19 !important;
+        background-color: #0e1220 !important;
         color: #f1f5f9 !important;
       }
       
@@ -127,7 +137,7 @@
       }
 
       .font-mono {
-        font-family: 'Inter', 'Anek Bangla', monospace !important;
+        font-family: 'Anek Bangla', 'Inter', monospace !important;
         font-variant-numeric: tabular-nums;
       }
 
