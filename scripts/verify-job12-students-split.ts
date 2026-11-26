@@ -6,21 +6,15 @@
  * (or npm run test:job12-students-split).
  *
  * Covers the Job 12 spec (LDSDM-database-split-plan-2026-11-07.md §6 Job 12,
- * §5 steps 1–3 only — step 5, stopping the old main_store write, is a
- * separate push a week later and is NOT part of this job):
+ * §5 steps 1–3, plus step 5 done 26 Nov 2026 — stopping the old
+ * main_store write; see scripts/verify-job12-step5-students.ts):
  *  - New path is institutions/inst_madrasah_primary/students/{id},
  *    built from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeStudentsFieldToCloud writes main_store AND the new
- *    collection in one try; the old main_store write is NOT stopped.
- *    Order is main_store FIRST (unlike Jobs 1/2/7, which write the
- *    collection first): writeFieldsToCloud runs the SAME
- *    findDegradingStudentIds check against the current main_store list
- *    and throws before anything is written, so a public-shaped record
- *    can never land in the new collection and then fail the main_store
- *    leg. The collection leg is setDoc merge per record, so it can
- *    never shrink the list; the tripwire stays in
- *    writeDeleteFieldsToCloud, where the SAME assertTripwire runs
- *    BEFORE any students collection doc is deleted.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writeStudentsFieldToCloud writes the new
+ *    collection ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. The degradation guard (findDegradingStudentIds)
+ *    is kept in the writer, now checked against the collection.
  *  - Deletes (trash) + restores also reach the new collection, so a
  *    trashed student can never be resurrected by the students feed
  *    and a restored student stays visible.
@@ -170,45 +164,47 @@ check("migrateFieldToCollection covers 'students', batched setDoc merge by id", 
   assert.ok(body.includes("'students'"), "backfill must handle the 'students' field");
 });
 
-console.log('--- Dual-write (source checks) ---');
+console.log('--- Collection-only write, step 5 (source checks) ---');
 
-check('writeStudentsFieldToCloud writes main_store AND the new collection in one try', () => {
+check('writeStudentsFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeStudentsFieldToCloud');
   assert.ok(start > -1, 'writeStudentsFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeStudentsToCollection'), 'must write the new collection');
-  assert.ok(body.includes('writeFieldsToCloud({ students }, updatedBy)'), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes('writeFieldsToCloud({ students }, updatedBy)'), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
   assert.ok(body.includes('STUDENTS_CONFIRM_TIMEOUT_MS'), 'students timeout stays 90 seconds');
 });
 
-check('dual-write runs the main_store leg FIRST, so the degradation check throws before any collection write', () => {
+check('degradation check runs BEFORE the collection write, against the collection', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeStudentsFieldToCloud');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
-  assert.ok(body.indexOf('writeFieldsToCloud({ students }, updatedBy)') < body.indexOf('writeStudentsToCollection'), 'main_store leg (with its degradation check) must run before the collection leg');
+  assert.ok(body.includes('findDegradingStudentIds'), 'writer must still run the degradation check');
+  assert.ok(body.includes('readStudentsFromCollection'), 'check must compare against the current collection list');
+  assert.ok(body.indexOf('findDegradingStudentIds') < body.indexOf('writeStudentsToCollection'), 'a degrading record must throw before any collection write');
 });
 
-check('dual-write asserts ids via the shared choke point', () => {
+check('collection-only write asserts ids via the shared choke point', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeStudentsFieldToCloud');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
-  assert.ok(body.includes('assertUpsertRecords'), 'dual-write must reuse assertUpsertRecords');
-  assert.ok(body.includes("fieldKeyFn('students')"), 'dual-write must key records with the shared fieldKeyFn');
+  assert.ok(body.includes('assertUpsertRecords'), 'collection-only write must reuse assertUpsertRecords');
+  assert.ok(body.includes("fieldKeyFn('students')"), 'collection-only write must key records with the shared fieldKeyFn');
 });
 
 console.log('--- Tripwire + degradation checks kept (same functions, not copies) ---');
 
-check('degradation check is the SAME findDegradingStudentIds from mainStoreWrite, run by the main_store leg', () => {
+check('degradation check is the SAME findDegradingStudentIds from mainStoreWrite, run by the students writer against the collection', () => {
   const cc = readSource('services/cloudConfirm.ts');
   assert.ok(cc.includes('findDegradingStudentIds,'), 'cloudConfirm must import findDegradingStudentIds from mainStoreWrite');
   assert.ok(!cc.includes('function findDegradingStudentIds'), 'cloudConfirm must NOT define its own copy of findDegradingStudentIds');
-  const wf = cc.indexOf('async function writeFieldsToCloud(');
-  assert.ok(wf > -1, 'writeFieldsToCloud must exist');
-  const wfBody = cc.slice(wf, cc.indexOf('\n}', wf) + 2);
-  assert.ok(wfBody.includes("if (field === 'students')"), 'writeFieldsToCloud must run the students degradation branch');
-  assert.ok(wfBody.includes('findDegradingStudentIds(existing || [], records)'), 'the check must compare incoming records against the current cloud list');
+  const start = cc.indexOf('export async function writeStudentsFieldToCloud');
+  assert.ok(start > -1, 'writeStudentsFieldToCloud must exist');
+  const body = cc.slice(start, cc.indexOf('\n}', start) + 2);
+  assert.ok(body.includes('readStudentsFromCollection'), 'the writer must read the current collection list for the check');
+  assert.ok(body.includes('findDegradingStudentIds(existing'), 'the check must compare incoming records against the current collection list');
 });
 
 check('students stays a TRIPWIRE_FIELD (same list, same function)', () => {
@@ -424,9 +420,9 @@ check('addStudent still passes trashed studentIds to the ID builder (no reuse of
   assert.ok(src.includes('buildCreateStudentPayload(student,'), 'addStudent must still use buildCreateStudentPayload');
 });
 
-console.log('--- Old write NOT stopped, no student data cleanup (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes students through the dual-write writer', () => {
+check('pushDiffToCloud still writes students through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('students: writeStudentsFieldToCloud'), 'auto-sync must still carry students through writeStudentsFieldToCloud');
 });

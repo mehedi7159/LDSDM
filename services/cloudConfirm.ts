@@ -575,24 +575,29 @@ export async function writeStudentsFieldToCloud(
 ): Promise<void> {
   const write = async (): Promise<void> => {
     const list = students || [];
-    // Job 12 dual-write, main_store FIRST (unlike Jobs 1/2/7, which
-    // write the collection first): writeFieldsToCloud runs the SAME
-    // findDegradingStudentIds check against the current main_store
-    // list and throws before anything is written — so a
-    // public-shaped record can never land in the new collection
-    // first and then fail the main_store leg. A failure anywhere
-    // fails the whole write, so the payload queue + retry replay
-    // both legs. The collection leg is setDoc merge per record, so
-    // it can never shrink the list; the tripwire lives in
-    // writeDeleteFieldsToCloud, where the SAME assertTripwire runs
-    // before any students collection doc is deleted.
-    await writeFieldsToCloud({ students }, updatedBy);
     if (list.length > 0) {
       assertUpsertRecords('students', list as any, fieldKeyFn('students'));
+      // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+      // frozen copy stays untouched, new students go to the collection
+      // only. The degradation guard stays, now checked against the
+      // collection (the new source of truth) instead of main_store:
+      // a public-shaped record must never overwrite a fuller
+      // collection record. Delete + restore still prune/union
+      // main_store (see the delete/trash-op writers), so the frozen
+      // copy can never resurrect a deleted student. The tripwire
+      // lives in writeDeleteFieldsToCloud, where the SAME
+      // assertTripwire runs before any students collection doc is
+      // deleted.
+      const existing = await readStudentsFromCollection();
+      const degrading = findDegradingStudentIds(existing as any, list as any);
+      if (degrading.length > 0) {
+        throw new Error(
+          `Phase 1 choke point: students write rejected — ${degrading.length} record(s) carry only public fields while the cloud holds fuller records for them. ` +
+            `Writing them would degrade those records, so the whole write was refused.`
+        );
+      }
       await writeStudentsToCollection(list);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
   };
   await withTimeout(
     write(),
@@ -1514,17 +1519,11 @@ export async function writeSchoolProfileFieldToCloud(
       throw new Error('Phase 1 choke point: schoolProfile write rejected — profile is not an object.');
     }
     const updatedAt = new Date().toISOString();
-    // Job 14 dual-write: settings/main first (merge — the switch
-    // field is untouched), then main_store as before. Same
-    // updatedBy/updatedAt in both; one leg failing fails the whole
-    // write, so the payload queue + retry replay both legs.
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, the profile goes to settings/main
+    // only. These scalars are never deleted or trashed, so no
+    // delete/restore prune/union exists for them.
     await writeSettingsToCollection({ schoolProfile: stripUndefinedRecord(profile), updatedBy, updatedAt });
-    const ref = doc(db, 'institution', 'main_store');
-    await setDoc(ref, {
-      schoolProfile: stripUndefinedRecord(profile),
-      updatedBy,
-      updatedAt,
-    }, { merge: true });
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'school profile cloud confirm');
 }
@@ -1538,15 +1537,10 @@ export async function writeMarkEntryEnabledFieldToCloud(
       throw new Error('Phase 1 choke point: markEntryEnabled write rejected — value is not a boolean.');
     }
     const updatedAt = new Date().toISOString();
-    // Job 14 dual-write: same shape as the profile writer — the
-    // settings leg first, then main_store, same updatedBy/updatedAt.
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, the switch goes to settings/main
+    // only. Same shape as the profile writer above.
     await writeSettingsToCollection({ markEntryEnabled: enabled, updatedBy, updatedAt });
-    const ref = doc(db, 'institution', 'main_store');
-    await setDoc(ref, {
-      markEntryEnabled: enabled,
-      updatedBy,
-      updatedAt,
-    }, { merge: true });
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'mark entry cloud confirm');
 }
