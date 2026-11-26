@@ -1,5 +1,6 @@
 import { SUPER_ADMIN_EMAIL } from './services/appConfig';
 import { normalizeRoleKey, roleHomeTab } from './services/roleResolution';
+import { resolveGuardianChildren } from './services/guardianScope';
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { loadUserPrefs, applyPrefPreview } from './services/userPreferences';
@@ -560,8 +561,24 @@ const AppContent = () => {
           : <AccessRestrictedView moduleName={language === 'bn' ? 'ফলাফল অ্যানালিটিক্স' : 'Exam Analytics'} onGoToResults={() => setActiveTab('dashboard')} />;
       case 'web_results':
         return <ExamResultsManager initialSubTab="web_results" onNavigateTab={(tab) => setActiveTab(tab)} />;
-      case 'student_profile':
-        return <StudentProfileView initialStudentId={profileStudentId} onBack={() => setActiveTab('dashboard')} onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'student_profile': {
+        // Job 3 G10: the guardian home "সন্তানের তথ্য" tile opens the
+        // profile on the guardian's OWN child — PIN session id first,
+        // then the account linkage (same single source of truth as the
+        // portal). Staff path (profileStudentId from the compact modal)
+        // is unchanged, and a non-guardian session never gets a forced
+        // id. Inside the view, guardians see the portal variant:
+        // DOB / address / guardian email stay hidden (isStaffView).
+        const isGuardianOnlySession = !!pinGuardianStudentId || ((effectiveRoles || []).includes('guardian')
+          && (effectiveRoles || []).every(r => r === 'guardian'));
+        const guardianChildId = isGuardianOnlySession
+          ? (pinGuardianStudentId || resolveGuardianChildren(currentUser, students, {
+              phones: [currentMember?.phone],
+              emails: [currentMember?.email, authUser?.email]
+            })[0]?.id)
+          : undefined;
+        return <StudentProfileView initialStudentId={profileStudentId || guardianChildId || undefined} onBack={() => setActiveTab('dashboard')} onNavigateTab={(tab) => setActiveTab(tab)} />;
+      }
       case 'notices':
       case 'notice_board':
         return <ReportsSettingsManager initialSubTab="notices" onNavigateTab={(tab) => setActiveTab(tab)} />;

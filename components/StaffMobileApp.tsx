@@ -398,6 +398,15 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const [activeBottomNav, setActiveBottomNav] = useState<string>('home');
   const [moreOpen, setMoreOpen] = useState(false);
   const [activeSubModule, setActiveSubModule] = useState<string | null>(null);
+  // Job 3 G4: the guardian portal reads its tab from sessionStorage
+  // ONCE, at mount (useState initializer). Tapping another bottom-nav
+  // tab while the portal is already open would leave the same
+  // 'guardian_portal' module mounted, so the new hint would never be
+  // read. Bumping this key remounts the portal passthrough, so the
+  // portal opens on the tapped tab. It changes nothing else: every
+  // other module keeps its key, and the portal's data/route is
+  // untouched.
+  const [guardianPortalKey, setGuardianPortalKey] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
 
   // Step 4 (25 Oct 2026): staff leave request screen (NOT self-attendance —
@@ -1203,7 +1212,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return [
         { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'guardian_portal', chip: 'brand-soft' },
         { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', icon: CheckSquare, moduleKey: 'guardian_portal', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'guardian_portal', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' }
+        { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'guardian_portal', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
+        // Job 3 G10: guardian-scoped profile tile — opens the profile
+        // tab on the guardian's OWN child (App.tsx passes the linked
+        // child id; DOB / address / guardian email stay hidden for
+        // guardians inside StudentProfileView).
+        { id: 'child_profile', title: 'সন্তানের তথ্য', icon: User, moduleKey: 'student_profile', chip: 'brand-soft' }
       ];
     }
     if (userRole === 'principal') {
@@ -1382,6 +1396,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       // Guardian bottom nav: open the portal on the tapped tab.
       if (nav.targetModule === 'guardian_portal') {
         setPortalTabHint(nav.id === 'action2' ? 'attendance' : nav.id === 'action3' ? 'fees' : 'results');
+        // Job 3 G4: remount the portal so the fresh hint is read —
+        // without this the tab would not switch while the portal is
+        // already open (same module, no re-mount).
+        setGuardianPortalKey(k => k + 1);
       }
       handleOpenModule(nav.targetModule);
     } else {
@@ -4359,7 +4377,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
           {/* ============ PASSTHROUGH (shared desktop modules) ============ */}
           {!NATIVE_MODULES.includes(activeSubModule) && (
-            <div className="w-full max-w-full overflow-x-hidden space-y-3">
+            <div
+              key={activeSubModule === 'guardian_portal' ? `guardian-portal-${guardianPortalKey}` : 'module-passthrough'}
+              className="w-full max-w-full overflow-x-hidden space-y-3"
+            >
               {renderModuleContent ? renderModuleContent(activeSubModule) : null}
             </div>
           )}
@@ -4764,6 +4785,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     finance_reports: 'রিপোর্ট',
     results: 'ফলাফল',
     finance: 'ফি',
+    child_profile: 'সন্তানের তথ্য',
     id_cards: 'আইডি কার্ড'
   };
 
@@ -4955,6 +4977,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       // tile's id is 'finance', the tab is 'fees').
                       if (a.moduleKey === 'guardian_portal') {
                         setPortalTabHint(a.id === 'attendance' ? 'attendance' : a.id === 'finance' ? 'fees' : 'results');
+                        // Job 3 G4: remount so the fresh hint is read.
+                        setGuardianPortalKey(k => k + 1);
                       }
                       handleOpenModule(a.moduleKey);
                     }}

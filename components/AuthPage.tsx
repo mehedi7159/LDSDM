@@ -21,7 +21,8 @@ import {
   Printer,
   ChevronRight,
   Shield,
-  GraduationCap
+  GraduationCap,
+  KeyRound
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -59,7 +60,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   const { showSuccess, showError } = useTheme();
 
   // Active view: 'gateway' (2 options), 'login' (clean login), 'results' (public results)
-  const [currentView, setCurrentView] = useState<'gateway' | 'login' | 'results'>(initialView);
+  const [currentView, setCurrentView] = useState<'gateway' | 'login' | 'results' | 'pin'>(initialView);
 
   // Login State
   const [loginEmail, setLoginEmail] = useState('');
@@ -67,6 +68,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   // Guardian PIN login (L7): Student ID + 4-digit PIN.
   const [pinStudentId, setPinStudentId] = useState('');
   const [pinCode, setPinCode] = useState('');
+  // PIN visibility toggle (display only — the PIN check itself is untouched).
+  const [showPin, setShowPin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -150,6 +153,76 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
       setIsSubmitting(false);
     }
   };
+
+  // The PIN form, rendered by the dedicated 'pin' view (Job 3 G6).
+  // Same submit handler and validation as before — only the layout
+  // moved out from under the email form, so guardians can find it.
+  // Inputs are h-12 text-sm; the PIN has an eye toggle (display only).
+  const renderPinForm = () => (
+    <form onSubmit={handleGuardianPinSubmit} className="space-y-3">
+      <div>
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          ছাত্রের আইডি (Student ID)
+        </label>
+        <div className="relative">
+          <GraduationCap size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <input
+            type="text"
+            required
+            inputMode="numeric"
+            placeholder="যেমন: 2026001"
+            value={pinStudentId}
+            onChange={(e) => setPinStudentId(e.target.value)}
+            className="w-full h-12 pl-10 pr-4 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          PIN (৪ সংখ্যা)
+        </label>
+        <div className="relative">
+          <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <input
+            type={showPin ? 'text' : 'password'}
+            required
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="••••"
+            value={pinCode}
+            onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+            className="w-full h-12 pl-10 pr-10 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPin(!showPin)}
+            aria-label={showPin ? 'PIN লুকান' : 'PIN দেখুন'}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+          >
+            {showPin ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+          ডিফল্ট PIN: ছাত্রের আইডির শেষ ৪ সংখ্যা। PIN বদলাতে অফিসে যোগাযোগ করুন।
+        </p>
+      </div>
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110 active:scale-98"
+        style={{ backgroundColor: 'var(--color-brand)' }}
+      >
+        {isSubmitting ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <>
+            <Lock size={16} />
+            <span>PIN দিয়ে প্রবেশ করুন</span>
+          </>
+        )}
+      </button>
+    </form>
+  );
 
   const handleGoogleLogin = async () => {
     setIsSubmitting(true);
@@ -251,7 +324,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
   }, [searchedStudent, activeExam, subjects, marks, exams]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-bangla selection:bg-indigo-600 selection:text-white relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-bangla selection:bg-[var(--color-brand)] selection:text-white relative">
       
       {/* Subtle Top Ambient Lighting */}
 
@@ -319,8 +392,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               </h2>
             </div>
 
-            {/* 2 Primary Choice Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+            {/* 3 Primary Choice Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
               
               {/* OPTION 1: RESULT SEARCH */}
               <div 
@@ -355,17 +428,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
               {/* OPTION 2: ACCOUNT LOGIN */}
               <div 
                 onClick={() => { setCurrentView('login'); setErrorMessage(''); }}
- className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/50 rounded-3xl p-6 sm:p-8 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+ className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-[var(--color-brand-ring)] rounded-3xl p-6 sm:p-8 transition-all duration-300 cursor-pointer flex flex-col justify-between"
               >
                 <div className="space-y-4">
- <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+ <div
+   className="w-14 h-14 rounded-2xl border flex items-center justify-center group-hover:scale-110 transition-transform"
+   style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
+ >
                     <LogIn size={28} />
                   </div>
 
                   <div className="space-y-1.5">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex items-center justify-between">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:text-[var(--color-brand)] transition-colors flex items-center justify-between">
                       <span>অ্যাকাউন্ট লগইন / প্রবেশ</span>
-                      <ChevronRight size={18} className="text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                      <ChevronRight size={18} className="text-slate-400 group-hover:text-[var(--color-brand)] group-hover:translate-x-1 transition-all" />
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                       অধ্যক্ষ, শিক্ষক, হিসাবরক্ষক ও কর্মীদের জন্য ক্লাসরুম ম্যানেজমেন্ট, মার্কস এন্ট্রি, হাজিরা ও প্রাতিষ্ঠানিক পোর্টাল।
@@ -373,12 +449,45 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-[var(--color-brand)]">
                   <span className="flex items-center gap-1.5">
                     <Shield size={14} />
                     <span>সুরক্ষিত স্টাফ ও অভিভাবক পোর্টাল</span>
                   </span>
                   <span className="group-hover:translate-x-1 transition-transform">লগইন করুন →</span>
+                </div>
+              </div>
+
+              {/* OPTION 3: GUARDIAN PIN LOGIN (Job 3 G6) */}
+              <div
+                onClick={() => { setCurrentView('pin'); setErrorMessage(''); }}
+ className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-[var(--color-brand-ring)] rounded-3xl p-6 sm:p-8 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+ <div
+   className="w-14 h-14 rounded-2xl border flex items-center justify-center group-hover:scale-110 transition-transform"
+   style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
+ >
+                    <KeyRound size={28} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:text-[var(--color-brand)] transition-colors flex items-center justify-between">
+                      <span>অভিভাবক PIN লগইন</span>
+                      <ChevronRight size={18} className="text-slate-400 group-hover:text-[var(--color-brand)] group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                      ইমেইল নেই? ছাত্রের আইডি ও ৪ সংখ্যার PIN দিয়ে আপনার সন্তানের ফলাফল, হাজিরা ও ফি দেখুন।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-[var(--color-brand)]">
+                  <span className="flex items-center gap-1.5">
+                    <KeyRound size={14} />
+                    <span>PIN দিয়ে প্রবেশ করুন</span>
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform">প্রবেশ করুন →</span>
                 </div>
               </div>
 
@@ -466,7 +575,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                       <button
                         type="button"
                         onClick={() => setIsResetOpen(true)}
-                        className="text-[11px] text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
+                        className="text-[11px] text-[var(--color-brand)] hover:opacity-80 font-medium"
                       >
                         পাসওয়ার্ড ভুলে গেছেন?
                       </button>
@@ -527,69 +636,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                 </form>
               )}
 
-              {/* Guardian PIN login (L7): Student ID + 4-digit PIN for
-                  guardians without email. Scoped to that child only.
-                  The public portal already shows results by ID with no
-                  login, so this is ease + light gating, not hiding. */}
-              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-3">
-                  অভিভাবক? ইমেইল নেই? ছাত্রের আইডি ও PIN দিয়ে প্রবেশ করুন
-                </p>
-                <form onSubmit={handleGuardianPinSubmit} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      ছাত্রের আইডি (Student ID)
-                    </label>
-                    <div className="relative">
-                      <GraduationCap size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                      <input
-                        type="text"
-                        required
-                        inputMode="numeric"
-                        placeholder="যেমন: 2026001"
-                        value={pinStudentId}
-                        onChange={(e) => setPinStudentId(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      PIN (৪ সংখ্যা)
-                    </label>
-                    <div className="relative">
-                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                      <input
-                        type="password"
-                        required
-                        inputMode="numeric"
-                        maxLength={4}
-                        placeholder="••••"
-                        value={pinCode}
-                        onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand-ring)]"
-                      />
-                    </div>
-                    <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                      ডিফল্ট PIN: ছাত্রের আইডির শেষ ৪ সংখ্যা। PIN বদলাতে অফিসে যোগাযোগ করুন।
-                    </p>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer hover:brightness-110 active:scale-98"
-                    style={{ backgroundColor: 'var(--color-brand)' }}
-                  >
-                    {isSubmitting ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <>
-                        <Lock size={16} />
-                        <span>PIN দিয়ে প্রবেশ করুন</span>
-                      </>
-                    )}
-                  </button>
-                </form>
+              {/* Guardian PIN login (L7) lives in its own 'pin' view now
+                  (Job 3 G6) — reachable from the gateway card and from
+                  here. The PIN check itself is untouched. */}
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
+                <button
+                  type="button"
+                  onClick={() => { setCurrentView('pin'); setErrorMessage(''); }}
+                  className="text-xs font-bold text-[var(--color-brand)] hover:opacity-80 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <KeyRound size={14} />
+                  <span>অভিভাবক? PIN দিয়ে প্রবেশ করুন →</span>
+                </button>
               </div>
 
               {/* Bottom Direct Switch to Results & Student Profile */}
@@ -599,7 +657,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                     <button
                       type="button"
                       onClick={onStudentProfile}
-                      className="text-xs text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold flex items-center justify-center gap-1.5 mx-auto"
+                      className="text-xs text-[var(--color-brand)] hover:opacity-80 font-bold flex items-center justify-center gap-1.5 mx-auto"
                     >
                       <GraduationCap size={14} />
                       <span>{language === 'bn' ? 'শিক্ষার্থী আইডি দিয়ে নিজস্ব সম্পূর্ণ প্রোফাইল দেখুন →' : 'Sign in to Student Profile Portal →'}</span>
@@ -612,6 +670,72 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                   className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 font-medium"
                 >
                   {language === 'bn' ? 'সরাসরি পাবলিক পরীক্ষার ফলাফল চেক করুন →' : 'Check Public Exam Results →'}
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 2b: GUARDIAN PIN LOGIN (Job 3 G6) — Student ID + 4-digit PIN        */}
+        {/* for guardians without email. Same submit handler as before;              */}
+        {/* only the layout moved here from under the email form.                     */}
+        {/* ========================================================================= */}
+        {(currentView === 'pin') && (
+          <div className="w-full max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300">
+
+ <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8">
+
+              {/* Back to Gateway Button */}
+              <button
+                onClick={() => { if (onBack) onBack(); else setCurrentView('gateway'); setErrorMessage(''); }}
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 mb-5 font-medium transition cursor-pointer"
+              >
+                <ArrowLeft size={14} />
+                <span>মূল অপশনে ফিরে যান</span>
+              </button>
+
+              {/* Title & Brand */}
+              <div className="text-center space-y-1 mb-6">
+                <div
+ className="w-12 h-12 rounded-2xl border flex items-center justify-center mx-auto mb-2"
+                  style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}
+                >
+                  <KeyRound size={22} />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  অভিভাবক PIN লগইন
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  ছাত্রের আইডি ও ৪ সংখ্যার PIN দিয়ে আপনার সন্তানের তথ্য দেখুন
+                </p>
+              </div>
+
+              {/* Alert Messages */}
+              {errorMessage && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0 text-rose-500 dark:text-rose-400" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+              {successMessage && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+                  <CheckCircle2 size={15} className="shrink-0 text-emerald-500 dark:text-emerald-400" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
+              {renderPinForm()}
+
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('login')}
+                  className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 font-medium"
+                >
+                  {language === 'bn' ? 'ইমেইল দিয়ে অ্যাকাউন্টে প্রবেশ করুন →' : 'Log in with email →'}
                 </button>
               </div>
 
@@ -827,7 +951,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <Lock size={16} className="text-indigo-600 dark:text-indigo-400" />
+              <Lock size={16} className="text-[var(--color-brand)]" />
               পাসওয়ার্ড রিসেট করুন
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
