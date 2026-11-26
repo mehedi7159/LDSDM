@@ -1044,7 +1044,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 return (
                   <div
                     key={dayItem.day}
-                    className={`p-1.5 sm:p-2.5 rounded-xl border text-center transition-all ${
+                    className={`p-1.5 sm:p-2.5 min-h-[54px] rounded-xl border text-center transition-all ${
                       isHoliday 
                         ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 dark:text-slate-500'
                         : isPresent 
@@ -1054,29 +1054,29 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                         : 'bg-rose-50/80 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30 text-rose-950 dark:text-rose-300 font-medium'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[10px] sm:text-[11px] mb-1">
+                    <div className="flex items-center justify-between text-[11px] mb-1">
                       <span className="font-bold font-mono">{toBn(dayItem.day)}</span>
-                      <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[32px] sm:max-w-none">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[44px] sm:max-w-none">
                         {language === 'bn' ? dayItem.dayNameBn : dayItem.dayNameEn}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-center py-0.5 sm:py-1">
-                      {isHoliday && <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{language === 'bn' ? 'ছুটি' : 'Holiday'}</span>}
+                      {isHoliday && <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{language === 'bn' ? 'ছুটি' : 'Holiday'}</span>}
                       {isPresent && (
-                        <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 size={12} className="shrink-0" />
                           <span>{language === 'bn' ? 'হাজির' : 'Present'}</span>
                         </div>
                       )}
                       {isLate && (
-                        <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
                           <Clock size={12} className="shrink-0" />
                           <span>{language === 'bn' ? 'বিলম্ব' : 'Late'}</span>
                         </div>
                       )}
                       {isAbsent && (
-                        <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400">
                           <XCircle size={12} className="shrink-0" />
                           <span>{language === 'bn' ? 'অনুপস্থিত' : 'Absent'}</span>
                         </div>
@@ -2272,35 +2272,35 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         <div className="space-y-6">
           <section id="profile-section-fees" className="space-y-4 scroll-mt-24">
             <div className="flex items-center gap-2 px-1">
-              <Banknote size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Banknote size={18} className="text-[var(--color-brand)]" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'ফি ও বকেয়া' : 'Fees & Dues'}</h3>
             </div>
             {feesSection}
           </section>
           <section id="profile-section-attendance" className="space-y-4 scroll-mt-24">
             <div className="flex items-center gap-2 px-1">
-              <CalendarCheck size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <CalendarCheck size={18} className="text-[var(--color-brand)]" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'হাজিরা খতিয়ান' : 'Attendance History'}</h3>
             </div>
             {attendanceSection}
           </section>
           <section id="profile-section-marks" className="space-y-4 scroll-mt-24">
             <div className="flex items-center gap-2 px-1">
-              <Award size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Award size={18} className="text-[var(--color-brand)]" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'পরীক্ষার নম্বর ও রেজাল্ট' : 'Marks & Results'}</h3>
             </div>
             {marksSection}
           </section>
           <section id="profile-section-schedule" className="space-y-4 scroll-mt-24">
             <div className="flex items-center gap-2 px-1">
-              <Clock size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Clock size={18} className="text-[var(--color-brand)]" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'পরীক্ষার রুটিন ও সিডিউল' : 'Exam Schedules'}</h3>
             </div>
             {scheduleSection}
           </section>
           <section id="profile-section-id_card" className="space-y-4 scroll-mt-24">
             <div className="flex items-center gap-2 px-1">
-              <QrCode size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <QrCode size={18} className="text-[var(--color-brand)]" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Student ID Card'}</h3>
             </div>
             {idCardSection}
@@ -2319,7 +2319,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       {isStaffView && timelineItems.length > 0 && (
         <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
           <div className="flex items-center gap-2 mb-3">
-            <History size={18} className="text-indigo-600 dark:text-indigo-400" />
+            <History size={18} className="text-[var(--color-brand)]" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
               {language === 'bn' ? 'সাম্প্রতিক কার্যক্রম' : 'Recent Activity'}
             </h3>

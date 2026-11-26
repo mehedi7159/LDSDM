@@ -18,6 +18,7 @@ import { ServerDataGate } from './ui/ServerDataGate';
 import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
+import { SegmentedControl } from './ui/SegmentedControl';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
@@ -78,7 +79,7 @@ import {
  *
  * Design tokens copied from the Tutor App:
  *  page #f4f6fb · card #ffffff · ink #1e2433 · line #e8ecf4
- *  accent violet #8b5cf6 → #7c3aed · soft violet #ede9fe
+ *  accent teal #0d9488 (var(--color-brand)) · soft brand var(--color-brand-light)
  *  success #10b981 · warning #f59e0b · danger #ef4444 · info #3b82f6
  *  dark: page #0e1220 · card #161c2e
  *
@@ -92,7 +93,7 @@ interface StaffMobileAppProps {
   renderModuleContent?: (moduleKey: string) => React.ReactNode;
 }
 
-const cardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-[24px]';
+const cardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl';
 const softBg = 'bg-[#f4f6fb] dark:bg-white/5';
 // ---- Attendance page (Tutor pattern) helpers ----
 // Tutor card shell: rounded-2xl white card (LDSDM's cardCls is 24px).
@@ -1183,13 +1184,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return [
         { id: 'attendance', title: 'দৈনিক হাজিরা গ্রহণ', subtitle: `${selectedClass}`, icon: CheckSquare, moduleKey: 'teacher_attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'students_dues', title: 'আমার ক্লাসের ছাত্র ও বকেয়া', icon: Users, moduleKey: 'teacher_students_dues', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
-        { id: 'marks', title: 'পরীক্ষার নম্বর এন্ট্রি', subtitle: `${selectedClass}`, icon: PenTool, moduleKey: 'teacher_marks', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'marks', title: 'পরীক্ষার নম্বর এন্ট্রি', subtitle: `${selectedClass}`, icon: PenTool, moduleKey: 'teacher_marks', chip: 'brand-soft' },
         { id: 'routine', title: 'আমার রুটিন', icon: CalendarDays, moduleKey: 'teacher_routine', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
       ];
     } else if (userRole === 'cashier') {
       return [
         { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance_expense', title: 'দৈনিক খরচ এন্ট্রি', icon: Receipt, moduleKey: 'finance', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'finance_expense', title: 'দৈনিক খরচ এন্ট্রি', icon: Receipt, moduleKey: 'finance', chip: 'brand-soft' },
         { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া খতিয়ান', subtitle: 'সকল ক্লাস', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' },
         { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' }
       ];
@@ -1200,7 +1201,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       // 'finance'), which exposed every student's data to guardians.
       // The tile renderer maps the action id to the portal tab hint.
       return [
-        { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'guardian_portal', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+        { id: 'results', title: 'পরীক্ষার ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'guardian_portal', chip: 'brand-soft' },
         { id: 'attendance', title: 'দৈনিক উপস্থিতি ট্র্যাকার', icon: CheckSquare, moduleKey: 'guardian_portal', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance', title: 'বেতন ও ফি বিবরণী', icon: Wallet, moduleKey: 'guardian_portal', chip: 'bg-[#fee2e2] text-[#dc2626] dark:bg-rose-500/15 dark:text-rose-300' }
       ];
@@ -1210,12 +1211,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         { id: 'students', title: 'ছাত্র তালিকা ও বকেয়া', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
         { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
         { id: 'finance_collect', title: 'ফি আদায় ও রসিদ', icon: Wallet, moduleKey: 'cashier_collect', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' },
-        { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' }
+        { id: 'finance_reports', title: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports', chip: 'brand-soft' }
       ];
     }
     return [
       { id: 'students', title: 'নতুন শিক্ষার্থী ভর্তি ও তালিকা', icon: Users, moduleKey: 'mobile_students', chip: 'bg-[#dbeafe] text-[#2563eb] dark:bg-blue-500/15 dark:text-blue-300' },
-      { id: 'id_cards', title: 'আইডি কার্ড ও সনদপত্র', icon: CreditCard, moduleKey: 'student_id_cards', chip: 'bg-[#ede9fe] text-[#6d28d9] dark:bg-violet-500/15 dark:text-violet-300' },
+      { id: 'id_cards', title: 'আইডি কার্ড ও সনদপত্র', icon: CreditCard, moduleKey: 'student_id_cards', chip: 'brand-soft' },
       { id: 'attendance', title: 'হাজিরা শিট ও রেজিস্টার', icon: CheckSquare, moduleKey: 'attendance', chip: 'bg-[#d1fae5] text-[#059669] dark:bg-emerald-500/15 dark:text-emerald-300' }
     ];
   }, [userRole, selectedClass]);
@@ -1684,13 +1685,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return { exam, rows: sorted, appeared: appeared.length, passed: passed.length, failed: appeared.length - passed.length, avgGpa, passRate };
   }, [exams, marks, classStudents, classSubjects]);
 
-  // This month's fee collection for the teacher's class
-  const classFeeReport = useMemo(() => {
-    const expected = classDuesSummary.profiles.reduce((s, p) => s + (p.monthlyExpected || 0), 0);
-    const paid = classDuesSummary.profiles.reduce((s, p) => s + (p.paidThisMonth || 0), 0);
-    const pct = expected > 0 ? Math.round((paid / expected) * 100) : 0;
-    return { expected, paid, pct };
-  }, [classDuesSummary]);
 
   // Accountant: today's expense + top dues list
   const todayExpense = useMemo(() => {
@@ -2678,19 +2672,23 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       ) : (
                         <div className="space-y-3">
                           {classStudents.map(st => {
-                            const currentStatus: AttendanceStatus = (studentAttendanceMap[st.id] as AttendanceStatus) || 'PRESENT';
+                            const currentStatus: AttendanceStatus | undefined = studentAttendanceMap[st.id] as AttendanceStatus | undefined;
                             const displayName = st.nameBn || st.name || '';
                             const tint = attAvatarTint(st.id);
                             const phone = (st.guardianPhone || '').trim();
                             const roll = st.roll || st.rollNumber || '';
-                            const badgeCls = currentStatus === 'PRESENT'
+                            const badgeCls = currentStatus === undefined
+                              ? 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-400'
+                              : currentStatus === 'PRESENT'
                               ? 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300'
                               : currentStatus === 'ABSENT'
                                 ? 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300'
                                 : currentStatus === 'LATE'
                                   ? 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300'
                                   : 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300';
-                            const badgeLabel = currentStatus === 'PRESENT'
+                            const badgeLabel = currentStatus === undefined
+                              ? (isEn ? 'Not marked' : 'চিহ্নিত নয়')
+                              : currentStatus === 'PRESENT'
                               ? (isEn ? 'Present' : 'উপস্থিত')
                               : currentStatus === 'ABSENT'
                                 ? (isEn ? 'Absent' : 'অনুপস্থিত')
@@ -2701,7 +2699,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                               <button
                                 type="button"
                                 onClick={() => status === 'LATE' ? handleLatePress(st.id) : handleSetStudentStatus(st.id, status)}
-                                className={`h-12 rounded-xl text-[13px] font-bold cursor-pointer active:scale-[0.98] transition-all ${currentStatus === status ? solidCls : softCls}`}
+                                className={`h-11 rounded-xl text-[13px] font-bold cursor-pointer active:scale-[0.98] transition-all ${currentStatus === status ? solidCls : softCls}`}
                               >
                                 {label}
                               </button>
@@ -2710,7 +2708,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                               <div key={st.id} className={`${attCardCls} p-4`}>
                                 <div className="flex items-center gap-3">
                                   <div
-                                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-[15px] shrink-0"
+                                    className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-[15px] shrink-0"
                                     style={{ background: tint.bg, color: tint.color }}
                                   >
                                     {attInitials(displayName)}
@@ -2727,21 +2725,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                                     {badgeLabel}
                                   </span>
                                 </div>
-                                <div className="mt-3 space-y-2">
-                                  <div className="flex">
-                                    {rosterBtn('PRESENT', isEn ? 'Present' : 'উপস্থিত', 'bg-[#10b981] text-white w-full', 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300 w-full')}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <div className="flex-1">
-                                      {rosterBtn('ABSENT', isEn ? 'Absent' : 'অনুপস্থিত', 'bg-[#ef4444] text-white w-full', 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 w-full')}
-                                    </div>
-                                    <div className="flex-1">
-                                      {rosterBtn('LATE', isEn ? 'Late' : 'দেরি', 'bg-[#f59e0b] text-white w-full', 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 w-full')}
-                                    </div>
-                                    <div className="flex-1">
-                                      {rosterBtn('LEAVE', isEn ? 'Leave' : 'ছুটি', 'bg-[#3b82f6] text-white w-full', 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300 w-full')}
-                                    </div>
-                                  </div>
+                                <div className="mt-3 grid grid-cols-4 gap-2">
+                                  {rosterBtn('PRESENT', isEn ? 'Present' : 'উপস্থিত', 'bg-[#10b981] text-white w-full', 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300 w-full')}
+                                  {rosterBtn('ABSENT', isEn ? 'Absent' : 'অনুপস্থিত', 'bg-[#ef4444] text-white w-full', 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 w-full')}
+                                  {rosterBtn('LATE', isEn ? 'Late' : 'দেরি', 'bg-[#f59e0b] text-white w-full', 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 w-full')}
+                                  {rosterBtn('LEAVE', isEn ? 'Leave' : 'ছুটি', 'bg-[#3b82f6] text-white w-full', 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300 w-full')}
                                 </div>
                               </div>
                             );
@@ -2850,7 +2838,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           <button
                             type="button"
                             onClick={() => window.print()}
-                            className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                            className="px-3 py-1.5 rounded-xl brand-flat text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                             title={isEn ? 'Print table' : 'টেবিল প্রিন্ট করুন'}
                           >
                             <Printer size={13} />
@@ -2871,7 +2859,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                                   <th
                                     key={d.dateStr}
                                     title={d.holiday || (d.isFriday ? (isEn ? 'Weekly holiday (Friday)' : 'সাপ্তাহিক ছুটি (শুক্রবার)') : d.dateStr)}
-                                    className={`px-1 py-2 text-center font-bold sticky top-0 z-20 min-w-[36px] ${isToday ? 'bg-[#ede9fe] dark:bg-violet-500/15 brand-text' : 'bg-[#f4f6fb] dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-400'}`}
+                                    className={`px-1 py-2 text-center font-bold sticky top-0 z-20 min-w-[36px] ${isToday ? 'brand-soft' : 'bg-[#f4f6fb] dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-400'}`}
                                   >
                                     <span className="block text-[12px]">{toBn(d.day)}</span>
                                     <span className="block text-[10px] font-semibold opacity-70">
@@ -3255,25 +3243,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                   />
                 </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                  {([
-                    ['ALL', `সবাই (${toBn(viewDuesSummary.totalStudents)})`],
-                    ['DUE_ONLY', `শুধু বকেয়া (${toBn(viewDuesSummary.dueStudentsCount)})`],
-                    ['PAID_ONLY', `পরিশোধিত (${toBn(viewDuesSummary.paidStudentsCount)})`]
-                  ] as const).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      onClick={() => setDuesFilterMode(mode)}
-                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                        duesFilterMode === mode
-                          ? 'brand-flat text-white'
-                          : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  ariaLabel={isEn ? 'Dues filter' : 'বকেয়া ফিল্টার'}
+                  value={duesFilterMode}
+                  onChange={id => setDuesFilterMode(id as 'ALL' | 'DUE_ONLY' | 'PAID_ONLY')}
+                  options={[
+                    { id: 'ALL', label: 'সবাই', badge: toBn(viewDuesSummary.totalStudents) },
+                    { id: 'DUE_ONLY', label: 'শুধু বকেয়া', badge: toBn(viewDuesSummary.dueStudentsCount) },
+                    { id: 'PAID_ONLY', label: 'পরিশোধিত', badge: toBn(viewDuesSummary.paidStudentsCount) },
+                  ]}
+                />
               </div>
 
               <div className="space-y-2.5">
@@ -3335,7 +3314,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
                         <div className="flex items-center justify-between pt-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-[#5b6478] dark:text-slate-300 min-w-0">
-                            <Phone size={13} className="text-[#7c3aed] shrink-0" />
+                            <Phone size={13} className="brand-text shrink-0" />
                             <span className="font-semibold text-[11px] truncate">{phone ? toBn(phone) : 'ফোন নম্বর নেই'}</span>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
@@ -3376,40 +3355,31 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           {/* ============ TEACHER: MARKS ENTRY ============ */}
           {activeSubModule === 'teacher_marks' && (
             <div className="space-y-4">
-              {!canEnterMarks && (
-                <div className="p-4 rounded-[24px] bg-[#fef3c7] dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 flex items-start gap-3">
-                  <span className="w-9 h-9 rounded-2xl bg-[#f59e0b] text-white flex items-center justify-center shrink-0">
-                    <Lock size={16} />
-                  </span>
-                  <div>
-                    <h3 className="text-[13px] font-bold text-[#92400e] dark:text-amber-200">{isEn ? 'Marks entry is closed' : 'নম্বর এন্ট্রি বর্তমানে বন্ধ আছে'}</h3>
-                    <p className="text-[11px] text-[#92400e]/80 dark:text-amber-200/70 mt-0.5 leading-relaxed">
-                      {isEn
-                        ? 'The admin has not enabled marks entry for your role right now. You can only view the entered marks below.'
-                        : 'এডমিন এখন আপনার রোলের জন্য নম্বর এন্ট্রির অনুমতি চালু রাখেননি। নিচে শুধু আগের দেওয়া নম্বর দেখতে পারবেন। এন্ট্রি চালু করতে প্রিন্সিপাল/এডমিনের সাথে যোগাযোগ করুন।'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {canEnterMarks && isMarkEntryClosedByAdmin && (
+              {(!canEnterMarks || isMarkEntryClosedByAdmin) && (
                 <div className="p-4 rounded-[24px] bg-[#fef3c7] dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 flex items-start gap-3">
                   <span className="w-9 h-9 rounded-2xl bg-[#f59e0b] text-white flex items-center justify-center shrink-0">
                     <Lock size={16} />
                   </span>
                   <div className="flex-1">
-                    <h3 className="text-[13px] font-bold text-[#92400e] dark:text-amber-200">{isEn ? 'Marks entry is closed' : 'মার্ক এন্ট্রি এখন বন্ধ আছে'}</h3>
+                    <h3 className="text-[13px] font-bold text-[#92400e] dark:text-amber-200">{!canEnterMarks ? (isEn ? 'Marks entry is closed' : 'নম্বর এন্ট্রি বর্তমানে বন্ধ আছে') : (isEn ? 'Marks entry is closed' : 'মার্ক এন্ট্রি এখন বন্ধ আছে')}</h3>
                     <p className="text-[11px] text-[#92400e]/80 dark:text-amber-200/70 mt-0.5 leading-relaxed">
-                      {isEn
-                        ? 'The admin has closed marks entry for this exam. You can only view the entered marks and result below — entry will work again when the admin opens it.'
-                        : 'এডমিন এই পরীক্ষার জন্য মার্ক এন্ট্রি বন্ধ রেখেছেন। নিচে শুধু আগের দেওয়া নম্বর ও ফলাফল দেখতে পারবেন — এডমিন খুলে দিলে আবার এন্ট্রি করা যাবে।'}
+                      {!canEnterMarks
+                        ? (isEn
+                          ? 'The admin has not enabled marks entry for your role right now. You can only view the entered marks below.'
+                          : 'এডমিন এখন আপনার রোলের জন্য নম্বর এন্ট্রির অনুমতি চালু রাখেননি। নিচে শুধু আগের দেওয়া নম্বর দেখতে পারবেন। এন্ট্রি চালু করতে প্রিন্সিপাল/এডমিনের সাথে যোগাযোগ করুন।')
+                        : (isEn
+                          ? 'The admin has closed marks entry for this exam. You can only view the entered marks and result below — entry will work again when the admin opens it.'
+                          : 'এডমিন এই পরীক্ষার জন্য মার্ক এন্ট্রি বন্ধ রেখেছেন। নিচে শুধু আগের দেওয়া নম্বর ও ফলাফল দেখতে পারবেন — এডমিন খুলে দিলে আবার এন্ট্রি করা যাবে।')}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenModule('teacher_report_result')}
-                      className="mt-2 px-3 py-1.5 rounded-xl bg-[#f59e0b] text-white text-[11px] font-bold active:scale-[0.98] transition-all cursor-pointer"
-                    >
-                      {isEn ? 'View result report' : 'ফলাফল রিপোর্ট দেখুন'}
-                    </button>
+                    {canEnterMarks && isMarkEntryClosedByAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenModule('teacher_report_result')}
+                        className="mt-2 px-3 py-1.5 rounded-xl bg-[#f59e0b] text-white text-[11px] font-bold active:scale-[0.98] transition-all cursor-pointer"
+                      >
+                        {isEn ? 'View result report' : 'ফলাফল রিপোর্ট দেখুন'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -3454,92 +3424,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 </div>
               </div>
 
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-[#5b6478] dark:text-slate-400">শিক্ষার্থী ({toBn(classStudents.length)} জন)</span>
-                  <span className="text-[11px] text-[#8a93a8]">পূর্ণমান: {toBn(selectedFullMarks)}</span>
-                </div>
-
-                {classStudents.map(st => {
-                  const currentVal = marksInputMap[st.id] ?? '';
-                  const numVal = Number(currentVal);
-                  const existingMark = marks.find(m => m.studentId === st.id && m.subjectId === selectedSubjectId && m.examId === selectedExamId);
-                  const grade = currentVal !== ''
-                    ? calculateSubjectGrade(numVal, selectedFullMarks, undefined, false, selectedPassMarks)
-                    : '—';
-                  return (
-                    <div key={st.id} className={`${cardCls} p-3.5 flex items-center justify-between gap-3`}>
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
-                          {(st.nameBn || st.name || 'শ').charAt(0)}
-                        </span>
-                        <div className="overflow-hidden">
-                          <h3 className="text-[13px] font-bold truncate">{st.nameBn || st.name}</h3>
-                          <span className="text-[11px] text-[#8a93a8]">
-                            রোল {toBn(st.roll || st.rollNumber || '—')} • গ্রেড: <strong className={grade === 'F' ? 'text-[#dc2626]' : 'text-[#059669]'}>{grade}</strong>
-                          </span>
-                          {existingMark && isRecordUnconfirmed('marks', existingMark.id) && <UnconfirmedBadge isBn={!isEn} />}
-                        </div>
-                      </div>
-                      {canEnterMarksForExam ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          inputMode="numeric"
-                          value={currentVal}
-                          onChange={e => setMarksInputMap(prev => ({ ...prev, [st.id]: e.target.value }))}
-                          placeholder="০"
-                          className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] shrink-0"
-                        />
-                      ) : (
-                        <div className="w-[72px] py-2.5 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-dashed border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black text-[#5b6478] dark:text-slate-300 shrink-0">
-                          {currentVal !== '' ? toBn(currentVal) : '—'}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Truthful-save failure banner (Step 2): marks stay local until a retry confirms the cloud write. */}
-              {marksCloudFailure && (
-                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
-                  <span>{marksCloudFailure}</span>
-                  <button type="button" onClick={retryMarksCloudSync} disabled={marksRetrying || marksSaving} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">{marksRetrying ? (isEn ? 'Retrying…' : 'আবার চেষ্টা করা হচ্ছে…') : RETRY_LABEL}</button>
-                </div>
-              )}
-
-              {/* Closed-exam save attempt (Job 7): the save was refused, not
-                  silently dropped — no retry here, retry cannot reopen an
-                  exam the admin closed. */}
-              {marksClosedNotice && (
-                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
-                  <span>{marksClosedNotice}</span>
-                </div>
-              )}
-
-              {/* Rejected rows (out-of-range, over-full, finalized/locked):
-                  skipped, not saved — the valid rows still saved. */}
-              {marksRejectedNotice && (
-                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
-                  <span>{marksRejectedNotice}</span>
-                </div>
-              )}
-
-              {canEnterMarksForExam && classStudents.length > 0 && (
-                <div className="sticky bottom-[84px] z-30 pt-1">
-                  <button
-                    onClick={handleSaveMarks}
-                    disabled={marksSaving}
-                    className="w-full py-3.5 px-4 rounded-[20px] brand-flat text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <Save size={17} />
-                    <span>{marksSaving ? 'সংরক্ষণ হচ্ছে…' : 'নম্বর সংরক্ষণ করুন'}</span>
-                  </button>
-                </div>
-              )}
-
               {/* ============ TEACHER: EXAM-FEE COLLECTION ============ */}
               {/* Pending exam fee for the selected exam, collected here in
                   the number-entry/exam area (not in More). One source of
@@ -3556,9 +3440,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         <p className="text-[11px] text-[#8a93a8]">{selectedExamForFee.nameBn || selectedExamForFee.name} • {selectedClass} • জনপ্রতি ৳{toBn(examFeeAmount.toLocaleString())}</p>
                       </div>
                     </div>
-                    <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#fef3c7] dark:bg-amber-500/10 text-[#92400e] dark:text-amber-200 font-bold shrink-0">
-                      বাকি {toBn(examFeeRows.length - examFeePaidCount)} জন
-                    </span>
+                    <div className="text-right shrink-0">
+                      <p className="text-[13px] font-black">আদায় ৳{toBn((examFeePaidCount * examFeeAmount).toLocaleString())} / মোট ৳{toBn((examFeeAmount * examFeeRows.length).toLocaleString())}</p>
+                      <p className="text-[11px] font-bold text-[#92400e] dark:text-amber-200">বাকি {toBn(examFeeRows.length - examFeePaidCount)} জন</p>
+                    </div>
                   </div>
 
                   {examFeeFailure && (
@@ -3608,6 +3493,96 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                   <p className="text-[11px] text-[#8a93a8] px-1">নগদে আদায় হবে; রসিদ নম্বর স্বয়ংক্রিয়ভাবে তৈরি হবে। আদায় হওয়া ফি এখানে ও হিসাবের খাতায় একই রেকর্ড থেকে দেখাবে।</p>
                 </div>
               )}
+
+              {!examFeeVisible && selectedExamForFee && selectedClass && selectedExamForFee.status !== 'ARCHIVED' && examFeeAmount === 0 && (
+                <p className="text-xs text-[#8a93a8] px-1">এই পরীক্ষায় ফি ধার্য নেই</p>
+              )}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-[#5b6478] dark:text-slate-400">শিক্ষার্থী ({toBn(classStudents.length)} জন)</span>
+                  <span className="text-[11px] text-[#8a93a8]">পূর্ণমান: {toBn(selectedFullMarks)}</span>
+                </div>
+
+                {classStudents.map(st => {
+                  const currentVal = marksInputMap[st.id] ?? '';
+                  const numVal = Number(currentVal);
+                  const existingMark = marks.find(m => m.studentId === st.id && m.subjectId === selectedSubjectId && m.examId === selectedExamId);
+                  const grade = currentVal !== ''
+                    ? calculateSubjectGrade(numVal, selectedFullMarks, undefined, false, selectedPassMarks)
+                    : '—';
+                  return (
+                    <div key={st.id} className={`${cardCls} p-3.5 flex items-center justify-between gap-3`}>
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
+                          {(st.nameBn || st.name || 'শ').charAt(0)}
+                        </span>
+                        <div className="overflow-hidden">
+                          <h3 className="text-[13px] font-bold truncate">{st.nameBn || st.name}</h3>
+                          <span className="text-[11px] text-[#8a93a8]">
+                            রোল {toBn(st.roll || st.rollNumber || '—')} • গ্রেড: <strong className={grade === 'F' ? 'text-[#dc2626]' : 'text-[#059669]'}>{grade}</strong>
+                          </span>
+                          {existingMark && isRecordUnconfirmed('marks', existingMark.id) && <UnconfirmedBadge isBn={!isEn} />}
+                        </div>
+                      </div>
+                      {canEnterMarksForExam ? (
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          inputMode="numeric"
+                          value={currentVal}
+                          onChange={e => setMarksInputMap(prev => ({ ...prev, [st.id]: e.target.value }))}
+                          placeholder="০"
+                          className="w-20 h-11 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-20 h-11 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-dashed border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black text-[#5b6478] dark:text-slate-300 shrink-0">
+                          {currentVal !== '' ? toBn(currentVal) : '—'}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Truthful-save failure banner (Step 2): marks stay local until a retry confirms the cloud write. */}
+              {marksCloudFailure && (
+                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold flex flex-col gap-2">
+                  <span>{marksCloudFailure}</span>
+                  <button type="button" onClick={retryMarksCloudSync} disabled={marksRetrying || marksSaving} className="self-start px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">{marksRetrying ? (isEn ? 'Retrying…' : 'আবার চেষ্টা করা হচ্ছে…') : RETRY_LABEL}</button>
+                </div>
+              )}
+
+              {/* Closed-exam save attempt (Job 7): the save was refused, not
+                  silently dropped — no retry here, retry cannot reopen an
+                  exam the admin closed. */}
+              {marksClosedNotice && (
+                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                  <span>{marksClosedNotice}</span>
+                </div>
+              )}
+
+              {/* Rejected rows (out-of-range, over-full, finalized/locked):
+                  skipped, not saved — the valid rows still saved. */}
+              {marksRejectedNotice && (
+                <div className="mx-1 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                  <span>{marksRejectedNotice}</span>
+                </div>
+              )}
+
+              {canEnterMarksForExam && classStudents.length > 0 && (
+                <div className="sticky bottom-[84px] z-30 pt-1">
+                  <button
+                    onClick={handleSaveMarks}
+                    disabled={marksSaving}
+                    className="w-full py-3.5 px-4 rounded-[20px] brand-flat text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Save size={17} />
+                    <span>{marksSaving ? 'সংরক্ষণ হচ্ছে…' : 'নম্বর সংরক্ষণ করুন'}</span>
+                  </button>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -3791,7 +3766,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               <div className={`${cardCls} p-4 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-9 h-9 rounded-2xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center">
+                    <span className="w-9 h-9 rounded-2xl brand-soft flex items-center justify-center">
                       <CalendarDays size={17} />
                     </span>
                     <h2 className="text-sm font-bold">{isEn ? 'My Routine' : 'আমার রুটিন'}</h2>
@@ -3809,7 +3784,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 )}
 
                 {/* Weekday selector — today highlighted */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <div className="grid grid-cols-7 gap-1.5">
                   {DAYS_OF_WEEK.map(d => {
                     const isToday = d.en === todayDayEn;
                     const isSelected = d.en === routineDay;
@@ -3817,7 +3792,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       <button
                         key={d.en}
                         onClick={() => setRoutineDay(d.en)}
-                        className={`px-3 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        className={`px-3 py-2 rounded-full text-xs font-bold transition-all w-full cursor-pointer ${
                           isSelected
                             ? 'brand-flat text-white'
                             : 'bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'
@@ -4257,11 +4232,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                     className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                   />
                 </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setStudentsClass('all')}
-                    className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === 'all' ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                    className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsClass === 'all' ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                   >
                     {isEn ? 'All classes' : 'সব শ্রেণি'}
                   </button>
@@ -4270,28 +4245,22 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                       key={cn}
                       type="button"
                       onClick={() => setStudentsClass(cn)}
-                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${studentsClass === cn ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsClass === cn ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
                     >
                       {cn}
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  {([
-                    ['all', isEn ? 'All' : 'সবাই'],
-                    ['active', isEn ? 'Active' : 'সক্রিয়'],
-                    ['inactive', isEn ? 'Inactive' : 'নিষ্ক্রিয়']
-                  ] as const).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setStudentsStatus(mode)}
-                      className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${studentsStatus === mode ? 'brand-flat text-white' : 'bg-white dark:bg-[#161c2e] text-[#5b6478] dark:text-slate-300 border border-[#e8ecf4] dark:border-white/10'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  ariaLabel={isEn ? 'Student status filter' : 'শিক্ষার্থীর অবস্থা ফিল্টার'}
+                  value={studentsStatus}
+                  onChange={id => setStudentsStatus(id as 'all' | 'active' | 'inactive')}
+                  options={[
+                    { id: 'all', label: isEn ? 'All' : 'সবাই' },
+                    { id: 'active', label: isEn ? 'Active' : 'সক্রিয়' },
+                    { id: 'inactive', label: isEn ? 'Inactive' : 'নিষ্ক্রিয়' },
+                  ]}
+                />
               </div>
 
               <div className="space-y-2.5">
@@ -4930,15 +4899,12 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         {mobileVisibleSections.includes('hero') && (
         <div data-dashboard-section="hero" style={{ order: mobileVisibleSections.indexOf('hero') }}>
         {/* HERO — light greeting + quick actions inside (Tutor App pattern:
-            greeting, "Today at a glance", QUICK ACTIONS row) */}
-        <section className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5">
+            greeting, badges, QUICK ACTIONS row) */}
+        <section className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5">
           <div>
             <p className="text-[13px] font-medium text-slate-500 dark:text-slate-400">{todayGreeting.fullDateText}</p>
             <h2 className="text-[22px] font-black mt-0.5 leading-snug text-slate-900 dark:text-white">{roleTitleBengali[userRole]}</h2>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">{schoolProfile.nameBn || schoolProfile.name}</p>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-3">
-              {isEn ? 'Today at a glance' : 'আজকের সারসংক্ষেপ'}
-            </p>
 
             <div className="flex flex-wrap gap-1.5 mt-3">
               {roleBadges.map((b, i) => (
@@ -4977,9 +4943,6 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               </div>
             )}
 
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-5 mb-2.5">
-              {isEn ? 'Quick actions' : 'দ্রুত কাজ'}
-            </p>
             <div className={`grid ${roleActions.filter(a => a.id !== 'notices').length === 3 ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
               {roleActions.filter(a => a.id !== 'notices').map(a => {
                 const TileIcon = a.icon;
@@ -5012,7 +4975,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       {mobileVisibleSections.includes('mobileStats') && (
         <div data-dashboard-section="mobileStats" style={{ order: mobileVisibleSections.indexOf('mobileStats') }}>
         {/* STAT CARDS — icon chip on top, big value, soft label (Tutor App pattern) */}
-        <section className="grid grid-cols-3 gap-3">
+        <section className="grid grid-cols-2 gap-3">
           {statsRow.map((s, i) => (
             <div key={i} className={`${cardCls} p-4`}>
               <p className="text-xl font-black leading-tight break-words">{s.value}</p>
@@ -5127,7 +5090,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           <section className={`${cardCls} p-5 space-y-3`}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center">
+                <span className="w-8 h-8 rounded-xl brand-soft flex items-center justify-center">
                   <CalendarDays size={15} />
                 </span>
                 {isEn ? "Today's Routine" : 'আজকের রুটিন'}
@@ -5176,73 +5139,22 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           </section>
         )}
 
-        {/* TEACHER: class reports */}
+        {/* TEACHER: class reports — home shows one summary line only;
+            the three report screens (attendance / result / fee) already
+            exist as destination modules. */}
         {userRole === 'teacher' && (
-          <section className="space-y-3">
-            <h3 className="text-sm font-black flex items-center gap-2 px-0.5">
-              <span className="w-1 h-4 rounded-full brand-bg" />
-              {isEn ? 'My Class Reports' : 'আমার ক্লাসের রিপোর্ট'}
-            </h3>
-            <div className={`${cardCls} p-5 space-y-5`}>
-              <button onClick={() => handleOpenModule('teacher_report_attendance')} className="w-full text-left cursor-pointer active:scale-[0.99] transition-all">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="flex items-center gap-2 text-[13px] font-bold">
-                    <span className="w-8 h-8 rounded-xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center">
-                      <BarChart3 size={15} />
-                    </span>
-                    {isEn ? 'Attendance — this month' : 'হাজিরা রিপোর্ট — এই মাস'}
-                  </span>
-                  <span className="text-sm font-black text-[#059669] dark:text-emerald-300">{toBn(monthlyAttendance.rate)}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
-                  <div className="h-full rounded-full bg-teal-500" style={{ width: `${monthlyAttendance.rate}%` }} />
-                </div>
-                <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
-                  {isEn ? 'School days' : 'কর্মদিবস'} {toBn(monthlyAttendance.schoolDays)} {isEn ? 'days' : 'দিন'}
-                </p>
-              </button>
-
-              <button onClick={() => handleOpenModule('teacher_report_result')} className="w-full text-left cursor-pointer active:scale-[0.99] transition-all">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="flex items-center gap-2 text-[13px] font-bold">
-                    <span className="w-8 h-8 rounded-xl brand-soft flex items-center justify-center">
-                      <Award size={15} />
-                    </span>
-                    {isEn ? 'Result — latest exam' : 'ফলাফল — সর্বশেষ পরীক্ষা'}
-                  </span>
-                  <span className="text-sm font-black brand-text">
-                    {classResultReport ? `${isEn ? 'Pass' : 'পাস'} ${toBn(classResultReport.passRate)}%` : '—'}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
-                  <div className="h-full rounded-full brand-flat" style={{ width: `${classResultReport ? classResultReport.passRate : 0}%` }} />
-                </div>
-                <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
-                  {classResultReport
-                    ? `${classResultReport.exam.name} • ${isEn ? 'Avg GPA' : 'গড় GPA'} ${toBn(classResultReport.avgGpa.toFixed(2))}`
-                    : (isEn ? 'No exam yet' : 'এখনো পরীক্ষা হয়নি')}
-                </p>
-              </button>
-
-              <button onClick={() => handleOpenModule('teacher_students_dues')} className="w-full text-left cursor-pointer active:scale-[0.99] transition-all">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="flex items-center gap-2 text-[13px] font-bold">
-                    <span className="w-8 h-8 rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 flex items-center justify-center">
-                      <Wallet size={15} />
-                    </span>
-                    {isEn ? 'Fee collection — this month' : 'ফি আদায় — এই মাস'}
-                  </span>
-                  <span className="text-sm font-black text-[#d97706] dark:text-amber-300">৳{toBn(classFeeReport.paid.toLocaleString())}</span>
-                </div>
-                <div className="h-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 overflow-hidden ml-10">
-                  <div className="h-full rounded-full bg-amber-500" style={{ width: `${classFeeReport.pct}%` }} />
-                </div>
-                <p className="text-[11px] text-[#8a93a8] ml-10 mt-1.5">
-                  {isEn ? 'Expected' : 'ধার্য'} ৳{toBn(classFeeReport.expected.toLocaleString())} — {toBn(classFeeReport.pct)}% {isEn ? 'collected' : 'আদায় হয়েছে'}
-                </p>
-              </button>
-            </div>
-          </section>
+          <button onClick={() => handleOpenModule('teacher_report_attendance')} className={`w-full text-left ${cardCls} p-4 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all`}>
+            <span className="w-9 h-9 rounded-2xl bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 flex items-center justify-center shrink-0">
+              <BarChart3 size={17} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[13px] font-bold truncate">{isEn ? `Attendance ${monthlyAttendance.rate}%` : `হাজিরা ${toBn(monthlyAttendance.rate)}%`} • {isEn ? `Dues ৳${classDuesSummary.totalDue.toLocaleString()}` : `বকেয়া ৳${toBn(classDuesSummary.totalDue.toLocaleString())}`}</span>
+              <span className="block text-[11px] text-[#8a93a8]">{isEn ? 'My Class Reports' : 'আমার ক্লাসের রিপোর্ট'}</span>
+            </span>
+            <span className="text-[11px] font-bold brand-text flex items-center gap-0.5 shrink-0">
+              {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+            </span>
+          </button>
         )}
 
         {/* CASHIER: today's income vs expense */}
@@ -5368,83 +5280,22 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         {/* TEACHER: Due report — current month + aging buckets (Tutor
             pattern). Aging comes from the additive calculateFeeAging:
             September's unpaid fee counts from Oct 1, never before. */}
+        {/* TEACHER: due report — home shows one summary line only; the
+            full aging buckets + student rows live on the destination
+            screen (teacher_students_dues). */}
         {userRole === 'teacher' && (
-          <section className={`${cardCls} p-5 space-y-3`}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 flex items-center justify-center">
-                  <Wallet size={15} />
-                </span>
-                {isEn ? 'Due report' : 'বকেয়া রিপোর্ট'}
-              </h3>
-              <button
-                onClick={() => handleOpenModule('teacher_students_dues')}
-                className="text-[11px] font-bold brand-text flex items-center gap-0.5 cursor-pointer"
-              >
-                {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
-                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? 'This month' : 'চলতি মাস'}</p>
-                <p className="text-[14px] font-black text-[#dc2626] dark:text-rose-300 mt-1">৳{toBn(classDuesSummary.currentMonthDue.toLocaleString())}</p>
-              </div>
-              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
-                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '1 month old' : '১ মাস আগের'}</p>
-                <p className="text-[14px] font-black text-[#d97706] dark:text-amber-300 mt-1">৳{toBn(teacherAging.oneMonthOld.toLocaleString())}</p>
-              </div>
-              <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
-                <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '2+ months old' : '২+ মাস আগের'}</p>
-                <p className="text-[14px] font-black text-[#7c3aed] dark:text-violet-300 mt-1">৳{toBn(teacherAging.twoPlus.toLocaleString())}</p>
-              </div>
-            </div>
-            {teacherAging.agedRows.length === 0 ? (
-              <p className="text-xs font-semibold text-[#059669] dark:text-emerald-300 py-1">
-                {isEn ? 'No dues from finished months ✓' : 'শেষ হওয়া মাসের কোনো বকেয়া নেই ✓'}
-              </p>
-            ) : (
-              <div className="space-y-2.5">
-                {teacherAging.agedRows.slice(0, 5).map(r => {
-                  const wa = r.student.guardianPhone ? agedWhatsappLink(r.student, r.aging.totalAged) : null;
-                  return (
-                    <div key={r.student.id} className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm shrink-0">
-                        {(r.student.nameBn || r.student.name || 'শ').charAt(0)}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-bold truncate">{r.student.nameBn || r.student.name}</p>
-                        <p className="text-[11px] text-[#8a93a8]">
-                          {r.student.classLevel}
-                          {r.aging.byMonth.length > 0 ? ` • ${isEn ? 'oldest' : 'সবচেয়ে পুরনো'} ${toBn(bnMonthLabel(r.aging.byMonth[0].month))}` : ''}
-                        </p>
-                      </div>
-                      <span className="text-[13px] font-black text-[#dc2626] dark:text-rose-300 shrink-0">৳{toBn(r.aging.totalAged.toLocaleString())}</span>
-                      {wa && (
-                        <a
-                          href={wa}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label="WhatsApp reminder"
-                          className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 active:scale-95 transition-all"
-                        >
-                          <MessageCircle size={15} />
-                        </a>
-                      )}
-                      {r.student.guardianPhone && (
-                        <a
-                          href={`tel:${r.student.guardianPhone}`}
-                          aria-label="Call guardian"
-                          className="w-9 h-9 rounded-full bg-[#dbeafe] dark:bg-blue-500/15 text-[#2563eb] dark:text-blue-300 flex items-center justify-center shrink-0 active:scale-95 transition-all"
-                        >
-                          <Phone size={15} />
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          <button onClick={() => handleOpenModule('teacher_students_dues')} className={`w-full text-left ${cardCls} p-4 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all`}>
+            <span className="w-9 h-9 rounded-2xl bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 flex items-center justify-center shrink-0">
+              <Wallet size={17} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[13px] font-bold truncate">{isEn ? `Total dues ৳${classDuesSummary.totalDue.toLocaleString()}` : `মোট বকেয়া ৳${toBn(classDuesSummary.totalDue.toLocaleString())}`}</span>
+              <span className="block text-[11px] text-[#8a93a8]">{isEn ? 'Due report' : 'বকেয়া রিপোর্ট'}</span>
+            </span>
+            <span className="text-[11px] font-bold brand-text flex items-center gap-0.5 shrink-0">
+              {isEn ? 'See all' : 'সব দেখুন'} <ChevronRight size={12} />
+            </span>
+          </button>
         )}
 
         {/* TEACHER: attendance per assigned class (only when the teacher
@@ -5548,7 +5399,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               </div>
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '2+ months old' : '২+ মাস আগের'}</p>
-                <p className="text-[14px] font-black text-[#7c3aed] dark:text-violet-300 mt-1">৳{toBn(cashierAging.twoPlus.toLocaleString())}</p>
+                <p className="text-[14px] font-black text-[#be123c] dark:text-rose-300 mt-1">৳{toBn(cashierAging.twoPlus.toLocaleString())}</p>
               </div>
             </div>
             {cashierAging.agedRows.length === 0 ? (
@@ -5796,7 +5647,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
           <section className={`${cardCls} p-5 space-y-3`}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-[#ede9fe] dark:bg-violet-500/15 text-[#6d28d9] dark:text-violet-300 flex items-center justify-center">
+                <span className="w-8 h-8 rounded-xl brand-soft flex items-center justify-center">
                   <BarChart3 size={15} />
                 </span>
                 {isEn ? "This month's report" : 'এই মাসের প্রতিবেদন'}
@@ -5865,7 +5716,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               </div>
               <div className="rounded-2xl bg-[#f8fafc] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/5 p-3">
                 <p className="text-[10px] font-bold text-[#8a93a8]">{isEn ? '2+ months old' : '২+ মাস আগের'}</p>
-                <p className="text-[14px] font-black text-[#7c3aed] dark:text-violet-300 mt-1">৳{toBn(cashierAging.twoPlus.toLocaleString())}</p>
+                <p className="text-[14px] font-black text-[#be123c] dark:text-rose-300 mt-1">৳{toBn(cashierAging.twoPlus.toLocaleString())}</p>
               </div>
             </div>
             {cashierAging.agedRows.length === 0 ? (
