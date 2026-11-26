@@ -386,7 +386,9 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         title={schoolProfile.nameBn || schoolProfile.name || (isBn ? 'মাদ্রাসা ম্যানেজমেন্ট সিস্টেম' : 'Madrasah Management')}
         subtitle={`${formattedToday}${schoolProfile.address ? ` • ${schoolProfile.addressBn || schoolProfile.address}` : ''}`}
         footer={
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
+          // 9 tiles: 3-col rows below lg, 9 in a row on lg — never an
+          // empty cell (the old sm:grid-cols-5 left one empty slot).
+          <div className="grid grid-cols-3 lg:grid-cols-9 gap-2">
             {heroActions.map((act) => {
               const Icon = act.icon;
               return (

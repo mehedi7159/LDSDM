@@ -307,10 +307,10 @@ const ClassGrid = memo<ClassGridProps>(({ classCards, language }) => {
         </span>
       }
     >
-        {classCards.map(clsCard => (
+        {classCards.map((clsCard, i) => (
           <div
             key={clsCard.id}
-            className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all space-y-2.5"
+            className={`p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all space-y-2.5${i === classCards.length - 1 && (classCards.length + 1) % 12 === 0 ? ' sm:col-span-2 lg:col-span-2 xl:col-span-2' : ''}`}
           >
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
@@ -1567,14 +1567,14 @@ export const Dashboard = () => {
           { tab: 'attendance_reports', bn: 'হাজিরা রিপোর্ট', en: 'Attendance Reports', icon: UserCheck, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' },
           { tab: 'student_reports', bn: 'শিক্ষার্থী রিপোর্ট', en: 'Student Reports', icon: Users, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' },
           { tab: 'academic_reports', bn: 'একাডেমিক রিপোর্ট', en: 'Academic Reports', icon: BookOpen, box: 'bg-[var(--color-brand-light)] dark:bg-slate-800 text-[var(--color-brand)] dark:text-slate-100', hover: 'hover:border-[var(--color-brand-ring)]' }
-        ].map(r => {
+        ].map((r, i, arr) => {
           const RIcon = r.icon;
           return (
             <button
               key={r.tab}
               data-report-tile={r.tab}
               onClick={() => setActiveTab(r.tab)}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/60 ${r.hover} transition-all text-center cursor-pointer`}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/60 ${r.hover} transition-all text-center cursor-pointer${i === arr.length - 1 && arr.length % 2 === 1 ? ' col-span-2 lg:col-span-1' : ''}`}
             >
               <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${r.box}`}>
                 <RIcon size={22} />

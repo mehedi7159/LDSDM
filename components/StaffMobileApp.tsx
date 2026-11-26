@@ -1369,6 +1369,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result', 'teacher_routine', 'cashier_collect', 'mobile_students'];
 
   const handleOpenModule = (moduleKey: string) => {
+    // Every screen opens at its top: without this, the browser keeps
+    // the previous screen's scroll position and the new screen's first
+    // card renders half-hidden under the sticky header.
+    window.scrollTo(0, 0);
     // For shared desktop modules, switch the app tab first so the
     // passthrough renders the right module (the old view missed this).
     if (!NATIVE_MODULES.includes(moduleKey) && setActiveTab) {
@@ -1386,6 +1390,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       return;
     }
     if (nav.id === 'profile') {
+      window.scrollTo(0, 0);
       setActiveSubModule(null);
       setShowProfile(true);
       return;
@@ -1408,6 +1413,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   };
 
   const goHome = () => {
+    window.scrollTo(0, 0);
     setActiveSubModule(null);
     setShowProfile(false);
     setShowLeave(false);
@@ -1415,7 +1421,27 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     setActiveBottomNav('home');
   };
 
-  const displayName = authUser?.displayName || currentMember?.displayName || currentUser?.name || 'সম্মানিত ব্যবহারকারী';
+  // Home/profile name — the staff/teacher record first, never the email.
+  // (authUser.displayName is unreliable: for accounts created from an
+  // email it can be the email prefix, e.g. "shornaaktermukta7..." —
+  // the greeting must show the person's name, not that.)
+  // Linked through the staff record — by uid link, record id, email,
+  // or phone — never by requiring role === 'teacher'. (Multi-role:
+  // routine follows the staff record, not the primary role.)
+  const myTeacherRecord = useMemo(() => {
+    const uid = authUser?.uid;
+    const email = (authUser?.email || currentUser?.email || '').toLowerCase();
+    const phone = currentUser?.phone || currentMember?.phone || '';
+    return (
+      teachers.find(t => uid && t.userId && t.userId === uid) ||
+      teachers.find(t => currentUser?.id && t.id === currentUser.id) ||
+      teachers.find(t => email && t.email && t.email.toLowerCase() === email) ||
+      teachers.find(t => phone && t.phone && t.phone === phone) ||
+      null
+    );
+  }, [teachers, authUser, currentUser, currentMember]);
+
+  const displayName = myTeacherRecord?.nameBn || myTeacherRecord?.name || currentUser?.nameBn || currentUser?.name || currentMember?.displayName || myTeacherRecord?.designation || currentUser?.designation || (userRole === 'teacher' ? 'শিক্ষক' : userRole === 'principal' ? 'অধ্যক্ষ' : userRole === 'cashier' ? 'হিসাবরক্ষক' : userRole === 'staff' ? 'স্টাফ' : userRole === 'parent' ? 'অভিভাবক' : 'সম্মানিত ব্যবহারকারী');
   const initialLetter = (displayName || 'উ')[0].toUpperCase();
 
   // Search & Filter state for Students & Dues module
@@ -1947,22 +1973,8 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   // The linkage is deliberately ROLE-AGNOSTIC: any linked staff record
   // counts, whatever the person's login role is. A principal (or an
-  // accountant) who also teaches is matched through their staff record
-  // — by uid link, record id, email, or phone — never by requiring
-  // role === 'teacher'. (Multi-role: routine follows the staff record,
-  // not the primary role.)
-  const myTeacherRecord = useMemo(() => {
-    const uid = authUser?.uid;
-    const email = (authUser?.email || currentUser?.email || '').toLowerCase();
-    const phone = currentUser?.phone || currentMember?.phone || '';
-    return (
-      teachers.find(t => uid && t.userId && t.userId === uid) ||
-      teachers.find(t => currentUser?.id && t.id === currentUser.id) ||
-      teachers.find(t => email && t.email && t.email.toLowerCase() === email) ||
-      teachers.find(t => phone && t.phone && t.phone === phone) ||
-      null
-    );
-  }, [teachers, authUser, currentUser, currentMember]);
+  // (myTeacherRecord now lives next to displayName, above — moved up
+  // so the greeting/profile name can use the staff record first.)
 
   const myNameSet = useMemo(() => {
     return new Set(
@@ -2428,9 +2440,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 onClick={() => {
                   setMoreOpen(false);
                   if (item.id === 'leave') {
+                    window.scrollTo(0, 0);
                     setActiveSubModule(null);
                     setShowLeave(true);
                   } else if (item.moduleKey === null) {
+                    window.scrollTo(0, 0);
                     setActiveSubModule(null);
                     setShowProfile(true);
                   } else {
@@ -2523,9 +2537,17 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
             </span>
             <span className="text-[10px] text-[#8a93a8]">{schoolProfile.nameBn || schoolProfile.name}</span>
           </div>
-          <div className="w-9 h-9 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm">
+          {/* Profile avatar — a real button: opens the profile screen
+              (name, email, role + logout live there already). */}
+          <button
+            type="button"
+            onClick={() => { setActiveSubModule(null); window.scrollTo(0, 0); setShowProfile(true); }}
+            aria-label={isEn ? 'My profile' : 'আমার প্রোফাইল'}
+            title={isEn ? 'My profile' : 'আমার প্রোফাইল'}
+            className="w-9 h-9 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm cursor-pointer active:scale-95 transition-all shrink-0"
+          >
             {initialLetter}
-          </div>
+          </button>
         </header>
 
         {successToast}
@@ -3554,7 +3576,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           className="w-20 h-11 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] shrink-0"
                         />
                       ) : (
-                        <div className="w-20 h-11 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-dashed border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black text-[#5b6478] dark:text-slate-300 shrink-0">
+                        <div className="w-20 h-11 px-2 bg-[#f4f6fb] dark:bg-white/5 border border-dashed border-[#e8ecf4] dark:border-white/10 rounded-2xl text-center text-sm font-black text-[#5b6478] dark:text-slate-300 shrink-0 flex items-center justify-center">
                           {currentVal !== '' ? toBn(currentVal) : '—'}
                         </div>
                       )}
@@ -4805,12 +4827,20 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] text-[#1e2433] dark:text-slate-100 flex flex-col pb-24">
       {/* Top bar — sticky with soft blur */}
       <header className="sticky top-0 z-40 bg-[#f4f6fb]/85 dark:bg-[#0e1220]/85 backdrop-blur-xl px-4 pt-4 pb-3 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-[16px] brand-flat text-white font-black flex items-center justify-center text-lg shrink-0">
+        {/* Profile avatar — a real button: opens the profile screen
+            (name, email, role + logout live there already). */}
+        <button
+          type="button"
+          onClick={() => { window.scrollTo(0, 0); setActiveSubModule(null); setShowProfile(true); }}
+          aria-label={isEn ? 'My profile' : 'আমার প্রোফাইল'}
+          title={isEn ? 'My profile' : 'আমার প্রোফাইল'}
+          className="w-12 h-12 rounded-[16px] brand-flat text-white font-black flex items-center justify-center text-lg shrink-0 cursor-pointer active:scale-95 transition-all"
+        >
           {initialLetter}
-        </div>
+        </button>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-[#5b6478] dark:text-slate-400">{todayGreeting.greeting} 👋</p>
-          <h1 className="text-lg font-black leading-tight truncate">{displayName}</h1>
+          <h1 className="text-lg font-black leading-snug break-words">{displayName}</h1>
         </div>
         {/* Tutor-style accent + mode picker — one tap applies app-wide
             via ThemeContext (accent + dark mode persist to localStorage). */}
@@ -4964,8 +4994,14 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 })}
               </div>
             )}
+          </div>
+        </section>
 
-            <div className={`grid ${roleActions.filter(a => a.id !== 'notices').length === 3 ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
+        {/* Quick-action tiles — their OWN container below the hero,
+            fully separate from the role switcher above (clear gap,
+            never overlapping it). */}
+        <div className="mt-4">
+          <div className={`grid ${roleActions.filter(a => a.id !== 'notices').length === 3 ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
               {roleActions.filter(a => a.id !== 'notices').map(a => {
                 const TileIcon = a.icon;
                 return (
@@ -4992,8 +5028,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                 );
               })}
             </div>
-          </div>
-        </section>
+        </div>
         </div>
       )}
       {mobileVisibleSections.includes('mobileStats') && (
@@ -5001,7 +5036,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         {/* STAT CARDS — icon chip on top, big value, soft label (Tutor App pattern) */}
         <section className="grid grid-cols-2 gap-3">
           {statsRow.map((s, i) => (
-            <div key={i} className={`${cardCls} p-4`}>
+            <div key={i} className={`${cardCls} p-4${statsRow.length % 2 === 1 && i === statsRow.length - 1 ? ' col-span-2' : ''}`}>
+              {/* Last card spans both columns when the count is odd —
+                  a 3-card grid never leaves an empty 4th cell. */}
               <p className="text-xl font-black leading-tight break-words">{s.value}</p>
               <p className="text-[11px] font-medium text-[#5b6478] dark:text-slate-400 mt-0.5 leading-snug">{s.label}</p>
             </div>
