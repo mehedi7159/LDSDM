@@ -8,14 +8,15 @@
  * (or npm run test:job4-academic-split).
  *
  * Covers the Job 4 spec (LDSDM-database-split-plan-2026-11-07.md §6 Job 4,
- * §5 steps 1–3 only — step 5, stopping the old main_store write, is a
- * separate push a week later and is NOT part of this job):
+ * §5 steps 1–3, plus step 5 — stopping the old main_store write — done
+ * 26 Nov 2026, see scripts/verify-job4-step5-academic.ts):
  *  - New paths are institutions/inst_madrasah_primary/<field>/{id} for
  *    all six fields, built from CANONICAL_PRIMARY_INSTITUTION_ID, never
  *    hardcoded.
- *  - Dual-write: the six write*FieldToCloud writers each write their new
- *    collection AND main_store in one try; the old main_store write is
- *    NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): the six write*FieldToCloud writers write their
+ *    new collections ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. See scripts/verify-job4-step5-academic.ts.
  *  - Deletes + restores of academic records also reach the new
  *    collections, so a deleted subject/exam/assignment can never be
  *    resurrected by an academic feed. Tripwire: subjects + exams are
@@ -178,18 +179,18 @@ check('migrateFieldToCollection covers all six academic fields, batched setDoc m
   assert.ok(body.includes('academicCollectionRef'), 'backfill must write the new academic collections');
 });
 
-console.log('--- Dual-write (source checks) ---');
+console.log('--- Collection-only write (source checks) ---');
 
 for (const field of FIELDS) {
-  check(`${FIELD_WRITER[field]} writes the new collection AND main_store in one try`, () => {
+  check(`${FIELD_WRITER[field]} writes the new collection ONLY (step 5 stopped the main_store leg)`, () => {
     const src = readSource('services/cloudConfirm.ts');
     const start = src.indexOf(`export async function ${FIELD_WRITER[field]}`);
     assert.ok(start > -1, `${FIELD_WRITER[field]} must exist`);
     const body = src.slice(start, src.indexOf('\n}', start) + 2);
     assert.ok(body.includes('writeAcademicRecordsToCollection'), 'must write the new collection');
-    assert.ok(body.includes(`writeFieldsToCloud({ ${field}`), 'must STILL write main_store (old write NOT stopped)');
-    assert.ok(body.indexOf('writeAcademicRecordsToCollection') < body.indexOf(`writeFieldsToCloud({ ${field}`), 'collection write and main_store write belong to the same try');
-    assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+    assert.ok(!body.includes(`writeFieldsToCloud({ ${field}`), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+    assert.ok(body.indexOf('writeAcademicRecordsToCollection') > -1, 'collection write belongs to the same try');
+    assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
   });
 
   check(`${FIELD_WRITER[field]} asserts ids via the shared choke point`, () => {
@@ -419,9 +420,9 @@ check('buildPublicPortalData output is unchanged (same keys, same pickLists)', (
   assert.ok(src.includes("derivedFrom: 'institution/main_store'"), 'portal meta must be unchanged');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes all six fields through the dual-write writers', () => {
+check('pushDiffToCloud still writes all six fields through the collection-only writers', () => {
   const src = readSource('context/AppContext.tsx');
   for (const field of FIELDS) {
     assert.ok(src.includes(`${field}: ${FIELD_WRITER[field]}`), `auto-sync must still carry ${field} through ${FIELD_WRITER[field]}`);

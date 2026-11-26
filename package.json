@@ -100,7 +100,10 @@
     "test:job13-step5-trash": "tsx scripts/verify-job13-step5-trash.ts",
     "test:job2-step5-schedule": "tsx scripts/verify-job2-step5-schedule.ts",
     "test:job7-step5-promotion": "tsx scripts/verify-job7-step5-promotion.ts",
-    "test:job6-step5-remarks": "tsx scripts/verify-job6-step5-remarks.ts"
+    "test:job6-step5-remarks": "tsx scripts/verify-job6-step5-remarks.ts",
+    "test:job3-step5-classes": "tsx scripts/verify-job3-step5-classes.ts",
+    "test:job4-step5-academic": "tsx scripts/verify-job4-step5-academic.ts",
+    "test:job5-step5-fees": "tsx scripts/verify-job5-step5-fees.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
