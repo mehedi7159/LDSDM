@@ -99,7 +99,9 @@
     "test:student-delete-reload-race": "tsx scripts/verify-student-delete-reload-race.ts",
     "test:job8-step5-leaves": "tsx scripts/verify-job8-step5-leaves.ts",
     "test:job10-step5-transactions": "tsx scripts/verify-job10-step5-transactions.ts",
-    "test:job11-step5-marks": "tsx scripts/verify-job11-step5-marks.ts"
+    "test:job11-step5-marks": "tsx scripts/verify-job11-step5-marks.ts",
+    "test:job12-step5-students": "tsx scripts/verify-job12-step5-students.ts",
+    "test:job14-step5-settings": "tsx scripts/verify-job14-step5-settings.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

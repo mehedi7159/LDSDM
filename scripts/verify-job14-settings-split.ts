@@ -7,16 +7,17 @@
  * (or npm run test:job14-settings-split).
  *
  * Covers the Job 14 spec (LDSDM-database-split-plan-2026-11-07.md §6 Job 14,
- * §5 steps 1–3 only — step 5, stopping the old main_store write, is a
- * separate push a week later and is NOT part of this job):
+ * §5 steps 1–3 — plus step 5, stopping the old main_store write, done
+ * 26 Nov 2026 as a separate push (see scripts/verify-job14-step5-settings.ts);
+ * the dual-write checks below are now collection-only checks.
  *  - New path is institutions/inst_madrasah_primary/settings/main — ONE
  *    document holding { schoolProfile, markEntryEnabled }, built from
  *    CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeSchoolProfileFieldToCloud and
- *    writeMarkEntryEnabledFieldToCloud each write settings/main (merge,
- *    so one field never wipes the other) AND main_store in one try,
- *    with the same updatedBy/updatedAt in both; the old main_store
- *    write is NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writeSchoolProfileFieldToCloud and
+ *    writeMarkEntryEnabledFieldToCloud each write settings/main ONLY;
+ *    the old main_store write is stopped, the frozen copy stays.
+ *    See scripts/verify-job14-step5-settings.ts.
  *  - Backfill (services/migrationSplit.ts migrateSettingsToCollection)
  *    is idempotent (setDoc merge on the one doc), copies fields as-is,
  *    writes only the fields present — a missing markEntryEnabled is
@@ -184,38 +185,36 @@ check('writeSettingsToCollection uses setDoc merge (one field never wipes the ot
   assert.ok(body.includes('{ merge: true }'), 'must use setDoc merge');
 });
 
-console.log('--- Dual-write (source checks) ---');
+console.log('--- Collection-only write (step 5 — dual-write stopped, source checks) ---');
 
-check('writeSchoolProfileFieldToCloud writes settings/main AND main_store in one try', () => {
+check('writeSchoolProfileFieldToCloud writes settings/main ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeSchoolProfileFieldToCloud');
   assert.ok(start > -1, 'writeSchoolProfileFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
-  assert.ok(body.includes('writeSettingsToCollection') || body.includes('settingsDocRef'), 'must write the new settings doc');
-  assert.ok(body.includes("doc(db, 'institution', 'main_store')"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeSettingsToCollection') < body.indexOf("doc(db, 'institution', 'main_store')"), 'settings write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(body.includes('writeSettingsToCollection'), 'must write the new settings doc');
+  assert.ok(!body.includes("doc(db, 'institution', 'main_store')"), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
 });
 
-check('profile dual-write carries the same updatedBy/updatedAt in both legs', () => {
+check('profile collection-only write still carries updatedBy/updatedAt', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeSchoolProfileFieldToCloud');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
-  assert.ok(body.includes('const updatedAt = new Date().toISOString()'), 'one timestamp must be shared by both legs');
+  assert.ok(body.includes('const updatedAt = new Date().toISOString()'), 'one timestamp must be written with the settings leg');
   assert.ok(body.includes('updatedBy'), 'updatedBy must be written');
   assert.ok(body.includes('updatedAt'), 'updatedAt must be written');
   assert.ok(body.includes('schoolProfile write rejected'), 'the non-object choke point must stay');
 });
 
-check('writeMarkEntryEnabledFieldToCloud writes settings/main AND main_store in one try', () => {
+check('writeMarkEntryEnabledFieldToCloud writes settings/main ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeMarkEntryEnabledFieldToCloud');
   assert.ok(start > -1, 'writeMarkEntryEnabledFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
-  assert.ok(body.includes('writeSettingsToCollection') || body.includes('settingsDocRef'), 'must write the new settings doc');
-  assert.ok(body.includes("doc(db, 'institution', 'main_store')"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeSettingsToCollection') < body.indexOf("doc(db, 'institution', 'main_store')"), 'settings write and main_store write belong to the same try');
-  assert.ok(body.includes('const updatedAt = new Date().toISOString()'), 'one timestamp must be shared by both legs');
+  assert.ok(body.includes('writeSettingsToCollection'), 'must write the new settings doc');
+  assert.ok(!body.includes("doc(db, 'institution', 'main_store')"), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.includes('const updatedAt = new Date().toISOString()'), 'one timestamp must be written with the settings leg');
   assert.ok(body.includes('markEntryEnabled write rejected'), 'the non-boolean choke point must stay');
 });
 
@@ -224,8 +223,11 @@ check('settings writes use merge, so a profile write never wipes the switch (and
   for (const fn of ['writeSchoolProfileFieldToCloud', 'writeMarkEntryEnabledFieldToCloud']) {
     const start = src.indexOf(`export async function ${fn}`);
     const body = src.slice(start, src.indexOf('\n}', start) + 2);
-    assert.ok(body.includes('{ merge: true }'), `${fn} must merge into settings/main`);
+    assert.ok(body.includes('writeSettingsToCollection'), `${fn} must write through writeSettingsToCollection`);
   }
+  const collStart = src.indexOf('export async function writeSettingsToCollection');
+  const collBody = src.slice(collStart, src.indexOf('\n}', collStart) + 2);
+  assert.ok(collBody.includes('{ merge: true }'), 'writeSettingsToCollection must merge into settings/main');
 });
 
 console.log('--- Read-switch + fallback (source checks) ---');
@@ -376,9 +378,9 @@ check('portal rebuild reads schoolProfile from settings/main, output unchanged',
   assert.ok(!portal.includes('settings'), 'buildPublicPortalData itself must not learn about the split (source change only)');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes settings fields through the dual-write writers', () => {
+check('pushDiffToCloud still writes settings fields through the collection-only writers', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('writeSchoolProfileFieldToCloud(schoolProfile as any, actor)'), 'auto-sync must still carry the profile through writeSchoolProfileFieldToCloud');
   assert.ok(src.includes('writeMarkEntryEnabledFieldToCloud(markEntryEnabled, actor)'), 'auto-sync must still carry the switch through writeMarkEntryEnabledFieldToCloud');
