@@ -7,14 +7,28 @@
  * (or npm run test:job13-trash-split).
  *
  * Covers the Job 13 spec (LDSDM-database-split-plan-2026-11-07.md §6
- * Job 13, §5 steps 1–3 only — step 5, stopping the old main_store
- * write, is a separate push a week later and is NOT part of this job):
+ * Job 13, §5 steps 1–3, plus the step-5 decision of 26 Nov 2026):
+ * step 5 decided case (b) — verify-only, NO behaviour change. There
+ * is NO upsert writer for trashBin to stop (no
+ * writeTrashBinFieldToCloud, no writeFieldsToCloud({ trashBin })),
+ * so there is no old upsert leg to remove; the union/prune legs in
+ * writeDeleteFieldsToCloud / writeTrashOpToCloud are maintenance
+ * (Job 1 precedent) and stay, because the read path is not fully
+ * collection-based — main_store.trashBin is still the pre-takeover
+ * fallback and the post-takeover removal authority the feed's
+ * exact-match gate compares against. See
+ * scripts/verify-job13-step5-trash.ts for the full evidence.
  *  - New path is institutions/inst_madrasah_primary/trash/{id}
  *    (doc id = TrashItem.id), built from
  *    CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeDeleteFieldsToCloud writes trash entries to the
- *    new collection AND main_store.trashBin in one try; the old
- *    main_store write is NOT stopped.
+ *  - Dual-write (step 5 case (b): the maintenance shape, it stays):
+ *    writeDeleteFieldsToCloud writes trash entries to the new
+ *    collection AND unions them into main_store.trashBin in one
+ *    try; writeTrashOpToCloud prunes them from main_store.trashBin
+ *    and deletes the trash docs from the new collection. The
+ *    main_store legs are maintenance, not an upsert leg — stopping
+ *    them would break deletes/restores for the principal
+ *    (non-super-admin), see verify-job13-step5-trash.ts.
  *  - Rules limit (plan points 1–3): trash entry first (any logged-in
  *    user can setDoc); then the real doc delete is attempted
  *    (deleteDoc) — the super admin succeeds, anyone else gets
@@ -208,7 +222,7 @@ check('the filter hides a record whose deleteDoc failed (non-super-admin path)',
   assert.deepStrictEqual(visibleStudents.map((s) => s.id), ['std-2']);
 });
 
-console.log('--- Dual-write: trash entries go to the collection AND main_store ---');
+console.log('--- Dual-write (step 5 case (b): the maintenance shape, it stays) ---');
 
 check('writeDeleteFieldsToCloud writes trash entries to the new collection first, then main_store', () => {
   const src = readSource('services/cloudConfirm.ts');
@@ -216,7 +230,8 @@ check('writeDeleteFieldsToCloud writes trash entries to the new collection first
   assert.ok(start > -1, 'writeDeleteFieldsToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeTrashRecordsToCollection'), 'must write the trash entries to the new collection');
-  assert.ok(body.includes('await setDoc(ref, payload, { merge: true })'), 'must STILL write main_store (old write NOT stopped)');
+  assert.ok(body.includes('await setDoc(ref, payload, { merge: true })'), 'must STILL write main_store (step 5 case (b): the union leg is maintenance, it stays — no upsert leg exists to stop)');
+  assert.ok(body.includes('payload.trashBin = mergeRecordsByKey'), 'must still union the entries into main_store.trashBin');
   assert.ok(body.indexOf('writeTrashRecordsToCollection') < body.indexOf('await setDoc(ref, payload, { merge: true })'), 'collection write comes before the main_store write (plan point 1: trash entry first)');
   assert.ok(body.includes("assertUpsertRecords('trashBin'"), 'trash write must reuse the shared id assertion');
   assert.ok(body.includes("fieldKeyFn('trashBin')"), 'trash write must key entries with the shared fieldKeyFn');
@@ -275,7 +290,8 @@ check('writeTrashOpToCloud deletes the removed trash docs from the new collectio
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('deleteTrashRecordsFromCollection'), 'trash-op must remove the trash docs from the new collection');
   assert.ok(body.includes('deleteSplitDocsBestEffort'), 'the trash-doc delete must be best-effort (principal leaves an orphan, super admin removes it)');
-  assert.ok(body.includes('await setDoc(ref, payload, { merge: true })'), 'must STILL write main_store (old write NOT stopped)');
+  assert.ok(body.includes('await setDoc(ref, payload, { merge: true })'), 'must STILL write main_store (step 5 case (b): the prune leg is maintenance, it stays)');
+  assert.ok(body.includes('payload.trashBin = existingTrash.filter'), 'must still prune the removed entries from main_store.trashBin');
   assert.ok(body.indexOf('assertTripwire(') < body.indexOf('deleteTrashRecordsFromCollection'), 'tripwire must run before the trash-doc delete');
 });
 

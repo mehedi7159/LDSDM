@@ -12,8 +12,10 @@
  *    built from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
  *    RemarkRecord has NO id field — the doc id is studentId__examId
  *    (services/payloadQueue.ts fieldKeyFn('remarks')).
- *  - Dual-write: writeRemarksFieldToCloud writes the new collection AND
- *    main_store in one try; the old main_store write is NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writeRemarksFieldToCloud writes the new
+ *    collection ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. See scripts/verify-job6-step5-remarks.ts.
  *  - Deletes + restores also reach the new collection, so a deleted
  *    remark can never be resurrected by the remarks feed.
  *  - Read-switch: an onSnapshot feed on the new collection is the source
@@ -148,15 +150,15 @@ check("migrateFieldToCollection covers 'remarks', batched setDoc merge by studen
 
 console.log('--- Dual-write (source checks) ---');
 
-check('writeRemarksFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writeRemarksFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeRemarksFieldToCloud');
   assert.ok(start > -1, 'writeRemarksFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeRemarksToCollection'), 'must write the new collection');
-  assert.ok(body.includes("writeFieldsToCloud({ remarks }"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeRemarksToCollection') < body.indexOf("writeFieldsToCloud({ remarks }"), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes("writeFieldsToCloud({ remarks }"), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.indexOf('writeRemarksToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
 });
 
 check('dual-write asserts keys via the shared choke point (studentId+examId)', () => {
@@ -309,9 +311,9 @@ check('portal rebuild reads remarks from the new collection when it has docs, ma
   assert.ok(body.includes('remarks'), 'rebuild must still pass remarks to the portal builder');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes remarks through the dual-write writer', () => {
+check('pushDiffToCloud still writes remarks through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('remarks: writeRemarksFieldToCloud'), 'auto-sync must still carry remarks through writeRemarksFieldToCloud');
 });

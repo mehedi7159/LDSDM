@@ -12,9 +12,10 @@
  *  - New paths are institutions/inst_madrasah_primary/<field>/{id} for
  *    classRoutines, syllabusItems and calendarEvents, built from
  *    CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeScheduleFieldsToCloud writes each of the three
- *    fields to its new collection AND to main_store in one try; the old
- *    main_store write is NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writeScheduleFieldsToCloud writes the new
+ *    collections ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. See scripts/verify-job2-step5-schedule.ts.
  *  - Deletes + restores of schedule records also reach the new
  *    collections, so a deleted routine can never be resurrected by a
  *    schedule feed.
@@ -149,15 +150,15 @@ check('migrateFieldToCollection covers all three fields, batched setDoc merge by
 
 console.log('--- Dual-write (source checks) ---');
 
-check('writeScheduleFieldsToCloud writes the new collections AND main_store in one try', () => {
+check('writeScheduleFieldsToCloud writes the new collections ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeScheduleFieldsToCloud');
   assert.ok(start > -1, 'writeScheduleFieldsToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeScheduleRecordsToCollection'), 'must write the new collections');
-  assert.ok(body.includes('writeFieldsToCloud({ classRoutines: routines, syllabusItems, calendarEvents }'), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeScheduleRecordsToCollection') < body.indexOf('writeFieldsToCloud({ classRoutines'), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes('writeFieldsToCloud({ classRoutines: routines, syllabusItems, calendarEvents }'), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.indexOf('writeScheduleRecordsToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
 });
 
 check('dual-write asserts ids via the shared choke point, per field', () => {
@@ -309,9 +310,9 @@ check('buildPublicPortalData reads none of the three schedule fields', () => {
   }
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes schedule through the dual-write writer', () => {
+check('pushDiffToCloud still writes schedule through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('writeScheduleFieldsToCloud(rDelta, sDelta, cDelta, actor)'), 'auto-sync must still carry schedule through writeScheduleFieldsToCloud');
 });

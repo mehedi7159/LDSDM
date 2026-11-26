@@ -10,9 +10,10 @@
  * separate push a week later and is NOT part of this job):
  *  - New path is institutions/inst_madrasah_primary/promotionHistory/{id},
  *    built from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writePromotionHistoryFieldToCloud writes the new
- *    collection AND main_store in one try; the old main_store write is
- *    NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writePromotionHistoryFieldToCloud writes the new
+ *    collection ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. See scripts/verify-job7-step5-promotion.ts.
  *  - Deletes (clear history) + restores also reach the new collection,
  *    so a cleared record can never be resurrected by the promotion feed.
  *  - Read-switch: an onSnapshot feed on the new collection is the source
@@ -136,15 +137,15 @@ check("migrateFieldToCollection covers 'promotionHistory', batched setDoc merge 
 
 console.log('--- Dual-write (source checks) ---');
 
-check('writePromotionHistoryFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writePromotionHistoryFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writePromotionHistoryFieldToCloud');
   assert.ok(start > -1, 'writePromotionHistoryFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writePromotionHistoryToCollection'), 'must write the new collection');
-  assert.ok(body.includes("writeFieldsToCloud({ promotionHistory: records }"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writePromotionHistoryToCollection') < body.indexOf("writeFieldsToCloud({ promotionHistory: records }"), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes('writeFieldsToCloud({ promotionHistory: records }'), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.indexOf('writePromotionHistoryToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
 });
 
 check('dual-write asserts ids via the shared choke point', () => {
@@ -287,9 +288,9 @@ check('buildPublicPortalData reads no promotionHistory', () => {
   assert.ok(!src.includes('promotionHistory'), 'publicPortal must not read promotionHistory');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes promotionHistory through the dual-write writer', () => {
+check('pushDiffToCloud still writes promotionHistory through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('promotionHistory: writePromotionHistoryFieldToCloud'), 'auto-sync must still carry promotionHistory through writePromotionHistoryFieldToCloud');
 });
