@@ -95,7 +95,8 @@
     "test:dashboard-layout": "tsx scripts/verify-dashboard-layout.ts",
     "test:dashboard-arrange": "tsx scripts/verify-dashboard-arrange.ts",
     "test:cloud-sync-root-cause": "tsx scripts/verify-cloud-sync-root-cause.ts",
-    "test:student-delete-cloud-confirm": "tsx scripts/verify-student-delete-cloud-confirm.ts"
+    "test:student-delete-cloud-confirm": "tsx scripts/verify-student-delete-cloud-confirm.ts",
+    "test:student-delete-reload-race": "tsx scripts/verify-student-delete-reload-race.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

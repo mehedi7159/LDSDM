@@ -7096,6 +7096,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
       setCloudStatus('error');
       return { success: false, message: e?.message || STUDENT_DELETE_CLOUD_FAILURE_MESSAGE };
     }
+    // Reload-race fix (25 Nov 2026): queue the delete SYNCHRONOUSLY
+    // before the confirm starts — the confirmStudentsCloudSync
+    // pattern. Until the confirm clears it, the queued entry keeps
+    // the student filtered out of any snapshot and the retry replays
+    // the delete, so a reload mid-confirm cannot resurrect it. The
+    // failure path re-queues the same op (merged by key, so no
+    // duplicate write).
+    queuePendingPayload({ op: 'delete', removals: [{ field: 'students', ids: op.deletedIds }], trashEntries: op.trashEntries, updatedBy: confirmActorName() });
+    refreshPendingPayloads();
     const result = await confirmCloudWrite(
       () => writeDeleteFieldsToCloud([{ field: 'students', ids: op.deletedIds }], op.trashEntries, confirmActorName()),
       STUDENT_DELETE_CLOUD_FAILURE_MESSAGE
@@ -8324,6 +8333,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     });
     if (plan.clash) return { success: false, message: plan.clash };
 
+    // Reload-race fix (25 Nov 2026): a restore undoes a delete —
+    // cancel any queued delete payload for the restored records
+    // FIRST, or the next retry replays it and deletes a record the
+    // user was told is back (mirror of
+    // voidQueuedRestoreUpsertsForKeys on re-trash / permanent
+    // delete).
+    for (const entry of plan.toRestore) {
+      const field = trashFieldByType[entry.type];
+      if (field && entry.data?.id) removePendingDeletePayload(field, [String(entry.data.id)]);
+    }
+
     for (const entry of plan.toRestore) {
       // A trashed student whose ID is now live on another student comes
       // back with the plan's new free ID (live record keeps its ID).
@@ -8403,6 +8423,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const pushUpsert = (field: string, data: any) => {
       (upserts[field] || (upserts[field] = [])).push(data);
     };
+    // Reload-race fix (25 Nov 2026): same as restoreFromTrash — a
+    // restore cancels any queued delete for the restored records.
+    const restoreFieldByType: Record<string, string> = {
+      student: 'students', subject: 'subjects', exam: 'exams', class: 'classes',
+      transaction: 'transactions', section: 'sections', teacher: 'teachers',
+      user: 'users', notice: 'notices',
+    };
+    trashBin.forEach(item => {
+      const field = restoreFieldByType[item.type];
+      if (field && item.data?.id) removePendingDeletePayload(field, [String(item.data.id)]);
+    });
     trashBin.forEach(item => {
       if (item.type === 'student') {
         setStudents(prev => [...prev, item.data]);
