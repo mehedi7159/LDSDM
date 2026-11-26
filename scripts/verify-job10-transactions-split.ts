@@ -10,8 +10,10 @@
  * separate push a week later and is NOT part of this job):
  *  - New path is institutions/inst_madrasah_primary/transactions/{id},
  *    built from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeTransactionsFieldToCloud writes the new collection
- *    AND main_store in one try; the old main_store write is NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writeTransactionsFieldToCloud writes the new
+ *    collection ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. See scripts/verify-job10-step5-transactions.ts.
  *  - Deletes + restores of transactions also reach the new collection,
  *    so a deleted transaction can never be resurrected by the feed.
  *    transactions is a TRIPWIRE field: the SAME assertTripwire runs
@@ -149,15 +151,15 @@ check('migrateFieldToCollection covers transactions, batched setDoc merge by id'
 
 console.log('--- Dual-write (source checks) ---');
 
-check('writeTransactionsFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writeTransactionsFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeTransactionsFieldToCloud');
   assert.ok(start > -1, 'writeTransactionsFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeTransactionsToCollection'), 'must write the new collection');
-  assert.ok(body.includes("writeFieldToCloud('transactions'"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeTransactionsToCollection') < body.indexOf("writeFieldToCloud('transactions'"), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes("writeFieldToCloud('transactions'"), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.indexOf('writeTransactionsToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
   assert.ok(body.includes('CONFIRM_TIMEOUT_MS'), 'fee confirm timeout must stay unchanged');
   assert.ok(body.includes("'fee cloud confirm'"), 'fee confirm label must stay unchanged');
 });
@@ -362,9 +364,9 @@ check('no dues/exam-fee calculation file is touched by this job', () => {
   assert.ok(!src.includes('examFee'), 'cloudConfirm must not touch exam-fee rules');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes transactions through the dual-write writer', () => {
+check('pushDiffToCloud still writes transactions through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('transactions: writeTransactionsFieldToCloud'), 'auto-sync must still carry transactions through writeTransactionsFieldToCloud');
 });

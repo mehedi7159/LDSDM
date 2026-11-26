@@ -6,12 +6,14 @@
  * (or npm run test:job8-leaves-split).
  *
  * Covers the Job 8 spec (LDSDM-database-split-plan-2026-11-07.md §6 Job 8,
- * §5 steps 1–3 only — step 5, stopping the old main_store write, is a
- * separate push a week later and is NOT part of this job):
+ * §5 steps 1–3, plus step 5 — stopping the old main_store write —
+ * done 26 Nov 2026, see scripts/verify-job8-step5-leaves.ts):
  *  - New path is institutions/inst_madrasah_primary/staffLeaves/{id},
  *    built from CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeStaffLeavesFieldToCloud writes the new collection
- *    AND main_store in one try; the old main_store write is NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write that ran 21–26 Nov 2026): writeStaffLeavesFieldToCloud
+ *    writes the new collection ONLY; the old main_store write is
+ *    stopped, the frozen copy stays. See scripts/verify-job8-step5-leaves.ts.
  *  - Deletes + restores of leave records also reach the new collection,
  *    so a deleted leave can never be resurrected by the leaves feed.
  *  - Read-switch: an onSnapshot feed on the new collection is the
@@ -138,25 +140,25 @@ check('migrateFieldToCollection covers staffLeaves, batched setDoc merge by id',
   assert.ok(body.includes('assertUpsertRecords'), 'backfill must reuse the id assertion, not copy it');
 });
 
-console.log('--- Dual-write (source checks) ---');
+console.log('--- Collection-only write (source checks) ---');
 
-check('writeStaffLeavesFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writeStaffLeavesFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeStaffLeavesFieldToCloud');
   assert.ok(start > -1, 'writeStaffLeavesFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeStaffLeavesToCollection'), 'must write the new collection');
-  assert.ok(body.includes("writeFieldToCloud('staffLeaves'"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeStaffLeavesToCollection') < body.indexOf("writeFieldToCloud('staffLeaves'"), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes("writeFieldToCloud('staffLeaves'"), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.indexOf('writeStaffLeavesToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
 });
 
-check('dual-write asserts ids via the shared choke point', () => {
+check('collection-only write asserts ids via the shared choke point', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeStaffLeavesFieldToCloud');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
-  assert.ok(body.includes('assertUpsertRecords'), 'dual-write must reuse assertUpsertRecords');
-  assert.ok(body.includes("fieldKeyFn('staffLeaves')"), 'dual-write must key records with the shared fieldKeyFn');
+  assert.ok(body.includes('assertUpsertRecords'), 'collection-only write must reuse assertUpsertRecords');
+  assert.ok(body.includes("fieldKeyFn('staffLeaves')"), 'collection-only write must key records with the shared fieldKeyFn');
 });
 
 check('leave deletes also delete the new-collection docs (no resurrection)', () => {
@@ -302,9 +304,9 @@ check('buildPublicPortalData reads no staffLeaves', () => {
   assert.ok(!src.includes('staffLeaves'), 'publicPortal must not read staffLeaves');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes leaves through the dual-write writer', () => {
+check('pushDiffToCloud still writes leaves through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('staffLeaves: writeStaffLeavesFieldToCloud'), 'auto-sync must still carry leaves through writeStaffLeavesFieldToCloud');
 });

@@ -483,9 +483,11 @@ export async function writeTransactionsFieldToCloud(
       assertUpsertRecords('transactions', list as any, fieldKeyFn('transactions'));
       await writeTransactionsToCollection(list);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldToCloud('transactions', transactions, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new transactions go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted transaction.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'fee cloud confirm');
 }
@@ -555,9 +557,14 @@ export async function writeMarksFieldToCloud(
       assertUpsertRecords('marks', list as any, fieldKeyFn('marks'));
       await writeMarksToCollection(list);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldToCloud('marks', marks, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new marks go to the collection
+    // only. This ends the whole-list rewrite on every marks save:
+    // the old leg rewrote the full 2,601-record list into main_store
+    // each time; now only the marks collection docs are written.
+    // Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted mark.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'marks cloud confirm');
 }
@@ -1071,15 +1078,17 @@ export async function writeStaffLeavesFieldToCloud(
   const write = async (): Promise<void> => {
     const list = leaves || [];
     if (list.length > 0) {
-      // Job 8 dual-write: same id assertion as the main_store leg, then
-      // the new collection first. A failure anywhere fails the whole
-      // write, so the payload queue + retry replay both legs.
+      // Step 5: collection-only — same id assertion as before, then
+      // the new collection. A failure anywhere fails the whole
+      // write, so the payload queue + retry replay it.
       assertUpsertRecords('staffLeaves', list as any, fieldKeyFn('staffLeaves'));
       await writeStaffLeavesToCollection(list);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldToCloud('staffLeaves', leaves, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new leaves go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted leave.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'leaves cloud confirm');
 }
