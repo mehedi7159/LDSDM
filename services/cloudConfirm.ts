@@ -1102,18 +1102,12 @@ export async function writeFeeStructuresFieldToCloud(
     assertUpsertRecords('feeStructures', structures as any, (r) => (r.classLevel ? String(r.classLevel) : ''), 'classLevel');
     if (structures.length === 0) return;
     // Job 5 dual-write: the new collection first (doc id = classLevel).
-    // A failure anywhere fails the whole write, so the payload queue +
-    // retry replay both legs.
     await writeFeeRecordsToCollection('feeStructures', structures as any);
-    const ref = doc(db, 'institution', 'main_store');
-    const snap = await getDoc(ref);
-    const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
-    const existing = (data.feeStructures as { id: string; classLevel: string }[] | undefined) || [];
-    await setDoc(ref, {
-      feeStructures: mergeRecordsByKey(existing, structures, (r) => (r.classLevel ? r.classLevel : '')),
-      updatedBy,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new structures go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted structure.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'fee structures cloud confirm');
 }
@@ -1130,15 +1124,17 @@ export async function writeFeeTypesFieldToCloud(
   const write = async (): Promise<void> => {
     const list = types || [];
     if (list.length > 0) {
-      // Job 5 dual-write: same id assertion as the main_store leg,
-      // then the new collection first. A failure anywhere fails the
-      // whole write, so the payload queue + retry replay both legs.
+      // Job 5: same id assertion as the old main_store leg, then the
+      // new collection. A failure anywhere fails the whole write, so
+      // the payload queue + retry replay the collection leg.
       assertUpsertRecords('feeTypes', list as any, fieldKeyFn('feeTypes'));
       await writeFeeRecordsToCollection('feeTypes', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldToCloud('feeTypes', types, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new types go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted fee type.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'fee types cloud confirm');
 }
@@ -1163,9 +1159,11 @@ export async function writeExamsFieldToCloud(
       assertUpsertRecords('exams', list as any, fieldKeyFn('exams'));
       await writeAcademicRecordsToCollection('exams', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ exams }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new exams go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted exam.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'exams cloud confirm');
 }
@@ -1181,9 +1179,11 @@ export async function writeExamSubjectAssignmentsFieldToCloud(
       assertUpsertRecords('examSubjectAssignments', list as any, fieldKeyFn('examSubjectAssignments'));
       await writeAcademicRecordsToCollection('examSubjectAssignments', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ examSubjectAssignments: assignments }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new exam-subject assignments go to
+    // the collection only. Delete + restore still prune/union
+    // main_store (see the delete/trash-op writers), so the frozen
+    // copy can never resurrect a deleted assignment.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'exam subject assignments cloud confirm');
 }
@@ -1199,9 +1199,11 @@ export async function writeClassSubjectAssignmentsFieldToCloud(
       assertUpsertRecords('classSubjectAssignments', list as any, fieldKeyFn('classSubjectAssignments'));
       await writeAcademicRecordsToCollection('classSubjectAssignments', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ classSubjectAssignments: assignments }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new class-subject assignments go to
+    // the collection only. Delete + restore still prune/union
+    // main_store (see the delete/trash-op writers), so the frozen
+    // copy can never resurrect a deleted assignment.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'class subject assignments cloud confirm');
 }
@@ -1217,9 +1219,11 @@ export async function writeTeacherSubjectAssignmentsFieldToCloud(
       assertUpsertRecords('teacherSubjectAssignments', list as any, fieldKeyFn('teacherSubjectAssignments'));
       await writeAcademicRecordsToCollection('teacherSubjectAssignments', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ teacherSubjectAssignments: assignments }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new teacher-subject assignments go
+    // to the collection only. Delete + restore still prune/union
+    // main_store (see the delete/trash-op writers), so the frozen
+    // copy can never resurrect a deleted assignment.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'teacher subject assignments cloud confirm');
 }
@@ -1235,9 +1239,11 @@ export async function writeClassTeacherAssignmentsFieldToCloud(
       assertUpsertRecords('classTeacherAssignments', list as any, fieldKeyFn('classTeacherAssignments'));
       await writeAcademicRecordsToCollection('classTeacherAssignments', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ classTeacherAssignments: assignments }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new class-teacher assignments go to
+    // the collection only. Delete + restore still prune/union
+    // main_store (see the delete/trash-op writers), so the frozen
+    // copy can never resurrect a deleted assignment.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'class teacher assignments cloud confirm');
 }
@@ -1374,9 +1380,11 @@ export async function writeSubjectsFieldToCloud(
       assertUpsertRecords('subjects', list as any, fieldKeyFn('subjects'));
       await writeAcademicRecordsToCollection('subjects', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ subjects }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new subjects go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted subject.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'subjects cloud confirm');
 }
@@ -1394,9 +1402,11 @@ export async function writeClassesFieldToCloud(
       assertUpsertRecords('classes', list as any, fieldKeyFn('classes'));
       await writeClassesRecordsToCollection('classes', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ classes }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new classes go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted class.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'classes cloud confirm');
 }
@@ -1412,9 +1422,11 @@ export async function writeAcademicYearsFieldToCloud(
       assertUpsertRecords('academicYears', list as any, fieldKeyFn('academicYears'));
       await writeClassesRecordsToCollection('academicYears', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ academicYears: years }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new academic years go to the
+    // collection only. Delete + restore still prune/union main_store
+    // (see the delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted academic year.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'academic years cloud confirm');
 }
@@ -1430,9 +1442,11 @@ export async function writeSectionsFieldToCloud(
       assertUpsertRecords('sections', list as any, fieldKeyFn('sections'));
       await writeClassesRecordsToCollection('sections', list as any);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ sections }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new sections go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted section.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'sections cloud confirm');
 }

@@ -14,10 +14,11 @@
  *    CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded. feeStructures is
  *    keyed by classLevel, NOT by id (one structure per class — today's
  *    union rule, kept).
- *  - Dual-write: writeFeeTypesFieldToCloud and
- *    writeFeeStructuresFieldToCloud write each field to its new
- *    collection AND to main_store in one try; the old main_store write
- *    is NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writeFeeTypesFieldToCloud and
+ *    writeFeeStructuresFieldToCloud write the new collections ONLY;
+ *    the old main_store writes are stopped, the frozen copies stay.
+ *    See scripts/verify-job5-step5-fees.ts.
  *  - Deletes + restores of fee records also reach the new collections,
  *    so a deleted fee type/structure can never be resurrected by a fees
  *    feed.
@@ -245,28 +246,29 @@ check('migrateFieldToCollection covers feeTypes + feeStructures, batched setDoc 
 
 console.log('--- Dual-write (source checks) ---');
 
-check('writeFeeTypesFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writeFeeTypesFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeFeeTypesFieldToCloud');
   assert.ok(start > -1, 'writeFeeTypesFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeFeeRecordsToCollection'), 'must write the new collection');
-  assert.ok(body.includes("writeFieldToCloud('feeTypes'"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeFeeRecordsToCollection') < body.indexOf("writeFieldToCloud('feeTypes'"), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
-  assert.ok(body.includes('assertUpsertRecords'), 'dual-write must reuse assertUpsertRecords');
+  assert.ok(!body.includes("writeFieldToCloud('feeTypes'"), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.indexOf('writeFeeRecordsToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
+  assert.ok(body.includes('assertUpsertRecords'), 'collection-only write must reuse assertUpsertRecords');
 });
 
-check('writeFeeStructuresFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writeFeeStructuresFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeFeeStructuresFieldToCloud');
   assert.ok(start > -1, 'writeFeeStructuresFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeFeeRecordsToCollection'), 'must write the new collection');
-  assert.ok(body.includes('feeStructures: mergeRecordsByKey'), 'must STILL write main_store with the classLevel union (old write NOT stopped)');
-  assert.ok(body.indexOf('writeFeeRecordsToCollection') < body.indexOf('feeStructures: mergeRecordsByKey'), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
-  assert.ok(body.includes('classLevel'), 'dual-write must keep the classLevel key assertion');
+  assert.ok(!body.includes('feeStructures: mergeRecordsByKey'), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(!body.includes("doc(db, 'institution', 'main_store')"), 'no inline main_store read may remain');
+  assert.ok(body.indexOf('writeFeeRecordsToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
+  assert.ok(body.includes('classLevel'), 'collection-only write must keep the classLevel key assertion');
   assert.ok(body.includes('if (structures.length === 0) return;'), 'empty structure list must still short-circuit before any write');
 });
 
@@ -454,9 +456,9 @@ check('buildPublicPortalData reads neither fee field', () => {
   assert.ok(!src.includes('feeStructures'), 'publicPortal must not read feeStructures');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert writes stopped, collection writes kept (source checks) ---');
 
-check('pushDiffToCloud still writes fees through the dual-write writers', () => {
+check('pushDiffToCloud still writes fees through the collection-only writers', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('writeFeeStructuresFieldToCloud'), 'auto-sync must still carry fee structures through writeFeeStructuresFieldToCloud');
   assert.ok(src.includes('writeFeeTypesFieldToCloud'), 'auto-sync must still carry fee types through writeFeeTypesFieldToCloud');
