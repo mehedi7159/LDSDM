@@ -96,7 +96,11 @@
     "test:dashboard-arrange": "tsx scripts/verify-dashboard-arrange.ts",
     "test:cloud-sync-root-cause": "tsx scripts/verify-cloud-sync-root-cause.ts",
     "test:student-delete-cloud-confirm": "tsx scripts/verify-student-delete-cloud-confirm.ts",
-    "test:student-delete-reload-race": "tsx scripts/verify-student-delete-reload-race.ts"
+    "test:student-delete-reload-race": "tsx scripts/verify-student-delete-reload-race.ts",
+    "test:job13-step5-trash": "tsx scripts/verify-job13-step5-trash.ts",
+    "test:job2-step5-schedule": "tsx scripts/verify-job2-step5-schedule.ts",
+    "test:job7-step5-promotion": "tsx scripts/verify-job7-step5-promotion.ts",
+    "test:job6-step5-remarks": "tsx scripts/verify-job6-step5-remarks.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

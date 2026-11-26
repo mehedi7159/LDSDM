@@ -902,9 +902,11 @@ export async function writeScheduleFieldsToCloud(
         await writeScheduleRecordsToCollection(field, list as any);
       }
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ classRoutines: routines, syllabusItems, calendarEvents }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new schedule records go to the
+    // collections only. Delete + restore still prune/union main_store
+    // (see the delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted record.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'schedule cloud confirm');
 }
@@ -1289,9 +1291,11 @@ export async function writePromotionHistoryFieldToCloud(
       assertUpsertRecords('promotionHistory', list as any, fieldKeyFn('promotionHistory'));
       await writePromotionHistoryToCollection(list);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ promotionHistory: records }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new history goes to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a cleared record.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'promotion history cloud confirm');
 }
@@ -1348,9 +1352,11 @@ export async function writeRemarksFieldToCloud(
       assertUpsertRecords('remarks', list as any, fieldKeyFn('remarks'), 'studentId+examId');
       await writeRemarksToCollection(list);
     }
-    // The old main_store write stays — stopping it is a separate push
-    // after one week of dual-write, never this job.
-    await writeFieldsToCloud({ remarks }, updatedBy);
+    // Step 5 (26 Nov 2026): the old main_store leg is stopped — the
+    // frozen copy stays untouched, new remarks go to the collection
+    // only. Delete + restore still prune/union main_store (see the
+    // delete/trash-op writers), so the frozen copy can never
+    // resurrect a deleted remark.
   };
   await withTimeout(write(), CONFIRM_TIMEOUT_MS, 'remarks cloud confirm');
 }
