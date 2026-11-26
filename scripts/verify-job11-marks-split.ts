@@ -8,12 +8,15 @@
  *
  * Covers the Job 11 spec (LDSDM-database-split-plan-2026-11-07.md §6
  * Job 11, §5 steps 1–3 only — step 5, stopping the old main_store
- * write, is a separate push a week later and is NOT part of this job):
+ * write, was a separate push (26 Nov 2026, see
+ * scripts/verify-job11-step5-marks.ts) and is reflected below:
  *  - New path is institutions/inst_madrasah_primary/marks/{id}
  *    (doc id = MarkRecord.id), built from
  *    CANONICAL_PRIMARY_INSTITUTION_ID, never hardcoded.
- *  - Dual-write: writeMarksFieldToCloud writes the new collection AND
- *    main_store in one try; the old main_store write is NOT stopped.
+ *  - Collection-only write (step 5, 26 Nov 2026, supersedes the
+ *    dual-write below): writeMarksFieldToCloud writes the new
+ *    collection ONLY; the old main_store write is stopped, the
+ *    frozen copy stays. See scripts/verify-job11-step5-marks.ts.
  *    The collection leg writes in 500-doc writeBatch batches — a
  *    sequential setDoc loop over the full 2,601-record list would blow
  *    the 40 s confirm timeout, so the batch shape is part of the spec.
@@ -169,15 +172,15 @@ check('a failed backfill batch is retried alone, not the whole backfill', () => 
 
 console.log('--- Dual-write (source checks) ---');
 
-check('writeMarksFieldToCloud writes the new collection AND main_store in one try', () => {
+check('writeMarksFieldToCloud writes the new collection ONLY (step 5 stopped the main_store leg)', () => {
   const src = readSource('services/cloudConfirm.ts');
   const start = src.indexOf('export async function writeMarksFieldToCloud');
   assert.ok(start > -1, 'writeMarksFieldToCloud must exist');
   const body = src.slice(start, src.indexOf('\n}', start) + 2);
   assert.ok(body.includes('writeMarksToCollection'), 'must write the new marks collection');
-  assert.ok(body.includes("writeFieldToCloud('marks'"), 'must STILL write main_store (old write NOT stopped)');
-  assert.ok(body.indexOf('writeMarksToCollection') < body.indexOf("writeFieldToCloud('marks'"), 'collection write and main_store write belong to the same try');
-  assert.ok(body.includes('withTimeout'), 'dual-write must stay inside the confirm timeout');
+  assert.ok(!body.includes("writeFieldToCloud('marks'"), 'must NOT write main_store anymore (step 5, 26 Nov 2026)');
+  assert.ok(body.indexOf('writeMarksToCollection') > -1, 'collection write belongs to the same try');
+  assert.ok(body.includes('withTimeout'), 'collection-only write must stay inside the confirm timeout');
 });
 
 check('dual-write asserts mark ids via the shared choke point', () => {
@@ -397,9 +400,9 @@ check('marks entry two-level control is unchanged (global switch + per-exam togg
   assert.ok(src.includes('markEntryEnabled'), 'mark-entry control must still exist');
 });
 
-console.log('--- Old write NOT stopped (source checks) ---');
+console.log('--- Old upsert write stopped, collection write kept (source checks) ---');
 
-check('pushDiffToCloud still writes marks through the dual-write writer', () => {
+check('pushDiffToCloud still writes marks through the collection-only writer', () => {
   const src = readSource('context/AppContext.tsx');
   assert.ok(src.includes('marks: writeMarksFieldToCloud'), 'auto-sync must still carry marks through writeMarksFieldToCloud');
 });
