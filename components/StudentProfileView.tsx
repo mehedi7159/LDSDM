@@ -1602,7 +1602,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           
           <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Clock size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Clock size={18} className="text-[var(--color-brand)]" />
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {language === 'bn' ? 'আসন্ন পরীক্ষার রুটিন ও সময়সূচী' : 'Upcoming Exam Schedule & Routine'}
@@ -1615,7 +1615,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[var(--color-brand-light)] text-[var(--color-brand)] hover:opacity-80 transition flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
             >
               <Printer size={14} />
               <span>{language === 'bn' ? 'রুটিন প্রিন্ট করুন' : 'Print Routine'}</span>
@@ -1649,13 +1649,13 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                       isToday 
                         ? 'bg-amber-50/70 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500/30 ring-2 ring-amber-400/40' 
                         : isUpcoming 
-                        ? 'bg-white dark:bg-[#161c2e] border-slate-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-400'
+                        ? 'bg-white dark:bg-[#161c2e] border-slate-200 dark:border-white/10 hover:border-[var(--color-brand-ring)]'
                         : 'bg-slate-50 dark:bg-white/5 border-slate-200/80 dark:border-white/10 opacity-75'
                     }`}
                   >
                     {/* Status Pill */}
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-500/30">
+                      <span className="text-[11px] font-bold text-[var(--color-brand)] bg-[var(--color-brand-light)] px-2.5 py-0.5 rounded-full border border-[var(--color-brand-ring)]">
                         {language === 'bn' ? (item.examNameBn || item.examName) : item.examName}
                       </span>
 
@@ -1678,7 +1678,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
                     {/* Subject info */}
                     <div className="space-y-1 mb-3">
-                      <h4 className="text-base font-black text-slate-900 dark:text-slate-100">
+                      <h4 className="text-base font-black break-words text-slate-900 dark:text-slate-100">
                         {language === 'bn' ? (item.subjectNameBn || item.subjectName) : item.subjectName}
                       </h4>
                       {item.subjectCode && (
@@ -1691,15 +1691,15 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     {/* Details Grid */}
                     <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-slate-100 dark:border-white/10 text-slate-600 dark:text-slate-300">
                       <div className="flex items-center gap-1.5">
-                        <Calendar size={13} className="text-indigo-500 shrink-0" />
+                        <Calendar size={13} className="text-[var(--color-brand)] shrink-0" />
                         <span className="font-semibold text-slate-800 dark:text-slate-100">{item.examDate}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Clock size={13} className="text-indigo-500 shrink-0" />
+                        <Clock size={13} className="text-[var(--color-brand)] shrink-0" />
                         <span>{item.startTime} ({toBn(item.durationMinutes)} {language === 'bn' ? 'মিনিট' : 'min'})</span>
                       </div>
                       <div className="flex items-center gap-1.5 col-span-2">
-                        <Building2 size={13} className="text-indigo-500 shrink-0" />
+                        <Building2 size={13} className="text-[var(--color-brand)] shrink-0" />
                         <span>{item.roomOrHall}</span>
                       </div>
                     </div>
@@ -1735,7 +1735,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <QrCode size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <QrCode size={18} className="text-[var(--color-brand)]" />
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {language === 'bn' ? 'শিক্ষার্থীর ডিজিটাল আইডি কার্ড' : 'Digital Student Identity Card'}
@@ -1748,7 +1748,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[var(--color-brand-light)] text-[var(--color-brand)] hover:opacity-80 transition flex items-center gap-1.5 cursor-pointer"
             >
               <Printer size={14} />
               <span>{language === 'bn' ? 'আইডি কার্ড প্রিন্ট' : 'Print ID Card'}</span>
@@ -1757,7 +1757,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* ID Card Display Card */}
           <div className="flex justify-center p-4">
-            <div className="w-full max-w-sm bg-white dark:bg-[#161c2e] rounded-3xl border-2 border-indigo-200 dark:border-indigo-500/30 overflow-hidden relative">
+            <div className="w-full max-w-sm bg-white dark:bg-[#161c2e] rounded-3xl border-2 border-[var(--color-brand-ring)] overflow-hidden relative">
               
               {/* Institution Header */}
               <div className="bg-[var(--color-brand)] print:bg-indigo-800 text-white p-4 text-center space-y-1 relative">
@@ -1778,21 +1778,21 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               {/* Student Body */}
               <div className="p-5 text-center space-y-3">
                 {/* Photo */}
-                <div className="w-24 h-24 mx-auto rounded-2xl bg-slate-100 dark:bg-white/5 border-2 border-indigo-500/30 overflow-hidden flex items-center justify-center">
+                <div className="w-24 h-24 mx-auto rounded-2xl bg-slate-100 dark:bg-white/5 border-2 border-[var(--color-brand-ring)] overflow-hidden flex items-center justify-center">
                   {currentStudent.photoUrl ? (
                     <img src={currentStudent.photoUrl} alt={currentStudent.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="text-indigo-600 dark:text-indigo-400 font-black text-4xl">
+                    <div className="text-[var(--color-brand)] font-black text-4xl">
                       {(currentStudent.name || 'S').charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+                  <h3 className="text-base font-black break-words text-slate-900 dark:text-slate-100">
                     {language === 'bn' ? (currentStudent.nameBn || currentStudent.name) : currentStudent.name}
                   </h3>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-mono font-bold">
+                  <p className="text-xs text-[var(--color-brand)] font-mono font-bold">
                     ID: {currentStudent.studentId || currentStudent.id}
                   </p>
                 </div>
@@ -2563,6 +2563,19 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       )}
 
       {/* STAFF-ONLY RECENT ACTIVITY (existing data only) */}
+      {isStaffView && timelineItems.length === 0 && (
+        <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <History size={18} className="text-[var(--color-brand)]" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              {language === 'bn' ? 'সাম্প্রতিক কার্যক্রম' : 'Recent Activity'}
+            </h3>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {language === 'bn' ? 'কোনো সাম্প্রতিক কার্যক্রম নেই।' : 'No recent activity yet.'}
+          </p>
+        </div>
+      )}
       {isStaffView && timelineItems.length > 0 && (
         <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -2574,7 +2587,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           <div className="text-xs space-y-1.5 text-slate-700 dark:text-slate-200">
             {timelineItems.map((item, idx) => (
               <div key={`${item.date}-${idx}`} className="flex justify-between gap-2 border-b border-slate-50 pb-1">
-                <span className="font-semibold">{item.label}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand)] shrink-0 mt-1.5" />
+                <span className="font-semibold flex-1">{item.label}</span>
                 <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{item.date ? toBn(item.date) : ''}</span>
               </div>
             ))}
