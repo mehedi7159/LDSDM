@@ -441,7 +441,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                     <CountUpNumber target={Math.round(Number(attendanceMetrics.rate) || 0)} suffix="%" />
                   </h3>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
+                <p className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">
                   {isBn
                     ? `রেকর্ডকৃত ${toBanglaDigits(attendanceMetrics.recorded, 'bn')} জনের ভিত্তিতে`
                     : `Based on ${attendanceMetrics.recorded} recorded students`}
@@ -466,7 +466,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                 <h3 className="text-xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
                   {isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-400 mt-1 dark:text-slate-500">
                   {isBn ? 'আজ এখনো কোনো ক্লাসের হাজিরা রেকর্ড হয়নি' : 'No class attendance recorded yet today'}
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
@@ -502,7 +502,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
             </div>
 
             <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-bold text-slate-400">৳</span>
+              <span className="text-sm font-bold text-slate-400 dark:text-slate-500">৳</span>
               <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums font-mono">
                 <CountUpNumber target={todayCashFlow.todayIncome} />
               </h3>
@@ -594,7 +594,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
             </div>
 
             <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-bold text-slate-400">৳</span>
+              <span className="text-sm font-bold text-slate-400 dark:text-slate-500">৳</span>
               <h3 className="text-4xl font-black text-amber-600 dark:text-amber-400 tracking-tight tabular-nums font-mono">
                 <CountUpNumber target={feeDuesMetrics.dues} />
               </h3>
@@ -609,7 +609,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                 </span>
               </div>
               <ProgressBar value={feeDuesMetrics.rate} tone="emerald" size="md" />
-              <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium tabular-nums font-mono">
+              <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium tabular-nums font-mono dark:text-slate-500">
                 <span>{isBn ? `আদায়: ৳${toBanglaDigits(feeDuesMetrics.collected.toLocaleString(), language)}` : `Collected: ৳${feeDuesMetrics.collected}`}</span>
                 <span>{isBn ? `প্রত্যাশিত: ৳${toBanglaDigits(feeDuesMetrics.expected.toLocaleString(), language)}` : `Target: ৳${feeDuesMetrics.expected}`}</span>
               </div>
@@ -648,11 +648,11 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
 
           {/* Upcoming Exam Mini Cards */}
           <div className="space-y-2.5">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block dark:text-slate-400">
               {isBn ? 'আসন্ন পরীক্ষা সূচি' : 'Scheduled Examinations'}
             </span>
             {upcomingExams.length === 0 ? (
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center dark:text-slate-500">
                 {isBn ? 'বর্তমানে কোনো আসন্ন পরীক্ষা সূচি নির্ধারিত নেই' : 'No upcoming exams scheduled'}
               </div>
             ) : (
@@ -686,11 +686,11 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
 
           {/* Important Notices List */}
           <div className="space-y-2.5 pt-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block dark:text-slate-400">
               {isBn ? 'জরুরি প্রাতিষ্ঠানিক নোটিশ' : 'High Priority Notices'}
             </span>
             {activeNotices.length === 0 ? (
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center dark:text-slate-500">
                 {isBn ? 'বর্তমানে কোনো নতুন নোটিশ নেই' : 'No active notices at this time'}
               </div>
             ) : (
@@ -706,7 +706,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                       <span className="font-bold text-xs text-slate-900 dark:text-white block truncate">
                         {n.title}
                       </span>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
                         {formatSafeDate(n.createdAt, isBn ? 'bn-BD' : 'en-US')} • {n.category}
                       </span>
                     </div>
@@ -736,7 +736,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
         >
           <div className="space-y-3">
             {recentActivities.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
                 <Clock size={24} className="mx-auto text-slate-300 mb-2" />
                 <p>{isBn ? 'এখনো কোনো সাম্প্রতিক কার্যক্রম রেকর্ড হয়নি' : 'No recent activities found'}</p>
               </div>
@@ -759,7 +759,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate group-hover:text-[var(--color-brand)] transition-colors">
                         {act.title}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
+                      <span className="text-[10px] text-slate-400 font-medium dark:text-slate-500">
                         {act.timeStr}
                       </span>
                     </div>
@@ -769,7 +769,7 @@ export const DashboardDailyOverview: React.FC<DashboardDailyOverviewProps> = ({
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${act.badgeColor}`}>
                       {act.badgeText}
                     </span>
-                    <ChevronRight size={13} className="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors" />
+                    <ChevronRight size={13} className="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors dark:text-slate-500" />
                   </div>
                 </div>
               ))

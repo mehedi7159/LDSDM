@@ -317,11 +317,11 @@ export const SettingsPage: React.FC = () => {
       className={`mx-auto max-w-2xl px-4 py-4 pb-8 ${isAr ? 'font-arabic' : ''}`}
       style={{ zoom: TEXT_SIZE_ZOOM[draft.textSize] }}
     >
-      <h1 className="text-xl font-black text-slate-900 mb-4">{s.title}</h1>
+      <h1 className="text-xl font-black text-slate-900 mb-4 dark:text-white">{s.title}</h1>
 
       {/* Language */}
- <section className="bg-white border border-slate-100 p-4 mb-3" style={cardStyle}>
-        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
+ <section className="bg-white border border-slate-100 p-4 mb-3 dark:bg-[#161c2e] dark:border-white/5" style={cardStyle}>
+        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3 dark:text-white">
           <Globe size={17} style={{ color: 'var(--color-brand)' }} />
           {s.langSection}
         </h2>
@@ -334,7 +334,7 @@ export const SettingsPage: React.FC = () => {
                 type="button"
                 onClick={() => setDraft({ ...draft, language: lang })}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm font-bold transition-colors ${
-                  active ? 'border-transparent text-white' : 'border-slate-200 text-slate-700'
+                  active ? 'border-transparent text-white' : 'border-slate-200 text-slate-700 dark:text-slate-200 dark:border-white/10'
                 }`}
                 style={active ? { backgroundColor: 'var(--color-brand)' } : undefined}
               >
@@ -347,26 +347,26 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Appearance */}
- <section className="bg-white border border-slate-100 p-4 mb-3" style={cardStyle}>
-        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
+ <section className="bg-white border border-slate-100 p-4 mb-3 dark:bg-[#161c2e] dark:border-white/5" style={cardStyle}>
+        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3 dark:text-white">
           <Palette size={17} style={{ color: 'var(--color-brand)' }} />
           {s.appearanceSection}
         </h2>
-        <p className="text-xs font-bold text-slate-500 mb-1.5">{s.textSize}</p>
+        <p className="text-xs font-bold text-slate-500 mb-1.5 dark:text-slate-400">{s.textSize}</p>
         <SegmentedControl
           ariaLabel={s.textSize}
           value={draft.textSize}
           onChange={(id) => setDraft({ ...draft, textSize: id as TextSizeId })}
           options={TEXT_SIZES.map((id) => ({ id, label: s.textSizeName[id] }))}
         />
-        <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4">{s.corner}</p>
+        <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4 dark:text-slate-400">{s.corner}</p>
         <SegmentedControl
           ariaLabel={s.corner}
           value={draft.corner}
           onChange={(id) => setDraft({ ...draft, corner: id as CornerStyleId })}
           options={CORNERS.map((id) => ({ id, label: s.cornerName[id] }))}
         />
-        <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4">{s.accent}</p>
+        <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4 dark:text-slate-400">{s.accent}</p>
         <div className="flex flex-wrap items-center gap-3">
           {visibleAccents.map((id) => {
             const theme = ACCENT_THEMES.find((a) => a.id === id)!;
@@ -387,7 +387,7 @@ export const SettingsPage: React.FC = () => {
               </button>
             );
           })}
-          <span className="text-xs font-bold text-slate-600">{s.accentName(draft.accent)}</span>
+          <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{s.accentName(draft.accent)}</span>
           {!showAllAccents && (
             <button
               type="button"
@@ -403,7 +403,7 @@ export const SettingsPage: React.FC = () => {
             standalone button. Applies at once via ThemeContext (the dark
             preference is owned there, not by the draft); mobile only —
             desktop always stays light. */}
-        <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4">{s.displayMode}</p>
+        <p className="text-xs font-bold text-slate-500 mb-1.5 mt-4 dark:text-slate-400">{s.displayMode}</p>
         <SegmentedControl
           ariaLabel={s.displayMode}
           value={darkMode ? 'dark' : 'light'}
@@ -416,16 +416,16 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Notifications (stored preferences only) */}
- <section className="bg-white border border-slate-100 p-4 mb-3" style={cardStyle}>
-        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1.5">
+ <section className="bg-white border border-slate-100 p-4 mb-3 dark:bg-[#161c2e] dark:border-white/5" style={cardStyle}>
+        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1.5 dark:text-white">
           <Bell size={17} style={{ color: 'var(--color-brand)' }} />
           {s.notifSection}
         </h2>
-        <p className="text-xs text-slate-500 mb-3">{s.notifNote}</p>
+        <p className="text-xs text-slate-500 mb-3 dark:text-slate-400">{s.notifNote}</p>
         <div className="flex flex-col gap-3">
           {NOTIF_KEYS.map((key) => (
             <div key={key} className="flex items-center justify-between gap-3">
-              <span className="text-sm font-bold text-slate-700">{s[key]}</span>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{s[key]}</span>
               <Toggle
                 label={s[key]}
                 on={draft.notifications[key]}
@@ -444,15 +444,15 @@ export const SettingsPage: React.FC = () => {
       {changes.length > 0 && (
         <div className="sticky bottom-24 md:bottom-0 z-30 -mx-4 px-4 pt-3 pb-1">
           <div
-            className="flex items-center justify-between gap-2 bg-white shadow-lg border border-slate-100 px-3 py-2.5"
+            className="flex items-center justify-between gap-2 bg-white shadow-lg border border-slate-100 px-3 py-2.5 dark:bg-[#161c2e] dark:border-white/5"
             style={cardStyle}
           >
-            <span className="text-xs font-bold text-slate-700">{s.changes(changes.length)}</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{s.changes(changes.length)}</span>
             <span className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleDiscard}
-                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
               >
                 <RotateCcw size={14} />
                 {s.discard}
@@ -484,27 +484,27 @@ export const SettingsPage: React.FC = () => {
             className="absolute inset-0 bg-black/40"
           />
           <div
-            className={`relative w-full max-w-2xl max-h-[75vh] overflow-y-auto bg-white shadow-xl p-4 pb-6 ${isAr ? 'font-arabic' : ''}`}
+            className={`relative w-full max-w-2xl max-h-[75vh] overflow-y-auto bg-white shadow-xl p-4 pb-6 dark:bg-[#161c2e]${isAr ? 'font-arabic' : ''}`}
             style={{ borderTopLeftRadius: 'var(--ldsdm-radius, 1rem)', borderTopRightRadius: 'var(--ldsdm-radius, 1rem)' }}
           >
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-black text-slate-900">{s.reviewTitle}</h2>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">{s.reviewTitle}</h2>
               <button
                 type="button"
                 onClick={() => setShowReview(false)}
-                className="p-1.5 rounded-full text-slate-500 hover:bg-slate-100"
+                className="p-1.5 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10"
               >
                 <X size={18} />
               </button>
             </div>
             <div className="flex flex-col gap-2 mb-4">
               {changes.map((c) => (
-                <div key={c.id} className="flex items-center justify-between gap-2 border border-slate-100 rounded-xl px-3 py-2.5">
-                  <span className="text-sm font-bold text-slate-700">{c.label}</span>
-                  <span className="text-xs text-slate-500 text-end">
-                    {s.before}: <span className="font-bold text-slate-700">{c.old}</span>
+                <div key={c.id} className="flex items-center justify-between gap-2 border border-slate-100 rounded-xl px-3 py-2.5 dark:border-white/5">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{c.label}</span>
+                  <span className="text-xs text-slate-500 text-end dark:text-slate-400">
+                    {s.before}: <span className="font-bold text-slate-700 dark:text-slate-200">{c.old}</span>
                     {' → '}
-                    {s.after}: <span className="font-bold text-slate-900">{c.next}</span>
+                    {s.after}: <span className="font-bold text-slate-900 dark:text-white">{c.next}</span>
                   </span>
                 </div>
               ))}
@@ -513,7 +513,7 @@ export const SettingsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleDiscard}
-                className="flex-1 inline-flex items-center justify-center gap-1 px-4 py-3 rounded-xl text-sm font-bold text-slate-600 border border-slate-200"
+                className="flex-1 inline-flex items-center justify-center gap-1 px-4 py-3 rounded-xl text-sm font-bold text-slate-600 border border-slate-200 dark:text-slate-300 dark:border-white/10"
               >
                 <RotateCcw size={16} />
                 {s.discard}

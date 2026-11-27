@@ -38,6 +38,8 @@ import {
   Receipt,
   FileSpreadsheet,
   Bell,
+  BookOpen,
+  Briefcase,
   ChevronRight,
   Calendar,
   CalendarDays,
@@ -52,6 +54,7 @@ import {
   ArrowLeft,
   X,
   Phone,
+  PieChart,
   Palette,
   Printer,
   Search,
@@ -70,7 +73,10 @@ import {
   Lock,
   BarChart3,
   Globe,
-  Settings
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserCheck
 } from 'lucide-react';
 
 /**
@@ -408,6 +414,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // untouched.
   const [guardianPortalKey, setGuardianPortalKey] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Job 4: "সব মডিউল" directory screen (principal-only hub). Opens from
+  // the More sheet; lists every admin module grouped like the desktop
+  // rail. Each tile opens the module through the existing passthrough.
+  const [showAllModules, setShowAllModules] = useState(false);
 
   // Step 4 (25 Oct 2026): staff leave request screen (NOT self-attendance —
   // staff attendance stays admin-only). Staff-submitted requests are
@@ -1334,13 +1345,28 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
       ] as MoreItem[];
     }
     if (userRole === 'principal') {
-      // Only destinations already routed for this app: reports, notices,
-      // ID cards, profile. (No generic routine/settings tab key was
-      // verified for mobile passthrough, so none is invented here.)
+      // Job 4: every admin module gets a door on mobile. Direct tiles
+      // for the daily admin destinations; the 'সব মডিউল' tile opens
+      // the grouped directory (ALL_MODULE_GROUPS) for the rest. Each
+      // tile opens through the existing passthrough (handleOpenModule)
+      // — no new mobile pages; the modules render as before.
+      // Not here: superadmin_audit (the principal's gate blocks it),
+      // staff_roles (same destination as the staff directory).
       return [
         { id: 'finance_reports', label: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet, moduleKey: 'finance_reports' },
         { id: 'notices', label: 'নোটিশ', icon: Bell, moduleKey: 'notice_board', badge: noticeBadge },
         { id: 'id_cards', label: 'আইডি কার্ড', icon: CreditCard, moduleKey: 'student_id_cards' },
+        { id: 'staff', label: 'শিক্ষক ও কর্মী', icon: Briefcase, moduleKey: 'staff' },
+        { id: 'routine', label: 'ক্লাস রুটিন', icon: CalendarDays, moduleKey: 'class_routine' },
+        { id: 'exam_settings', label: 'পরীক্ষা ব্যবস্থাপনা', icon: ClipboardList, moduleKey: 'exam_settings' },
+        { id: 'results', label: 'ফলাফল ও মার্কশিট', icon: Award, moduleKey: 'results' },
+        { id: 'promotion', label: 'শ্রেণি উত্তরণ', icon: TrendingUp, moduleKey: 'promotion' },
+        { id: 'student_tc', label: 'ছাড়পত্র (TC)', icon: FileText, moduleKey: 'student_tc' },
+        { id: 'academic_reports', label: 'একাডেমিক রিপোর্ট', icon: BarChart3, moduleKey: 'academic_reports' },
+        { id: 'admin_reports', label: 'প্রশাসনিক রিপোর্ট', icon: PieChart, moduleKey: 'admin_reports' },
+        { id: 'settings', label: 'প্রতিষ্ঠান সেটিংস', icon: SlidersHorizontal, moduleKey: 'settings' },
+        { id: 'backup_recovery', label: 'ব্যাকআপ কেন্দ্র', icon: ShieldCheck, moduleKey: 'backup_recovery' },
+        { id: 'all_modules', label: 'সব মডিউল', icon: LayoutGrid, moduleKey: null },
         settingsItem,
         profileItem
       ] as MoreItem[];
@@ -1355,7 +1381,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   // The More button counts as active when the open screen is one of the
   // More-sheet destinations (or the profile screen reached from it).
-  const moreActive = showProfile || showLeave ||
+  const moreActive = showProfile || showLeave || showAllModules ||
     (activeSubModule !== null && moreItems.some(m => m.moduleKey !== null && m.moduleKey === activeSubModule));
 
   // Lock body scroll while the More sheet is open (Tutor pattern).
@@ -1373,6 +1399,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     // the previous screen's scroll position and the new screen's first
     // card renders half-hidden under the sticky header.
     window.scrollTo(0, 0);
+    setShowAllModules(false);
     // For shared desktop modules, switch the app tab first so the
     // passthrough renders the right module (the old view missed this).
     if (!NATIVE_MODULES.includes(moduleKey) && setActiveTab) {
@@ -1392,11 +1419,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     if (nav.id === 'profile') {
       window.scrollTo(0, 0);
       setActiveSubModule(null);
+      setShowAllModules(false);
       setShowProfile(true);
       return;
     }
     setShowProfile(false);
     setShowLeave(false);
+    setShowAllModules(false);
     if (nav.targetModule) {
       // Guardian bottom nav: open the portal on the tapped tab.
       if (nav.targetModule === 'guardian_portal') {
@@ -1417,6 +1446,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     setActiveSubModule(null);
     setShowProfile(false);
     setShowLeave(false);
+    setShowAllModules(false);
     setMoreOpen(false);
     setActiveBottomNav('home');
   };
@@ -2433,13 +2463,19 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
         <div className="grid grid-cols-2 gap-2.5">
           {moreItems.map(item => {
             const ItemIcon = item.icon;
-            const isActive = item.id === 'leave' ? showLeave : (item.moduleKey !== null ? item.moduleKey === activeSubModule : showProfile);
+            const isActive = item.id === 'leave' ? showLeave : item.id === 'all_modules' ? showAllModules : (item.moduleKey !== null ? item.moduleKey === activeSubModule : showProfile);
             return (
               <button
                 key={item.id}
                 onClick={() => {
                   setMoreOpen(false);
-                  if (item.id === 'leave') {
+                  if (item.id === 'all_modules') {
+                    window.scrollTo(0, 0);
+                    setActiveSubModule(null);
+                    setShowProfile(false);
+                    setShowLeave(false);
+                    setShowAllModules(true);
+                  } else if (item.id === 'leave') {
                     window.scrollTo(0, 0);
                     setActiveSubModule(null);
                     setShowLeave(true);
@@ -2516,6 +2552,89 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     </div>
   );
 
+  // Job 4: "সব মডিউল" directory (principal-only). Every admin module
+  // grouped like the desktop rail (Layout.tsx mainMenuItems). Labels
+  // are the Bangla module names from App.tsx. Tapping a tile calls
+  // handleOpenModule(tab) — the existing passthrough renders the
+  // module. Excluded: dashboard (home IS the dashboard), user_settings
+  // (already in More), superadmin_audit (the principal's gate blocks
+  // it), staff_roles (same destination as the staff directory).
+  const ALL_MODULE_GROUPS: { title: string; icon: any; items: { tab: string; label: string; icon: any }[] }[] = [
+    { title: 'শিক্ষার্থী ব্যবস্থাপনা', icon: Users, items: [
+      { tab: 'students', label: 'ছাত্র তালিকা', icon: Users },
+      { tab: 'student_admission', label: 'নতুন ভর্তি', icon: GraduationCap },
+      { tab: 'admission_applications', label: 'ভর্তি আবেদন', icon: FileText },
+      { tab: 'class_wise_students', label: 'শ্রেণি ও শাখা', icon: LayoutGrid },
+      { tab: 'guardian_info', label: 'অভিভাবকের তথ্য', icon: Phone },
+      { tab: 'promotion', label: 'শ্রেণি উত্তরণ', icon: TrendingUp },
+      { tab: 'student_tc', label: 'ছাড়পত্র (TC)', icon: FileText },
+      { tab: 'former_students', label: 'সাবেক শিক্ষার্থী', icon: Users },
+      { tab: 'student_reports', label: 'শিক্ষার্থী রিপোর্ট', icon: BarChart3 },
+      { tab: 'student_id_cards', label: 'আইডি কার্ড', icon: CreditCard },
+    ] },
+    { title: 'একাডেমিক ব্যবস্থাপনা', icon: BookOpen, items: [
+      { tab: 'subjects', label: 'বিষয়সমূহ', icon: BookOpen },
+      { tab: 'class_section_setup', label: 'শ্রেণি ও শাখা সমন্বয়', icon: LayoutGrid },
+      { tab: 'teacher_assignment', label: 'শিক্ষক ও বিষয় বণ্টন', icon: Users },
+      { tab: 'class_routine', label: 'ক্লাস রুটিন', icon: CalendarDays },
+      { tab: 'syllabus_planner', label: 'সিলেবাস ও পাঠ পরিকল্পনা', icon: ClipboardList },
+      { tab: 'academic_calendar', label: 'একাডেমিক ক্যালেন্ডার', icon: Calendar },
+      { tab: 'academic_reports', label: 'একাডেমিক রিপোর্ট', icon: BarChart3 },
+    ] },
+    { title: 'উপস্থিতি ব্যবস্থাপনা', icon: UserCheck, items: [
+      { tab: 'attendance', label: 'উপস্থিতি', icon: CheckSquare },
+      { tab: 'staff_attendance', label: 'স্টাফ হাজিরা', icon: UserCheck },
+      { tab: 'absent_students', label: 'অনুপস্থিত তালিকা', icon: X },
+      { tab: 'monthly_attendance_sheet', label: 'মাসিক হাজিরা শিট', icon: CalendarDays },
+      { tab: 'sync_exam_attendance', label: 'পরীক্ষার মার্কশিটে সিঙ্ক', icon: Copy },
+      { tab: 'attendance_reports', label: 'হাজিরা রিপোর্ট', icon: BarChart3 },
+    ] },
+    { title: 'হিসাব ও ফি ব্যবস্থাপনা', icon: Wallet, items: [
+      { tab: 'finance', label: 'হিসাব ও ফি', icon: Wallet },
+      { tab: 'fee_structure', label: 'ফি কাঠামো', icon: Receipt },
+      { tab: 'finance_reports', label: 'আর্থিক রিপোর্ট', icon: FileSpreadsheet },
+    ] },
+    { title: 'পরীক্ষা ও ফলাফল', icon: Award, items: [
+      { tab: 'results', label: 'ফলাফল ও মার্কশিট', icon: Award },
+      { tab: 'exam_settings', label: 'পরীক্ষা ব্যবস্থাপনা', icon: Settings },
+      { tab: 'marks', label: 'নম্বর এন্ট্রি', icon: PenTool },
+      { tab: 'blank_marksheet', label: 'ব্ল্যাঙ্ক মার্কশিট', icon: FileText },
+      { tab: 'tabulation_sheet', label: 'ট্যাবুলেশন শিট', icon: FileSpreadsheet },
+      { tab: 'web_results', label: 'ওয়েব ফলাফল', icon: Globe },
+      { tab: 'result_sms', label: 'ফলাফল SMS', icon: MessageCircle },
+      { tab: 'exam_analytics', label: 'ফলাফল অ্যানালিটিক্স', icon: BarChart3 },
+    ] },
+    { title: 'শিক্ষক ও কর্মচারী', icon: Briefcase, items: [
+      { tab: 'staff', label: 'শিক্ষক ও কর্মী ডিরেক্টরি', icon: Briefcase },
+      { tab: 'staff_assignments', label: 'দায়িত্ব ও বিষয় বণ্টন', icon: ClipboardList },
+      { tab: 'staff_payroll', label: 'বেতন ও পে-রোল', icon: DollarSign },
+      { tab: 'staff_leaves', label: 'ছুটির রেকর্ড', icon: Clock },
+      { tab: 'staff_id_cards', label: 'স্টাফ আইডি কার্ড', icon: CreditCard },
+      { tab: 'staff_analytics', label: 'জনবল অ্যানালিটিক্স', icon: BarChart3 },
+    ] },
+    { title: 'নোটিশ ও রিপোর্ট', icon: Bell, items: [
+      { tab: 'notice_board', label: 'নোটিশ বোর্ড', icon: Bell },
+      { tab: 'admin_reports', label: 'প্রশাসনিক রিপোর্ট', icon: PieChart },
+    ] },
+    { title: 'সেটিংস ও সিস্টেম', icon: Settings, items: [
+      { tab: 'settings', label: 'প্রতিষ্ঠান সেটিংস', icon: Settings },
+      { tab: 'branding_settings', label: 'ব্র্যান্ডিং', icon: Palette },
+      { tab: 'recycle_bin', label: 'রিসাইকেল বিন', icon: X },
+      { tab: 'system_diagnostics', label: 'সিস্টেম ডায়াগনস্টিকস', icon: Search },
+    ] },
+    { title: 'ডাটা সুরক্ষা ও ব্যাকআপ', icon: ShieldCheck, items: [
+      { tab: 'backup_recovery', label: 'ব্যাকআপ কেন্দ্র', icon: ShieldCheck },
+    ] },
+    { title: 'পোর্টাল ও সেবা', icon: Globe, items: [
+      { tab: 'guardian_portal', label: 'পোর্টাল ও সেবা', icon: Globe },
+      { tab: 'online_admissions', label: 'অনলাইন ভর্তি', icon: GraduationCap },
+      { tab: 'public_web_results', label: 'পাবলিক ফলাফল', icon: Search },
+      { tab: 'sms_gateway', label: 'SMS গেটওয়ে', icon: MessageCircle },
+      { tab: 'boarding_mess', label: 'হোস্টেল/মেস', icon: MapPin },
+      { tab: 'islamic_welfare', label: 'ইসলামিক কল্যাণ', icon: Sparkles },
+    ] },
+  ];
+
   // -------------------------------------------------------------
   // SUB-MODULE SCREENS
   // -------------------------------------------------------------
@@ -2541,7 +2660,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               (name, email, role + logout live there already). */}
           <button
             type="button"
-            onClick={() => { setActiveSubModule(null); window.scrollTo(0, 0); setShowProfile(true); }}
+            onClick={() => { setActiveSubModule(null); setShowAllModules(false); window.scrollTo(0, 0); setShowProfile(true); }}
             aria-label={isEn ? 'My profile' : 'আমার প্রোফাইল'}
             title={isEn ? 'My profile' : 'আমার প্রোফাইল'}
             className="w-9 h-9 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm cursor-pointer active:scale-95 transition-all shrink-0"
@@ -4406,6 +4525,79 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               {renderModuleContent ? renderModuleContent(activeSubModule) : null}
             </div>
           )}
+          </ServerDataGate>
+        </main>
+
+        {BottomNav}
+        {MoreSheet}
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // ALL MODULES DIRECTORY (Job 4) — principal-only hub
+  // -------------------------------------------------------------
+  if (showAllModules) {
+    return (
+      <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#0e1220] text-[#1e2433] dark:text-slate-100 flex flex-col pb-24">
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#161c2e]/95 backdrop-blur-xl border-b border-[#e8ecf4] dark:border-white/5 px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={goHome}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 text-[#1e2433] dark:text-slate-200 text-xs font-bold cursor-pointer active:scale-95 transition-all"
+          >
+            <ArrowLeft size={15} />
+            <span>হোম</span>
+          </button>
+          <div className="flex flex-col items-center">
+            <span className="text-xs font-bold text-[#1e2433] dark:text-white truncate max-w-[180px]">সব মডিউল</span>
+            <span className="text-[10px] text-[#8a93a8]">{schoolProfile.nameBn || schoolProfile.name}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setShowAllModules(false); window.scrollTo(0, 0); setShowProfile(true); }}
+            aria-label={isEn ? 'My profile' : 'আমার প্রোফাইল'}
+            title={isEn ? 'My profile' : 'আমার প্রোফাইল'}
+            className="w-9 h-9 rounded-full brand-flat text-white font-bold flex items-center justify-center text-sm cursor-pointer active:scale-95 transition-all shrink-0"
+          >
+            {initialLetter}
+          </button>
+        </header>
+
+        <main className="flex-1 p-4 space-y-4 anim-stagger">
+          <ServerDataGate dataNameBn="মডিউল তথ্য" dataNameEn="Module data">
+          {ALL_MODULE_GROUPS.map(group => {
+            const GroupIcon = group.icon;
+            const oddCount = group.items.length % 2 === 1;
+            return (
+              <section key={group.title} className={`${cardCls} p-4 space-y-3`}>
+                <div className="flex items-center gap-2">
+                  <span className="w-9 h-9 rounded-xl brand-soft brand-text flex items-center justify-center shrink-0">
+                    <GroupIcon size={17} />
+                  </span>
+                  <h2 className="text-sm font-black">{group.title}</h2>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {group.items.map((item, idx) => {
+                    const ItemIcon = item.icon;
+                    const isLastOdd = oddCount && idx === group.items.length - 1;
+                    return (
+                      <button
+                        key={item.tab}
+                        type="button"
+                        onClick={() => handleOpenModule(item.tab)}
+                        className={`relative flex items-center gap-3 p-3.5 rounded-2xl min-h-[60px] text-left cursor-pointer active:scale-[0.98] transition-all bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 ${isLastOdd ? 'col-span-2' : ''}`}
+                      >
+                        <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-white dark:bg-[#161c2e] brand-text border border-[#e8ecf4] dark:border-white/10">
+                          <ItemIcon size={19} />
+                        </span>
+                        <span className="text-[13.5px] font-semibold flex-1">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
           </ServerDataGate>
         </main>
 

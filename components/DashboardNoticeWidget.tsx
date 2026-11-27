@@ -191,19 +191,19 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-4">
+    <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-4 dark:bg-[#161c2e]">
       {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
             <Megaphone size={20} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight dark:text-white">
                 {language === 'bn' ? 'নোটিশ বোর্ড ও দৈনিক ডায়েরি' : 'Notice Board & Daily Diary'}
               </h2>
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black">
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black dark:bg-white/10 dark:text-slate-200">
                 {notices.length}
               </span>
             </div>
@@ -225,7 +225,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
           {onNavigateToNotices && (
             <button
               onClick={onNavigateToNotices}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer dark:bg-white/10 dark:text-slate-200"
             >
               <span>{language === 'bn' ? 'সবগুলো দেখুন' : 'View All'}</span>
               <ChevronRight size={13} />
@@ -259,7 +259,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
         <button
           onClick={() => setActiveFilter('all')}
           className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+            activeFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10'
           }`}
         >
           {language === 'bn' ? 'সব নোটিশ' : 'All'}
@@ -292,7 +292,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
 
       {/* Notices Preview Grid */}
       {filteredNotices.length === 0 ? (
-        <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+        <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs dark:bg-white/5 dark:text-slate-500 dark:border-white/10">
           <BookOpen size={24} className="mx-auto text-slate-300 mb-1.5" />
           <p className="font-bold">{language === 'bn' ? 'বর্তমানে কোনো নোটিশ নেই' : 'No notices currently available'}</p>
         </div>
@@ -309,7 +309,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
                   isUrgent 
                     ? 'bg-rose-50/30 border-rose-200/80 hover:border-rose-400' 
-                    : 'bg-slate-50/50 border-slate-200/80 hover:border-[var(--color-brand-ring)] hover:bg-white'
+                    : 'bg-slate-50/50 border-slate-200/80 hover:border-[var(--color-brand-ring)] hover:bg-white dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10'
                 }`}
               >
                 <div>
@@ -331,13 +331,13 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                    <span className="text-[10px] text-slate-400 font-mono shrink-0 dark:text-slate-500">
                       {notice.date}
                     </span>
                   </div>
 
                   {/* Title */}
-                  <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1 group-hover:text-[var(--color-brand)] transition-colors">
+                  <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white line-clamp-1 group-hover:text-[var(--color-brand)] transition-colors">
                     {notice.title}
                   </h3>
                   {/* Job 2: background cloud confirm failed — local-only until retry. */}
@@ -346,13 +346,13 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   )}
 
                   {/* Content snippet */}
-                  <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">
+                  <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed dark:text-slate-400">
                     {notice.content}
                   </p>
                 </div>
 
                 {/* Card Footer */}
-                <div className="pt-3 mt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400">
+                <div className="pt-3 mt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
                   <span className="truncate max-w-[150px]">✍️ {notice.authorName || 'প্রশাসন'}</span>
                   <span className="text-[var(--color-brand)] font-bold group-hover:underline flex items-center gap-0.5 shrink-0">
                     <span>{language === 'bn' ? 'বিস্তারিত' : 'Read'}</span>
@@ -368,9 +368,9 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
       {/* MODAL 1: Read Full Notice Modal */}
       {selectedNoticeForModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh] dark:bg-[#161c2e] dark:border-white/10">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between dark:border-white/5">
               <div className="flex items-center gap-2">
                 <Megaphone size={18} className="text-amber-400" />
                 <h3 className="text-sm font-bold tracking-tight">
@@ -387,17 +387,17 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/5">
                 <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${getCategoryBadge(selectedNoticeForModal.category).style}`}>
                   {getCategoryBadge(selectedNoticeForModal.category).label}
                 </span>
-                <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+                <span className="text-xs text-slate-400 font-mono flex items-center gap-1 dark:text-slate-500">
                   <Calendar size={13} /> {selectedNoticeForModal.date}
                 </span>
               </div>
 
               <div>
-                <h2 className="text-lg font-black text-slate-900 leading-snug">
+                <h2 className="text-lg font-black text-slate-900 leading-snug dark:text-white">
                   {selectedNoticeForModal.title}
                 </h2>
                 {selectedNoticeForModal.targetClass && (
@@ -407,23 +407,23 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 )}
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line font-bangla">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line font-bangla dark:bg-white/5 dark:text-slate-200 dark:border-white/5">
                 {selectedNoticeForModal.content}
               </div>
 
-              <div className="pt-2 flex justify-between items-center text-xs text-slate-500">
+              <div className="pt-2 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
                 <div>
                   <span>কর্তৃপক্ষ: </span>
-                  <strong className="text-slate-800">{selectedNoticeForModal.authorName || 'অধ্যক্ষ'}</strong>
+                  <strong className="text-slate-800 dark:text-slate-100">{selectedNoticeForModal.authorName || 'অধ্যক্ষ'}</strong>
                 </div>
                 {selectedNoticeForModal.authorRole && (
-                  <span className="text-slate-400">({selectedNoticeForModal.authorRole})</span>
+                  <span className="text-slate-400 dark:text-slate-500">({selectedNoticeForModal.authorRole})</span>
                 )}
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end dark:bg-white/5 dark:border-white/5">
               <Button
                 onClick={() => setSelectedNoticeForModal(null)}
                 className="px-4 py-2 text-xs font-bold"
@@ -438,8 +438,8 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
       {/* MODAL 2: Compose New Notice Modal */}
       {isComposeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 dark:bg-[#161c2e] dark:border-white/10">
+            <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between dark:border-white/5">
               <div className="flex items-center gap-2">
                 <Plus size={18} className="text-amber-400" />
                 <h3 className="text-sm font-bold tracking-tight">
@@ -457,7 +457,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
             <form onSubmit={handleCreateNotice} className="p-6 space-y-4">
               {/* Title */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-slate-700 block mb-1 dark:text-slate-200">
                   {language === 'bn' ? 'বিজ্ঞপ্তি / ডায়েরির শিরোনাম *' : 'Notice Title *'}
                 </label>
                 <input
@@ -466,20 +466,20 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   placeholder={language === 'bn' ? 'যেমন: পবিত্র শবে বরাত উপলক্ষে মাদ্রাসা ছুটি' : 'e.g. Ramadan Holiday Announcement'}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] dark:bg-white/5 dark:border-white/10 dark:focus:bg-white/10"
                 />
               </div>
 
               {/* Category & Priority */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-700 block mb-1 dark:text-slate-200">
                     {language === 'bn' ? 'ক্যাটাগরি' : 'Category'}
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as NoticeCategory)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800 dark:bg-white/5 dark:text-slate-100 dark:border-white/10"
                   >
                     <option value="general">{language === 'bn' ? 'সাধারণ নোটিশ' : 'General Notice'}</option>
                     <option value="diary">{language === 'bn' ? 'দৈনিক ডায়েরি / সবক' : 'Daily Diary'}</option>
@@ -491,13 +491,13 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-700 block mb-1 dark:text-slate-200">
                     {language === 'bn' ? 'অগ্রাধিকার (Priority)' : 'Priority'}
                   </label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as NoticePriority)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800 dark:bg-white/5 dark:text-slate-100 dark:border-white/10"
                   >
                     <option value="normal">{language === 'bn' ? 'সাধারণ (Normal)' : 'Normal'}</option>
                     <option value="important">{language === 'bn' ? 'গুরুত্বপূর্ণ (Important)' : 'Important'}</option>
@@ -509,13 +509,13 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
               {/* Target Audience */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-700 block mb-1 dark:text-slate-200">
                     {language === 'bn' ? 'প্রাপক (Audience)' : 'Audience'}
                   </label>
                   <select
                     value={target}
                     onChange={(e) => setTarget(e.target.value as NoticeTarget)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800 dark:bg-white/5 dark:text-slate-100 dark:border-white/10"
                   >
                     <option value="all">{language === 'bn' ? 'সকলের জন্য (All)' : 'Everyone'}</option>
                     <option value="students">{language === 'bn' ? 'শিক্ষার্থী ও অভিভাবক' : 'Students & Guardians'}</option>
@@ -526,13 +526,13 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
 
                 {target === 'class' && (
                   <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                    <label className="text-xs font-bold text-slate-700 block mb-1 dark:text-slate-200">
                       {language === 'bn' ? 'শ্রেণি নির্বাচন' : 'Select Class'}
                     </label>
                     <select
                       value={targetClass}
                       onChange={(e) => setTargetClass(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800"
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-800 dark:bg-white/5 dark:text-slate-100 dark:border-white/10"
                     >
                       <option value="">{language === 'bn' ? 'শ্রেণি বাছুন' : 'Select'}</option>
                       {classes.map(c => (
@@ -545,7 +545,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
 
               {/* Content */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-slate-700 block mb-1 dark:text-slate-200">
                   {language === 'bn' ? 'বিস্তারিত নোটিশ বা সবক বিবরণী *' : 'Notice Body *'}
                 </label>
                 <textarea
@@ -554,7 +554,7 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                   placeholder={language === 'bn' ? 'বিজ্ঞপ্তির বিস্তারিত বা ডায়েরির বাড়ির কাজ এখানে লিখুন...' : 'Write the detailed announcement or homework activity here...'}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla dark:bg-white/5 dark:border-white/10 dark:focus:bg-white/10"
                 />
               </div>
 
@@ -566,11 +566,11 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
                     placeholder="ঘোষণাকারীর নাম (যেমন: অধ্যক্ষ / সুপারিনটেনডেন্ট)"
                     value={authorName}
                     onChange={(e) => setAuthorName(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 dark:bg-white/5 dark:border-white/10"
                   />
                 </div>
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 shrink-0">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 shrink-0 dark:text-slate-200">
                   <input
                     type="checkbox"
                     checked={isPinned}
@@ -582,11 +582,11 @@ export const DashboardNoticeWidget: React.FC<DashboardNoticeWidgetProps> = ({ on
               </div>
 
               {/* Form Buttons */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 dark:border-white/5">
                 <button
                   type="button"
                   onClick={() => setIsComposeModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer dark:text-slate-300 dark:hover:bg-white/10"
                 >
                   {language === 'bn' ? 'বাতিল' : 'Cancel'}
                 </button>

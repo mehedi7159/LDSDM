@@ -165,7 +165,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: 'Overview', 
       icon: Wallet,
       activeClass: 'bg-slate-900 text-white',
-      inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
+      inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-white',
       iconColor: 'text-emerald-400'
     },
     { 
@@ -228,7 +228,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelEn: 'Fee Setup', 
       icon: Settings2,
       activeClass: 'bg-slate-700 text-white',
-      inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900',
+      inactiveClass: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-white',
       iconColor: 'text-slate-600 dark:text-slate-300'
     },
     { 
@@ -348,7 +348,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               className={`flex items-center gap-2 py-2.5 px-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 isActive 
                   ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 dark:hover:text-white'
               }`}
             >
               <Icon size={15} className={isActive ? 'text-emerald-400' : tab.iconColor} />

@@ -80,7 +80,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
       <div 
-        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] dark:bg-[#161c2e] dark:border-white/5"
         onClick={e => e.stopPropagation()}
       >
         {/* Header Profile Banner */}
@@ -137,36 +137,36 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-700 divide-y divide-slate-100">
+        <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-700 divide-y divide-slate-100 dark:text-slate-200">
           {/* Academic Information */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 dark:text-slate-500">
               <BookOpen className="w-4 h-4 text-emerald-600" />
               {isBn ? 'একাডেমিক তথ্য' : 'Academic Information'}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 block">{isBn ? 'শ্রেণি / ক্লাস' : 'Class'}</span>
-                <span className="font-semibold text-slate-800">{student.classLevel || '—'}</span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'শ্রেণি / ক্লাস' : 'Class'}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">{student.classLevel || '—'}</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 block">{isBn ? 'বিভাগ / গ্রুপ' : 'Group'}</span>
-                <span className="font-semibold text-slate-800">{student.group || (isBn ? 'সাধারণ' : 'General')}</span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'বিভাগ / গ্রুপ' : 'Group'}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">{student.group || (isBn ? 'সাধারণ' : 'General')}</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 block">{isBn ? 'রোল নম্বর' : 'Roll'}</span>
-                <span className="font-semibold text-slate-800 font-mono">{student.roll || student.rollNumber || '—'}</span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'রোল নম্বর' : 'Roll'}</span>
+                <span className="font-semibold text-slate-800 font-mono dark:text-slate-100">{student.roll || student.rollNumber || '—'}</span>
               </div>
               {student.admissionNumber && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'ভর্তি নম্বর' : 'Admission No'}</span>
-                  <span className="font-semibold text-slate-800 font-mono">{student.admissionNumber}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'ভর্তি নম্বর' : 'Admission No'}</span>
+                  <span className="font-semibold text-slate-800 font-mono dark:text-slate-100">{student.admissionNumber}</span>
                 </div>
               )}
               {student.admissionDate && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'ভর্তির তারিখ' : 'Admission Date'}</span>
-                  <span className="font-semibold text-slate-800">{student.admissionDate}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'ভর্তির তারিখ' : 'Admission Date'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{student.admissionDate}</span>
                 </div>
               )}
             </div>
@@ -174,19 +174,19 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
           {/* Tuition Fee Arrangement */}
           <div className="pt-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 dark:text-slate-500">
               <span className="text-emerald-600">💰</span>
               {isBn ? 'টিউশন ফি ব্যবস্থা' : 'Tuition Fee Arrangement'}
             </h3>
             {feeBaseDisplay > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'ছাড়ের ধরন' : 'Discount Type'}</span>
-                  <span className="font-semibold text-slate-800">{FEE_DISCOUNT_TYPE_LABELS[fee.discountType]}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'ছাড়ের ধরন' : 'Discount Type'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{FEE_DISCOUNT_TYPE_LABELS[fee.discountType]}</span>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'প্রতিষ্ঠান ফি (মাসিক)' : 'Institute Fee (Monthly)'}</span>
-                  <span className="font-semibold text-slate-800 font-mono">৳{feeBaseDisplay.toLocaleString()}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'প্রতিষ্ঠান ফি (মাসিক)' : 'Institute Fee (Monthly)'}</span>
+                  <span className="font-semibold text-slate-800 font-mono dark:text-slate-100">৳{feeBaseDisplay.toLocaleString()}</span>
                 </div>
                 {fee.waiverAmount > 0 && (
                   <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
@@ -206,7 +206,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
               </div>
             ) : (
-              <p className="text-xs font-medium text-slate-500">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {isBn ? 'এই শ্রেণির জন্য মাসিক ফি নির্ধারণ করা নেই।' : 'No monthly fee set for this class.'}
               </p>
             )}
@@ -214,33 +214,33 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
           {/* Personal & Demographic */}
           <div className="pt-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 dark:text-slate-500">
               <User className="w-4 h-4 text-emerald-600" />
               {isBn ? 'ব্যক্তিগত তথ্য' : 'Personal Details'}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[11px] text-slate-500 block">{isBn ? 'লিঙ্গ' : 'Gender'}</span>
-                <span className="font-semibold text-slate-800">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'লিঙ্গ' : 'Gender'}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
                   {student.gender === 'female' ? (isBn ? 'ছাত্রী' : 'Female') : (isBn ? 'ছাত্র' : 'Male')}
                 </span>
               </div>
               {student.dateOfBirth && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</span>
-                  <span className="font-semibold text-slate-800">{student.dateOfBirth}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{student.dateOfBirth}</span>
                 </div>
               )}
               {student.bloodGroup && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'রক্তের গ্রুপ' : 'Blood Group'}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'রক্তের গ্রুপ' : 'Blood Group'}</span>
                   <span className="font-semibold text-rose-600 font-bold">{student.bloodGroup}</span>
                 </div>
               )}
               {student.religion && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'ধর্ম' : 'Religion'}</span>
-                  <span className="font-semibold text-slate-800">{student.religion}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'ধর্ম' : 'Religion'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{student.religion}</span>
                 </div>
               )}
             </div>
@@ -248,30 +248,30 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
           {/* Guardian Information */}
           <div className="pt-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 dark:text-slate-500">
               <Heart className="w-4 h-4 text-emerald-600" />
               {isBn ? 'অভিভাবকের তথ্য' : 'Guardian Information'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-0.5">
-                <span className="text-[11px] text-slate-500 block">{isBn ? 'পিতার নাম' : "Father's Name"}</span>
-                <span className="font-semibold text-slate-800">{student.fatherName || '—'}</span>
-                {student.fatherNameBn && <span className="text-xs text-slate-500 block">{student.fatherNameBn}</span>}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-0.5 dark:bg-white/5 dark:border-white/5">
+                <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'পিতার নাম' : "Father's Name"}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">{student.fatherName || '—'}</span>
+                {student.fatherNameBn && <span className="text-xs text-slate-500 block dark:text-slate-400">{student.fatherNameBn}</span>}
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-0.5">
-                <span className="text-[11px] text-slate-500 block">{isBn ? 'মাতার নাম' : "Mother's Name"}</span>
-                <span className="font-semibold text-slate-800">{student.motherName || '—'}</span>
-                {student.motherNameBn && <span className="text-xs text-slate-500 block">{student.motherNameBn}</span>}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-0.5 dark:bg-white/5 dark:border-white/5">
+                <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'মাতার নাম' : "Mother's Name"}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">{student.motherName || '—'}</span>
+                {student.motherNameBn && <span className="text-xs text-slate-500 block dark:text-slate-400">{student.motherNameBn}</span>}
               </div>
               {student.guardianName && student.guardianName !== student.fatherName && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'অভিভাবক' : 'Guardian'}</span>
-                  <span className="font-semibold text-slate-800">{student.guardianName}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'অভিভাবক' : 'Guardian'}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{student.guardianName}</span>
                 </div>
               )}
               {student.guardianPhone && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'মোবাইল নম্বর' : 'Phone'}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'মোবাইল নম্বর' : 'Phone'}</span>
                   <a 
                     href={`tel:${student.guardianPhone}`} 
                     className="font-semibold text-emerald-700 hover:underline flex items-center gap-1"
@@ -282,8 +282,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
               )}
               {student.guardianEmail && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[11px] text-slate-500 block">{isBn ? 'ইমেইল' : 'Email'}</span>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block dark:text-slate-400">{isBn ? 'ইমেইল' : 'Email'}</span>
                   <a 
                     href={`mailto:${student.guardianEmail}`} 
                     className="font-semibold text-emerald-700 hover:underline flex items-center gap-1"
@@ -294,12 +294,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
               )}
               {student.address && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 sm:col-span-2">
-                  <span className="text-[11px] text-slate-500 block flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 sm:col-span-2 dark:bg-white/5 dark:border-white/5">
+                  <span className="text-[11px] text-slate-500 block flex items-center gap-1 dark:text-slate-400">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     {isBn ? 'ঠিকানা' : 'Address'}
                   </span>
-                  <span className="font-medium text-slate-800">{student.address}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-100">{student.address}</span>
                 </div>
               )}
             </div>
@@ -314,12 +314,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               </h3>
               <div className="p-3.5 bg-rose-50/70 border border-rose-200/80 rounded-2xl text-xs space-y-1">
                 <div>
-                  <span className="text-slate-500">{isBn ? 'ত্যাগের তারিখ: ' : 'Leaving Date: '}</span>
-                  <span className="font-semibold text-slate-800">{student.leavingDate || '—'}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{isBn ? 'ত্যাগের তারিখ: ' : 'Leaving Date: '}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{student.leavingDate || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500">{isBn ? 'কারণ: ' : 'Reason: '}</span>
-                  <span className="font-medium text-slate-800">{student.leavingReason || (isBn ? 'উল্লেখ নেই' : 'Not specified')}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{isBn ? 'কারণ: ' : 'Reason: '}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-100">{student.leavingReason || (isBn ? 'উল্লেখ নেই' : 'Not specified')}</span>
                 </div>
               </div>
             </div>
@@ -327,7 +327,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400 dark:border-white/5">
           <span className="font-mono text-[11px]">
             UUID: {student.id.substring(0, 16)}...
           </span>
