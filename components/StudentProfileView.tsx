@@ -1717,108 +1717,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   const feesSection = (
         <div className="space-y-6">
 
-          {/* 5.0 Fee summary cards + fee-wise breakdown (at-a-glance) */}
-          {feeSummary && (
-            <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3">
-                {language === 'bn' ? 'ফি সারাংশ' : 'Fee Summary'}
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-100 p-3 text-center">
-                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মোট' : 'Total'}</div>
-                  <div className="text-base sm:text-xl font-black text-indigo-700 dark:text-indigo-400 break-words">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div>
-                </div>
-                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-100 p-3 text-center">
-                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div>
-                  <div className="text-base sm:text-xl font-black text-emerald-700 dark:text-emerald-400 break-words">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</div>
-                </div>
-                <div className="rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-100 p-3 text-center">
-                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বকেয়া' : 'Pending'}</div>
-                  <div className={`text-base sm:text-xl font-black break-words ${feeSummary.due > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>৳{toBn(feeSummary.due.toLocaleString('en-US'))}</div>
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                {language === 'bn'
-                  ? 'মোট = পরিশোধিত + বকেয়া + পরীক্ষার ফি বাকি। বকেয়া শুধু সমাপ্ত মাসের মাসিক বেতন — অফিসের ড্যাশবোর্ডের মোট বকেয়ার সমান। পরিশোধিত-এ চলতি মাসের আদায়ও আছে; বকেয়ায় চলতি অসমাপ্ত মাসের ফি ধরা হয়নি।'
-                  : 'Total = paid + dues + pending exam fee. Dues are finished months’ tuition only — the same as the office dashboard’s total dues. Paid includes current-month collections; dues exclude the current unfinished month.'}
-              </p>
-
-              {feeSummary.rows.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-slate-100 mb-2">
-                    {language === 'bn' ? 'ফি-ভিত্তিক বিবরণ' : 'Fee-wise Breakdown'}
-                  </h4>
-                  {/* Desktop: table like the reference; mobile: stacked rows (no sideways scroll) */}
-                  <div className="hidden sm:block overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/10">
-                          <th className="py-1.5 pr-2 font-semibold">{language === 'bn' ? 'ফি-র ধরন' : 'Fee Type'}</th>
-                          <th className="py-1.5 pr-2 font-semibold text-right">{language === 'bn' ? 'মোট' : 'Total'}</th>
-                          <th className="py-1.5 pr-2 font-semibold text-right">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</th>
-                          <th className="py-1.5 font-semibold text-right">{language === 'bn' ? 'বাকি' : 'Balance'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {feeSummary.rows.map(row => (
-                          <tr key={row.key} className="border-b border-slate-50">
-                            <td className="py-1.5 pr-2 font-semibold">
-                              {row.key === 'tuition'
-                                ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
-                                : row.key === 'exam'
-                                  ? (language === 'bn' ? 'পরীক্ষার ফি' : 'Exam Fee')
-                                  : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
-                            </td>
-                            <td className="py-1.5 pr-2 text-right font-bold">৳{toBn(row.total.toLocaleString('en-US'))}</td>
-                            <td className="py-1.5 pr-2 text-right font-bold text-emerald-700 dark:text-emerald-400">৳{toBn(row.paid.toLocaleString('en-US'))}</td>
-                            <td className="py-1.5 text-right font-bold text-rose-600 dark:text-rose-400">৳{toBn(row.due.toLocaleString('en-US'))}</td>
-                          </tr>
-                        ))}
-                        <tr className="border-t border-slate-200 dark:border-white/10">
-                          <td className="py-1.5 pr-2 font-black">{language === 'bn' ? 'মোট' : 'Total'}</td>
-                          <td className="py-1.5 pr-2 text-right font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</td>
-                          <td className="py-1.5 pr-2 text-right font-black text-emerald-700 dark:text-emerald-400">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</td>
-                          <td className="py-1.5 text-right font-black text-rose-600 dark:text-rose-400">৳{toBn(feeSummary.totalBalance.toLocaleString('en-US'))}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="sm:hidden space-y-2">
-                    {feeSummary.rows.map(row => (
-                      <div key={row.key} className="rounded-xl border border-slate-100 dark:border-white/10 p-3">
-                        <div className="font-bold text-xs mb-1.5">
-                          {row.key === 'tuition'
-                            ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
-                            : row.key === 'exam'
-                              ? (language === 'bn' ? 'পরীক্ষার ফি' : 'Exam Fee')
-                              : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মোট' : 'Total'}</div><div className="text-xs font-black">৳{toBn(row.total.toLocaleString('en-US'))}</div></div>
-                          <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div><div className="text-xs font-black text-emerald-700 dark:text-emerald-400">৳{toBn(row.paid.toLocaleString('en-US'))}</div></div>
-                          <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600 dark:text-rose-400">৳{toBn(row.due.toLocaleString('en-US'))}</div></div>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3">
-                      <div className="font-black text-xs mb-1.5">{language === 'bn' ? 'মোট' : 'Total'}</div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মোট' : 'Total'}</div><div className="text-xs font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div></div>
-                        <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div><div className="text-xs font-black text-emerald-700 dark:text-emerald-400">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</div></div>
-                        <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600 dark:text-rose-400">৳{toBn(feeSummary.totalBalance.toLocaleString('en-US'))}</div></div>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                    {language === 'bn'
-                      ? 'পরীক্ষার ফি-র নিজের সারি আছে — আদায়কৃত ও বাকি দুটোই; পরীক্ষার ফি মাসিক বেতনের বকেয়ায় ধরা হয় না। ভর্তি/সেশন/অন্য ফি-র আলাদা সারি নেই, সেগুলো অন্যান্য আদায় সারিতে থাকে।'
-                      : 'Exam fees have their own row — paid and pending; exam money never counts toward tuition dues. No separate admission/session rows: those sit in other collections.'}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
+          {/* 5.0 Fee summary — P3: extracted to feeSummaryCard above the
+              return; staff view shows it beside the identity card
+              (desktop 2-col) / directly under it (mobile). feesSection
+              keeps 5.1 arrangement, 5.2 aged dues, 5.3 transactions,
+              5.4 exam-fee pending. */}
           {/* 5.1 Fee arrangement */}
           <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -1944,7 +1847,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               {language === 'bn' ? 'ফি লেনদেন' : 'Fee Transactions'}
             </h3>
             {myTransactions.length > 0 ? (
-              <div className="overflow-x-auto">
+              <>
+                {/* P3 — Desktop: table (sm+); mobile: stacked cards — no sideways scroll */}
+                <div className="hidden sm:block">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/10">
@@ -1969,7 +1874,24 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+                <div className="sm:hidden space-y-2">
+                  {myTransactions.map(tx => (
+                    <div key={tx.id} className="rounded-xl border border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100 break-words">{tx.categoryName || tx.category}</span>
+                        <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">৳{toBn(Number(tx.amount || 0).toLocaleString('en-US'))}</span>
+                      </div>
+                      <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>{language === 'bn' ? 'তারিখ:' : 'Date:'} <span className="font-semibold text-slate-700 dark:text-slate-200">{toBn(tx.date || '')}</span></span>
+                        <span>{language === 'bn' ? 'রসিদ:' : 'Receipt:'} <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{tx.voucherNo || '—'}</span></span>
+                        <span>{language === 'bn' ? 'মাস:' : 'Month:'} <span className="font-semibold text-slate-700 dark:text-slate-200">{tx.feeMonth ? toBn(tx.feeMonth) : '—'}</span></span>
+                        <span>{language === 'bn' ? 'মাধ্যম:' : 'Mode:'} <span className="font-semibold text-slate-700 dark:text-slate-200">{paymentMethodLabel(tx.paymentMethod, language === 'bn')}</span></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <p className="text-xs text-slate-500 dark:text-slate-400">{language === 'bn' ? 'কোনো লেনদেন নেই।' : 'No transactions.'}</p>
             )}
@@ -1993,9 +1915,12 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     </span>
                   </div>
                 ))}
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1">
-                  {language === 'bn' ? 'পরীক্ষার ফি মাসিক বকেয়ায় ধরা হয় না; শ্রেণি শিক্ষকের মাধ্যমে আদায় হয়।' : 'Exam fees never enter monthly dues; they are collected by the class teacher.'}
-                </p>
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 flex items-start gap-2">
+                  <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                    {language === 'bn' ? 'পরীক্ষার ফি মাসিক বকেয়ায় ধরা হয় না; শ্রেণি শিক্ষকের মাধ্যমে আদায় হয়।' : 'Exam fees never enter monthly dues; they are collected by the class teacher.'}
+                  </p>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-slate-500 dark:text-slate-400">{language === 'bn' ? 'কোনো পরীক্ষার ফি বাকি নেই।' : 'No exam fee pending.'}</p>
@@ -2039,6 +1964,253 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         ? 'bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-500/30 hover:bg-rose-100 dark:hover:bg-rose-500/25'
         : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15 hover:bg-slate-50 dark:hover:bg-white/10';
 
+  // P3 — Fee Summary card (plan §8 P3): lifted out of feesSection so the
+  // staff view can show it beside the identity card on desktop (2-col)
+  // and directly under it on mobile. Presentation only — every figure
+  // comes from the unchanged feeSummary memo (to-date; dues = finished
+  // months only). Portal never renders it (feesSection is staff-only).
+  const feeSummaryCard = feeSummary ? (
+    <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
+      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3">
+        {language === 'bn' ? 'ফি সারাংশ' : 'Fee Summary'}
+      </h3>
+      {/* P3 — Fee hero (DE-AI: সংখ্যাই হিরো): বকেয়া বড়; মোট/পরিশোধিত নিচে ২ কলামে */}
+      <div className={feeSummary.due > 0 ? 'rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 p-4 text-center' : 'rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 p-4 text-center'}>
+        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বকেয়া' : 'Pending'}</div>
+        <div className={`text-3xl sm:text-4xl font-black break-words ${feeSummary.due > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>৳{toBn(feeSummary.due.toLocaleString('en-US'))}</div>
+        <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{language === 'bn' ? 'সমাপ্ত মাসের বকেয়া' : 'Finished months’ dues'}</div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="rounded-xl bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-100 p-3 text-center">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মোট' : 'Total'}</div>
+          <div className="text-xl sm:text-2xl font-black text-indigo-700 dark:text-indigo-400 break-words">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div>
+        </div>
+        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-100 p-3 text-center">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div>
+          <div className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-emerald-400 break-words">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</div>
+        </div>
+      </div>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+        {language === 'bn'
+          ? 'মোট = পরিশোধিত + বকেয়া + পরীক্ষার ফি বাকি। বকেয়া শুধু সমাপ্ত মাসের মাসিক বেতন — অফিসের ড্যাশবোর্ডের মোট বকেয়ার সমান। পরিশোধিত-এ চলতি মাসের আদায়ও আছে; বকেয়ায় চলতি অসমাপ্ত মাসের ফি ধরা হয়নি।'
+          : 'Total = paid + dues + pending exam fee. Dues are finished months’ tuition only — the same as the office dashboard’s total dues. Paid includes current-month collections; dues exclude the current unfinished month.'}
+      </p>
+
+      {feeSummary.rows.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
+          <h4 className="text-xs font-black text-slate-900 dark:text-slate-100 mb-2">
+            {language === 'bn' ? 'ফি-ভিত্তিক বিবরণ' : 'Fee-wise Breakdown'}
+          </h4>
+          {/* Desktop: table like the reference; mobile: stacked rows (no sideways scroll) */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/10">
+                  <th className="py-1.5 pr-2 font-semibold">{language === 'bn' ? 'ফি-র ধরন' : 'Fee Type'}</th>
+                  <th className="py-1.5 pr-2 font-semibold text-right">{language === 'bn' ? 'মোট' : 'Total'}</th>
+                  <th className="py-1.5 pr-2 font-semibold text-right">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</th>
+                  <th className="py-1.5 font-semibold text-right">{language === 'bn' ? 'বাকি' : 'Balance'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {feeSummary.rows.map(row => (
+                  <tr key={row.key} className="border-b border-slate-50">
+                    <td className="py-1.5 pr-2 font-semibold">
+                      {row.key === 'tuition'
+                        ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
+                        : row.key === 'exam'
+                          ? (language === 'bn' ? 'পরীক্ষার ফি' : 'Exam Fee')
+                          : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
+                    </td>
+                    <td className="py-1.5 pr-2 text-right font-bold">৳{toBn(row.total.toLocaleString('en-US'))}</td>
+                    <td className="py-1.5 pr-2 text-right font-bold text-emerald-700 dark:text-emerald-400">৳{toBn(row.paid.toLocaleString('en-US'))}</td>
+                    <td className="py-1.5 text-right font-bold text-rose-600 dark:text-rose-400">৳{toBn(row.due.toLocaleString('en-US'))}</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-slate-200 dark:border-white/10">
+                  <td className="py-1.5 pr-2 font-black">{language === 'bn' ? 'মোট' : 'Total'}</td>
+                  <td className="py-1.5 pr-2 text-right font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</td>
+                  <td className="py-1.5 pr-2 text-right font-black text-emerald-700 dark:text-emerald-400">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</td>
+                  <td className="py-1.5 text-right font-black text-rose-600 dark:text-rose-400">৳{toBn(feeSummary.totalBalance.toLocaleString('en-US'))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="sm:hidden space-y-2">
+            {feeSummary.rows.map(row => (
+              <div key={row.key} className="rounded-xl border border-slate-100 dark:border-white/10 p-3">
+                <div className="font-bold text-xs mb-1.5">
+                  {row.key === 'tuition'
+                    ? (language === 'bn' ? 'মাসিক বেতন (সমাপ্ত মাস)' : 'Tuition (finished months)')
+                    : row.key === 'exam'
+                      ? (language === 'bn' ? 'পরীক্ষার ফি' : 'Exam Fee')
+                      : (language === 'bn' ? 'অন্যান্য আদায়' : 'Other Collections')}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মোট' : 'Total'}</div><div className="text-xs font-black">৳{toBn(row.total.toLocaleString('en-US'))}</div></div>
+                  <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div><div className="text-xs font-black text-emerald-700 dark:text-emerald-400">৳{toBn(row.paid.toLocaleString('en-US'))}</div></div>
+                  <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600 dark:text-rose-400">৳{toBn(row.due.toLocaleString('en-US'))}</div></div>
+                </div>
+              </div>
+            ))}
+            <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3">
+              <div className="font-black text-xs mb-1.5">{language === 'bn' ? 'মোট' : 'Total'}</div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মোট' : 'Total'}</div><div className="text-xs font-black">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div></div>
+                <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div><div className="text-xs font-black text-emerald-700 dark:text-emerald-400">৳{toBn(feeSummary.totalPaid.toLocaleString('en-US'))}</div></div>
+                <div><div className="text-[10px] text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বাকি' : 'Balance'}</div><div className="text-xs font-black text-rose-600 dark:text-rose-400">৳{toBn(feeSummary.totalBalance.toLocaleString('en-US'))}</div></div>
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+            {language === 'bn'
+              ? 'পরীক্ষার ফি-র নিজের সারি আছে — আদায়কৃত ও বাকি দুটোই; পরীক্ষার ফি মাসিক বেতনের বকেয়ায় ধরা হয় না। ভর্তি/সেশন/অন্য ফি-র আলাদা সারি নেই, সেগুলো অন্যান্য আদায় সারিতে থাকে।'
+              : 'Exam fees have their own row — paid and pending; exam money never counts toward tuition dues. No separate admission/session rows: those sit in other collections.'}
+          </p>
+        </div>
+      )}
+    </div>
+
+  ) : null;
+
+  // P3 — Identity card (plan §4): the hero, lifted into a variable so
+  // the staff view can pair it with the fee summary card in a 2-col
+  // desktop grid; the portal renders it alone, exactly as before.
+  const identityCard = (
+    <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-7 text-slate-900 dark:text-slate-100 relative overflow-hidden print:hidden">
+
+      {/* Ambient Top Glow */}
+
+      <div className="relative z-10">
+
+        {/* P2 — Student Identity Block */}
+        <div className="flex items-start sm:items-center gap-4">
+          {/* Avatar Photo */}
+          <div className="relative shrink-0">
+            {currentStudent.photoUrl ? (
+              <img 
+                src={currentStudent.photoUrl} 
+                alt={currentStudent.name} 
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2" style={{ borderColor: 'var(--color-brand-ring)' }}
+              />
+            ) : (
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 flex items-center justify-center font-bold text-2xl sm:text-3xl" style={{ backgroundColor: 'var(--color-brand-light)', borderColor: 'var(--color-brand-ring)', color: 'var(--color-brand)' }}>
+                {(currentStudent.name || 'S').charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+              {language === 'bn' ? 'নিয়মিত' : 'Active'}
+            </span>
+          </div>
+          {/* Info details — P2: name + status chips + labeled field grid */}
+          <div className="space-y-2 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight break-words">
+                {language === 'bn' ? (currentStudent.nameBn || currentStudent.name) : currentStudent.name}
+              </h2>
+              {language !== 'bn' && showSecondName(currentStudent.name, currentStudent.nameBn) && (
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">({currentStudent.nameBn})</span>
+              )}
+            </div>
+            {/* Status chips: class / roll / status (+ group when present) */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                {language === 'bn' ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-slate-900 dark:text-slate-100">{currentStudent.classLevel || studentClass}</span>
+              </span>
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                {language === 'bn' ? 'রোল:' : 'Roll:'} <span className="font-bold text-slate-900 dark:text-slate-100">{toBn(currentStudent.rollNumber || currentStudent.roll || '1')}</span>
+              </span>
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                {language === 'bn' ? 'অবস্থা:' : 'Status:'} <span className="font-bold text-slate-900 dark:text-slate-100">{currentStudent.isFormer || currentStudent.status === 'Former' || currentStudent.status === 'archived'
+                    ? (language === 'bn' ? 'প্রাক্তন' : 'Former')
+                    : currentStudent.status === 'inactive' || currentStudent.status === 'Inactive'
+                      ? (language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')
+                      : currentStudent.status === 'transferred'
+                        ? (language === 'bn' ? 'বদলি' : 'Transferred')
+                        : currentStudent.status === 'graduated'
+                          ? (language === 'bn' ? 'উত্তীর্ণ' : 'Graduated')
+                          : currentStudent.status === 'dropped'
+                            ? (language === 'bn' ? 'ঝরে পড়া' : 'Dropped')
+                            : (language === 'bn' ? 'সক্রিয়' : 'Active')}</span>
+              </span>
+              {currentStudent.group && (
+                <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                  {language === 'bn' ? 'বিভাগ:' : 'Group:'} <span className="font-bold text-slate-900 dark:text-slate-100">{currentStudent.group}</span>
+                </span>
+              )}
+            </div>
+
+            {/* Labeled identity fields — show-when-present; staff-only fields gated on isStaffView (same gating as before). Guardian email is not shown in the hero (name, not email). */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-2">
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'আইডি:' : 'ID:'}</p>
+                <p className="mt-0.5"><span className="font-mono font-bold text-sm px-2 py-0.5 rounded-md border" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}>{currentStudent.studentId || currentStudent.id}</span></p>
+              </div>
+              {currentStudent.fatherName && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পিতা:' : 'Father:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? (currentStudent.fatherNameBn || currentStudent.fatherName) : currentStudent.fatherName}</p>
+                </div>
+              )}
+              {isStaffView && currentStudent.motherName?.trim() && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মাতা:' : 'Mother:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? (currentStudent.motherNameBn || currentStudent.motherName) : currentStudent.motherName}</p>
+                </div>
+              )}
+              {isStaffView && currentStudent.dateOfBirth?.trim() && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'জন্ম তারিখ:' : 'DOB:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? toBn(currentStudent.dateOfBirth) : currentStudent.dateOfBirth}</p>
+                </div>
+              )}
+              {currentStudent.guardianPhone && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ফোন:' : 'Phone:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words flex items-center gap-1"><Phone size={12} className="text-slate-500 dark:text-slate-400 shrink-0" /><span>{toBn(currentStudent.guardianPhone)}</span></p>
+                </div>
+              )}
+              {isStaffView && currentStudent.guardianName?.trim() && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'অভিভাবক:' : 'Guardian:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{currentStudent.guardianName}</p>
+                </div>
+              )}
+              {currentStudent.admissionDate && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ভর্তি:' : 'Admitted:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? toBn(currentStudent.admissionDate) : currentStudent.admissionDate}</p>
+                </div>
+              )}
+              {currentStudent.bloodGroup && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'রক্তের গ্রুপ:' : 'Blood Group:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-rose-600 dark:text-rose-400 break-words flex items-center gap-1"><Droplet size={12} className="shrink-0" /><span>{currentStudent.bloodGroup}</span></p>
+                </div>
+              )}
+              {isStaffView && currentStudent.gender && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'লিঙ্গ:' : 'Gender:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn'
+                      ? (currentStudent.gender === 'male' ? 'পুরুষ' : currentStudent.gender === 'female' ? 'মহিলা' : currentStudent.gender === 'other' ? 'অন্যান্য' : currentStudent.gender)
+                      : (currentStudent.gender === 'male' ? 'Male' : currentStudent.gender === 'female' ? 'Female' : currentStudent.gender === 'other' ? 'Other' : currentStudent.gender)}</p>
+                </div>
+              )}
+              {isStaffView && currentStudent.address?.trim() && (
+                <div className="sm:col-span-2">
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ঠিকানা:' : 'Address:'}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{currentStudent.address}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  );
+
   return (
     <div className={`space-y-6 pb-12 ${language === 'bn' ? 'font-bangla' : ''}`}>
       
@@ -2069,140 +2241,17 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         </div>
       )}
 
-      {/* 1. STUDENT PROFILE HEADER CARD */}
-      <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-7 text-slate-900 dark:text-slate-100 relative overflow-hidden print:hidden">
-        
-        {/* Ambient Top Glow */}
-
-        <div className="relative z-10">
-          
-          {/* P2 — Student Identity Block */}
-          <div className="flex items-start sm:items-center gap-4">
-            {/* Avatar Photo */}
-            <div className="relative shrink-0">
-              {currentStudent.photoUrl ? (
-                <img 
-                  src={currentStudent.photoUrl} 
-                  alt={currentStudent.name} 
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2" style={{ borderColor: 'var(--color-brand-ring)' }}
-                />
-              ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 flex items-center justify-center font-bold text-2xl sm:text-3xl" style={{ backgroundColor: 'var(--color-brand-light)', borderColor: 'var(--color-brand-ring)', color: 'var(--color-brand)' }}>
-                  {(currentStudent.name || 'S').charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
-                {language === 'bn' ? 'নিয়মিত' : 'Active'}
-              </span>
-            </div>
-            {/* Info details — P2: name + status chips + labeled field grid */}
-            <div className="space-y-2 min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight break-words">
-                  {language === 'bn' ? (currentStudent.nameBn || currentStudent.name) : currentStudent.name}
-                </h2>
-                {language !== 'bn' && showSecondName(currentStudent.name, currentStudent.nameBn) && (
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">({currentStudent.nameBn})</span>
-                )}
-              </div>
-              {/* Status chips: class / roll / status (+ group when present) */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                  {language === 'bn' ? 'শ্রেণি:' : 'Class:'} <span className="font-bold text-slate-900 dark:text-slate-100">{currentStudent.classLevel || studentClass}</span>
-                </span>
-                <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                  {language === 'bn' ? 'রোল:' : 'Roll:'} <span className="font-bold text-slate-900 dark:text-slate-100">{toBn(currentStudent.rollNumber || currentStudent.roll || '1')}</span>
-                </span>
-                <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                  {language === 'bn' ? 'অবস্থা:' : 'Status:'} <span className="font-bold text-slate-900 dark:text-slate-100">{currentStudent.isFormer || currentStudent.status === 'Former' || currentStudent.status === 'archived'
-                      ? (language === 'bn' ? 'প্রাক্তন' : 'Former')
-                      : currentStudent.status === 'inactive' || currentStudent.status === 'Inactive'
-                        ? (language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')
-                        : currentStudent.status === 'transferred'
-                          ? (language === 'bn' ? 'বদলি' : 'Transferred')
-                          : currentStudent.status === 'graduated'
-                            ? (language === 'bn' ? 'উত্তীর্ণ' : 'Graduated')
-                            : currentStudent.status === 'dropped'
-                              ? (language === 'bn' ? 'ঝরে পড়া' : 'Dropped')
-                              : (language === 'bn' ? 'সক্রিয়' : 'Active')}</span>
-                </span>
-                {currentStudent.group && (
-                  <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                    {language === 'bn' ? 'বিভাগ:' : 'Group:'} <span className="font-bold text-slate-900 dark:text-slate-100">{currentStudent.group}</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Labeled identity fields — show-when-present; staff-only fields gated on isStaffView (same gating as before). Guardian email is not shown in the hero (name, not email). */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-2">
-                <div>
-                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'আইডি:' : 'ID:'}</p>
-                  <p className="mt-0.5"><span className="font-mono font-bold text-sm px-2 py-0.5 rounded-md border" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}>{currentStudent.studentId || currentStudent.id}</span></p>
-                </div>
-                {currentStudent.fatherName && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পিতা:' : 'Father:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? (currentStudent.fatherNameBn || currentStudent.fatherName) : currentStudent.fatherName}</p>
-                  </div>
-                )}
-                {isStaffView && currentStudent.motherName?.trim() && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মাতা:' : 'Mother:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? (currentStudent.motherNameBn || currentStudent.motherName) : currentStudent.motherName}</p>
-                  </div>
-                )}
-                {isStaffView && currentStudent.dateOfBirth?.trim() && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'জন্ম তারিখ:' : 'DOB:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? toBn(currentStudent.dateOfBirth) : currentStudent.dateOfBirth}</p>
-                  </div>
-                )}
-                {currentStudent.guardianPhone && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ফোন:' : 'Phone:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words flex items-center gap-1"><Phone size={12} className="text-slate-500 dark:text-slate-400 shrink-0" /><span>{toBn(currentStudent.guardianPhone)}</span></p>
-                  </div>
-                )}
-                {isStaffView && currentStudent.guardianName?.trim() && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'অভিভাবক:' : 'Guardian:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{currentStudent.guardianName}</p>
-                  </div>
-                )}
-                {currentStudent.admissionDate && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ভর্তি:' : 'Admitted:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn' ? toBn(currentStudent.admissionDate) : currentStudent.admissionDate}</p>
-                  </div>
-                )}
-                {currentStudent.bloodGroup && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'রক্তের গ্রুপ:' : 'Blood Group:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-rose-600 dark:text-rose-400 break-words flex items-center gap-1"><Droplet size={12} className="shrink-0" /><span>{currentStudent.bloodGroup}</span></p>
-                  </div>
-                )}
-                {isStaffView && currentStudent.gender && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'লিঙ্গ:' : 'Gender:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{language === 'bn'
-                        ? (currentStudent.gender === 'male' ? 'পুরুষ' : currentStudent.gender === 'female' ? 'মহিলা' : currentStudent.gender === 'other' ? 'অন্যান্য' : currentStudent.gender)
-                        : (currentStudent.gender === 'male' ? 'Male' : currentStudent.gender === 'female' ? 'Female' : currentStudent.gender === 'other' ? 'Other' : currentStudent.gender)}</p>
-                  </div>
-                )}
-                {isStaffView && currentStudent.address?.trim() && (
-                  <div className="sm:col-span-2">
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ঠিকানা:' : 'Address:'}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{currentStudent.address}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
+      {/* 1. STUDENT PROFILE HEADER CARD — P3 (plan §4): staff view pairs
+          the identity card with the fee summary card in a 2-col desktop
+          grid; mobile stacks identity → fee summary. Portal renders the
+          identity card alone, exactly as before. When there is no fee
+          summary (null) the grid is skipped — never an empty slot. */}
+      {isStaffView && feeSummaryCard ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {identityCard}
+          {feeSummaryCard}
         </div>
-
-      </div>
-
+      ) : identityCard}
       {/* 1.5. STAFF-ONLY ALERT STRIP (real figures only; never on the portal) */}
       {isStaffView && profileAlerts.length > 0 && (
         <div className="space-y-2 print:hidden">
