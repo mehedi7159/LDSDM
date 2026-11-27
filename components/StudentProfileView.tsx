@@ -205,6 +205,20 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   // ==========================================
   const isStaffView = !!authUser && userRole !== 'guardian';
 
+  // Staff-path lookup wait (P1): when staff opens a profile before the
+  // student list hydrates, currentStudent is briefly null. The skeleton
+  // below shows for up to 10s, then falls back to the light not-found
+  // screen, so a stalled sync can never leave a blank screen behind.
+  const [staffLookupWaited, setStaffLookupWaited] = useState(false);
+  useEffect(() => {
+    if (!isStaffView || currentStudent || students.length > 0) {
+      setStaffLookupWaited(false);
+      return;
+    }
+    const t = window.setTimeout(() => setStaffLookupWaited(true), 10000);
+    return () => window.clearTimeout(t);
+  }, [isStaffView, currentStudent, students.length]);
+
   // Fee arrangement (tuition-fee-arrangement job fields on Student).
   const feeArrangement = useMemo(
     () => (currentStudent ? feeArrangementOf(currentStudent) : null),
@@ -749,6 +763,67 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   // VIEW: IF NO STUDENT LOGGED IN (LOGIN SCREEN)
   // ==========================================
   if (!currentStudent) {
+    // Staff path (P1): never the black portal login screen. While the
+    // student list is still hydrating show a light skeleton; once data
+    // has arrived but the ID matches nobody, show a light not-found
+    // screen with a way back. The portal login below is unchanged.
+    if (isStaffView) {
+      if (students.length === 0 && !staffLookupWaited) {
+        return (
+          <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 ${language === 'bn' ? 'font-bangla' : ''}`}>
+            <div className="max-w-4xl w-full mx-auto space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-slate-200 dark:bg-white/10 animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-4 w-48 rounded bg-slate-200 dark:bg-white/10 animate-pulse" />
+                  <div className="h-3 w-32 rounded bg-slate-200 dark:bg-white/10 animate-pulse" />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-7 space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-200 dark:bg-white/10 animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-2/3 rounded bg-slate-200 dark:bg-white/10 animate-pulse" />
+                    <div className="h-3 w-1/2 rounded bg-slate-200 dark:bg-white/10 animate-pulse" />
+                  </div>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                  {language === 'bn' ? 'প্রোফাইলের তথ্য আসছে…' : 'Loading the student profile…'}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 ${language === 'bn' ? 'font-bangla' : ''}`}>
+          <div className="max-w-2xl w-full mx-auto">
+            <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-6 sm:p-8 text-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
+                <Search size={28} />
+              </div>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100">
+                {language === 'bn' ? 'ছাত্র পাওয়া যায়নি' : 'Student not found'}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                {language === 'bn'
+                  ? `“${activeStudentId}” আইডির কোনো শিক্ষার্থী পাওয়া যায়নি। আইডি যাচাই করে আবার চেষ্টা করুন।`
+                  : `No student found with ID “${activeStudentId}”. Please check the ID and try again.`}
+              </p>
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white transition cursor-pointer"
+                  style={{ backgroundColor: 'var(--color-brand)' }}
+                >
+                  {language === 'bn' ? 'শিক্ষার্থী তালিকায় ফিরুন' : 'Back to Students'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-indigo-600 selection:text-white p-4 sm:p-6 lg:p-8 ${language === 'bn' ? 'font-bangla' : ''}`}>
         
@@ -1142,19 +1217,19 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
           {/* 2.2 PERFORMANCE SUMMARY CARD */}
           {examResultsData && (
-            <div className="bg-slate-900 rounded-3xl p-6 text-white border border-indigo-800/60">
+            <div className="bg-white dark:bg-[#161c2e] rounded-3xl p-6 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-white/10">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 
                 <div className="space-y-2">
-                  <span className="px-2.5 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+                  <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
                     {language === 'bn' ? (activeExam?.nameBn || activeExam?.name) : activeExam?.name} • {activeExam?.academicYear}
                   </span>
-                  <h3 className="text-2xl font-black text-white">
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">
                     {examResultsData.isFail 
                       ? (language === 'bn' ? 'ফলাফল: অকৃতকার্য (Fail)' : 'Result: Failed')
                       : (language === 'bn' ? 'ফলাফল: উত্তীর্ণ (Passed)' : 'Result: Passed')}
                   </h3>
-                  <p className="text-xs text-slate-300 max-w-lg leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 max-w-lg leading-relaxed">
                     {examResultsData.remark 
                       ? examResultsData.remark
                       : (language === 'bn'
@@ -1166,44 +1241,44 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 {/* Score Badges */}
                 <div className="grid grid-cols-3 gap-3 text-center shrink-0">
                   {/* Total Marks */}
-                  <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
-                    <div className="text-[11px] text-slate-300 font-medium mb-1">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">
                       {language === 'bn' ? 'মোট প্রাপ্ত নম্বর' : 'Total Obtained'}
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-white">
+                    <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
                       {toBn(examResultsData.totalObtained)}
-                      <span className="text-xs text-slate-400 dark:text-slate-500 font-normal"> / {toBn(examResultsData.totalFullMarks)}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-normal"> / {toBn(examResultsData.totalFullMarks)}</span>
                     </div>
-                    <div className="text-[10px] text-indigo-300 font-bold mt-0.5">
+                    <div className="text-[10px] text-indigo-600 dark:text-indigo-300 font-bold mt-0.5">
                       {toBn(examResultsData.percentage)}%
                     </div>
                   </div>
 
                   {/* GPA */}
-                  <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
-                    <div className="text-[11px] text-slate-300 font-medium mb-1">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">
                       {language === 'bn' ? 'প্রাপ্ত জিপিএ' : 'GPA (Out of 5)'}
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-amber-400">
+                    <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">
                       {toBn(examResultsData.gpa)}
                     </div>
-                    <div className="text-[10px] text-amber-300 font-bold mt-0.5">
+                    <div className="text-[10px] text-amber-600 dark:text-amber-300 font-bold mt-0.5">
                       {language === 'bn' ? 'স্কেল: ৫.০০' : 'Scale 5.00'}
                     </div>
                   </div>
 
                   {/* Letter Grade */}
-                  <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
-                    <div className="text-[11px] text-slate-300 font-medium mb-1">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">
                       {language === 'bn' ? 'গ্রেড লেটার' : 'Letter Grade'}
                     </div>
                     <div className={`text-xl sm:text-2xl font-black ${
-                      examResultsData.letterGrade === 'A+' ? 'text-emerald-400' :
-                      examResultsData.letterGrade === 'F' ? 'text-rose-400' : 'text-blue-300'
+                      examResultsData.letterGrade === 'A+' ? 'text-emerald-600 dark:text-emerald-400' :
+                      examResultsData.letterGrade === 'F' ? 'text-rose-600 dark:text-rose-400' : 'text-blue-600 dark:text-blue-300'
                     }`}>
                       {examResultsData.letterGrade}
                     </div>
-                    <div className="text-[10px] text-slate-300 font-bold mt-0.5">
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
                       {examResultsData.isFail ? (language === 'bn' ? 'পুনর্বিবেচনা' : 'Review') : (language === 'bn' ? 'উত্তীর্ণ' : 'Pass')}
                     </div>
                   </div>
@@ -1509,12 +1584,12 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           )}
 
           {/* Exam Rules & Instructions Card */}
-          <div className="bg-slate-900 text-slate-200 rounded-2xl p-5 border border-slate-800 space-y-3">
-            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs sm:text-sm">
+          <div className="bg-white dark:bg-[#161c2e] text-slate-700 dark:text-slate-200 rounded-2xl p-5 border border-slate-200/80 dark:border-white/10 space-y-3">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs sm:text-sm">
               <AlertTriangle size={16} />
               <span>{language === 'bn' ? 'পরীক্ষার্থীদের জন্য জরুরি নির্দেশনাবলী' : 'Important Student Exam Guidelines'}</span>
             </div>
-            <ul className="text-xs space-y-1.5 text-slate-300 list-disc list-inside leading-relaxed">
+            <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300 list-disc list-inside leading-relaxed">
               <li>{language === 'bn' ? 'পরীক্ষা শুরুর অন্তত ৩০ মিনিট পূর্বে নিজ নিজ আসন গ্রহণ করতে হবে।' : 'Students must arrive and take their designated seats at least 30 minutes before exam start.'}</li>
               <li>{language === 'bn' ? 'অবশ্যই প্রবেশপত্র (Admit Card) ও শিক্ষার্থী আইডি কার্ড সাথে রাখতে হবে।' : 'Admit Card and Student ID card must be presented upon entering the examination hall.'}</li>
               <li>{language === 'bn' ? 'পরীক্ষার হলে কোনো প্রকার মোবাইল ফোন, স্মার্টওয়াচ বা অবৈধ কাগজপত্র বহন সম্পূর্ণ নিষিদ্ধ।' : 'Mobile phones, digital devices, and unauthorized notes are strictly prohibited.'}</li>
@@ -1553,17 +1628,17 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             <div className="w-full max-w-sm bg-white dark:bg-[#161c2e] rounded-3xl border-2 border-indigo-200 dark:border-indigo-500/30 overflow-hidden relative">
               
               {/* Institution Header */}
-              <div className="bg-indigo-800 text-white p-4 text-center space-y-1 relative">
-                <div className="w-10 h-10 rounded-full bg-white dark:bg-[#161c2e] text-indigo-800 font-bold mx-auto flex items-center justify-center text-sm">
+              <div className="bg-[var(--color-brand)] print:bg-indigo-800 text-white p-4 text-center space-y-1 relative">
+                <div className="w-10 h-10 rounded-full bg-white text-[var(--color-brand)] print:text-indigo-800 font-bold mx-auto flex items-center justify-center text-sm">
                   <GraduationCap size={20} />
                 </div>
                 <h4 className="text-xs font-black tracking-tight leading-tight uppercase">
                   {schoolProfile.nameBn || schoolProfile.name}
                 </h4>
-                <p className="text-[10px] text-indigo-200">
+                <p className="text-[10px] text-white/85">
                   {schoolProfile.addressBn || schoolProfile.address}
                 </p>
-                <div className="inline-block px-3 py-0.5 rounded-full bg-indigo-900/80 text-[10px] font-bold text-amber-300 border border-indigo-700">
+                <div className="inline-block px-3 py-0.5 rounded-full bg-black/15 text-[10px] font-bold text-amber-200 border border-white/25">
                   {language === 'bn' ? 'স্টুডেন্ট আইডি কার্ড' : 'STUDENT IDENTITY CARD'}
                 </div>
               </div>
@@ -1937,7 +2012,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       <NoticeBoardAlertBanner />
 
       {/* 1. STUDENT PROFILE HEADER CARD */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 text-white relative overflow-hidden print:hidden">
+      <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-7 text-slate-900 dark:text-slate-100 relative overflow-hidden print:hidden">
         
         {/* Ambient Top Glow */}
 
@@ -1951,10 +2026,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 <img 
                   src={currentStudent.photoUrl} 
                   alt={currentStudent.name} 
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-indigo-500/50"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2" style={{ borderColor: 'var(--color-brand-ring)' }}
                 />
               ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-indigo-600/30 border-2 border-indigo-500/40 text-indigo-300 flex items-center justify-center font-bold text-2xl sm:text-3xl">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 flex items-center justify-center font-bold text-2xl sm:text-3xl" style={{ backgroundColor: 'var(--color-brand-light)', borderColor: 'var(--color-brand-ring)', color: 'var(--color-brand)' }}>
                   {(currentStudent.name || 'S').charAt(0).toUpperCase()}
                 </div>
               )}
@@ -1966,41 +2041,41 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             {/* Info details */}
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                   {language === 'bn' ? (currentStudent.nameBn || currentStudent.name) : currentStudent.name}
                 </h2>
                 {language !== 'bn' && showSecondName(currentStudent.name, currentStudent.nameBn) && (
-                  <span className="text-xs text-slate-400 dark:text-slate-500 font-normal">({currentStudent.nameBn})</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">({currentStudent.nameBn})</span>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
                 <span className="flex items-center gap-1.5 font-medium">
-                  <span className="text-slate-400 dark:text-slate-500">{language === 'bn' ? 'আইডি:' : 'ID:'}</span>
-                  <span className="font-mono font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-800/60">
+                  <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'আইডি:' : 'ID:'}</span>
+                  <span className="font-mono font-bold px-2 py-0.5 rounded-md border" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}>
                     {currentStudent.studentId || currentStudent.id}
                   </span>
                 </span>
 
                 <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400 dark:text-slate-500">{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</span>
-                  <span className="font-bold text-white">{currentStudent.classLevel || studentClass}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'শ্রেণি:' : 'Class:'}</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{currentStudent.classLevel || studentClass}</span>
                 </span>
 
                 <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400 dark:text-slate-500">{language === 'bn' ? 'রোল:' : 'Roll:'}</span>
-                  <span className="font-bold text-white">{toBn(currentStudent.rollNumber || currentStudent.roll || '1')}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'রোল:' : 'Roll:'}</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{toBn(currentStudent.rollNumber || currentStudent.roll || '1')}</span>
                 </span>
 
                 {currentStudent.group && (
                   <span className="flex items-center gap-1.5">
-                    <span className="text-slate-400 dark:text-slate-500">{language === 'bn' ? 'বিভাগ:' : 'Group:'}</span>
-                    <span className="font-semibold text-slate-300">{currentStudent.group}</span>
+                    <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বিভাগ:' : 'Group:'}</span>
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">{currentStudent.group}</span>
                   </span>
                 )}
                 <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400 dark:text-slate-500">{language === 'bn' ? 'অবস্থা:' : 'Status:'}</span>
-                  <span className="font-semibold text-slate-300">
+                  <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'অবস্থা:' : 'Status:'}</span>
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">
                     {currentStudent.isFormer || currentStudent.status === 'Former' || currentStudent.status === 'archived'
                       ? (language === 'bn' ? 'প্রাক্তন' : 'Former')
                       : currentStudent.status === 'inactive' || currentStudent.status === 'Inactive'
@@ -2017,7 +2092,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               </div>
 
               {/* Extra Demographics */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
                 {currentStudent.fatherName && (
                   <span>{language === 'bn' ? 'পিতা: ' : 'Father: '}{language === 'bn' ? (currentStudent.fatherNameBn || currentStudent.fatherName) : currentStudent.fatherName}</span>
                 )}
@@ -2031,7 +2106,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   </span>
                 )}
                 {currentStudent.bloodGroup && (
-                  <span className="flex items-center gap-1 text-rose-400 font-bold">
+                  <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold">
                     <Droplet size={11} />
                     <span>{currentStudent.bloodGroup}</span>
                   </span>
@@ -2075,7 +2150,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             {onBack && (
               <button
                 onClick={onBack}
-                className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/15 transition cursor-pointer flex items-center gap-1.5"
               >
                 <ArrowLeft size={14} />
                 <span>{language === 'bn' ? 'মূল পাতা' : 'Back'}</span>
@@ -2084,10 +2159,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/15 transition cursor-pointer flex items-center gap-1.5"
               title={language === 'bn' ? 'প্রিন্ট করুন' : 'Print Document'}
             >
-              <Printer size={14} className="text-indigo-400" />
+              <Printer size={14} className="text-[var(--color-brand)]" />
               <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
             </button>
 
@@ -2095,18 +2170,18 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             {isStaffView && (
               <button
                 onClick={() => { if (isStaffView) { document.getElementById('profile-section-id_card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } else { setActiveTab('id_card'); } }}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/15 transition cursor-pointer flex items-center gap-1.5"
               >
-                <QrCode size={14} className="text-indigo-400" />
+                <QrCode size={14} className="text-[var(--color-brand)]" />
                 <span>{language === 'bn' ? 'আইডি কার্ড' : 'ID Card'}</span>
               </button>
             )}
             {isStaffView && onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('student_reports')}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/15 transition cursor-pointer flex items-center gap-1.5"
               >
-                <FileText size={14} className="text-indigo-400" />
+                <FileText size={14} className="text-[var(--color-brand)]" />
                 <span>{language === 'bn' ? 'রিপোর্ট কার্ড' : 'Report Card'}</span>
               </button>
             )}
@@ -2115,7 +2190,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 href={whatsappDuesLink}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 transition cursor-pointer flex items-center gap-1.5"
               >
                 <MessageCircle size={14} />
                 <span>{language === 'bn' ? 'বকেয়া WhatsApp' : 'WhatsApp Dues'}</span>
@@ -2124,7 +2199,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             <button
               onClick={handleLogout}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-50 dark:bg-rose-500/15 hover:bg-rose-100 dark:hover:bg-rose-500/25 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 transition cursor-pointer flex items-center gap-1.5"
               title={language === 'bn' ? 'অন্য আইডি দিয়ে প্রবেশ করুন' : 'Switch Student'}
             >
               <LogOut size={14} />
