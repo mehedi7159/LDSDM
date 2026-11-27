@@ -152,7 +152,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   // hamburger toggles it to expanded (icons + names). The old dark
   // slide-over drawer was removed entirely (3 Nov 2026) — its menus now
   // live in this rail, expanded in place.
-  const [isRailExpanded, setIsRailExpanded] = useState(false);
+  const [isRailExpanded, setIsRailExpanded] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
 

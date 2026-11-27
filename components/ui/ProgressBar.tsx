@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * ProgressBar — the standard progress track/fill (see DESIGN_NOTES in
  * components/ui/index.ts). Value is clamped to 0–100. Prefer semantic
- * tones (emerald = healthy/complete, indigo/brand = in progress,
+ * tones (emerald = healthy/complete, brand = in progress,
  * amber = attention, rose = critical) so colour means the same thing
  * on every screen.
  */
@@ -45,4 +45,4 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
 /** Semantic tone for a completion percentage (shared dashboard rule). */
 export const progressToneFor = (pct: number): ProgressTone =>
-  pct >= 90 ? 'emerald' : pct >= 50 ? 'indigo' : 'amber';
+  pct >= 90 ? 'emerald' : pct >= 50 ? 'brand' : 'amber';

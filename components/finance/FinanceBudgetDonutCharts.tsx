@@ -89,9 +89,9 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
           name: isBn ? 'অন্যান্য আয়' : 'Other Income',
           nameEn: 'Other Income',
           value: others,
-          color: '#8b5cf6', // Purple-500
-          bgLight: 'bg-purple-50 dark:bg-purple-950/50',
-          textColor: 'text-purple-700 dark:text-purple-400',
+          color: '#14b8a6', // Teal-500
+          bgLight: 'bg-[var(--color-brand-light)] dark:bg-teal-950/50',
+          textColor: 'text-[var(--color-brand)] dark:text-teal-300',
           percent: total > 0 ? Math.round((others / total) * 100) : 0,
         },
       ].filter(item => item.value > 0),
@@ -205,7 +205,7 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <Calendar className="w-3.5 h-3.5 text-[var(--color-brand)] dark:text-teal-300" />
             <span>{isBn ? 'চলতি মাস' : 'This Month'}</span>
           </button>
           <button
@@ -216,7 +216,7 @@ export const FinanceBudgetDonutCharts: React.FC<FinanceBudgetDonutChartsProps> =
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <Sparkles className="w-3.5 h-3.5 text-[var(--color-brand)] dark:text-teal-300" />
             <span>{isBn ? 'সর্বমোট সময়' : 'All Time'}</span>
           </button>
         </div>

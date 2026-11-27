@@ -203,9 +203,9 @@ export const NoticeBulkEmailModule: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in">
       {/* Top Banner */}
- <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-500/20">
+ <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
             {language === 'bn' ? 'শ্রেণিভিত্তিক বাল্ক ইমেইল ব্রডকাস্ট' : 'Class-based Bulk Email Dispatcher'}
           </h2>
         </div>
@@ -215,9 +215,9 @@ export const NoticeBulkEmailModule: React.FC = () => {
             type="button"
             onClick={handleCopyEmails}
             disabled={selectedEmails.length === 0}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-white/20 flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            {copiedSuccess ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+            {copiedSuccess ? <Check size={14} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={14} />}
             <span>{copiedSuccess ? (language === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (language === 'bn' ? 'ইমেইল কপি' : 'Copy Emails')}</span>
           </button>
         </div>
@@ -237,7 +237,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
  <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <Mail size={16} className="text-indigo-600" />
+              <Mail size={16} className="text-[var(--color-brand)]" />
               <span>{language === 'bn' ? 'ইমেইল বার্তা তৈরি করুন' : 'Compose Notice Email'}</span>
             </h3>
 
@@ -268,7 +268,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
               value={emailSubject}
               onChange={(e) => setEmailSubject(e.target.value)}
               placeholder={language === 'bn' ? 'যেমন: পবিত্র মাহে রমজান উপলক্ষে মাদ্রাসা ছুটির নোটিশ' : 'e.g. Ramadan Vacation Notice'}
-              className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-900"
+              className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bold text-slate-900"
             />
           </div>
 
@@ -283,7 +283,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
               value={emailContent}
               onChange={(e) => setEmailContent(e.target.value)}
               placeholder={language === 'bn' ? 'সম্মানিত অভিভাবকবৃন্দ, আসসালামু আলাইকুম ওয়া রাহমাতুল্লাহ...\n\nবিজ্ঞপ্তির বিস্তারিত বিবরণ এখানে লিখুন...' : 'Respected guardians, Assalamu Alaikum...'}
-              className="w-full p-3.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla leading-relaxed text-slate-800"
+              className="w-full p-3.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla leading-relaxed text-slate-800"
             />
           </div>
 
@@ -318,7 +318,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
           <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-slate-500 font-medium">
               <span>{language === 'bn' ? 'নির্বাচিত প্রাপক: ' : 'Selected Recipients: '}</span>
-              <strong className="text-indigo-600 font-black">{selectedEmails.length}</strong>
+              <strong className="text-[var(--color-brand)] font-black">{selectedEmails.length}</strong>
             </div>
 
             <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
                 type="button"
                 onClick={handleSimulatedDispatch}
                 disabled={isSending || selectedEmails.length === 0 || !emailSubject.trim() || !emailContent.trim()}
- className="px-5 py-2 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5"
+ className="px-5 py-2 text-xs font-black bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white flex items-center gap-1.5"
               >
                 <Send size={14} />
                 <span>
@@ -357,7 +357,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
               <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
                 {language === 'bn' ? 'প্রাপক নির্বাচন (Target Audience)' : 'Target Audience'}
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-md bg-[var(--color-brand-light)] text-[var(--color-brand)] text-[10px] font-bold">
                 {validRecipients.length} {language === 'bn' ? 'ইমেইল পাওয়া গেছে' : 'Emails'}
               </span>
             </div>
@@ -398,10 +398,10 @@ export const NoticeBulkEmailModule: React.FC = () => {
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="flex items-center gap-1.5 text-slate-700 hover:text-indigo-600 font-bold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-slate-700 hover:text-[var(--color-brand)] font-bold transition-colors cursor-pointer"
               >
                 {selectedStudentIds.size === validRecipients.length ? (
-                  <CheckSquare size={14} className="text-indigo-600" />
+                  <CheckSquare size={14} className="text-[var(--color-brand)]" />
                 ) : (
                   <Square size={14} />
                 )}
@@ -433,7 +433,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
                       key={student.id}
                       onClick={() => toggleStudent(student.id)}
                       className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between ${
-                        isSelected ? 'bg-indigo-50/40 hover:bg-indigo-50/70' : 'hover:bg-slate-50 opacity-60'
+                        isSelected ? 'bg-teal-50/40 hover:bg-teal-50/70' : 'hover:bg-slate-50 opacity-60'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 overflow-hidden">
@@ -441,11 +441,11 @@ export const NoticeBulkEmailModule: React.FC = () => {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleStudent(student.id)}
-                          className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                          className="rounded text-[var(--color-brand)] focus:ring-[var(--color-brand-ring)] cursor-pointer shrink-0"
                         />
                         <div className="truncate">
                           <span className="font-bold text-xs text-slate-900 block truncate">{student.name}</span>
-                          <span className="text-[10px] text-indigo-600 block truncate font-mono">{student.guardianEmail}</span>
+                          <span className="text-[10px] text-[var(--color-brand)] block truncate font-mono">{student.guardianEmail}</span>
                         </div>
                       </div>
 
@@ -486,7 +486,7 @@ export const NoticeBulkEmailModule: React.FC = () => {
  <div className="bg-white rounded-3xl p-5 border border-slate-200/80 space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <History size={15} className="text-indigo-600" />
+              <History size={15} className="text-[var(--color-brand)]" />
               <span>{language === 'bn' ? 'পূর্ববর্তী প্রেরিত ইমেইল লগ' : 'Recent Email Broadcast History'}</span>
             </h3>
             <span className="text-[11px] text-slate-400">{emailLogs.length} {language === 'bn' ? 'টি ক্যাম্পেইন' : 'campaigns'}</span>

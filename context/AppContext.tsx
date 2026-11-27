@@ -563,6 +563,11 @@ const defaultClasses: SchoolClass[] = [
   { id: '11', name: 'Class 10', order: 11 },
 ];
 
+// Job 5: class lists render in ladder order (Play -> Class 10), never
+// insertion order. Missing order sorts last (999), then by level.
+const sortClassesByOrder = (list: SchoolClass[]) =>
+  [...list].sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.level ?? 999) - (b.level ?? 999));
+
 const defaultAppUsers: AppUser[] = [
   {
     id: 'user_admin_01',
@@ -636,7 +641,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const [classes, setClasses] = useState<SchoolClass[]>(() => {
     const saved = localStorage.getItem('classes');
-    return saved ? JSON.parse(saved) : defaultClasses;
+    return sortClassesByOrder(saved ? JSON.parse(saved) : defaultClasses);
   });
 
   const [sections, setSections] = useState<Section[]>(() => {
@@ -2634,7 +2639,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   const applyClassesFieldFromRemote = (field: ClassesSplitField, records: any[], opts: { fromClassesCollection?: boolean } | undefined, snapshotApplied: Record<string, any>) => {
     if (opts?.fromClassesCollection || !classesFromCollectionRef.current) {
       if (field === 'classes') {
-        setClasses(records);
+        setClasses(sortClassesByOrder(records));
       } else if (field === 'academicYears') {
         setAcademicYears(records);
       } else {
@@ -4927,7 +4932,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const p = res.restoredPayload;
         if (p.schoolProfile) setSchoolProfile(p.schoolProfile);
         if (Array.isArray(p.students) && p.students.length > 0) setStudents(p.students);
-        if (Array.isArray(p.classes) && p.classes.length > 0) setClasses(p.classes);
+        if (Array.isArray(p.classes) && p.classes.length > 0) setClasses(sortClassesByOrder(p.classes));
         if (Array.isArray(p.subjects) && p.subjects.length > 0) setSubjects(p.subjects);
         if (Array.isArray(p.exams) && p.exams.length > 0) setExams(p.exams);
         if (Array.isArray(p.marks) && p.marks.length > 0) setMarks(p.marks);
@@ -6711,7 +6716,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         case 'exams': setExams(merged); break;
         case 'marks': setMarks(merged); break;
         case 'remarks': setRemarks(merged); break;
-        case 'classes': setClasses(merged); break;
+        case 'classes': setClasses(sortClassesByOrder(merged)); break;
         case 'academicYears': setAcademicYears(merged); break;
         case 'sections': setSections(merged); break;
         case 'transactions': setTransactions(merged); break;

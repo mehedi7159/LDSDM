@@ -390,8 +390,8 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 ক্লাউড ডেটাবেস সক্রিয় ও নিরাপদ
               </span>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 flex items-center gap-1.5">
-                <ShieldCheck size={13} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[var(--color-brand-light)] dark:bg-teal-500/10 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-500/30 flex items-center gap-1.5">
+                <ShieldCheck size={13} className="text-[var(--color-brand)] dark:text-teal-300" />
                 অ্যাডমিন: {authUser?.email || adminEmail || SUPER_ADMIN_EMAIL}
               </span>
             </div>
@@ -399,7 +399,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             {/* Live System Counter Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
-                <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-1">
+                <div className="flex items-center justify-between text-[var(--color-brand)] dark:text-teal-300 text-xs font-semibold mb-1">
                   <span>মোট শিক্ষার্থী</span>
                 </div>
                 <div className="text-3xl font-black text-slate-900 dark:text-white">
@@ -468,7 +468,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
               ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
               : statusMessage.type === 'warning'
               ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800'
-              : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800'
+              : 'bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-slate-900 dark:text-teal-200 border border-[var(--color-brand-ring)] dark:border-teal-800'
           }`}
         >
           <div className="flex items-center gap-2.5">
@@ -479,7 +479,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             ) : statusMessage.type === 'warning' ? (
               <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
             ) : (
-              <Info size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <Info size={18} className="text-[var(--color-brand)] dark:text-teal-300 shrink-0" />
             )}
             <span>{statusMessage.text}</span>
           </div>
@@ -545,7 +545,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         {/* Module 1: Download Full Backup */}
  <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 transition-all flex flex-col justify-between">
           <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 flex items-center justify-center font-bold">
               <Download size={24} />
             </div>
             <div>
@@ -569,7 +569,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             </div>
             <button
               onClick={handleDownloadBackup}
- className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
+ className="px-4 py-2.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] active:scale-95 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <Download size={14} />
               <span>ব্যাকআপ ফাইল নামান</span>
@@ -747,7 +747,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Clock className="text-indigo-600 dark:text-indigo-400" size={18} />
+              <Clock className="text-[var(--color-brand)] dark:text-teal-300" size={18} />
               স্বয়ংক্রিয় নিরাপত্তা স্ন্যাপশট ও রোলব্যাক ইতিহাস
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -769,7 +769,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
             value={snapFilter}
             onChange={(e) => { setSnapFilter(e.target.value); setSnapPage(0); }}
             placeholder="লেবেল দিয়ে খুঁজুন..."
-            className="flex-1 min-w-[180px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 min-w-[180px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
           />
           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
             মোট {filteredSnapshots.length}টি লোকাল স্ন্যাপশট
@@ -809,7 +809,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                       <span className="font-semibold text-slate-800 dark:text-slate-100">{snap.labelBn || snap.labelEn}</span>
                       <span className="flex flex-wrap gap-1 mt-1">
                         {snap.pinned ? (
-                          <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">পিন করা</span>
+                          <span className="px-1.5 py-0.5 rounded bg-[var(--color-brand-light)] dark:bg-teal-900/50 text-[var(--color-brand)] dark:text-teal-300 text-[10px] font-bold">পিন করা</span>
                         ) : null}
                         {snapshotIsDegraded(snap) ? (
                           <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-[10px] font-bold">ক্ষতিগ্রস্ত</span>
@@ -826,7 +826,7 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
                       <button
                         onClick={() => openVaultPreview(snap)}
                         disabled={isRollingBack || isPreviewLoading}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 font-bold text-[11px] transition-colors cursor-pointer inline-flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-lg bg-[var(--color-brand-light)] dark:bg-teal-950/50 hover:bg-[var(--color-brand-light)] dark:hover:bg-teal-900/50 text-[var(--color-brand)] dark:text-teal-300 font-bold text-[11px] transition-colors cursor-pointer inline-flex items-center gap-1"
                       >
                         <RotateCcw size={12} />
                         <span>রোলব্যাক</span>

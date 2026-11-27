@@ -431,7 +431,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
       <div className="p-5 sm:p-6 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/20">
+            <span className="p-2 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-400/20">
               <GraduationCap className="h-5 w-5" />
             </span>
             <div>
@@ -446,7 +446,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Class Filter Dropdown */}
           <div className="flex items-center gap-1.5 bg-slate-800/90 rounded-xl px-3 py-1.5 border border-slate-700">
-            <Filter className="h-3.5 w-3.5 text-indigo-300" />
+            <Filter className="h-3.5 w-3.5 text-teal-300" />
             <select
               id="student-perf-class-filter"
               value={selectedClassFilter}
@@ -475,7 +475,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
               placeholder={language === 'bn' ? 'নাম / রোল / আইডি খুঁজুন...' : 'Search student...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 bg-slate-800/90 text-white placeholder-slate-400 text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44 sm:w-56"
+              className="pl-8 pr-3 py-1.5 bg-slate-800/90 text-white placeholder-slate-400 text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] w-44 sm:w-56"
             />
           </div>
         </div>
@@ -501,7 +501,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
               value={currentStudent?.id || ''}
               onChange={(e) => setSelectedStudentId(e.target.value)}
               aria-label={language === 'bn' ? 'শিক্ষার্থী নির্বাচন করুন' : 'Select Student'}
-              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer truncate"
+              className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] focus:border-[var(--color-brand-ring)] transition cursor-pointer truncate"
             >
               {filteredStudents.length === 0 ? (
                 <option value="">{language === 'bn' ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No student found'}</option>
@@ -531,7 +531,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold">
               <span className="text-slate-400 font-normal">{language === 'bn' ? 'রোল:' : 'Roll:'}</span>
-              <span className="font-mono text-indigo-700">{toBanglaDigits(currentStudent.roll || '—')}</span>
+              <span className="font-mono text-[var(--color-brand)]">{toBanglaDigits(currentStudent.roll || '—')}</span>
             </span>
 
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold">
@@ -539,8 +539,8 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
               <span className="font-mono text-slate-800">{toBanglaDigits(currentStudent.studentId || currentStudent.id || '—')}</span>
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-800 font-bold">
-              <span className="text-indigo-400 font-normal">{language === 'bn' ? 'শ্রেণী:' : 'Class:'}</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-brand-light)] border border-[var(--color-brand-ring)] text-[var(--color-brand)] font-bold">
+              <span className="text-[var(--color-brand)] font-normal">{language === 'bn' ? 'শ্রেণী:' : 'Class:'}</span>
               <span>{getClassNameDisplay(currentStudent.classLevel)}</span>
             </span>
 
@@ -579,15 +579,15 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
             </div>
 
             {/* KPI 2: Overall Avg GPA */}
-            <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-100/80 space-y-1">
-              <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1">
+            <div className="p-4 rounded-xl bg-teal-50/60 border border-teal-100/80 space-y-1">
+              <div className="text-[11px] font-bold text-[var(--color-brand)] uppercase tracking-wider flex items-center gap-1">
                 {language === 'bn' ? 'গড় জিপিএ (সকল পরীক্ষা)' : 'Cumulative GPA'}
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-indigo-700 font-mono">
+              <div className="text-2xl sm:text-3xl font-black text-[var(--color-brand)] font-mono">
                 {toBanglaDigits(overallMetrics.avgGpa.toFixed(2))}
-                <span className="text-xs font-normal text-indigo-400 ml-1">/ ৫.০০</span>
+                <span className="text-xs font-normal text-[var(--color-brand)] ml-1">/ ৫.০০</span>
               </div>
-              <div className="text-[11px] text-indigo-600 font-semibold">
+              <div className="text-[11px] text-[var(--color-brand)] font-semibold">
                 {language === 'bn' ? `গড় নম্বর: ${toBanglaDigits(overallMetrics.avgMarksPercent)}%` : `Avg Score: ${overallMetrics.avgMarksPercent}%`}
               </div>
             </div>
@@ -652,13 +652,13 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
           <div className={`p-4 sm:p-5 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
             trajectoryAnalysis.color === 'emerald' ? 'bg-emerald-50/40 border-emerald-200/80 text-emerald-900' :
             trajectoryAnalysis.color === 'rose' ? 'bg-rose-50/40 border-rose-200/80 text-rose-900' :
-            'bg-indigo-50/40 border-indigo-200/80 text-indigo-900'
+            'bg-teal-50/40 border-teal-200/80 text-teal-900'
           }`}>
             <div className="flex items-start gap-3">
               <div className={`p-2 rounded-xl mt-0.5 shrink-0 ${
                 trajectoryAnalysis.color === 'emerald' ? 'bg-emerald-500 text-white' :
                 trajectoryAnalysis.color === 'rose' ? 'bg-rose-500 text-white' :
-                'bg-indigo-600 text-white'
+                'bg-[var(--color-brand)] text-white'
               }`}>
                 {trajectoryAnalysis.color === 'emerald' ? <TrendingUp className="h-5 w-5" /> :
                  trajectoryAnalysis.color === 'rose' ? <AlertTriangle className="h-5 w-5" /> :
@@ -670,7 +670,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
                     trajectoryAnalysis.color === 'emerald' ? 'bg-emerald-100 border-emerald-200 text-emerald-800' :
                     trajectoryAnalysis.color === 'rose' ? 'bg-rose-100 border-rose-200 text-rose-800' :
-                    'bg-indigo-100 border-indigo-200 text-indigo-800'
+                    'bg-[var(--color-brand-light)] border-[var(--color-brand-ring)] text-[var(--color-brand)]'
                   }`}>
                     {language === 'bn' ? trajectoryAnalysis.labelBn : trajectoryAnalysis.labelEn}
                   </span>
@@ -707,13 +707,13 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div className="space-y-0.5">
                   <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-indigo-600" />
+                    <BarChart3 className="h-4 w-4 text-[var(--color-brand)]" />
                     {language === 'bn' ? 'পরীক্ষাসমূহের ফলাফলের ধারা ও গ্রাফিক্যাল ট্রেন্ড' : 'Exam Performance Progression Graph'}
                   </h3>
                 </div>
                 <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
                   <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-brand)]" />
                     {language === 'bn' ? 'জিপিএ (GPA)' : 'GPA'}
                   </span>
                   <span className="flex items-center gap-1.5">
@@ -728,7 +728,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                   <LineChart data={chartTrajectoryData} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tickMargin={8} stroke="#64748b" />
-                    <YAxis yAxisId="left" domain={[0, 5]} fontSize={11} tickLine={false} axisLine={false} stroke="#6366f1" tickFormatter={(v) => toBanglaDigits(v)} />
+                    <YAxis yAxisId="left" domain={[0, 5]} fontSize={11} tickLine={false} axisLine={false} stroke="#0d9488" tickFormatter={(v) => toBanglaDigits(v)} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} fontSize={11} tickLine={false} axisLine={false} stroke="#10b981" tickFormatter={(v) => `${toBanglaDigits(v)}%`} />
                     <RechartsTooltip 
                       cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '3 3' }}
@@ -744,7 +744,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                               </span>
                             </div>
                             <div className="space-y-1.5">
-                              <div className="flex items-center justify-between gap-4 text-indigo-700 font-bold">
+                              <div className="flex items-center justify-between gap-4 text-[var(--color-brand)] font-bold">
                                 <span>{language === 'bn' ? 'অর্জিত জিপিএ:' : 'GPA:'}</span>
                                 <span className="font-mono text-sm font-black">{toBanglaDigits(Number(data.GPA).toFixed(2))} <span className="text-[10px] text-slate-400">({data.grade})</span></span>
                               </div>
@@ -763,7 +763,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                         );
                       }}
                     />
-                    <Line yAxisId="left" type="monotone" dataKey="GPA" stroke="#6366f1" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#6366f1' }} activeDot={{ r: 7 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="GPA" stroke="#0d9488" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#0d9488' }} activeDot={{ r: 7 }} />
                     <Line yAxisId="right" type="monotone" dataKey="Percentage" stroke="#10b981" strokeWidth={2.5} strokeDasharray="4 4" dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#10b981' }} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -775,7 +775,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-indigo-600" />
+                <BookOpen className="h-5 w-5 text-[var(--color-brand)]" />
                 {language === 'bn' ? 'বিষয়ভিত্তিক দক্ষতা ও দুর্বলতার পর্যালোচনা' : 'Subject Strengths & Weaknesses Analysis'}
               </h3>
               <span className="text-xs text-slate-500 font-medium">
@@ -905,7 +905,7 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-indigo-600" />
+                <Calendar className="h-5 w-5 text-[var(--color-brand)]" />
                 {language === 'bn' ? 'সকল পরীক্ষার ফলাফল তালিকা' : 'Complete Exam History Records'}
               </h3>
               <span className="text-xs text-slate-500 font-medium">
@@ -945,12 +945,12 @@ export const StudentPerformanceCard: React.FC<StudentPerformanceCardProps> = ({
                         <td className="py-3 px-3.5 text-right font-mono">
                           {isEvaluated ? `${toBanglaDigits(rec.marksPercentage)}%` : '—'}
                         </td>
-                        <td className="py-3 px-3.5 text-right font-mono font-black text-indigo-700">
+                        <td className="py-3 px-3.5 text-right font-mono font-black text-[var(--color-brand)]">
                           {isEvaluated ? toBanglaDigits(rec.gpa.toFixed(2)) : '—'}
                         </td>
                         <td className="py-3 px-3.5 text-center">
                           {isEvaluated ? (
-                            <span className="font-bold px-2 py-0.5 rounded text-[11px] bg-indigo-50 text-indigo-800 border border-indigo-100">
+                            <span className="font-bold px-2 py-0.5 rounded text-[11px] bg-[var(--color-brand-light)] text-[var(--color-brand)] border border-[var(--color-brand-ring)]">
                               {rec.grade}
                             </span>
                           ) : '—'}

@@ -469,7 +469,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
   if (totalEvaluationsCount === 0) {
     return (
       <div className="bg-white rounded-2xl p-8 border border-slate-100/90 text-center py-12 space-y-3">
-        <div className="mx-auto h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+        <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-brand-light)] text-[var(--color-brand)] flex items-center justify-center">
           <BarChart3 size={24} />
         </div>
         <h4 className="text-base font-bold text-slate-800">
@@ -497,7 +497,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-5 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+            <div className="p-2 bg-[var(--color-brand-light)] text-[var(--color-brand)] rounded-xl">
               <BarChart3 size={22} />
             </div>
             <h3 className="text-xl font-bold text-slate-800 tracking-tight">
@@ -516,7 +516,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setExamScope('current')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 examScope === 'current' 
-                  ? 'bg-white text-indigo-600'
+                  ? 'bg-white text-[var(--color-brand)]'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -526,7 +526,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setExamScope('all')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 examScope === 'all' 
-                  ? 'bg-white text-indigo-600'
+                  ? 'bg-white text-[var(--color-brand)]'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -540,7 +540,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setViewMode('aggregated')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 viewMode === 'aggregated' 
-                  ? 'bg-white text-indigo-600'
+                  ? 'bg-white text-[var(--color-brand)]'
                   : 'hover:text-slate-900'
               }`}
               title={language === 'bn' ? 'বিভিন্ন শ্রেণীর একই বিষয় একসাথে মিলিয়ে বিশ্লেষণ' : 'Group same subjects across classes'}
@@ -551,7 +551,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               onClick={() => setViewMode('byClass')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 viewMode === 'byClass' 
-                  ? 'bg-white text-indigo-600'
+                  ? 'bg-white text-[var(--color-brand)]'
                   : 'hover:text-slate-900'
               }`}
             >
@@ -587,11 +587,11 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
             {toBanglaDigits((aggregatedSubjects || []).filter(s => s && s.status === 'NEEDS_ATTENTION').length)}
           </span>
         </div>
-        <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl">
-          <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block">
+        <div className="p-3.5 bg-teal-50/60 border border-[var(--color-brand-ring)] rounded-xl">
+          <span className="text-xs font-bold text-[var(--color-brand)] uppercase tracking-wider block">
             {language === 'bn' ? 'সামগ্রিক পাসের হার' : 'Overall Pass Rate'}
           </span>
-          <span className="text-xl font-black font-mono text-indigo-800 mt-0.5 block">
+          <span className="text-xl font-black font-mono text-[var(--color-brand)] mt-0.5 block">
             {toBanglaDigits(overallPassRate)}%
           </span>
         </div>
@@ -765,7 +765,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <div>
             <h4 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
-              <TrendingUp size={18} className="text-indigo-600" />
+              <TrendingUp size={18} className="text-[var(--color-brand)]" />
               {language === 'bn' 
                 ? 'বিষয়ভিত্তিক তুলনামূলক ফলাফল: গড় নম্বর বনাম ফেলের হার' 
                 : 'Comparative Subject Analytics: Average Score vs. Failure Rate'}
@@ -773,7 +773,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
             <span className="flex items-center gap-1.5 text-slate-700">
-              <span className="h-3 w-3 rounded-xs bg-indigo-600 inline-block" />
+              <span className="h-3 w-3 rounded-xs bg-[var(--color-brand)] inline-block" />
               {language === 'bn' ? 'গড় নম্বর (%)' : 'Average Score (%)'}
             </span>
             <span className="flex items-center gap-1.5 text-slate-700">
@@ -828,9 +828,9 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                         )}
                       </div>
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-4 text-indigo-700 font-bold">
+                        <div className="flex items-center justify-between gap-4 text-[var(--color-brand)] font-bold">
                           <span className="flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full bg-indigo-600 inline-block" />
+                            <span className="h-2 w-2 rounded-full bg-[var(--color-brand)] inline-block" />
                             {language === 'bn' ? 'গড় অর্জিত নম্বর:' : 'Avg Score:'}
                           </span>
                           <span className="font-mono font-black text-sm">{toBanglaDigits(data.avgScore)}%</span>
@@ -861,7 +861,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               <Bar 
                 dataKey="avgScore" 
                 name={language === 'bn' ? 'গড় নম্বর' : 'Avg Score'} 
-                fill="#6366f1" 
+                fill="#0d9488" 
                 radius={[5, 5, 0, 0]} 
                 barSize={16} 
               />
@@ -922,7 +922,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
               placeholder={language === 'bn' ? 'বিষয় অনুসন্ধান...' : 'Search subject...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200/80 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200/80 rounded-xl focus:bg-white focus:border-[var(--color-brand-ring)] focus:ring-1 focus:ring-[var(--color-brand-ring)] outline-none transition-all"
             />
           </div>
         </div>
@@ -981,7 +981,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                         <td className="py-3 px-3 text-right font-mono font-bold text-rose-600">
                           {sub.failRate > 0 ? `${toBanglaDigits(sub.failRate)}%` : '০%'}
                         </td>
-                        <td className="py-3 px-3 text-center font-mono font-semibold text-indigo-700">
+                        <td className="py-3 px-3 text-center font-mono font-semibold text-[var(--color-brand)]">
                           {toBanglaDigits(sub.aPlusRate)}% ({toBanglaDigits(sub.aPlusCount)})
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -1005,7 +1005,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                           {sub.classBreakdown.length > 1 ? (
                             <button
                               onClick={() => toggleExpand(sub.canonicalKey)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                              className="p-1 rounded-lg text-slate-400 hover:text-[var(--color-brand)] hover:bg-[var(--color-brand-light)] transition-all"
                               title={language === 'bn' ? 'শ্রেণীভিত্তিক বিস্তারিত দেখুন' : 'View class breakdown'}
                             >
                               {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -1022,7 +1022,7 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
                           <td colSpan={9} className="p-3 pl-8">
                             <div className="bg-white rounded-xl p-3 border border-slate-200/80 space-y-2">
                               <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                <Layers size={14} className="text-indigo-600" />
+                                <Layers size={14} className="text-[var(--color-brand)]" />
                                 {language === 'bn' 
                                   ? `${sub.nameBn || sub.name} এর শ্রেণীভিত্তিক ফলাফল পর্যালোচনা:` 
                                   : `Class-by-Class Breakdown for ${sub.name}:`}
@@ -1068,15 +1068,15 @@ export const SubjectPerformanceAnalytics: React.FC<SubjectPerformanceAnalyticsPr
       </div>
 
       {/* Actionable Pedagogical Recommendations */}
-      <div className="p-4 bg-indigo-50/40 border border-indigo-100 rounded-xl flex items-start gap-3">
-        <div className="p-1.5 bg-indigo-100 text-indigo-700 rounded-lg shrink-0 mt-0.5">
+      <div className="p-4 bg-teal-50/40 border border-[var(--color-brand-ring)] rounded-xl flex items-start gap-3">
+        <div className="p-1.5 bg-[var(--color-brand-light)] text-[var(--color-brand)] rounded-lg shrink-0 mt-0.5">
           <Sparkles size={18} />
         </div>
         <div className="space-y-1 text-xs">
-          <h5 className="font-bold text-indigo-950">
+          <h5 className="font-bold text-slate-900">
             {language === 'bn' ? 'শিক্ষক ও প্রশাসনের জন্য পরামর্শমূলক দিকনির্দেশনা' : 'Actionable Academic Recommendations'}
           </h5>
-          <p className="text-indigo-800 leading-relaxed">
+          <p className="text-[var(--color-brand)] leading-relaxed">
             {language === 'bn' ? (
               <>
                 {weakestSubjects.length > 0 ? (

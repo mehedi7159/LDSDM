@@ -54,7 +54,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const academicYear = schoolProfile.academicYear || '২০২৬';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-sans selection:bg-[var(--color-brand)] selection:text-white relative overflow-x-hidden">
       
       {/* Background Subtle Ambient Glow */}
 
@@ -164,37 +164,37 @@ export const LandingView: React.FC<LandingViewProps> = ({
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onStudentProfile?.(); }}
- className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
+ className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-[var(--color-brand-ring)] dark:hover:border-teal-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
- <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+ <div className="w-14 h-14 rounded-2xl bg-[var(--color-brand-light)] dark:bg-teal-950/50 border border-[var(--color-brand-ring)] dark:border-teal-800 text-[var(--color-brand)] dark:text-teal-300 flex items-center justify-center group-hover:scale-105 transition-transform">
                     <GraduationCap size={28} />
                   </div>
-                  <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 px-2.5 py-1 rounded-full">
+                  <span className="text-[11px] font-semibold text-[var(--color-brand)] dark:text-teal-300 bg-[var(--color-brand-light)] dark:bg-teal-950/50 border border-[var(--color-brand-ring)] dark:border-teal-800/60 px-2.5 py-1 rounded-full">
                     {language === 'bn' ? 'শিক্ষার্থী পোর্টাল' : 'Student Portal'}
                   </span>
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex items-center justify-between">
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[var(--color-brand)] dark:group-hover:text-teal-300 transition-colors flex items-center justify-between">
                     <span>{language === 'bn' ? 'শিক্ষার্থী প্রোফাইল' : 'Student Profile'}</span>
-                    <ChevronRight size={20} className="text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                    <ChevronRight size={20} className="text-slate-400 group-hover:text-[var(--color-brand)] group-hover:translate-x-1 transition-all" />
                   </h3>
                 </div>
 
                 {/* Key Points */}
                 <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-300">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-indigo-500 dark:text-indigo-400 shrink-0" />
+                    <CheckCircle2 size={14} className="text-[var(--color-brand)] dark:text-teal-300 shrink-0" />
                     <span>{language === 'bn' ? 'মাসভিত্তিক দিনওয়ারি হাজিরা খতিয়ান' : 'Daily & monthly attendance log'}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-indigo-500 dark:text-indigo-400 shrink-0" />
+                    <CheckCircle2 size={14} className="text-[var(--color-brand)] dark:text-teal-300 shrink-0" />
                     <span>{language === 'bn' ? 'বিষয়ভিত্তিক নম্বর ও জিপিএ মূল্যায়ন' : 'Subject marks & GPA breakdown'}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-indigo-500 dark:text-indigo-400 shrink-0" />
+                    <CheckCircle2 size={14} className="text-[var(--color-brand)] dark:text-teal-300 shrink-0" />
                     <span>{language === 'bn' ? 'আসন্ন পরীক্ষার রুটিন ও সিডিউল' : 'Upcoming exam routine & countdown'}</span>
                   </div>
                 </div>
@@ -277,37 +277,37 @@ export const LandingView: React.FC<LandingViewProps> = ({
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAdminLogin?.(); }}
- className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-blue-500"
+ className="group relative bg-white dark:bg-slate-900 hover:bg-white border border-slate-200/80 dark:border-slate-800 hover:border-[var(--color-brand-ring)] dark:hover:border-teal-500/60 rounded-3xl p-6 sm:p-7 transition-all duration-300 cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
- <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+ <div className="w-14 h-14 rounded-2xl bg-[var(--color-brand-light)] dark:bg-teal-950/50 border border-[var(--color-brand-ring)] dark:border-teal-800 text-[var(--color-brand)] dark:text-teal-300 flex items-center justify-center group-hover:scale-105 transition-transform">
                     <LogIn size={28} />
                   </div>
-                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-full">
+                  <span className="text-[11px] font-semibold text-[var(--color-brand)] dark:text-teal-300 bg-[var(--color-brand-light)] dark:bg-teal-950/50 border border-[var(--color-brand-ring)] dark:border-teal-800/60 px-2.5 py-1 rounded-full">
                     {language === 'bn' ? 'অফিসিয়াল' : 'Staff Portal'}
                   </span>
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center justify-between">
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-[var(--color-brand)] dark:group-hover:text-teal-300 transition-colors flex items-center justify-between">
                     <span>{language === 'bn' ? 'অ্যাডমিন লগইন' : 'Admin Login'}</span>
-                    <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                    <ChevronRight size={20} className="text-slate-400 group-hover:text-[var(--color-brand)] group-hover:translate-x-1 transition-all" />
                   </h3>
                 </div>
 
                 {/* Key Points */}
                 <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-300">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                    <CheckCircle2 size={14} className="text-[var(--color-brand)] dark:text-teal-300 shrink-0" />
                     <span>{language === 'bn' ? 'রোল-ভিত্তিক সিকিউর লগইন সিস্টেম' : 'Role-based access & permissions'}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                    <CheckCircle2 size={14} className="text-[var(--color-brand)] dark:text-teal-300 shrink-0" />
                     <span>{language === 'bn' ? 'মার্কস এন্ট্রি, হাজিরা ও হিসাব খতিয়ান' : 'Grade entry, attendance & finance'}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                    <CheckCircle2 size={14} className="text-[var(--color-brand)] dark:text-teal-300 shrink-0" />
                     <span>{language === 'bn' ? 'ক্লাউড ও লোকাল ডাটা ব্যাকআপ' : 'Cloud and local backup system'}</span>
                   </div>
                 </div>

@@ -290,7 +290,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           </div>
           <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
             <span>মোট ক্লাস: {toBanglaDigits(classes.length)} টি</span>
-            <ChevronRight size={13} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+            <ChevronRight size={13} className="text-slate-400 group-hover:text-[var(--color-brand)] transition-colors" />
           </div>
         </div>
 
@@ -332,17 +332,17 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
               </span>
             </div>
             <div className="mt-2">
-              <h3 className={`text-4xl font-black tracking-tight ${financeStats.balance >= 0 ? 'text-indigo-900' : 'text-rose-600'}`}>
+              <h3 className={`text-4xl font-black tracking-tight ${financeStats.balance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
                 ৳ {toBanglaDigits(financeStats.balance.toLocaleString())}
               </h3>
-              <p className="text-[11px] text-purple-700 font-bold mt-0.5 flex items-center gap-1">
+              <p className="text-[11px] text-[var(--color-brand)] font-bold mt-0.5 flex items-center gap-1">
                 <span>{language === 'bn' ? `মোট আদায়: ৳ ${toBanglaDigits(financeStats.income.toLocaleString())}` : `Total Inflow: ৳ ${financeStats.income}`}</span>
               </p>
             </div>
           </div>
           <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
             <span>ব্যয়: ৳ {toBanglaDigits(financeStats.expense.toLocaleString())}</span>
-            <ChevronRight size={13} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
+            <ChevronRight size={13} className="text-slate-400 group-hover:text-[var(--color-brand)] transition-colors" />
           </div>
         </div>
       </div>
@@ -351,7 +351,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-indigo-600" />
+            <Sparkles size={16} className="text-[var(--color-brand)]" />
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">
               {language === 'bn' ? 'দ্রুত কার্যক্রম লঞ্চপ্যাড' : 'Instant Operations Launchpad'}
             </h3>
@@ -362,9 +362,9 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           {/* Action 1: Add Student */}
           <button
             onClick={() => onNavigate('students')}
-            className="p-3.5 rounded-2xl bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-900 border border-emerald-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
+            className="p-3.5 rounded-2xl bg-[var(--color-brand-light)] hover:bg-[var(--color-brand-light)] text-slate-900 border border-[var(--color-brand-ring)] transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-[var(--color-brand)] text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <UserPlus size={16} />
             </div>
             <div>
@@ -375,9 +375,9 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           {/* Action 2: Marks Entry */}
           <button
             onClick={() => onNavigate('marks')}
-            className="p-3.5 rounded-2xl bg-blue-50/70 hover:bg-blue-100/80 text-blue-900 border border-blue-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
+            className="p-3.5 rounded-2xl bg-[var(--color-brand-light)] hover:bg-[var(--color-brand-light)] text-slate-900 border border-[var(--color-brand-ring)] transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-[var(--color-brand)] text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <PenTool size={16} />
             </div>
             <div>
@@ -388,9 +388,9 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           {/* Action 3: Attendance */}
           <button
             onClick={() => onNavigate('attendance')}
-            className="p-3.5 rounded-2xl bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-900 border border-indigo-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
+            className="p-3.5 rounded-2xl bg-[var(--color-brand-light)] hover:bg-[var(--color-brand-light)] text-slate-900 border border-[var(--color-brand-ring)] transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-[var(--color-brand)] text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <CheckCircle2 size={16} />
             </div>
             <div>
@@ -401,9 +401,9 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           {/* Action 4: Fee Collection */}
           <button
             onClick={() => onNavigate('finance')}
-            className="p-3.5 rounded-2xl bg-purple-50/70 hover:bg-purple-100/80 text-purple-900 border border-purple-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
+            className="p-3.5 rounded-2xl bg-[var(--color-brand-light)] hover:bg-[var(--color-brand-light)] text-slate-900 border border-[var(--color-brand-ring)] transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-[var(--color-brand)] text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Receipt size={16} />
             </div>
             <div>
@@ -414,9 +414,9 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           {/* Action 5: Notice & Diary */}
           <button
             onClick={() => onNavigate('notices')}
-            className="p-3.5 rounded-2xl bg-amber-50/70 hover:bg-amber-100/80 text-amber-900 border border-amber-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
+            className="p-3.5 rounded-2xl bg-[var(--color-brand-light)] hover:bg-[var(--color-brand-light)] text-slate-900 border border-[var(--color-brand-ring)] transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-[var(--color-brand)] text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Megaphone size={16} />
             </div>
             <div>
@@ -427,9 +427,9 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           {/* Action 6: Web Results */}
           <button
             onClick={() => onNavigate('web_results')}
-            className="p-3.5 rounded-2xl bg-teal-50/70 hover:bg-teal-100/80 text-teal-900 border border-teal-200/70 transition-all text-left group cursor-pointer flex flex-col justify-between"
+            className="p-3.5 rounded-2xl bg-[var(--color-brand-light)] hover:bg-[var(--color-brand-light)] text-slate-900 border border-[var(--color-brand-ring)] transition-all text-left group cursor-pointer flex flex-col justify-between"
           >
-            <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-[var(--color-brand)] text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Award size={16} />
             </div>
             <div>
@@ -449,13 +449,13 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <Layers size={16} className="text-indigo-600" />
+                <Layers size={16} className="text-[var(--color-brand)]" />
                 <span>{language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী শক্তি ও বণ্টন' : 'Class Strength Distribution'}</span>
               </h3>
             </div>
             <button
               onClick={() => onNavigate('students')}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-[var(--color-brand)] hover:text-[var(--color-brand)] flex items-center gap-1 cursor-pointer"
             >
               <span>{language === 'bn' ? 'তালিকা' : 'Directory'}</span>
               <ArrowRight size={13} />
@@ -472,13 +472,13 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
                     <span className="text-[10px] font-mono text-slate-400">{toBanglaDigits(percentage)}%</span>
                   </div>
                   <div className="mt-2 flex items-baseline justify-between">
-                    <span className="text-xl font-black text-indigo-950">{toBanglaDigits(item.count)}</span>
+                    <span className="text-xl font-black text-slate-900">{toBanglaDigits(item.count)}</span>
                     <span className="text-[10px] text-slate-400">{language === 'bn' ? 'জন তালিব' : 'students'}</span>
                   </div>
                   {/* Micro Progress Bar */}
                   <div className="w-full bg-slate-200/60 rounded-full h-1.5 mt-2 overflow-hidden">
                     <div 
-                      className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500" 
+                      className="bg-[var(--color-brand)] h-1.5 rounded-full transition-all duration-500" 
                       style={{ width: `${Math.min(100, Math.max(5, Number(percentage)))}%` }} 
                     />
                   </div>
@@ -532,7 +532,7 @@ export const ExecutiveInstitutionalDashboard: React.FC<ExecutiveDashboardProps> 
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="font-black text-indigo-700 block font-mono text-xs">
+                    <span className="font-black text-[var(--color-brand)] block font-mono text-xs">
                       GPA {toBanglaDigits(item.gpa.toFixed(2))}
                     </span>
                     <span className="text-[10px] font-bold text-slate-400">

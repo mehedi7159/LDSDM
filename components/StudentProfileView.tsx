@@ -1856,7 +1856,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           {/* 5.1 Fee arrangement */}
           <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Banknote size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Banknote size={18} className="text-[var(--color-brand)] dark:text-teal-300" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                 {language === 'bn' ? 'টিউশন ফি ব্যবস্থা' : 'Tuition Fee Arrangement'}
               </h3>
@@ -2112,9 +2112,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">{language === 'bn' ? 'সমাপ্ত মাসের বকেয়া' : 'Finished months’ dues'}</div>
       </div>
       <div className="grid grid-cols-2 gap-2 mt-2">
-        <div className="rounded-xl bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-100 p-3 text-center">
+        <div className="rounded-xl bg-[var(--color-brand-light)] dark:bg-teal-500/15 border border-[var(--color-brand-ring)] p-3 text-center">
           <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'মোট' : 'Total'}</div>
-          <div className="text-xl sm:text-2xl font-black text-indigo-700 dark:text-indigo-400 break-words">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div>
+          <div className="text-xl sm:text-2xl font-black text-[var(--color-brand)] dark:text-teal-300 break-words">৳{toBn(feeSummary.total.toLocaleString('en-US'))}</div>
         </div>
         <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-100 p-3 text-center">
           <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'পরিশোধিত' : 'Paid'}</div>

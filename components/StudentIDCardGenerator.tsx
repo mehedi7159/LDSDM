@@ -105,7 +105,7 @@ export const StudentIDCardGenerator: React.FC = () => {
             <button
               onClick={() => setDocType('id_card')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
- docType === 'id_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+ docType === 'id_card' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <CreditCard size={14} />
@@ -115,7 +115,7 @@ export const StudentIDCardGenerator: React.FC = () => {
             <button
               onClick={() => setDocType('admit_card')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
- docType === 'admit_card' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+ docType === 'admit_card' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Award size={14} />
@@ -125,7 +125,7 @@ export const StudentIDCardGenerator: React.FC = () => {
             <button
               onClick={() => setDocType('testimonial')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
- docType === 'testimonial' ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+ docType === 'testimonial' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <FileText size={14} />
@@ -254,9 +254,8 @@ export const StudentIDCardGenerator: React.FC = () => {
                     {/* ID Card Body */}
                     <div className="p-4 flex gap-4 items-center">
                       {/* Avatar */}
- <div className="w-20 h-24 rounded-xl bg-slate-100 border-2 border-slate-300 flex flex-col items-center justify-center text-slate-400 shrink-0 overflow-hidden">
-                        <User size={36} className="text-slate-300" />
-                        <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Photo</span>
+ <div className="w-20 h-24 rounded-xl bg-[var(--color-brand-light)] border-2 border-[var(--color-brand-ring)] flex items-center justify-center shrink-0 overflow-hidden">
+                        <span className="text-3xl font-black text-[var(--color-brand)]">{(student.name || 'শ').charAt(0)}</span>
                       </div>
 
                       {/* Info Fields */}

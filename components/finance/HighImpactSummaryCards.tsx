@@ -160,18 +160,18 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
       {/* ==================================================== */}
       <div className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${
         isSurplusPositive 
-          ? 'bg-slate-900 text-white border-emerald-500/40'
-          : 'bg-slate-900 text-white border-rose-500/40'
+          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-emerald-500/40'
+          : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-rose-500/40'
       }`}>
         <div>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-200 flex items-center gap-1.5">
               {isBn ? 'চলতি মাসের নিট উদ্বৃত্ত' : 'Net Monthly Surplus'}
             </span>
             <span className={`px-2.5 py-1 rounded-full text-xs font-black border uppercase tracking-wider ${
               isSurplusPositive 
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' 
-                : 'bg-rose-500/20 text-rose-300 border-rose-400/40'
+                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-300' 
+                : 'bg-rose-500/15 text-rose-700 border-rose-400/40 dark:bg-rose-500/20 dark:text-rose-300'
             }`}>
               {isSurplusPositive ? (isBn ? 'উদ্বৃত্ত (Surplus)' : 'Surplus') : (isBn ? 'ঘাটতি (Deficit)' : 'Deficit')}
             </span>
@@ -179,14 +179,14 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
 
           <div className="my-2">
             <div className="text-4xl sm:text-5xl font-black font-mono tracking-tight flex items-baseline gap-1.5">
-              <span className={isSurplusPositive ? 'text-emerald-400' : 'text-rose-400'}>
+              <span className={isSurplusPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
                 {isSurplusPositive ? '+' : '-'} ৳
               </span>
               <span>
                 {isBn ? formatBanglaNumber(Math.abs(monthlySurplus)) : Math.abs(monthlySurplus).toLocaleString()}
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 font-medium flex items-center gap-1.5">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-300 mt-1.5 font-medium flex items-center gap-1.5">
               <span>{currentMonthName}</span>
               <span>•</span>
               <span>{isBn ? 'মার্জিন:' : 'Margin:'} {surplusMarginPercent}%</span>
@@ -194,12 +194,12 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-700/80 flex items-center justify-between text-xs sm:text-sm text-slate-200">
-          <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+        <div className="pt-3 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs sm:text-sm text-slate-600 dark:text-slate-200">
+          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
             <ArrowDownLeft className="w-4 h-4" />
             <span>জমা: ৳{isBn ? formatBanglaNumber(thisMonthIncome) : thisMonthIncome.toLocaleString()}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-rose-400 font-bold">
+          <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-bold">
             <ArrowUpRight className="w-4 h-4" />
             <span>ব্যয়: ৳{isBn ? formatBanglaNumber(thisMonthExpense) : thisMonthExpense.toLocaleString()}</span>
           </div>
@@ -250,7 +250,7 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
             {onQuickCollectFee && (
               <button
                 onClick={onQuickCollectFee}
-                className="text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold hover:underline"
+                className="text-[var(--color-brand)] dark:text-teal-300 hover:text-[var(--color-brand)] font-bold hover:underline"
               >
                 {isBn ? 'ফি গ্রহণ করুন →' : 'Collect Fee →'}
               </button>
@@ -268,14 +268,14 @@ export const HighImpactSummaryCards: React.FC<HighImpactSummaryCardsProps> = ({
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
               {isBn ? 'সর্বমোট সংরক্ষিত ক্যাশ স্থিতি' : 'Total Cash Liquidity'}
             </span>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-800">
               {isBn ? '৬টি ফান্ড' : '6 Funds'}
             </span>
           </div>
 
           <div className="my-2">
             <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white flex items-baseline gap-1">
-              <span className="text-blue-600 dark:text-blue-400">৳</span>
+              <span className="text-[var(--color-brand)] dark:text-teal-300">৳</span>
               <span>{isBn ? formatBanglaNumber(totalCashReserve) : totalCashReserve.toLocaleString()}</span>
             </div>
           </div>

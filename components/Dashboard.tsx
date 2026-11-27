@@ -237,7 +237,7 @@ const EvaluationPipeline = memo<EvaluationPipelineProps>(({
               </div>
               <ProgressBar
                 value={matrixExam.progress}
-                tone={matrixExam.progress >= 100 ? 'emerald' : matrixExam.progress >= 60 ? 'indigo' : 'amber'}
+                tone={matrixExam.progress >= 100 ? 'emerald' : matrixExam.progress >= 60 ? 'brand' : 'amber'}
               />
             </div>
 
@@ -839,7 +839,7 @@ export const Dashboard = () => {
     const tiers = [
       { name: 'A+ (৫.০০)', count: gradeCounts['A+'] || 0, fill: '#10b981' },
       { name: 'A (৪.০০)', count: gradeCounts['A'] || 0, fill: '#3b82f6' },
-      { name: 'A- (৩.৫০)', count: gradeCounts['A-'] || 0, fill: '#6366f1' },
+      { name: 'A- (৩.৫০)', count: gradeCounts['A-'] || 0, fill: '#0d9488' },
       { name: 'B (৩.০০)', count: gradeCounts['B'] || 0, fill: '#eab308' },
       { name: 'C (২.০০)', count: gradeCounts['C'] || 0, fill: '#f97316' },
       { name: 'D (১.০০)', count: gradeCounts['D'] || 0, fill: '#fb7185' },

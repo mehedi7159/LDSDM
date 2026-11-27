@@ -173,9 +173,9 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'ফি আদায়', 
       labelEn: 'Fees', 
       icon: GraduationCap,
-      activeClass: 'bg-blue-600 text-white',
-      inactiveClass: 'text-blue-900 dark:text-blue-200 hover:bg-blue-50 hover:text-blue-700',
-      iconColor: 'text-blue-600 dark:text-blue-400'
+      activeClass: 'bg-[var(--color-brand)] text-white',
+      inactiveClass: 'text-slate-900 dark:text-teal-200 hover:bg-[var(--color-brand-light)] hover:text-[var(--color-brand)]',
+      iconColor: 'text-[var(--color-brand)] dark:text-teal-300'
     },
     { 
       id: 'donation', 
@@ -218,9 +218,9 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       labelBn: 'ক্যাশ বুক', 
       labelEn: 'Cash Book', 
       icon: BookOpen,
-      activeClass: 'bg-violet-700 text-white',
-      inactiveClass: 'text-violet-950 dark:text-violet-200 hover:bg-violet-50 hover:text-violet-800',
-      iconColor: 'text-violet-600 dark:text-violet-400'
+      activeClass: 'bg-[var(--color-brand)] text-white',
+      inactiveClass: 'text-slate-900 dark:text-teal-200 hover:bg-[var(--color-brand-light)] hover:text-[var(--color-brand)]',
+      iconColor: 'text-[var(--color-brand)] dark:text-teal-300'
     },
     { 
       id: 'fee-settings', 
@@ -303,9 +303,9 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('student-fee')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--color-brand-light)] dark:bg-teal-500/10 hover:bg-[var(--color-brand-light)] dark:hover:bg-teal-500/20 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <GraduationCap size={14} className="text-blue-600 dark:text-blue-400" />
+              <GraduationCap size={14} className="text-[var(--color-brand)] dark:text-teal-300" />
               <span>{isBn ? 'ছাত্র ফি আদায়' : 'Collect Fee'}</span>
             </button>
             <button

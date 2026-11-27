@@ -900,7 +900,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             <span className="text-slate-500 dark:text-slate-400">{isBn ? 'ক্রনিক বকেয়াদার:' : 'Chronic Defaulters:'} <strong className="text-rose-600 dark:text-rose-400">{isBn ? formatBanglaNumber(aggregateMetrics.chronicDefaulterCount) : aggregateMetrics.chronicDefaulterCount}</strong></span>
             <button 
               onClick={() => { setActiveSubTab('dues'); setDueBehaviorFilter('CHRONIC'); }}
-              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 font-bold text-[11px] flex items-center gap-0.5"
+              className="text-[var(--color-brand)] dark:text-teal-300 hover:text-[var(--color-brand)] font-bold text-[11px] flex items-center gap-0.5"
             >
               <span>{isBn ? 'তালিকা দেখুন' : 'View List'}</span>
               <ArrowRight className="w-3 h-3" />
@@ -909,28 +909,28 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         </div>
 
         {/* 3. Teacher Salary Bridge & Runway Meter */}
-        <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between border border-slate-700/80 relative overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 flex flex-col justify-between border border-slate-200/80 dark:border-slate-700/80 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-xs font-bold text-[var(--color-brand)] dark:text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
               {isBn ? 'উস্তাদ বেতন কভারেজ' : 'Teacher Salary Bridge'}
             </span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
               salaryBridgeMetrics.coverageRatio === null
-                ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                ? 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-500/20 dark:text-slate-300 dark:border-slate-500/30'
                 : salaryBridgeMetrics.coverageRatio >= 100
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  ? 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-300'
+                  : 'bg-amber-500/15 text-amber-700 border border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-300'
             }`}>
               {salaryBridgeMetrics.coverageRatio === null ? '—' : `${salaryBridgeMetrics.coverageRatio}% ${isBn ? 'সুরক্ষিত' : 'Covered'}`}
             </span>
           </div>
 
           <div className="my-2.5">
-            <div className="text-xl sm:text-2xl font-black text-white flex items-baseline gap-1">
-              <span className="text-amber-400">{salaryBridgeMetrics.coverageRatio === null ? '—' : salaryBridgeMetrics.coverageRatio >= 100 ? '✅' : '⏳'}</span>
-              <span className="text-xs sm:text-sm font-bold text-slate-200">{salaryBridgeMetrics.readinessTitleBn}</span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-baseline gap-1">
+              <span className="text-amber-600 dark:text-amber-400">{salaryBridgeMetrics.coverageRatio === null ? '—' : salaryBridgeMetrics.coverageRatio >= 100 ? '✅' : '⏳'}</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">{salaryBridgeMetrics.readinessTitleBn}</span>
             </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {salaryBridgeMetrics.salaryGap === null
                 ? (isBn ? 'বেতন নির্ধারণ নেই — এই/গত মাসে বেতনের রেকর্ড নেই।' : 'No salary set — no salary record for this or last month.')
                 : salaryBridgeMetrics.salaryGap > 0 
@@ -939,11 +939,11 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </p>
           </div>
 
-          <div className="pt-2 border-t border-slate-700/80 flex items-center justify-between text-xs text-slate-300">
-            <span>{isBn ? 'মাসিক বেতন বাজেট:' : 'Salary Obligation:'} <strong className="text-amber-300 font-mono">{salaryBridgeMetrics.monthlySalaryObligation === null ? '—' : `৳${isBn ? formatBanglaNumber(salaryBridgeMetrics.monthlySalaryObligation) : salaryBridgeMetrics.monthlySalaryObligation.toLocaleString()}`}</strong></span>
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+            <span>{isBn ? 'মাসিক বেতন বাজেট:' : 'Salary Obligation:'} <strong className="text-amber-600 dark:text-amber-300 font-mono">{salaryBridgeMetrics.monthlySalaryObligation === null ? '—' : `৳${isBn ? formatBanglaNumber(salaryBridgeMetrics.monthlySalaryObligation) : salaryBridgeMetrics.monthlySalaryObligation.toLocaleString()}`}</strong></span>
             <button
               onClick={() => setActiveSubTab('salary-bridge')}
-              className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-0.5"
+              className="text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 font-bold flex items-center gap-0.5"
             >
               <span>{isBn ? 'বিশ্লেষণ' : 'Analyze'}</span>
               <ArrowRight className="w-3 h-3" />
@@ -957,7 +957,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               {isBn ? 'পেমেন্ট প্যাটার্ন ও আচরণ' : 'Payment Behavior'}
             </span>
-            <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-bold text-[var(--color-brand)] dark:text-teal-300 bg-[var(--color-brand-light)] dark:bg-teal-950/50 px-2 py-0.5 rounded-md">
               {isBn ? 'প্রোফাইলিং' : 'Profiling'}
             </span>
           </div>
@@ -987,7 +987,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             <span className="text-[11px] text-slate-500 dark:text-slate-400">{isBn ? 'তাগাদা নোটিশ পাঠাতে:' : 'For auto notices:'}</span>
             <button 
               onClick={() => setActiveSubTab('dues')} 
-              className="text-purple-600 dark:text-purple-400 hover:text-purple-700 font-bold text-[11px] flex items-center gap-0.5"
+              className="text-[var(--color-brand)] dark:text-teal-300 hover:text-[var(--color-brand)] font-bold text-[11px] flex items-center gap-0.5"
             >
               <span>{isBn ? 'বকেয়া ডিরেক্টরি' : 'Due Directory'}</span>
               <ArrowRight className="w-3 h-3" />
@@ -1056,7 +1056,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <TrendingUp className={`w-4 h-4 ${activeSubTab === 'class-breakdown' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
+            <TrendingUp className={`w-4 h-4 ${activeSubTab === 'class-breakdown' ? 'text-teal-300' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>{isBn ? 'জামাতভিত্তিক' : 'By Class'}</span>
           </button>
 
@@ -1068,7 +1068,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
             }`}
           >
-            <Clock className={`w-4 h-4 ${activeSubTab === 'history' ? 'text-purple-400' : 'text-slate-500 dark:text-slate-400'}`} />
+            <Clock className={`w-4 h-4 ${activeSubTab === 'history' ? 'text-teal-300' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>{isBn ? 'হিস্ট্রি' : 'History'}</span>
           </button>
         </div>
@@ -1336,7 +1336,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   type="submit"
                   size="lg"
                   variant="primary"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3"
+                  className="w-full font-bold text-sm py-3"
                 >
                   <Printer className="w-4 h-4 mr-2" />
                   <span>{isBn ? `ফি জমা করুন ও রসিদ তৈরি করুন (মোট: ৳${formatBanglaNumber(computedTotal.net)})` : `Collect Fee & Print Receipt (৳${computedTotal.net.toLocaleString()})`}</span>
@@ -1365,34 +1365,34 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
           {/* Right Summary Panel (4 Cols) */}
           <div className="lg:col-span-4 space-y-4">
             {/* Live Amount Box */}
-            <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   {isBn ? 'মোট আদায়ের হিসাব' : 'Fee Calculation'}
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                   {feeMonth}
                 </span>
               </div>
 
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-slate-600 dark:text-slate-300">
                   <span>{isBn ? 'মোট ফি (Gross):' : 'Gross Total:'}</span>
                   <span className="font-mono font-bold">৳ {isBn ? formatBanglaNumber(computedTotal.gross) : computedTotal.gross.toLocaleString()}</span>
                 </div>
                 {computedTotal.discount > 0 && (
-                  <div className="flex justify-between text-amber-400">
+                  <div className="flex justify-between text-amber-600 dark:text-amber-400">
                     <span>{isBn ? 'বিশেষ ছাড় (Waiver):' : 'Waiver Discount:'}</span>
                     <span className="font-mono font-bold">- ৳ {isBn ? formatBanglaNumber(computedTotal.discount) : computedTotal.discount.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
-                  <span className="text-sm font-bold text-white">{isBn ? 'মোট প্রদেয় (Net):' : 'Net Total:'}</span>
-                  <span className="text-2xl font-black text-emerald-400 font-mono">
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-baseline">
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{isBn ? 'মোট প্রদেয় (Net):' : 'Net Total:'}</span>
+                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
                     ৳ {isBn ? formatBanglaNumber(computedTotal.net) : computedTotal.net.toLocaleString()}
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 dark:text-slate-500 italic pt-1">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 italic pt-1">
                   কথায়: {amountToBengaliWords(computedTotal.net)}
                 </div>
               </div>
@@ -1454,7 +1454,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 onClick={() => setIsDuesPrintOpen(true)}
                 size="sm"
                 variant="secondary"
-                className="bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 hover:bg-purple-100 text-xs font-bold"
+                className="bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 border-[var(--color-brand-ring)] dark:border-teal-800 hover:bg-[var(--color-brand-light)] text-xs font-bold"
               >
                 <Download className="w-3.5 h-3.5 mr-1.5" />
                 <span>{isBn ? 'পিডিএফ ডাউনলোড' : 'Download PDF'}</span>
@@ -1481,7 +1481,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 value={dueSearchQuery}
                 onChange={(e) => setDueSearchQuery(e.target.value)}
                 placeholder={isBn ? 'ছাত্রের নাম, রোল, আইডি বা মোবাইল নম্বর খুঁজুন...' : 'Search name, roll, phone...'}
-                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-[var(--color-brand-ring)] focus:outline-none"
               />
             </div>
 
@@ -1490,7 +1490,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
               <select
                 value={dueClassFilter}
                 onChange={(e) => setDueClassFilter(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] focus:outline-none"
               >
                 <option value="ALL">{isBn ? 'সকল শ্রেণি / জামাত' : 'All Classes'}</option>
                 {classes.map(c => (
@@ -1593,14 +1593,14 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                               <>
                                 <button
                                   onClick={() => handleSelectStudentForPayment(s)}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors"
+                                  className="px-2 py-1 bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white rounded-lg text-[11px] font-bold transition-colors"
                                   title={isBn ? 'ফি গ্রহণ করুন' : 'Collect Fee'}
                                 >
                                   {isBn ? 'ফি গ্রহণ' : 'Collect'}
                                 </button>
                                 <button
                                   onClick={() => handleCopyReminderSMS(item)}
-                                  className="p-1 text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  className="p-1 text-slate-600 dark:text-slate-300 hover:text-[var(--color-brand)] hover:bg-[var(--color-brand-light)] rounded-lg transition-colors"
                                   title={isBn ? 'তাগাদা এসএমএস টেক্সট কপি করুন' : 'Copy Reminder SMS'}
                                 >
                                   <Copy className="w-3.5 h-3.5" />
@@ -1622,7 +1622,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                               type="button"
                               onClick={() => setExpandedDueId(expandedDueId === s.id ? null : s.id)}
                               title={isBn ? 'মাসভিত্তিক ফি চিত্র দেখুন' : 'View month-wise fee history'}
-                              className="p-1 text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-1 text-slate-600 dark:text-slate-300 hover:text-[var(--color-brand)] hover:bg-[var(--color-brand-light)] rounded-lg transition-colors"
                             >
                               {expandedDueId === s.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                             </button>
@@ -1723,9 +1723,9 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
             </div>
 
             {/* Coverage Meter Hero Card */}
-            <div className="p-5 rounded-2xl bg-slate-900 text-white border border-slate-700 space-y-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                   {isBn ? 'চলতি মাসের বেতন সুরক্ষা ইনডেক্স' : 'Monthly Payroll Coverage Status'}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${salaryBridgeMetrics.readinessBadgeColor}`}>
@@ -1735,11 +1735,11 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
 
               {/* Progress Bar */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-bold text-slate-300">
+                <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
                   <span>{isBn ? 'বেতন কভারেজ প্রোগ্রেস:' : 'Coverage Progress:'}</span>
-                  <span className="font-mono text-amber-400 text-sm">{salaryBridgeMetrics.coverageRatio === null ? '—' : `${salaryBridgeMetrics.coverageRatio}%`}</span>
+                  <span className="font-mono text-amber-600 dark:text-amber-400 text-sm">{salaryBridgeMetrics.coverageRatio === null ? '—' : `${salaryBridgeMetrics.coverageRatio}%`}</span>
                 </div>
-                <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden p-0.5">
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden p-0.5">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       (salaryBridgeMetrics.coverageRatio ?? 0) >= 100 ? 'bg-emerald-400' : 'bg-amber-400'
@@ -1751,23 +1751,23 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
 
               {/* 3 Metric Pillars */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
-                  <span className="text-[11px] text-slate-300 block">{isBn ? 'মোট উস্তাদ বেতন বাজেট' : 'Monthly Salary Budget'}</span>
-                  <span className="text-lg font-black text-white font-mono">
+                <div className="bg-slate-50 dark:bg-white/10 rounded-xl p-3 text-center border border-slate-200/80 dark:border-white/10">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-300 block">{isBn ? 'মোট উস্তাদ বেতন বাজেট' : 'Monthly Salary Budget'}</span>
+                  <span className="text-lg font-black text-slate-900 dark:text-white font-mono">
                     {salaryBridgeMetrics.monthlySalaryObligation === null ? '—' : `৳ ${isBn ? formatBanglaNumber(salaryBridgeMetrics.monthlySalaryObligation) : salaryBridgeMetrics.monthlySalaryObligation.toLocaleString()}`}
                   </span>
                 </div>
 
-                <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
-                  <span className="text-[11px] text-emerald-300 block">{isBn ? 'ছাত্র ফি থেকে আদায়কৃত' : 'Student Inflow Collected'}</span>
-                  <span className="text-lg font-black text-emerald-400 font-mono">
+                <div className="bg-slate-50 dark:bg-white/10 rounded-xl p-3 text-center border border-slate-200/80 dark:border-white/10">
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-300 block">{isBn ? 'ছাত্র ফি থেকে আদায়কৃত' : 'Student Inflow Collected'}</span>
+                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
                     + ৳ {isBn ? formatBanglaNumber(salaryBridgeMetrics.studentFeeInflow) : salaryBridgeMetrics.studentFeeInflow.toLocaleString()}
                   </span>
                 </div>
 
-                <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
-                  <span className="text-[11px] text-amber-300 block">{isBn ? 'বেতন পরিশোধে আরও প্রয়োজন' : 'Remaining Gap to Collect'}</span>
-                  <span className="text-lg font-black text-amber-400 font-mono">
+                <div className="bg-slate-50 dark:bg-white/10 rounded-xl p-3 text-center border border-slate-200/80 dark:border-white/10">
+                  <span className="text-[11px] text-amber-600 dark:text-amber-300 block">{isBn ? 'বেতন পরিশোধে আরও প্রয়োজন' : 'Remaining Gap to Collect'}</span>
+                  <span className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono">
                     {salaryBridgeMetrics.salaryGap === null ? '—' : `৳ ${isBn ? formatBanglaNumber(salaryBridgeMetrics.salaryGap) : salaryBridgeMetrics.salaryGap.toLocaleString()}`}
                   </span>
                 </div>
@@ -1785,7 +1785,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                   <div key={c.className} className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-800/60 space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <strong className="text-slate-900 dark:text-white">{c.className}</strong>
-                      <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                      <span className="text-[11px] font-bold text-[var(--color-brand)] dark:text-teal-300 bg-[var(--color-brand-light)] dark:bg-teal-950/50 px-2 py-0.5 rounded border border-[var(--color-brand-ring)] dark:border-teal-800">
                         {c.salaryContributionShare}% {isBn ? 'বেতন শেয়ার' : 'Share'}
                       </span>
                     </div>
@@ -1795,7 +1795,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                       <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">৳{isBn ? formatBanglaNumber(c.collected) : c.collected.toLocaleString()}</span>
                     </div>
 
-                    <ProgressBar value={c.salaryContributionShare * 2} tone="indigo" />
+                    <ProgressBar value={c.salaryContributionShare * 2} tone="brand" />
                   </div>
                 ))}
               </div>
@@ -1811,7 +1811,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-4">
           <div className="pb-4 border-b border-slate-100 dark:border-slate-800">
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <TrendingUp className="w-5 h-5 text-[var(--color-brand)] dark:text-teal-300" />
               <span>{isBn ? 'জামাতভিত্তিক ফি আদায় ও বকেয়ার সামগ্রিক চিত্র' : 'Class-wise Fee & Due Breakdown'}</span>
             </h2>
           </div>
@@ -1844,7 +1844,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                 <div className="space-y-1 pt-1">
                   <div className="flex justify-between text-[11px] font-bold">
                     <span className="text-slate-600 dark:text-slate-300">{isBn ? 'আদায়ের অগ্রগতি:' : 'Collection Rate:'}</span>
-                    <span className="text-blue-700 dark:text-blue-400 font-mono">{c.rate}%</span>
+                    <span className="text-[var(--color-brand)] dark:text-teal-300 font-mono">{c.rate}%</span>
                   </div>
                   <ProgressBar value={c.rate} tone="emerald" size="md" />
                 </div>
@@ -1862,7 +1862,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
           <div className="pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <Clock className="w-5 h-5 text-[var(--color-brand)] dark:text-teal-300" />
                 <span>{isBn ? 'সাম্প্রতিক ছাত্র ফি আদায়ের খতিয়ান' : 'Recent Fee Transactions'}</span>
               </h2>
             </div>
@@ -1923,7 +1923,7 @@ export const StudentFeeCollection: React.FC<StudentFeeCollectionProps> = ({
                       <td className="py-3 px-3 text-center">
                         <button
                           onClick={() => onShowReceipt(tx)}
-                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-[var(--color-brand)] dark:text-teal-300 hover:bg-[var(--color-brand-light)] rounded-lg transition-colors"
                           title={isBn ? 'রসিদ প্রিন্ট করুন' : 'Print Receipt'}
                         >
                           <Printer className="w-4 h-4" />

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext';
 import { MarkRecord, Subject } from '../types';
 import { formatNumber } from '../services/utils';
+import { toAsciiDigits } from '../services/studentService';
 import { classNamesMatch } from '../services/classNames';
 import { MARKS_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../services/cloudConfirm';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
@@ -151,7 +152,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   // explicit Save click — never a 'saved to cloud' claim.
   const [showLocalSaveNote, setShowLocalSaveNote] = useState(false);
   const localSaveNoteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [sortBy, setSortBy] = useState<'name' | 'id'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'id' | 'roll'>('roll');
 
   // Local state to store edits for fast snappy input response
   const [localMarks, setLocalMarks] = useState<Record<string, EditableMark>>({});
@@ -225,6 +226,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
   const isEntryClosedByAdmin = !isMarkEntryAllowedForExam(currentExam, markEntryEnabled);
   const isEntryDisabled = isExamLocked || isEntryClosedByAdmin;
 
+  // Job 5: roll order is numeric (Bangla digits normalized first), so
+  // the roll-call list reads 1, 2, 3 ... instead of name order.
   const enrolledStudents = students
     .filter(s => classNamesMatch(s.classLevel, selectedClass) && s.status === 'Active' && !s.isFormer)
     .filter(s => {
@@ -232,6 +235,13 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
       return s.group === currentSubject.group;
     })
     .sort((a, b) => {
+      if (sortBy === 'roll') {
+        const rollA = parseInt(toAsciiDigits(String(a.rollNumber ?? a.roll ?? '')), 10);
+        const rollB = parseInt(toAsciiDigits(String(b.rollNumber ?? b.roll ?? '')), 10);
+        if (!Number.isNaN(rollA) && !Number.isNaN(rollB) && rollA !== rollB) return rollA - rollB;
+        if (Number.isNaN(rollA) !== Number.isNaN(rollB)) return Number.isNaN(rollA) ? 1 : -1;
+        return String(a.rollNumber ?? a.roll ?? '').localeCompare(String(b.rollNumber ?? b.roll ?? '')) || a.name.localeCompare(b.name);
+      }
       if (sortBy === 'id') {
         return (a.studentId || '').localeCompare(b.studentId || '');
       }
@@ -508,8 +518,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-slate-800/60 text-gray-600 dark:text-slate-300 text-xs font-bold rounded-xl border border-gray-200 dark:border-slate-700">
             {saveStatus === 'saving' && (
               <>
-                <Loader2 size={13} className="animate-spin text-blue-600 dark:text-blue-400" />
-                <span className="text-blue-600 dark:text-blue-400">{language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}</span>
+                <Loader2 size={13} className="animate-spin text-[var(--color-brand)] dark:text-teal-300" />
+                <span className="text-[var(--color-brand)] dark:text-teal-300">{language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}</span>
               </>
             )}
             {saveStatus === 'saved' && (
@@ -529,7 +539,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
           <button
             onClick={flushPendingSave}
             disabled={isEntryDisabled || saveStatus === 'saving'}
-            className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="px-3.5 py-1.5 bg-[var(--color-brand)] text-white rounded-xl text-xs font-bold hover:bg-[var(--color-brand-hover)] transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {saveStatus === 'saving' ? (
               <>
@@ -688,7 +698,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+              className="px-3 py-1.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
               title={language === 'bn' ? 'নম্বর তালিকা প্রিন্ট করুন' : 'Print marks table'}
             >
               <Printer size={13} />
@@ -847,7 +857,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({ onNavigate }) => {
                           value={mark.obtained ?? ''}
                           onChange={e => handleInputChange(student.id, 'obtained', e.target.value)}
                           className={`w-24 text-center border rounded-lg p-1.5 text-xs font-black ${
-                            validation.obtainedError ? 'border-red-500 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200' : 'bg-gray-50 dark:bg-slate-800/60 text-blue-900 dark:text-blue-200 border-gray-200 dark:border-slate-700'
+                            validation.obtainedError ? 'border-red-500 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200' : 'bg-gray-50 dark:bg-slate-800/60 text-slate-900 dark:text-teal-200 border-gray-200 dark:border-slate-700'
                           } disabled:opacity-75`}
                           placeholder="0"
                         />

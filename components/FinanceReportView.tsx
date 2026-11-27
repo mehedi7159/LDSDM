@@ -132,9 +132,9 @@ export const FinanceReportView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
             {language === 'bn' ? 'আর্থিক রিপোর্ট ও আয়-ব্যয় বিবরণী' : 'Financial Reports & Statements'}
           </h1>
         </div>
@@ -142,14 +142,14 @@ export const FinanceReportView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2.5 rounded-xl bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer border border-white/10"
+            className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border border-slate-200 dark:border-white/10"
           >
             <Download size={15} />
             <span>{language === 'bn' ? 'CSV এক্সপোর্ট' : 'Export CSV'}</span>
           </button>
           <button
             onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-black flex items-center gap-2 transition-all cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white text-xs font-black flex items-center gap-2 transition-all cursor-pointer"
           >
             <Printer size={15} />
             <span>{language === 'bn' ? 'স্টেটমেন্ট প্রিন্ট' : 'Print Statement'}</span>
@@ -182,7 +182,7 @@ export const FinanceReportView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'নিট ব্যালেন্স / তহবিল' : 'Net Fund Balance'}</p>
-            <h3 className={`text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
+            <h3 className={`text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-[var(--color-brand)] dark:text-teal-300' : 'text-rose-600 dark:text-rose-400'}`}>
               ৳ {toBanglaDigits(netBalance)}
             </h3>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -202,14 +202,14 @@ export const FinanceReportView: React.FC = () => {
               placeholder={language === 'bn' ? 'ভাউচার, বিবরণ বা নাম খুঁজুন...' : 'Search voucher, description...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/50/50 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/50/50 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
             />
           </div>
 
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
+            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
           >
             <option value="all">{language === 'bn' ? 'সকল লেনদেন' : 'All Types'}</option>
             <option value="INCOME">{language === 'bn' ? 'আয় (Income)' : 'Income'}</option>
@@ -220,7 +220,7 @@ export const FinanceReportView: React.FC = () => {
             type="date"
             value={dateRange.start}
             onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-            className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
             title="শুরুর তারিখ"
           />
 
@@ -228,13 +228,13 @@ export const FinanceReportView: React.FC = () => {
             type="date"
             value={dateRange.end}
             onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-            className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
             title="শেষ তারিখ"
           />
         </div>
 
         <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
-          {language === 'bn' ? 'মোট এন্ট্রি:' : 'Entries:'} <span className="text-violet-600 dark:text-violet-400 font-mono font-black">{toBanglaDigits(filteredTransactions.length)}</span>
+          {language === 'bn' ? 'মোট এন্ট্রি:' : 'Entries:'} <span className="text-[var(--color-brand)] dark:text-teal-300 font-mono font-black">{toBanglaDigits(filteredTransactions.length)}</span>
         </div>
       </div>
 

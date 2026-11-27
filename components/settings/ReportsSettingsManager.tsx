@@ -452,7 +452,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
                 <span>{storageStats.usedFormatted}</span>
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                <span className="text-[10px] text-[var(--color-brand)] dark:text-teal-300 font-bold">
                   ({storageStats.quotaPercent}% {isBn ? 'কোটা' : 'quota'})
                 </span>
               </div>
@@ -466,9 +466,9 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{isBn ? 'সিকিউরিটি' : 'Security'}</span>
               </div>
-              <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1">
+              <div className="text-2xl font-black text-[var(--color-brand)] dark:text-teal-300 mt-1 flex items-center gap-1">
                 <span>{isSuperAdmin ? 'Tier-1 Root' : isAdmin ? 'Admin' : 'Restricted'}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 font-bold">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-brand-light)] dark:bg-teal-500/10 text-[var(--color-brand)] dark:text-teal-300 font-bold">
                   RBAC
                 </span>
               </div>
@@ -516,7 +516,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   isActive
- ? 'bg-indigo-600 text-white font-black'
+ ? 'bg-[var(--color-brand)] text-white font-black'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
@@ -563,7 +563,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   onClick={() => setReportSubView('executive')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     reportSubView === 'executive'
- ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400'
+ ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
@@ -573,7 +573,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   onClick={() => setReportSubView('governance')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     reportSubView === 'governance'
- ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400'
+ ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
@@ -625,7 +625,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <Building2 size={22} className="text-indigo-600 dark:text-indigo-400" />
+                <Building2 size={22} className="text-[var(--color-brand)] dark:text-teal-300" />
                 <span>{isBn ? 'মাদ্রাসা প্রোফাইল ও প্রাতিষ্ঠানিক তথ্য' : 'Madrasah Profile & Institutional Details'}</span>
               </h2>
             </div>
@@ -645,7 +645,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               )}
               <button
                 type="submit"
- className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
+ className="px-5 py-2.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white text-xs font-bold flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
                 <Check size={16} />
                 <span>{isBn ? 'প্রোফাইল সেভ করুন' : 'Save Profile'}</span>
@@ -685,7 +685,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.nameBn || ''}
                   onChange={handleProfileChange}
                   placeholder="যেমন: জামিয়া ইসলামিয়া দারুল উলুম মাদ্রাসা"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -700,7 +700,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.name || ''}
                   onChange={handleProfileChange}
                   placeholder="e.g. Jamia Islamia Darul Uloom Madrasah"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -714,7 +714,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.addressBn || ''}
                   onChange={handleProfileChange}
                   placeholder="যেমন: ডাকঘর- মদিনাতুল উলুম, থানা ও জেলা- ঢাকা"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -728,7 +728,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.address || ''}
                   onChange={handleProfileChange}
                   placeholder="e.g. Madinatul Uloom, Dhaka, Bangladesh"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -742,7 +742,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.phone || ''}
                   onChange={handleProfileChange}
                   placeholder="01700-000000"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -756,7 +756,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.email || ''}
                   onChange={handleProfileChange}
                   placeholder="info@madrasah.edu.bd"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -770,7 +770,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.established || ''}
                   onChange={handleProfileChange}
                   placeholder="যেমন: ১৯৪৮ খ্রি."
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -784,7 +784,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.academicYear || ''}
                   onChange={handleProfileChange}
                   placeholder="2026"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -798,7 +798,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.headMasterNameBn || ''}
                   onChange={handleProfileChange}
                   placeholder="যেমন: ড. মুহাম্মদ মাহমুদুল হাসান"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -812,7 +812,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   value={profileData.headMasterName || ''}
                   onChange={handleProfileChange}
                   placeholder="e.g. Maulana Abul Hasan"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-semibold bg-slate-50 dark:bg-slate-800/60 focus:bg-white"
                 />
               </div>
 
@@ -858,7 +858,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
  <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-6">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <Type size={16} className="text-indigo-600 dark:text-indigo-400" />
+                <Type size={16} className="text-[var(--color-brand)] dark:text-teal-300" />
                 <span>{isBn ? 'ফন্ট সেটিংস (Font)' : 'Font Settings'}</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 normal-case tracking-normal">
@@ -901,7 +901,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                         name={field}
                         value={selected}
                         onChange={handleProfileChange}
-                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-semibold bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
                       >
                         {['Anek Bangla', 'Baloo Da 2', 'Tiro Bangla'].map(f => (
                           <option key={f} value={f}>{f}</option>
@@ -956,14 +956,14 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <Sliders size={22} className="text-indigo-600 dark:text-indigo-400" />
+                <Sliders size={22} className="text-[var(--color-brand)] dark:text-teal-300" />
                 <span>{isBn ? 'ব্র্যান্ডিং, অফিসিয়াল সিল ও প্রিন্ট কনফিগারেশন' : 'Official Branding, Stamps & Print Customization'}</span>
               </h2>
             </div>
 
             <button
               type="submit"
- className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+ className="px-5 py-2.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white text-xs font-bold flex items-center gap-2 cursor-pointer transition-all active:scale-95"
             >
               <Check size={16} />
               <span>{isBn ? 'পরিবর্তন সেভ করুন' : 'Save Changes'}</span>
@@ -1012,7 +1012,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </div>
 
               <div className="flex items-center justify-center gap-2">
-                <label className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-400 text-xs font-bold rounded-xl cursor-pointer transition-all">
+                <label className="px-3 py-1.5 bg-[var(--color-brand-light)] dark:bg-teal-950/50 hover:bg-[var(--color-brand-light)] text-[var(--color-brand)] dark:text-teal-300 text-xs font-bold rounded-xl cursor-pointer transition-all">
                   <span>{isBn ? 'আপলোড করুন' : 'Upload'}</span>
                   <input 
                     type="file" 
@@ -1055,7 +1055,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </div>
 
               <div className="flex items-center justify-center gap-2">
-                <label className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-400 text-xs font-bold rounded-xl cursor-pointer transition-all">
+                <label className="px-3 py-1.5 bg-[var(--color-brand-light)] dark:bg-teal-950/50 hover:bg-[var(--color-brand-light)] text-[var(--color-brand)] dark:text-teal-300 text-xs font-bold rounded-xl cursor-pointer transition-all">
                   <span>{isBn ? 'আপলোড করুন' : 'Upload'}</span>
                   <input 
                     type="file" 
@@ -1098,7 +1098,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
               </div>
 
               <div className="flex items-center justify-center gap-2">
-                <label className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-400 text-xs font-bold rounded-xl cursor-pointer transition-all">
+                <label className="px-3 py-1.5 bg-[var(--color-brand-light)] dark:bg-teal-950/50 hover:bg-[var(--color-brand-light)] text-[var(--color-brand)] dark:text-teal-300 text-xs font-bold rounded-xl cursor-pointer transition-all">
                   <span>{isBn ? 'আপলোড করুন' : 'Upload'}</span>
                   <input 
                     type="file" 
@@ -1159,7 +1159,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                     name="showLogoOnCard"
                     checked={profileData.showLogoOnCard !== false}
                     onChange={handleProfileChange}
-                    className="w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-indigo-500"
+                    className="w-4 h-4 text-[var(--color-brand)] dark:text-teal-300 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-[var(--color-brand-ring)]"
                   />
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     {isBn ? 'প্রিন্ট ও মার্কশিটে মাদ্রাসার লোগো প্রদর্শন করুন' : 'Show Logo on result cards and printouts'}
@@ -1172,7 +1172,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                     name="showHeadmasterSignature"
                     checked={profileData.showHeadmasterSignature !== false}
                     onChange={handleProfileChange}
-                    className="w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-indigo-500"
+                    className="w-4 h-4 text-[var(--color-brand)] dark:text-teal-300 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-[var(--color-brand-ring)]"
                   />
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     {isBn ? 'অধ্যক্ষের স্বাক্ষর মার্কশিটে স্বয়ংক্রিয় প্রিন্ট করুন' : 'Show Principal Signature on result cards'}
@@ -1185,7 +1185,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                     name="showWatermark"
                     checked={Boolean(profileData.showWatermark)}
                     onChange={handleProfileChange}
-                    className="w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-indigo-500"
+                    className="w-4 h-4 text-[var(--color-brand)] dark:text-teal-300 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-[var(--color-brand-ring)]"
                   />
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     {isBn ? 'মার্কশিটের ব্যাকগ্রাউন্ডে ওয়াটারমার্ক প্রদর্শন করুন' : 'Enable background watermark on marksheet'}
@@ -1231,7 +1231,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <Activity size={22} className="text-indigo-600 dark:text-indigo-400" />
+                <Activity size={22} className="text-[var(--color-brand)] dark:text-teal-300" />
                 <span>{isBn ? 'সিস্টেম ডাটাবেজ স্থিতি ও ডায়াগনস্টিকস' : 'System Database Status & Diagnostics'}</span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -1354,7 +1354,7 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
           {/* Storage & Cloud Sync Card */}
  <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-6">
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-              <HardDrive size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <HardDrive size={18} className="text-[var(--color-brand)] dark:text-teal-300" />
               <span>{isBn ? 'ব্রাউজার লোকাল স্টোরেজ কোটা ও মেমরি' : 'Browser Storage Quota & Health'}</span>
             </h3>
 

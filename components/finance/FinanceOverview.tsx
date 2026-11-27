@@ -213,10 +213,10 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Pillar 1: Student Fees (ছাত্রদের বেতন ও ফি) */}
-          <div className="bg-blue-50/80 border border-blue-200/90 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200">
+          <div className="bg-[var(--color-brand-light)] border border-[var(--color-brand-ring)] rounded-2xl p-5 flex flex-col justify-between transition-all duration-200">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[var(--color-brand-light)] dark:bg-teal-900/50 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-800">
                   {isBn ? 'মূল আয় ১' : 'Income 1'}
                 </span>
               </div>
@@ -228,21 +228,21 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
               </p>
               
               <div className="mt-4">
-                <div className="text-3xl sm:text-4xl font-black text-blue-950 dark:text-blue-200 font-mono">
+                <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-teal-200 font-mono">
                   ৳{isBn ? formatBanglaNumber(studentFeesIncome) : studentFeesIncome.toLocaleString()}
                 </div>
-                <div className="text-xs sm:text-sm text-blue-700 dark:text-blue-400 mt-1 font-semibold">
+                <div className="text-xs sm:text-sm text-[var(--color-brand)] dark:text-teal-300 mt-1 font-semibold">
                   {isBn ? 'চলতি মাসে আদায়:' : 'This Month:'} ৳{isBn ? formatBanglaNumber(studentFeesThisMonth) : studentFeesThisMonth.toLocaleString()}
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-blue-200/80">
+            <div className="mt-5 pt-3 border-t border-[var(--color-brand-ring)]">
               <Button 
                 onClick={() => onNavigateTab('student-fee')} 
                 size="sm" 
                 variant="primary" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white justify-center text-sm font-bold py-2.5"
+                className="w-full justify-center text-sm font-bold py-2.5"
               >
                 <Receipt className="w-4 h-4 mr-1.5" />
                 {isBn ? 'ফি আদায় ও বকেয়া' : 'Collect Fee'}
@@ -280,7 +280,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 onClick={() => onNavigateTab('donation')} 
                 size="sm" 
                 variant="primary" 
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white justify-center text-sm font-bold py-2.5"
+                className="w-full justify-center text-sm font-bold py-2.5"
               >
                 <PlusCircle className="w-4 h-4 mr-1.5" />
                 {isBn ? 'দান রসিদ কাটুন' : 'Enter Donation'}
@@ -315,7 +315,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 onClick={() => onNavigateTab('salary')} 
                 size="sm" 
                 variant="primary" 
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white justify-center text-sm font-bold py-2.5"
+                className="w-full justify-center text-sm font-bold py-2.5"
               >
                 <CreditCard className="w-4 h-4 mr-1.5" />
                 {isBn ? 'বেতন পরিশোধ' : 'Disburse Salary'}
@@ -353,7 +353,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                 onClick={() => onNavigateTab('development')} 
                 size="sm" 
                 variant="primary" 
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white justify-center text-sm font-bold py-2.5"
+                className="w-full justify-center text-sm font-bold py-2.5"
               >
                 <Building2 className="w-4 h-4 mr-1.5" />
                 {isBn ? 'উন্নয়ন খরচ এন্ট্রি' : 'Log Project Cost'}
@@ -474,7 +474,7 @@ export const FinanceOverview: React.FC<FinanceOverviewProps> = ({
                   <td className="py-3 px-3.5 text-center">
                     <button
                       onClick={() => onOpenReceipt(tx)}
-                      className="px-2.5 py-1 rounded-lg text-blue-700 dark:text-blue-400 hover:bg-blue-50 transition-colors inline-flex items-center gap-1 text-xs font-bold border border-blue-200 dark:border-blue-800"
+                      className="px-2.5 py-1 rounded-lg text-[var(--color-brand)] dark:text-teal-300 hover:bg-[var(--color-brand-light)] transition-colors inline-flex items-center gap-1 text-xs font-bold border border-[var(--color-brand-ring)] dark:border-teal-800"
                       title={isBn ? 'রসিদ প্রিন্ট' : 'Print Receipt'}
                     >
                       <Printer className="w-3.5 h-3.5" />

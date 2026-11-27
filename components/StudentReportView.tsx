@@ -98,7 +98,7 @@ export const StudentReportView: React.FC = () => {
 
   // Residential breakdown pie chart
   const residentialData = [
-    { name: language === 'bn' ? 'আবাসিক' : 'Residential', value: residentialCount, color: '#4f46e5' },
+    { name: language === 'bn' ? 'আবাসিক' : 'Residential', value: residentialCount, color: '#0d9488' },
     { name: language === 'bn' ? 'অনাবাসিক' : 'Non-Residential', value: nonResidentialCount, color: '#06b6d4' }
   ];
 
@@ -187,8 +187,8 @@ export const StudentReportView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'আবাসিক ছাত্র' : 'Residential'}</p>
-            <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{toBanglaDigits(residentialCount)}</h3>
-            <p className="text-[10px] text-indigo-600/80 dark:text-indigo-400 mt-0.5">
+            <h3 className="text-2xl font-black text-[var(--color-brand)] dark:text-teal-300 mt-1">{toBanglaDigits(residentialCount)}</h3>
+            <p className="text-[10px] text-[var(--color-brand)]/80 dark:text-teal-300 mt-0.5">
               {toBanglaDigits(totalCount > 0 ? ((residentialCount / totalCount) * 100).toFixed(0) : 0)}% {language === 'bn' ? 'আবাসিক' : 'residential'}
             </p>
           </div>
@@ -212,7 +212,7 @@ export const StudentReportView: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <BarChart3 size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <BarChart3 size={18} className="text-[var(--color-brand)] dark:text-teal-300" />
                 <span>{language === 'bn' ? 'শ্রেণিভিত্তিক শিক্ষার্থী সংখ্যা' : 'Students per Class'}</span>
               </h3>
             </div>
@@ -226,7 +226,7 @@ export const StudentReportView: React.FC = () => {
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px' }} 
                 />
-                <Bar dataKey="count" fill="#4f46e5" radius={[6, 6, 0, 0]} name={language === 'bn' ? 'শিক্ষার্থী' : 'Students'} />
+                <Bar dataKey="count" fill="#0d9488" radius={[6, 6, 0, 0]} name={language === 'bn' ? 'শিক্ষার্থী' : 'Students'} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -284,14 +284,14 @@ export const StudentReportView: React.FC = () => {
               placeholder={language === 'bn' ? 'নাম, রোল বা আইডি দিয়ে খুঁজুন...' : 'Search by name, roll, ID...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/50/50 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/50/50 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
             />
           </div>
 
           <select
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
           >
             <option value="all">{language === 'bn' ? 'সকল শ্রেণি' : 'All Classes'}</option>
             {classes.map(c => (
@@ -302,7 +302,7 @@ export const StudentReportView: React.FC = () => {
           <select
             value={selectedResidential}
             onChange={(e) => setSelectedResidential(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
           >
             <option value="all">{language === 'bn' ? 'সকল ধরন (আবাসিক/অনাবাসিক)' : 'All Types'}</option>
             <option value="residential">{language === 'bn' ? 'আবাসিক' : 'Residential'}</option>
@@ -312,7 +312,7 @@ export const StudentReportView: React.FC = () => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
           >
             <option value="all">{language === 'bn' ? 'সকল স্ট্যাটাস' : 'All Status'}</option>
             <option value="active">{language === 'bn' ? 'সক্রিয়' : 'Active'}</option>
@@ -321,7 +321,7 @@ export const StudentReportView: React.FC = () => {
         </div>
 
         <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
-          {language === 'bn' ? 'ফিল্টারকৃত:' : 'Showing:'} <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{toBanglaDigits(filteredStudents.length)}</span> {language === 'bn' ? 'জন' : 'students'}
+          {language === 'bn' ? 'ফিল্টারকৃত:' : 'Showing:'} <span className="text-[var(--color-brand)] dark:text-teal-300 font-extrabold">{toBanglaDigits(filteredStudents.length)}</span> {language === 'bn' ? 'জন' : 'students'}
         </div>
       </div>
 
@@ -370,11 +370,11 @@ export const StudentReportView: React.FC = () => {
                       <span className="font-bold text-slate-900 dark:text-white block">{s.name}</span>
                       {s.fatherName && <span className="text-[10px] text-slate-400 dark:text-slate-500">{s.fatherName}</span>}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-indigo-700 dark:text-indigo-400">{s.classLevel}</td>
+                    <td className="py-3 px-4 font-semibold text-[var(--color-brand)] dark:text-teal-300">{s.classLevel}</td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-100">{toBanglaDigits(s.roll)}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        s.isResidential ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        s.isResidential ? 'bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                       }`}>
                         {s.isResidential ? (language === 'bn' ? 'আবাসিক' : 'Residential') : (language === 'bn' ? 'অনাবাসিক' : 'Day')}
                       </span>

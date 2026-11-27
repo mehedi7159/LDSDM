@@ -894,14 +894,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 className="w-11 h-11 rounded-full object-cover border border-gray-200 dark:border-slate-700 shrink-0"
               />
             ) : (
-              <div className="w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-sm uppercase shrink-0">
+              <div className="w-11 h-11 rounded-full bg-[var(--color-brand-light)] dark:bg-teal-900/50 text-[var(--color-brand)] dark:text-teal-300 flex items-center justify-center font-bold text-sm uppercase shrink-0">
                 {displayName.charAt(0)}
               </div>
             )}
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-sm text-gray-900 dark:text-white truncate">{displayName}</span>
-                <span className="text-[10px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0">
+                <span className="text-[10px] font-mono font-bold bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 px-1.5 py-0.5 rounded border border-[var(--color-brand-ring)] dark:border-teal-800 shrink-0">
                   {student.studentId}
                 </span>
               </div>
@@ -922,7 +922,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   {language === 'bn' ? (t(`cls_${student.classLevel.replace(' ', '')}` as any) || student.classLevel) : student.classLevel}
                 </span>
                 {student.group && (
-                  <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded font-bold uppercase">
+                  <span className="text-[10px] bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 px-1.5 py-0.5 rounded font-bold uppercase">
                     {t(student.group.toLowerCase() as any) || student.group}
                   </span>
                 )}
@@ -955,7 +955,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             {student.guardianPhone && (
               <a 
                 href={`tel:${student.guardianPhone}`}
-                className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px] font-semibold flex items-center gap-1 hover:underline shrink-0 ml-2"
+                className="text-[var(--color-brand)] dark:text-teal-300 font-mono text-[11px] font-semibold flex items-center gap-1 hover:underline shrink-0 ml-2"
               >
                 📞 {student.guardianPhone}
               </a>
@@ -1021,7 +1021,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
             <button 
               type="button"
               onClick={() => handleEdit(student)} 
-              className="p-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-[var(--color-brand)] dark:text-teal-300 bg-[var(--color-brand-light)] dark:bg-teal-950/50 hover:bg-[var(--color-brand-light)] rounded-lg transition-colors cursor-pointer"
             >
               <Edit2 size={14} />
             </button>
@@ -1130,12 +1130,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
         <div 
           onClick={() => setSubTab('classes')}
-          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/20 hover:border-indigo-400 transition cursor-pointer"
+          className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-brand-ring)] dark:border-teal-800 bg-teal-50/20 hover:border-[var(--color-brand-ring)] transition cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">{language === 'bn' ? 'শ্রেণি / জামাত' : 'Classes'}</span>
+            <span className="text-[11px] font-bold text-[var(--color-brand)] dark:text-teal-300 uppercase">{language === 'bn' ? 'শ্রেণি / জামাত' : 'Classes'}</span>
           </div>
-          <p className="text-2xl font-black text-indigo-900 dark:text-indigo-200 mt-1 font-bangla">{formatNumber(classes.length, language)}</p>
+          <p className="text-2xl font-black text-slate-900 dark:text-teal-200 mt-1 font-bangla">{formatNumber(classes.length, language)}</p>
         </div>
       </div>
 
@@ -1367,14 +1367,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           onClick={() => setActiveTab('all')}
           className={`flex items-center gap-2 py-3 px-4 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'all'
-              ? 'border-indigo-600 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 rounded-t-lg'
+              ? 'border-[var(--color-brand-ring)] text-[var(--color-brand)] dark:text-teal-300 bg-teal-50/50 rounded-t-lg'
               : 'border-transparent text-gray-600 dark:text-slate-300 hover:text-gray-900 hover:border-gray-300'
           }`}
         >
           <Users size={17} />
           <span>{language === 'bn' ? 'সকল শিক্ষার্থী' : 'All Students'}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-bold transition-colors ${
-            activeTab === 'all' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'
+            activeTab === 'all' ? 'bg-[var(--color-brand-light)] dark:bg-teal-900/50 text-[var(--color-brand)] dark:text-teal-300' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'
           }`}>
             {formatNumber(allCurrentStudentsList.length, language)}
           </span>
@@ -1487,7 +1487,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           <input
             type="text"
             placeholder={language === 'bn' ? 'নাম, আইডি, রোল, পিতা বা ফোন নম্বর দিয়ে খুঁজুন...' : 'Search by name, ID, roll, father, or phone...'}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs font-medium placeholder-gray-400"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs font-medium placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1495,7 +1495,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         <div className="relative w-full sm:w-64">
           <Filter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500" size={17} />
           <select
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs font-semibold"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs font-semibold"
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
           >
@@ -1619,7 +1619,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                 filteredStudents.map((student, idx) => (
                   <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
                     <td className="px-4 py-3 text-gray-400 dark:text-slate-500 font-medium text-center">{formatNumber(idx + 1, language)}</td>
-                    <td className="px-4 py-3 font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                    <td className="px-4 py-3 font-mono font-bold text-[var(--color-brand)] dark:text-teal-300">
                       {formatNumber(getStudentRoll(student) || '-', language)}
                     </td>
                     <td className="px-4 py-3 font-mono text-gray-600 dark:text-slate-300">
@@ -1627,7 +1627,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 font-bold flex items-center justify-center text-xs border border-indigo-200/60 shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 font-bold flex items-center justify-center text-xs border border-teal-200/60 shrink-0">
                           {(student.name || 'S')[0].toUpperCase()}
                         </div>
                         <div className="truncate max-w-[170px]">
@@ -1657,7 +1657,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                             {language === 'bn' ? (student.fatherNameBn || student.fatherName || '—') : (student.fatherName || '—')}
                           </div>
                           {student.guardianPhone && (
-                            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono">
+                            <div className="text-[10px] text-[var(--color-brand)] dark:text-teal-300 font-mono">
                               📞 {student.guardianPhone}
                             </div>
                           )}
@@ -1744,7 +1744,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                             type="button"
                             onClick={() => handleEdit(student)} 
                             title={t('editStudent' as any) || 'Edit'}
-                            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
+                            className="p-1.5 text-[var(--color-brand)] dark:text-teal-300 hover:bg-[var(--color-brand-light)] rounded-lg cursor-pointer transition-colors"
                           >
                             <Edit2 size={15} />
                           </button>
@@ -1964,14 +1964,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* 1. Academic Information Section */}
               <div className="space-y-3">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-[var(--color-brand)] dark:text-teal-300 flex items-center gap-1.5 border-b pb-1.5">
                   <span>🎓 একাডেমিক ও ভর্তি সংক্রান্ত তথ্য (Academic Info)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('class')} <span className="text-red-500">*</span></label>
                     <select 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.classLevel || ''} 
                       onChange={e => setFormData({ ...formData, classLevel: e.target.value })}
                     >
@@ -1981,10 +1981,10 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'রোল নম্বর' : 'Roll Number'} <span className="text-indigo-600 dark:text-indigo-400 font-normal">(ঐচ্ছিক)</span></label>
+                    <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'রোল নম্বর' : 'Roll Number'} <span className="text-[var(--color-brand)] dark:text-teal-300 font-normal">(ঐচ্ছিক)</span></label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.roll || ''} 
                       onChange={e => setFormData({...formData, roll: e.target.value})} 
                       placeholder="e.g. 101"
@@ -1995,7 +1995,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('studentId')} <span className="text-gray-400 dark:text-slate-500 font-normal">(অটো জেনারেট)</span></label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.studentId || ''} 
                       onChange={e => setFormData({...formData, studentId: e.target.value})} 
                       placeholder={`e.g. ${new Date().getFullYear()}001`}
@@ -2008,7 +2008,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ভর্তির তারিখ' : 'Admission Date'}</label>
                     <input 
                       type="date" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.admissionDate || ''} 
                       onChange={e => setFormData({...formData, admissionDate: e.target.value})} 
                     />
@@ -2018,7 +2018,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('group')}</label>
                       <select 
-                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                         value={formData.group || ''} 
                         onChange={e => setFormData({...formData, group: e.target.value as any})}
                       >
@@ -2033,7 +2033,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* Tuition Fee Arrangement Section */}
               <div className="space-y-3 pt-2">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-[var(--color-brand)] dark:text-teal-300 flex items-center gap-1.5 border-b pb-1.5">
                   <span>💰 টিউশন ফি ব্যবস্থা (Tuition Fee)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2060,7 +2060,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       <input
                         type="number"
                         min="0"
-                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
                         value={formData.feeBaseAmount || ''}
                         onChange={e => setFormData({ ...formData, feeBaseAmount: e.target.value })}
                         placeholder={language === 'bn' ? 'যেমন: ৫০০' : 'e.g. 500'}
@@ -2074,7 +2074,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ছাড়ের ধরন' : 'Discount Type'}</label>
                     <select
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                       value={formData.feeDiscountType || 'none'}
                       onChange={e => setFormData({ ...formData, feeDiscountType: e.target.value as FeeDiscountType })}
                     >
@@ -2092,7 +2092,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       <input
                         type="number"
                         min="0"
-                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
                         value={formData.feeWaiverAmount || ''}
                         onChange={e => setFormData({ ...formData, feeWaiverAmount: e.target.value })}
                         placeholder={language === 'bn' ? 'যেমন: ২০০' : 'e.g. 200'}
@@ -2108,7 +2108,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       <input
                         type="number"
                         min="0"
-                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
                         value={formData.feeFundAmount || ''}
                         onChange={e => setFormData({ ...formData, feeFundAmount: e.target.value })}
                         placeholder={language === 'bn' ? 'যেমন: ৩০০' : 'e.g. 300'}
@@ -2124,7 +2124,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                         <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'ফান্ডের নাম/উৎস' : 'Fund Name / Source'} <span className="text-red-500">*</span></label>
                         <input
                           type="text"
-                          className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla"
+                          className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla"
                           value={formData.feeFundSource || ''}
                           onChange={e => setFormData({ ...formData, feeFundSource: e.target.value })}
                           placeholder={language === 'bn' ? 'যেমন: যাকাত ফান্ড' : 'e.g. Zakat Fund'}
@@ -2160,14 +2160,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   )}
                   <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-700 pt-1.5">
                     <span className="text-xs font-extrabold text-gray-900 dark:text-white">{language === 'bn' ? 'শিক্ষার্থী দেবে (মাসিক)' : 'Student Pays (Monthly)'}</span>
-                    <span className="text-base font-extrabold text-indigo-700 dark:text-indigo-400 font-mono">৳{feeArrangement.payableAmount.toLocaleString()}</span>
+                    <span className="text-base font-extrabold text-[var(--color-brand)] dark:text-teal-300 font-mono">৳{feeArrangement.payableAmount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
               {/* 2. Personal Information Section */}
               <div className="space-y-3 pt-2">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-[var(--color-brand)] dark:text-teal-300 flex items-center gap-1.5 border-b pb-1.5">
                   <span>👤 শিক্ষার্থীর ব্যক্তিগত তথ্য (Personal Profile)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2176,7 +2176,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <input 
                       ref={nameInputRef}
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.name || ''} 
                       onChange={e => setFormData({...formData, name: e.target.value})} 
                       placeholder="e.g. Abdullah Al Mamun"
@@ -2186,7 +2186,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('name')} (বাংলায়)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
                       value={formData.nameBn || ''} 
                       onChange={e => setFormData({...formData, nameBn: e.target.value})} 
                       placeholder="যেমন: আব্দুল্লাহ আল মামুন"
@@ -2198,7 +2198,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'লিঙ্গ' : 'Gender'}</label>
                     <select 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.gender || 'male'} 
                       onChange={e => setFormData({...formData, gender: e.target.value as any})}
                     >
@@ -2212,7 +2212,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
                     <input 
                       type="date" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.dateOfBirth || ''} 
                       onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} 
                     />
@@ -2221,7 +2221,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'রক্তের গ্রুপ' : 'Blood Group'}</label>
                     <select 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.bloodGroup || ''} 
                       onChange={e => setFormData({...formData, bloodGroup: e.target.value})}
                     >
@@ -2241,7 +2241,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* 3. Guardian & Contact Section */}
               <div className="space-y-3 pt-2">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-[var(--color-brand)] dark:text-teal-300 flex items-center gap-1.5 border-b pb-1.5">
                   <span>👨‍👩‍👧 অভিভাবক ও যোগাযোগের ঠিকানা (Guardian & Contact)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2249,7 +2249,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('fatherName')} (English)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.fatherName || ''} 
                       onChange={e => setFormData({...formData, fatherName: e.target.value})} 
                       placeholder="Father's name"
@@ -2259,7 +2259,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('fatherName')} (বাংলায়)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
                       value={formData.fatherNameBn || ''} 
                       onChange={e => setFormData({...formData, fatherNameBn: e.target.value})} 
                       placeholder="পিতার নাম"
@@ -2272,7 +2272,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('motherName')} (English)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.motherName || ''} 
                       onChange={e => setFormData({...formData, motherName: e.target.value})} 
                       placeholder="Mother's name"
@@ -2282,7 +2282,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{t('motherName')} (বাংলায়)</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla" 
                       value={formData.motherNameBn || ''} 
                       onChange={e => setFormData({...formData, motherNameBn: e.target.value})} 
                       placeholder="মাতার নাম"
@@ -2295,7 +2295,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'অভিভাবকের মোবাইল নম্বর' : 'Guardian Mobile Phone'}</label>
                     <input 
                       type="tel" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono" 
                       value={formData.guardianPhone || ''} 
                       onChange={e => setFormData({...formData, guardianPhone: e.target.value})} 
                       placeholder="017XXXXXXXX"
@@ -2306,7 +2306,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                     <label className="text-xs font-bold text-gray-700 dark:text-slate-200">{language === 'bn' ? 'গ্রাম / ঠিকানা' : 'Address / Village'}</label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                       value={formData.address || ''} 
                       onChange={e => setFormData({...formData, address: e.target.value})} 
                       placeholder={language === 'bn' ? 'গ্রাম, ডাকঘর, উপজেলা, জেলা' : 'Village, Post, Upazila, District'}
@@ -2321,7 +2321,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                       type="text"
                       inputMode="numeric"
                       maxLength={4}
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
                       value={formData.guardianPin || ''}
                       onChange={e => setFormData({...formData, guardianPin: e.target.value.replace(/[^0-9]/g, '').slice(0, 4)})}
                       placeholder={language === 'bn' ? 'খালি = আইডির শেষ ৪ সংখ্যা' : 'Blank = last 4 of student ID'}
@@ -2335,12 +2335,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
               {/* 4. Status Section */}
               <div className="space-y-3 pt-2">
-                <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 border-b pb-1.5">
+                <div className="text-xs uppercase font-extrabold tracking-wider text-[var(--color-brand)] dark:text-teal-300 flex items-center gap-1.5 border-b pb-1.5">
                   <span>⚙️ বর্তমান স্ট্যাটাস (Student Lifecycle Status)</span>
                 </div>
                 <div className="space-y-1">
                   <select 
-                    className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
+                    className="w-full border border-gray-200 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-slate-900 text-gray-900 dark:text-white" 
                     value={formData.status || 'Active'} 
                     onChange={e => {
                       const newStatus = e.target.value as 'Active' | 'Inactive' | 'Former';

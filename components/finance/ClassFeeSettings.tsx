@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  Settings, Save, Plus, GraduationCap, BookOpen, LogIn, CalendarRange,
+  Settings, Plus, GraduationCap, BookOpen, LogIn, CalendarRange,
   FileText, ClipboardList, FileSpreadsheet, UtensilsCrossed, Tag,
   Wallet, User, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
@@ -69,20 +69,18 @@ interface FeeClassCardProps {
   draft: Record<string, string>;
   types: FeeTypeDef[];
   dirty: boolean;
-  saving: boolean;
   isBn: boolean;
   onDraftChange: (className: string, typeId: string, value: string) => void;
-  onSave: (className: string) => void;
 }
 
 const FeeClassCard = React.memo(function FeeClassCard({
-  className, classLabel, draft, types, dirty, saving, isBn, onDraftChange, onSave,
+  className, classLabel, draft, types, dirty, isBn, onDraftChange,
 }: FeeClassCardProps) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <GraduationCap className="w-4 h-4 text-[var(--color-brand)] dark:text-teal-300" />
           <span className="font-bold text-sm text-slate-900 dark:text-white">{classLabel}</span>
         </div>
         {dirty && (
@@ -104,23 +102,12 @@ const FeeClassCard = React.memo(function FeeClassCard({
                 inputMode="numeric"
                 value={draft[t.id] ?? '0'}
                 onChange={(e) => onDraftChange(className, t.id, e.target.value)}
-                disabled={saving}
-                className="w-24 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 font-bold text-xs text-right focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                className="w-24 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 font-bold text-xs text-right focus:ring-1 focus:ring-[var(--color-brand-ring)] disabled:opacity-50"
               />
             </span>
           </label>
         ))}
       </div>
-      <Button
-        onClick={() => onSave(className)}
-        size="sm"
-        variant="secondary"
-        disabled={saving}
-        className="w-full text-xs"
-      >
-        <Save className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
-        <span>{saving ? (isBn ? 'সংরক্ষণ হচ্ছে…' : 'Saving…') : (isBn ? 'সেভ' : 'Save')}</span>
-      </Button>
     </div>
   );
 });
@@ -145,10 +132,9 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
   // Inputs are STRINGS: typing never snaps to 0 (the old Number() onChange
   // turned a cleared field into 0 mid-keystroke — the visible flicker).
   // Snapshots refresh only NON-dirty classes, so a snapshot can never
-  // clobber an in-progress edit; Save clears the dirty flag.
+  // clobber an in-progress edit; Save All clears the dirty flags.
   const [drafts, setDrafts] = useState<Drafts>(() => draftsFromProps(classes, feeStructures));
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
-  const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [savingAll, setSavingAll] = useState(false);
   const [savingType, setSavingType] = useState<string | null>(null);
   const draftsRef = useRef(drafts);
@@ -198,24 +184,6 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
       amounts,
     };
   }, [classes, enabled, feeStructures]);
-
-  const handleSave = useCallback(async (className: string) => {
-    const structure = buildStructure(className);
-    if (!structure) return;
-    setSaving(prev => ({ ...prev, [className]: true }));
-    const nextStructures = feeStructures.some(f => f.classLevel === className)
-      ? feeStructures.map(f => (f.classLevel === className ? structure : f))
-      : [...feeStructures, structure];
-    onUpdateFeeStructure(structure);
-    const result = await onConfirmFeeStructures(nextStructures);
-    setSaving(prev => ({ ...prev, [className]: false }));
-    if (result.success) {
-      setDirty(prev => ({ ...prev, [className]: false }));
-      showToast(isBn ? `"${className}" শ্রেণির ফি কাঠামো সংরক্ষিত হয়েছে!` : `Fee structure for ${className} saved!`);
-    } else {
-      showToast(result.message || (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন।' : 'Save failed — please retry.'));
-    }
-  }, [buildStructure, feeStructures, isBn, onConfirmFeeStructures, onUpdateFeeStructure, showToast]);
 
   const handleSaveAll = useCallback(async () => {
     setSavingAll(true);
@@ -375,7 +343,7 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
                 value={newNameBn}
                 onChange={e => setNewNameBn(e.target.value)}
                 placeholder={isBn ? 'ফি-র নাম (যেমন: লাইব্রেরি ফি)' : 'Fee name (e.g. Library Fee)'}
-                className="flex-1 min-w-[160px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-1 focus:ring-blue-500"
+                className="flex-1 min-w-[160px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-1 focus:ring-[var(--color-brand-ring)]"
               />
               <select
                 value={newFreq}
@@ -438,10 +406,8 @@ export const ClassFeeSettings: React.FC<ClassFeeSettingsProps> = ({
               draft={drafts[c.name] || {}}
               types={enabled}
               dirty={!!dirty[c.name]}
-              saving={!!saving[c.name]}
               isBn={isBn}
               onDraftChange={handleDraftChange}
-              onSave={handleSave}
             />
           ))}
         </div>

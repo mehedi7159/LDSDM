@@ -277,7 +277,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
             <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
               <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'মোট পরীক্ষা ও টার্ম' : 'Total Exams'}</div>
               <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{formatNumber(kpis.totalExamsCount, 'bn')} টি</div>
-              <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold truncate">{kpis.activeExamName}</div>
+              <div className="text-[11px] text-[var(--color-brand)] dark:text-teal-300 font-semibold truncate">{kpis.activeExamName}</div>
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
@@ -320,13 +320,13 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
           onClick={() => setActiveTab('marks')}
           className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
         >
-          <PenTool size={14} className="text-indigo-600 dark:text-indigo-400" />
+          <PenTool size={14} className="text-[var(--color-brand)] dark:text-teal-300" />
           <span>{isBn ? 'নম্বর এন্ট্রি' : 'Marks Entry'}</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('tabulation')}
-          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--color-brand-light)] dark:bg-teal-500/10 hover:bg-[var(--color-brand-light)] dark:hover:bg-teal-500/20 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <FileSpreadsheet size={14} />
           <span>{isBn ? 'ট্যাবুলেশন শিট' : 'Tabulation Sheet'}</span>
@@ -420,7 +420,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">{isBn ? 'পরীক্ষা নির্বাচন:' : 'Select Exam:'}</label>
                   <select 
-                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[200px] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                     onChange={(e) => setTabulationExamId(e.target.value)}
                     value={tabulationExamId}
                   >
@@ -432,7 +432,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">{isBn ? 'শ্রেণি নির্বাচন:' : 'Select Class:'}</label>
                   <select 
-                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[150px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[150px] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                     value={tabulationClass}
                     onChange={(e) => setTabulationClass(e.target.value)}
                   >
@@ -445,7 +445,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Printer size={15} />
                   <span>{isBn ? 'ট্যাবুলেশন শিট প্রিন্ট' : 'Print Tabulation'}</span>
@@ -677,7 +677,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">{isBn ? 'বিশ্লেষণ পরীক্ষা:' : 'Analysis Exam:'}</label>
                   <select 
-                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[200px] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                     onChange={(e) => setSelectedExamId(e.target.value)}
                     value={selectedExamId}
                   >
@@ -688,7 +688,7 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 mb-1">{isBn ? 'শ্রেণি ফিল্টার:' : 'Class Filter:'}</label>
                   <select 
-                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[150px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="border border-slate-200 rounded-xl p-2 bg-white text-slate-800 text-xs font-semibold min-w-[150px] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                     value={analyticsClass}
                     onChange={(e) => setAnalyticsClass(e.target.value)}
                   >

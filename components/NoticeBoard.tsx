@@ -47,7 +47,7 @@ export const getNoticeBadgeConfig = (category: NoticeCategory, priority: NoticeP
   const isBn = language === 'bn';
 
   let categoryLabel = isBn ? 'সাধারণ বিজ্ঞপ্তি' : 'General Notice';
-  let categoryBg = 'bg-blue-50 text-blue-700 border-blue-200';
+  let categoryBg = 'bg-[var(--color-brand-light)] text-[var(--color-brand)] border-[var(--color-brand-ring)]';
   let icon = Megaphone;
 
   switch (category) {
@@ -63,12 +63,12 @@ export const getNoticeBadgeConfig = (category: NoticeCategory, priority: NoticeP
       break;
     case 'exam':
       categoryLabel = isBn ? '📝 পরীক্ষার নোটিশ' : '📝 Exam Notification';
-      categoryBg = 'bg-indigo-50 text-indigo-800 border-indigo-200 font-bold';
+      categoryBg = 'bg-[var(--color-brand-light)] text-[var(--color-brand)] border-[var(--color-brand-ring)] font-bold';
       icon = BookOpen;
       break;
     case 'holiday':
       categoryLabel = isBn ? '📅 ছুটির নোটিশ' : '📅 Holiday Notice';
-      categoryBg = 'bg-purple-50 text-purple-800 border-purple-200 font-semibold';
+      categoryBg = 'bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold';
       icon = CalendarCheck;
       break;
     case 'event':
@@ -303,7 +303,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
               : currentAlertNotice.priority === 'urgent'
  ? 'bg-red-900 text-white border-red-600/80'
               : currentAlertNotice.category === 'exam'
- ? 'bg-indigo-900 text-white border-indigo-500/80'
+ ? 'bg-[var(--color-brand)] text-white border-[var(--color-brand-ring)]'
  : 'bg-amber-800 text-white border-amber-500/80'
           }`}
         >
@@ -319,7 +319,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
                   : currentAlertNotice.priority === 'urgent'
  ? 'bg-red-500 text-white animate-pulse'
                   : currentAlertNotice.category === 'exam'
- ? 'bg-indigo-500 text-white'
+ ? 'bg-white/20 text-white'
  : 'bg-amber-500 text-slate-950'
               }`}>
                 {currentAlertNotice.category === 'cancellation' ? <AlertTriangle size={18} /> :
@@ -334,7 +334,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
                     currentAlertNotice.category === 'cancellation'
                       ? 'bg-rose-500/30 text-rose-200 border border-rose-400/50'
                       : currentAlertNotice.category === 'exam'
-                      ? 'bg-indigo-500/30 text-indigo-200 border border-indigo-400/50'
+                      ? 'bg-white/20 text-white border border-white/30'
                       : 'bg-amber-400/30 text-amber-200 border border-amber-300/50'
                   }`}>
                     {currentAlertNotice.category === 'cancellation'
@@ -423,7 +423,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
  <div className="bg-slate-900 text-slate-200 rounded-2xl border border-slate-800 overflow-hidden flex items-stretch">
           
           {/* Ticker Lead-in Label */}
- <div className="bg-indigo-600 text-white px-3 sm:px-4 py-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider shrink-0 z-10">
+ <div className="bg-[var(--color-brand)] text-white px-3 sm:px-4 py-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider shrink-0 z-10">
             <Radio size={14} className="animate-pulse text-amber-300" />
             <span className="hidden sm:inline">{isBn ? 'জরুরি সংবাদ ও নোটিশ' : 'Live Updates'}</span>
             <span className="sm:hidden">{isBn ? 'সংবাদ' : 'Live'}</span>
@@ -449,12 +449,12 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
                   <div
                     key={n.id || idx}
                     onClick={() => setSelectedNoticeForModal(n)}
-                    className="inline-flex items-center gap-2 cursor-pointer hover:text-indigo-400 transition-colors group"
+                    className="inline-flex items-center gap-2 cursor-pointer hover:text-[var(--color-brand)] transition-colors group"
                   >
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                       n.category === 'cancellation' ? 'bg-rose-900/80 text-rose-200 border border-rose-700' :
                       n.category === 'urgent' ? 'bg-red-900/80 text-red-200 border border-red-700' :
-                      n.category === 'exam' ? 'bg-indigo-900/80 text-indigo-200 border border-indigo-700' :
+                      n.category === 'exam' ? 'bg-teal-900/80 text-teal-200 border border-[var(--color-brand-ring)]' :
                       'bg-slate-800 text-slate-300'
                     }`}>
                       {n.category === 'cancellation' ? (isBn ? 'ক্লাস বাতিল' : 'Cancelled') :
@@ -496,7 +496,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
             {canManage && (
               <button
                 onClick={() => setIsQuickPostOpen(true)}
- className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ml-1"
+ className="px-2 py-1 rounded-lg bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ml-1"
                 title={isBn ? 'নতুন জরুরি নোটিশ পোস্ট করুন' : 'Post Urgent Update'}
               >
                 <Plus size={12} />
@@ -507,7 +507,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
             {onOpenNoticeBoard && (
               <button
                 onClick={onOpenNoticeBoard}
-                className="p-1 hover:text-white transition cursor-pointer text-indigo-400"
+                className="p-1 hover:text-white transition cursor-pointer text-teal-300"
                 title={isBn ? 'পূর্ণাঙ্গ নোটিশ বোর্ড' : 'All Notices'}
               >
                 <ArrowRight size={13} />
@@ -609,7 +609,7 @@ export const NoticeBoardAlertBanner: React.FC<NoticeBoardAlertBannerProps> = ({
                   <UnconfirmedBadge isBn={isBn} />
                 )}
                 {selectedNoticeForModal.targetClass && (
-                  <p className="text-xs text-indigo-600 font-bold mt-1">
+                  <p className="text-xs text-[var(--color-brand)] font-bold mt-1">
                     {isBn ? `প্রযোজ্য শ্রেণি: ${selectedNoticeForModal.targetClass}` : `Target Class: ${selectedNoticeForModal.targetClass}`}
                   </p>
                 )}
@@ -1214,7 +1214,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
       {/* 2. NOTICE BOARD HEADER & ACTION BAR */}
  <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-5 dark:bg-[#161c2e]">
         <div className="flex items-center gap-4">
- <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
+ <div className="w-14 h-14 rounded-2xl bg-[var(--color-brand)] text-white flex items-center justify-center font-bold shrink-0">
             <Megaphone size={26} />
           </div>
           <div>
@@ -1222,7 +1222,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight dark:text-white">
                 {isBn ? 'নোটিশ বোর্ড ও জরুরি বার্তা কেন্দ্র' : 'Notice Board & Notification Center'}
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
+              <span className="px-2.5 py-0.5 rounded-full bg-[var(--color-brand-light)] text-[var(--color-brand)] text-xs font-black border border-[var(--color-brand-ring)]">
                 {notices.length}
               </span>
             </div>
@@ -1243,7 +1243,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
           {(canManage || isViewerMode) && (
             <button
               onClick={() => openCompose()}
- className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
+ className="px-4 py-2.5 rounded-xl bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
             >
               <Plus size={16} />
               <span>{isBn ? 'নতুন নোটিশ পোস্ট করুন' : 'Post Notice'}</span>
@@ -1277,8 +1277,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
 
  <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between dark:bg-[#161c2e]">
           <div>
-            <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">{isBn ? 'পরীক্ষার নোটিশ' : 'Exam Notices'}</div>
-            <div className="text-3xl font-black text-indigo-600 mt-1">{examCount}</div>
+            <div className="text-[11px] font-bold text-[var(--color-brand)] uppercase tracking-wider">{isBn ? 'পরীক্ষার নোটিশ' : 'Exam Notices'}</div>
+            <div className="text-3xl font-black text-[var(--color-brand)] mt-1">{examCount}</div>
           </div>
         </div>
       </div>
@@ -1325,8 +1325,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             onClick={() => setActiveCategoryFilter('exam')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
               activeCategoryFilter === 'exam'
- ? 'bg-indigo-600 text-white'
-                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+ ? 'bg-[var(--color-brand)] text-white'
+                : 'bg-[var(--color-brand-light)] text-[var(--color-brand)] hover:bg-[var(--color-brand-light)]'
             }`}
           >
             {isBn ? '📝 পরীক্ষার নোটিশ' : '📝 Exam Notices'}
@@ -1336,8 +1336,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             onClick={() => setActiveCategoryFilter('holiday')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
               activeCategoryFilter === 'holiday'
- ? 'bg-purple-600 text-white'
-                : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+ ? 'bg-emerald-600 text-white'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
             }`}
           >
             {isBn ? '📅 ছুটির নোটিশ' : '📅 Holidays'}
@@ -1352,7 +1352,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={isBn ? 'নোটিশ খুঁজুন...' : 'Search notices...'}
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-white/5 dark:border-white/10"
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] dark:bg-white/5 dark:border-white/10"
           />
         </div>
       </div>
@@ -1385,7 +1385,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                     : isUrgent
                     ? 'bg-red-50/30 border-red-200 hover:border-red-400'
                     : notice.category === 'exam'
-                    ? 'bg-indigo-50/30 border-indigo-200 hover:border-indigo-400'
+                    ? 'bg-teal-50/30 border-[var(--color-brand-ring)] hover:border-[var(--color-brand-ring)]'
                     : 'bg-white border-slate-200/90 hover:border-slate-300 dark:bg-[#161c2e]'
                 }`}
               >
@@ -1418,7 +1418,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                   </div>
 
                   {/* Title */}
-                  <h3 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug dark:text-white">
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[var(--color-brand)] transition-colors leading-snug dark:text-white">
                     {notice.title}
                   </h3>
 
@@ -1428,7 +1428,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                   )}
 
                   {notice.targetClass && (
-                    <div className="text-[11px] font-bold text-indigo-600 mt-1">
+                    <div className="text-[11px] font-bold text-[var(--color-brand)] mt-1">
                       {isBn ? `প্রযোজ্য শ্রেণি: ${notice.targetClass}` : `Class: ${notice.targetClass}`}
                     </div>
                   )}
@@ -1461,7 +1461,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
 
                         <button
                           onClick={() => openCompose(notice)}
-                          className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                          className="p-1.5 rounded-lg text-[var(--color-brand)] hover:bg-[var(--color-brand-light)] transition cursor-pointer"
                           title={isBn ? 'সম্পাদনা' : 'Edit Notice'}
                         >
                           <Edit2 size={13} />
@@ -1479,7 +1479,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
 
                     <button
                       onClick={() => setSelectedNoticeForModal(notice)}
-                      className="text-indigo-600 font-bold hover:underline flex items-center gap-0.5 ml-1 text-xs cursor-pointer"
+                      className="text-[var(--color-brand)] font-bold hover:underline flex items-center gap-0.5 ml-1 text-xs cursor-pointer"
                     >
                       <span>{isBn ? 'বিস্তারিত' : 'View'}</span>
                       <ChevronRight size={13} />
@@ -1502,7 +1502,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
             
             <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between dark:border-white/5">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-[var(--color-brand)] flex items-center justify-center border border-teal-500/30">
                   <Megaphone size={18} />
                 </div>
                 <h3 className="text-sm font-bold tracking-tight">
@@ -1532,7 +1532,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                   placeholder={isBn ? 'যেমন: আগামীকাল বুধবার ৩য় ও ৪র্থ শ্রেণির ক্লাস স্থগিত সংক্রান্ত' : 'e.g. Tomorrow: Class 3 & 4 cancelled'}
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla font-semibold dark:bg-white/5 dark:border-white/10"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla font-semibold dark:bg-white/5 dark:border-white/10"
                 />
               </div>
 
@@ -1620,7 +1620,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                   placeholder={isBn ? 'বিজ্ঞপ্তির পূর্ণাঙ্গ বিবরণ লিখুন...' : 'Write the detailed announcement here...'}
                   value={formContent}
                   onChange={(e) => setFormContent(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bangla dark:bg-white/5 dark:border-white/10"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] font-bangla dark:bg-white/5 dark:border-white/10"
                 />
               </div>
 
@@ -1636,7 +1636,7 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ onBack }) => {
                       type="checkbox"
                       checked={formShowMarquee}
                       onChange={(e) => setFormShowMarquee(e.target.checked)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                      className="rounded text-[var(--color-brand)] focus:ring-[var(--color-brand-ring)]"
                     />
                     <span>{isBn ? 'চলমান মারকুই' : 'Marquee Ticker'}</span>
                   </label>
