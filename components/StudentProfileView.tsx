@@ -998,11 +998,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
             {/* Attendance Percentage */}
             <div className="bg-white dark:bg-[#161c2e] p-4 sm:p-5 rounded-2xl border border-slate-200/80">
-              <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 mb-2">
+              <div className="flex items-center justify-between text-[var(--color-brand)] mb-2">
                 <span className="text-xs font-semibold">{language === 'bn' ? 'উপস্থিতির হার' : 'Attendance Rate'}</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-3xl sm:text-4xl font-black text-indigo-600 dark:text-indigo-400">
+                <span className="text-3xl sm:text-4xl font-black text-[var(--color-brand)]">
                   {toBn(monthlyAttendanceData.summary.rate)}%
                 </span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
@@ -1031,7 +1031,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Award size={18} className="text-indigo-600 dark:text-indigo-400" />
+                  <Award size={18} className="text-[var(--color-brand)]" />
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     {language === 'bn' ? 'টার্ম/পরীক্ষাভিত্তিক আনুষ্ঠানিক হাজিরা ও শিক্ষকের মন্তব্য' : 'Official Term Attendance & Teacher Evaluation'}
                   </h3>
@@ -1041,7 +1041,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 font-bold">
@@ -1069,7 +1069,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                           <td className="p-3 text-center font-semibold text-slate-700 dark:text-slate-200">{toBn(w)}</td>
                           <td className="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">{toBn(p)}</td>
                           <td className="p-3 text-center font-semibold text-rose-600 dark:text-rose-400">{toBn(a)}</td>
-                          <td className="p-3 text-center font-bold text-indigo-600 dark:text-indigo-400">{toBn(rate)}%</td>
+                          <td className="p-3 text-center font-bold text-[var(--color-brand)]">{toBn(rate)}%</td>
                           <td className="p-3 text-slate-600 dark:text-slate-300 italic">
                             {rmk.remark || (language === 'bn' ? 'সন্তোষজনক অগ্রগতি ও নিয়মিত উপস্থিতি।' : 'Satisfactory progress and regular attendance.')}
                           </td>
@@ -1079,6 +1079,44 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile: stacked cards (sm-এর নিচে) — টেবিলের বদলে, sideways scroll নয় */}
+              <div className="sm:hidden space-y-3">
+                {studentRemarks.map(rmk => {
+                  const ex = exams.find(e => e.id === rmk.examId);
+                  const w = rmk.workingDays || 0;
+                  const p = rmk.totalPresent || 0;
+                  const a = rmk.totalAbsent || (w > p ? w - p : 0);
+                  const rate = w > 0 ? ((p / w) * 100).toFixed(1) : '-';
+                  return (
+                    <div key={rmk.examId} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                          {ex ? (language === 'bn' ? (ex.nameBn || ex.name) : ex.name) : rmk.examId}
+                        </div>
+                        <div className="text-lg font-black text-[var(--color-brand)] shrink-0">{toBn(rate)}%</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 py-2">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'কর্মদিবস' : 'Working'}</div>
+                          <div className="text-sm font-black text-slate-900 dark:text-slate-100">{toBn(w)}</div>
+                        </div>
+                        <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 py-2">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'উপস্থিতি' : 'Present'}</div>
+                          <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">{toBn(p)}</div>
+                        </div>
+                        <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 py-2">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'অনুপস্থিতি' : 'Absent'}</div>
+                          <div className="text-sm font-black text-rose-600 dark:text-rose-400">{toBn(a)}</div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 italic">
+                        {rmk.remark || (language === 'bn' ? 'সন্তোষজনক অগ্রগতি ও নিয়মিত উপস্থিতি।' : 'Satisfactory progress and regular attendance.')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -1087,7 +1125,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <Calendar size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <Calendar size={18} className="text-[var(--color-brand)]" />
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     {language === 'bn' ? 'মাসভিত্তিক দিনভিত্তিক হাজিরা ক্যালেন্ডার' : 'Daily Attendance Calendar'}
@@ -1104,7 +1142,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   type="month"
                   value={attendanceMonth}
                   onChange={(e) => setAttendanceMonth(e.target.value)}
-                  className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-[#161c2e]"
+                  className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-[#161c2e]"
                 />
               </div>
             </div>
@@ -1193,7 +1231,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           {/* 2.1 EXAM SELECTOR BAR */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
             <div className="flex items-center gap-2">
-              <Award size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Award size={18} className="text-[var(--color-brand)]" />
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {language === 'bn' ? 'পরীক্ষা নির্বাচন করুন' : 'Select Examination'}
@@ -1205,7 +1243,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               <select
                 value={selectedExamId}
                 onChange={(e) => setSelectedExamId(e.target.value)}
-                className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[220px]"
+                className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer min-w-[220px]"
               >
                 {exams.map(exam => (
                   <option key={exam.id} value={exam.id}>
@@ -1216,13 +1254,20 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
           </div>
 
+          {/* 2.1b কোনো পরীক্ষা না থাকলে সৎ empty state */}
+          {!examResultsData && (
+            <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400">{language === 'bn' ? 'এখনো কোনো পরীক্ষা নির্ধারিত নেই।' : 'No examination scheduled yet.'}</p>
+            </div>
+          )}
+
           {/* 2.2 PERFORMANCE SUMMARY CARD */}
           {examResultsData && (
             <div className="bg-white dark:bg-[#161c2e] rounded-3xl p-6 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-white/10">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 
                 <div className="space-y-2">
-                  <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
+                  <span className="px-2.5 py-1 rounded-full bg-[var(--color-brand-light)] border border-[var(--color-brand-ring)] text-[var(--color-brand)] text-xs font-semibold">
                     {language === 'bn' ? (activeExam?.nameBn || activeExam?.name) : activeExam?.name} • {activeExam?.academicYear}
                   </span>
                   <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">
@@ -1246,11 +1291,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">
                       {language === 'bn' ? 'মোট প্রাপ্ত নম্বর' : 'Total Obtained'}
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
                       {toBn(examResultsData.totalObtained)}
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-normal"> / {toBn(examResultsData.totalFullMarks)}</span>
                     </div>
-                    <div className="text-[10px] text-indigo-600 dark:text-indigo-300 font-bold mt-0.5">
+                    <div className="text-[10px] text-[var(--color-brand)] font-bold mt-0.5">
                       {toBn(examResultsData.percentage)}%
                     </div>
                   </div>
@@ -1260,7 +1305,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">
                       {language === 'bn' ? 'প্রাপ্ত জিপিএ' : 'GPA (Out of 5)'}
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">
+                    <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
                       {toBn(examResultsData.gpa)}
                     </div>
                     <div className="text-[10px] text-amber-600 dark:text-amber-300 font-bold mt-0.5">
@@ -1273,7 +1318,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">
                       {language === 'bn' ? 'গ্রেড লেটার' : 'Letter Grade'}
                     </div>
-                    <div className={`text-xl sm:text-2xl font-black ${
+                    <div className={`text-2xl sm:text-3xl font-black ${
                       examResultsData.letterGrade === 'A+' ? 'text-emerald-600 dark:text-emerald-400' :
                       examResultsData.letterGrade === 'F' ? 'text-rose-600 dark:text-rose-400' : 'text-blue-600 dark:text-blue-300'
                     }`}>
@@ -1303,14 +1348,14 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 </div>
                 <button
                   onClick={handlePrint}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-400 transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-brand-light)] text-[var(--color-brand)] hover:opacity-80 transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download size={14} />
                   <span>{language === 'bn' ? 'মার্কশিট প্রিন্ট করুন' : 'Print Marksheet'}</span>
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 font-bold">
@@ -1348,7 +1393,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                           <td className="p-3.5 text-center font-semibold text-slate-700 dark:text-slate-200">{toBn(item.fullMarks)}</td>
                           <td className="p-3.5 text-center text-slate-500 dark:text-slate-400">{toBn(item.passMarks)}</td>
                           <td className="p-3.5 text-center">
-                            <span className={`font-black text-sm ${isPassing ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            <span className={`font-black text-sm ${isPassing ? 'text-[var(--color-brand)]' : 'text-rose-600 dark:text-rose-400'}`}>
                               {toBn(item.obtained)}
                             </span>
                             {/* Detailed CQ / MCQ sub marks if available */}
@@ -1398,18 +1443,18 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                       </td>
                       <td className="p-3.5 text-center">{toBn(examResultsData.totalFullMarks)}</td>
                       <td></td>
-                      <td className="p-3.5 text-center text-sm font-black text-indigo-700 dark:text-indigo-400">
+                      <td className="p-3.5 text-center text-sm font-black text-[var(--color-brand)]">
                         {toBn(examResultsData.totalObtained)}
                       </td>
-                      <td className="p-3.5 text-center text-indigo-700 dark:text-indigo-400">
+                      <td className="p-3.5 text-center text-[var(--color-brand)]">
                         {toBn(examResultsData.percentage)}%
                       </td>
                       <td className="p-3.5 text-center">
-                        <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-black">
+                        <span className="px-2 py-0.5 rounded bg-[var(--color-brand-light)] text-[var(--color-brand)] font-black">
                           {examResultsData.letterGrade}
                         </span>
                       </td>
-                      <td className="p-3.5 text-center font-black font-mono text-indigo-700 dark:text-indigo-400">
+                      <td className="p-3.5 text-center font-black font-mono text-[var(--color-brand)]">
                         {toBn(examResultsData.gpa)}
                       </td>
                       <td className="p-3.5 text-center">
@@ -1423,6 +1468,92 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   </tfoot>
                 </table>
               </div>
+
+              {/* Mobile: stacked cards (sm-এর নিচে) — টেবিলের বদলে, sideways scroll নয় */}
+              <div className="sm:hidden space-y-3 p-4">
+                {examResultsData.subjectsBreakdown.map((item) => {
+                  const isPassing = !item.isFail;
+                  return (
+                    <div key={item.subject.id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5 p-4 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                            {language === 'bn' ? (item.subject.nameBn || item.subject.name) : item.subject.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-2 mt-0.5">
+                            {item.subject.code && <span>{language === 'bn' ? 'কোড:' : 'Code:'} {item.subject.code}</span>}
+                            {item.subject.isOptional && (
+                              <span className="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 px-1 rounded font-semibold">
+                                {language === 'bn' ? 'ঐচ্ছিক' : 'Optional'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`font-bold px-2 py-0.5 rounded-md text-[11px] shrink-0 ${
+                          item.grade === 'A+' ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' :
+                          item.grade === 'A' ? 'bg-teal-100 dark:bg-teal-500/15 text-teal-800 dark:text-teal-300' :
+                          item.grade === 'F' ? 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300' : 'bg-slate-100 dark:bg-white/5 text-slate-800 dark:text-slate-100'
+                        }`}>
+                          {item.grade}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-center gap-1.5 py-1">
+                        <span className={`font-black text-2xl ${isPassing ? 'text-[var(--color-brand)]' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {toBn(item.obtained)}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">/ {toBn(item.fullMarks)}</span>
+                        {(item.obtainedCQ !== undefined || item.obtainedMCQ !== undefined) && (
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
+                            {item.obtainedCQ !== undefined && `CQ: ${item.obtainedCQ} `}
+                            {item.obtainedMCQ !== undefined && `MCQ: ${item.obtainedMCQ}`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 py-2">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'পাস' : 'Pass'}</div>
+                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{toBn(item.passMarks)}</div>
+                        </div>
+                        <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 py-2">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'শতকরা' : '%'}</div>
+                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{toBn(item.percentage)}%</div>
+                        </div>
+                        <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 py-2">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'জিপিএ' : 'GPA'}</div>
+                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{toBn(item.gpa.toFixed(2))}</div>
+                        </div>
+                        <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 py-2">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'অবস্থা' : 'Status'}</div>
+                          <div className={`text-sm font-bold ${isPassing ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            {isPassing ? (language === 'bn' ? 'উত্তীর্ণ' : 'Passed') : (language === 'bn' ? 'অনুত্তীর্ণ' : 'Failed')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Mobile: সর্বমোট কার্ড (tfoot-এর বদলে) */}
+                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{language === 'bn' ? 'সর্বমোট প্রাপ্ত নম্বর' : 'Grand Total'}</div>
+                    <div className="text-2xl font-black text-[var(--color-brand)]">
+                      {toBn(examResultsData.totalObtained)}
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-normal"> / {toBn(examResultsData.totalFullMarks)}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                      {toBn(examResultsData.percentage)}% • {language === 'bn' ? 'জিপিএ' : 'GPA'} {toBn(examResultsData.gpa)}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-2xl font-black text-slate-900 dark:text-slate-100">{examResultsData.letterGrade}</div>
+                    <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                      examResultsData.isFail ? 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                    }`}>
+                      {examResultsData.isFail ? (language === 'bn' ? 'ব্যর্থ' : 'Fail') : (language === 'bn' ? 'পাস' : 'Pass')}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1430,7 +1561,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           {examProgressionHistory.length > 1 && (
             <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 p-5">
               <div className="flex items-center gap-2 mb-4">
-                <TrendingUp size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <TrendingUp size={18} className="text-[var(--color-brand)]" />
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     {language === 'bn' ? 'টার্মভিত্তিক ফলাফল ও অগ্রগতির ধারা' : 'Term-by-Term Academic Progress'}
@@ -1448,7 +1579,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                      <div className="text-xl font-black text-[var(--color-brand)] font-mono">
                         {toBn(hist.gpa)}
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
