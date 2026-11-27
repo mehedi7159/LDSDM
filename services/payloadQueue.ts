@@ -246,6 +246,51 @@ export function clearPendingPayloadsForField(field: string): void {
 }
 
 /**
+ * Drop only the queued upsert records a confirm actually covered
+ * (edit reload-race, 26 Nov 2026): the field-wide wipe above drops
+ * the whole field's queue when ANY confirm for that field succeeds —
+ * so an ADD confirm finishing after an EDIT queued a newer value
+ * wiped the edit, and a reload then lost it for good. A queued
+ * record is dropped ONLY when the confirmed list holds the same key
+ * with identical content; a newer value under the same key stays
+ * queued for the retry. Delete/trashOp items are never touched.
+ * Do NOT shortcut via pruneQueueAgainstRemoteData: it can prune a
+ * delete item too, and the deleted record would resurrect.
+ */
+export function clearConfirmedUpsertRecords(field: string, confirmedList: any[]): void {
+  const keyFn = fieldKeyFn(field);
+  const byKey = new Map<string, any>();
+  (confirmedList || []).forEach((r) => {
+    const k = keyFn(r);
+    if (k) byKey.set(k, r);
+  });
+  const items = readPendingPayloads();
+  let changed = false;
+  const next: PendingPayloadItem[] = [];
+  for (const item of items) {
+    if (item.op !== 'upsert' || item.field !== field) {
+      next.push(item);
+      continue;
+    }
+    const remaining = (item.records || []).filter((r) => {
+      const k = keyFn(r);
+      const confirmed = k ? byKey.get(k) : undefined;
+      // Key alone never resolves an edit: the cloud holds the OLD
+      // version under the same key, so only an exact content match
+      // may drop the queued record.
+      return !(confirmed && stableStringify(confirmed) === stableStringify(r));
+    });
+    if (remaining.length > 0 || item.hasScalar) {
+      if (remaining.length !== (item.records || []).length) changed = true;
+      next.push(remaining.length === (item.records || []).length ? item : { ...item, records: remaining });
+    } else {
+      changed = true;
+    }
+  }
+  if (changed) writePendingPayloads(next);
+}
+
+/**
  * RC (13 Nov 2026 live audit): a queued restore is tombstone-blind.
  * A trashOp entry carries records to upsert back; nothing ever voided
  * them when the same record was trashed again or permanently deleted

@@ -191,6 +191,7 @@ import {
   queuePendingPayload,
   clearPendingPayload,
   clearPendingPayloadsForField,
+  clearConfirmedUpsertRecords,
   removePendingPayloadRecords,
   removePendingDeletePayload,
   queuedKeysForField,
@@ -6630,7 +6631,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
   const confirmUpsertSuccess = (field: string, list: any[], legacyKind?: string) => {
     lastConfirmedRef.current[field] = mergeRecordsByKey(lastConfirmedRef.current[field] || [], list, fieldKeyFn(field));
-    clearPendingPayloadsForField(field);
+    // Content-aware clear (edit reload-race, 26 Nov 2026): drop only
+    // the records this confirm actually covered — a concurrent
+    // confirm must never wipe a newer queued edit under the same key.
+    clearConfirmedUpsertRecords(field, list);
     if (legacyKind) clearPendingConfirm(legacyKind as any);
     refreshPendingPayloads();
     void rebuildPublicPortalFromCloud();
@@ -7133,6 +7137,20 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   ): Promise<CloudConfirmResult> => {
     const teacherList = nextTeachers ?? teachersRef.current;
     const userList = nextUsers ?? usersRef.current;
+    // Pre-queue the delta SYNCHRONOUSLY before the confirm starts
+    // (student pattern, edit reload-race 26 Nov 2026): a reload
+    // mid-confirm must leave something to retry. The success path
+    // clears only the confirmed records, so a newer queued edit
+    // under the same key survives a concurrent confirm.
+    const teacherDelta = diffRecords('teachers', lastConfirmedRef.current['teachers'], teacherList);
+    if (teacherDelta.length > 0) {
+      queuePendingPayload({ field: 'teachers', op: 'upsert', records: teacherDelta, updatedBy: confirmActorName() });
+    }
+    const userDelta = diffRecords('users', lastConfirmedRef.current['users'], userList);
+    if (userDelta.length > 0) {
+      queuePendingPayload({ field: 'users', op: 'upsert', records: userDelta, updatedBy: confirmActorName() });
+    }
+    if (teacherDelta.length > 0 || userDelta.length > 0) refreshPendingPayloads();
     const result = await confirmCloudWrite(
       () => writeStaffFieldsToCloud(teacherList, userList, confirmActorName()),
       STAFF_CLOUD_FAILURE_MESSAGE,
