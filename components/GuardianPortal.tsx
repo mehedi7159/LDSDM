@@ -246,7 +246,15 @@ export const GuardianPortal: React.FC = () => {
         {activeTab === 'results' && (
           <div className="space-y-4">
             {/* Exam selector filter */}
- <div className="bg-white dark:bg-[#161c2e] p-4 rounded-2xl border border-slate-200/80 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
+            {exams.length === 0 && (
+              <EmptyState
+                icon={Calendar}
+                title={language === 'en' ? 'No exams yet' : 'এখনো কোনো পরীক্ষা নেই'}
+                description={language === 'en' ? 'Results will appear here once an exam is scheduled.' : 'পরীক্ষা নির্ধারিত হলে এখানে ফলাফল দেখা যাবে।'}
+              />
+            )}
+            {exams.length > 0 && (
+            <div className="bg-white dark:bg-[#161c2e] p-4 rounded-2xl border border-slate-200/80 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200">পরীক্ষা নির্বাচন:</span>
                 <select
@@ -276,7 +284,7 @@ export const GuardianPortal: React.FC = () => {
                   <span>প্রিন্ট</span>
                 </button>
               </div>
-            </div>
+            </div>)}
 
             {/* Performance Snapshot Card — light card + shared StatCards
                 (Job 3 G1/G9). G2: grade / GPA / total show '—' until
@@ -415,10 +423,10 @@ export const GuardianPortal: React.FC = () => {
             {attendanceSummary && attendanceSummary.workingDays > 0 ? (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatCard label="উপস্থিতির হার" value={attendanceSummary.attendancePercentage} suffix="%" />
                   <StatCard label="রেকর্ডকৃত দিন" value={attendanceSummary.workingDays} suffix=" দিন" />
                   <StatCard label="উপস্থিত" value={attendanceSummary.totalPresent} suffix=" দিন" />
                   <StatCard label="অনুপস্থিত" value={attendanceSummary.totalAbsent} suffix=" দিন" />
-                  <StatCard label="উপস্থিতির হার" value={attendanceSummary.attendancePercentage} suffix="%" />
                 </div>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   {language === 'en'

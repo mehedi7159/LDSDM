@@ -376,7 +376,7 @@ export const MadrasaReports: React.FC = () => {
                 <button onClick={() => setActiveTab('attendance')} className="mt-auto w-full py-2 rounded-2xl bg-amber-600 text-white text-xs font-bold">{isBn ? 'হাজিরা দেখুন' : 'View attendance'}</button>
               </div>
             ) : (
-              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
+              <div className="flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
                     <ShieldCheck size={17} />
@@ -416,7 +416,7 @@ export const MadrasaReports: React.FC = () => {
                 <button onClick={() => setActiveTab('finance')} className="mt-auto w-full py-2 rounded-2xl bg-rose-600 text-white text-xs font-bold">{isBn ? 'বকেয়া দেখুন' : 'View dues'}</button>
               </div>
             ) : (
-              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
+              <div className="flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
                     <ShieldCheck size={17} />
@@ -456,7 +456,7 @@ export const MadrasaReports: React.FC = () => {
                 <button onClick={() => setActiveTab('students')} className="mt-auto w-full py-2 rounded-2xl bg-[var(--color-brand)] text-white text-xs font-bold">{isBn ? 'শিক্ষার্থী দেখুন' : 'View students'}</button>
               </div>
             ) : (
-              <div className="hidden md:flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
+              <div className="flex bg-white dark:bg-slate-900 p-4 rounded-3xl border border-emerald-200 dark:border-emerald-900/60 flex-col">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
                     <ShieldCheck size={17} />

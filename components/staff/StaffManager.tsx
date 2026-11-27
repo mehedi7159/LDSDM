@@ -1274,7 +1274,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-3">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isBn ? 'স্টাফ আইডি কার্ড' : 'Staff ID Cards'}</div>
             <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-center gap-1.5">
-              <Award size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <Award size={18} className="text-[var(--color-brand)] dark:text-teal-300" />
               <span>{isBn ? 'রেডি' : 'Ready'}</span>
             </div>
           </div>
@@ -1628,7 +1628,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                     return (
                       <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                         <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{isBn ? 'ভূমিকা:' : 'Role:'}</span>
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-800">
                           {roleLabelBn(r.role)}
                         </span>
                         {r.additionalRoles.map(ar => (
@@ -1779,7 +1779,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white">{isBn ? (staff.nameBn || staff.name) : staff.name}</td>
                           <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{staff.designation || 'সহকারী শিক্ষক'}</td>
                           <td className="px-3 py-2.5">
-                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300">{roleLabelBn(r.role)}</span>
+                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300">{roleLabelBn(r.role)}</span>
                             {r.additionalRoles.map(ar => (
                               <span key={ar} className="ml-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">+ {roleLabelBn(ar)}</span>
                             ))}

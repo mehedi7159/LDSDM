@@ -411,7 +411,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView = 'gateway', onB
                       <ChevronRight size={18} className="text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                      শিক্ষার্থী বা অভিভাবকগণ রোল নম্বর ও পরীক্ষা নির্বাচন করে সরাসরি ফলাফল, বিষয়ভিত্তিক নম্বর ও ডিজিটাল মার্কশিট দেখুন।
+                      রোল নম্বর ও পরীক্ষা দিয়ে সরাসরি ফলাফল দেখুন।
                     </p>
                   </div>
                 </div>

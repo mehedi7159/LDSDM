@@ -82,8 +82,8 @@ export const AdminReportView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'নির্ধারিত রোল' : 'Active Roles'}</p>
-            <h3 className="text-3xl font-black text-purple-600 dark:text-purple-400 mt-1">{toBanglaDigits(rolesCount)}</h3>
-            <p className="text-[10px] text-purple-600/80 dark:text-purple-400 mt-0.5">{language === 'bn' ? 'RBAC পারমিশন লেয়ার' : 'RBAC Configured'}</p>
+            <h3 className="text-3xl font-black text-[var(--color-brand)] dark:text-teal-300 mt-1">{toBanglaDigits(rolesCount)}</h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{language === 'bn' ? 'RBAC পারমিশন লেয়ার' : 'RBAC Configured'}</p>
           </div>
         </div>
 
@@ -98,8 +98,8 @@ export const AdminReportView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{language === 'bn' ? 'সিকিউরিটি লেভেল' : 'Security Level'}</p>
-            <h3 className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">Tier-1</h3>
-            <p className="text-[10px] text-blue-600/80 dark:text-blue-400 mt-0.5">{language === 'bn' ? 'রোল বেসড এক্সেস গার্ড' : 'RBAC Protected'}</p>
+            <h3 className="text-3xl font-black text-[var(--color-brand)] dark:text-teal-300 mt-1">Tier-1</h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{language === 'bn' ? 'রোল বেসড এক্সেস গার্ড' : 'RBAC Protected'}</p>
           </div>
         </div>
       </div>
@@ -107,7 +107,7 @@ export const AdminReportView: React.FC = () => {
       {/* Security Status Box */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-4">
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-          <Server size={18} className="text-purple-600 dark:text-purple-400" />
+          <Server size={18} className="text-[var(--color-brand)] dark:text-teal-300" />
           <span>{language === 'bn' ? 'সিস্টেম ও সিকিউরিটি কনফিগারেশন চেকলিস্ট' : 'System Governance & Security Matrix'}</span>
         </h3>
 

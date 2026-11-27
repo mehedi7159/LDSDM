@@ -324,9 +324,9 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+        <div className="p-5 bg-[var(--color-brand)] text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
- <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400">
+ <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-white">
               <FileSpreadsheet size={22} />
             </div>
             <div>
@@ -334,7 +334,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
                 <h2 className="text-base sm:text-lg font-black tracking-tight">
                   {language === 'bn' ? 'বাল্ক হাজিরা ও মন্তব্য ইমপোর্ট' : 'Bulk Attendance & Remarks Import'}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full bg-indigo-400/20 text-indigo-300 text-[10px] font-bold border border-indigo-400/30">
+                <span className="px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-bold border border-white/20">
                   {selectedClass} • {selectedExam?.name}
                 </span>
               </div>
@@ -356,7 +356,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             onClick={() => setActiveTab('paste')}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'paste'
- ? 'bg-white text-indigo-700 border-t-2 border-indigo-600'
+ ? 'bg-white text-[var(--color-brand)] border-t-2 border-[var(--color-brand)]'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -369,7 +369,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             onClick={() => setActiveTab('upload')}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'upload'
- ? 'bg-white text-indigo-700 border-t-2 border-indigo-600'
+ ? 'bg-white text-[var(--color-brand)] border-t-2 border-[var(--color-brand)]'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -385,7 +385,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             }}
             className={`flex items-center gap-2 py-2.5 px-4 font-bold text-xs rounded-t-xl transition-all cursor-pointer ${
               activeTab === 'quick_preset'
- ? 'bg-white text-indigo-700 border-t-2 border-indigo-600'
+ ? 'bg-white text-[var(--color-brand)] border-t-2 border-[var(--color-brand)]'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -422,7 +422,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
                 <Button
                   variant="secondary"
                   onClick={handleDownloadSampleCsv}
-                  className="text-xs flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 py-1.5"
+                  className="text-xs flex items-center gap-1.5 bg-[var(--color-brand-light)] text-[var(--color-brand)] border-[var(--color-brand-ring)] hover:bg-[var(--color-brand-light)] py-1.5"
                 >
                   <Download size={13} />
                   <span>{language === 'bn' ? 'স্যাম্পল টেমপ্লেট' : 'Sample CSV'}</span>
@@ -434,7 +434,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
                 value={pastedText}
                 onChange={(e) => handleParseContent(e.target.value)}
                 placeholder={`1\t24\t22\t2\tনিয়মিত ও সন্তোষজনক\n2\t24\t20\t4\tআরও মনোযোগী হতে হবে\n3\t24\t24\t0\tচমৎকার উপস্থিতি`}
-                className="w-full p-3.5 text-xs font-mono border border-slate-300 rounded-2xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full p-3.5 text-xs font-mono border border-slate-300 rounded-2xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[var(--color-brand-ring)] focus:outline-none"
               />
 
               <div className="flex items-center justify-between text-[11px] text-slate-500">
@@ -456,9 +456,9 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             <div className="space-y-4">
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="p-8 border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 rounded-3xl text-center cursor-pointer transition-all hover:bg-indigo-50/70"
+                className="p-8 border-2 border-dashed border-[var(--color-brand-ring)] hover:border-[var(--color-brand)] bg-[var(--color-brand-light)]/40 rounded-3xl text-center cursor-pointer transition-all hover:bg-[var(--color-brand-light)]/70"
               >
-                <Upload size={36} className="mx-auto text-indigo-600 mb-2" />
+                <Upload size={36} className="mx-auto text-[var(--color-brand)] mb-2" />
                 <h4 className="text-sm font-bold text-slate-800">
                   {language === 'bn' ? 'CSV বা টেক্সট ফাইল আপলোড করতে ক্লিক করুন' : 'Click to upload Attendance CSV / Text file'}
                 </h4>
@@ -689,7 +689,7 @@ export const BulkAttendanceImportModal: React.FC<BulkAttendanceImportModalProps>
             type="button"
             onClick={handleApplyImport}
             disabled={isApplying || matchedCount === 0}
- className="px-6 py-2.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
+ className="px-6 py-2.5 text-xs font-black bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] text-white flex items-center gap-2"
           >
             {isApplying ? (
               <RefreshCw size={14} className="animate-spin" />

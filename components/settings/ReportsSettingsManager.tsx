@@ -1143,11 +1143,11 @@ export const ReportsSettingsManager: React.FC<ReportsSettingsManagerProps> = ({
                   onChange={handleProfileChange}
                   className="w-full px-4 py-2.5 text-xs sm:text-sm border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-800 dark:text-slate-100"
                 >
-                  <option value="Premium_Dakhil">📜 প্রিমিয়াম দাখিল / আলিয়া ফর্ম্যাট (Premium Dakhil)</option>
-                  <option value="Premium_Colored">🎨 আকর্ষণীয় কালারফুল থিম (Premium Colored)</option>
-                  <option value="Premium_Royal">👑 রয়্যাল ক্রিস্টাল থিম (Royal Crest)</option>
-                  <option value="Classic">📄 ক্লাসিক স্ট্যান্ডার্ড ফর্ম্যাট (Classic Standard)</option>
-                  <option value="BW_Term">🖨️ ইকোনমি ব্ল্যাক অ্যান্ড হোয়াইট (B&W Economy)</option>
+                  <option value="Premium_Dakhil">প্রিমিয়াম দাখিল / আলিয়া ফর্ম্যাট (Premium Dakhil)</option>
+                  <option value="Premium_Colored">আকর্ষণীয় কালারফুল থিম (Premium Colored)</option>
+                  <option value="Premium_Royal">রয়্যাল ক্রিস্টাল থিম (Royal Crest)</option>
+                  <option value="Classic">ক্লাসিক স্ট্যান্ডার্ড ফর্ম্যাট (Classic Standard)</option>
+                  <option value="BW_Term">ইকোনমি ব্ল্যাক অ্যান্ড হোয়াইট (B&W Economy)</option>
                   <option value="Monthly">📅 মাসিক মূল্যায়ন প্রগ্রেস কার্ড (Monthly Progress)</option>
                 </select>
               </div>

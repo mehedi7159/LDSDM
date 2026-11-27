@@ -387,7 +387,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800">
         <div>
           <h2 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-            <BookOpen className="text-blue-600 dark:text-blue-400" size={26} />
+            <BookOpen className="text-[var(--color-brand)] dark:text-teal-300" size={26} />
             {language === 'bn' ? 'একাডেমিক বিষয় ও শিক্ষক বণ্টন' : 'Academic Subjects & Teacher Assignment'}
           </h2>
         </div>
@@ -395,28 +395,28 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
         <div className="bg-gray-100 dark:bg-slate-800 p-1.5 rounded-xl flex flex-wrap gap-1 w-full md:w-auto">
           <button 
             onClick={() => { setTab('directory'); setFocusedSubjectId('ALL'); }}
-            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'directory' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'directory' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
           >
             <BookOpen size={16} />
             {language === 'bn' ? 'বিষয় তালিকা' : 'Subject Catalog'}
           </button>
           <button 
             onClick={() => { setTab('class_assignment'); setFocusedSubjectId('ALL'); }}
-            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'class_assignment' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'class_assignment' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
           >
             <Layers size={16} />
             {language === 'bn' ? 'শ্রেণীভিত্তিক নির্ধারণ' : 'Class Assignment'}
           </button>
           <button 
             onClick={() => { setTab('teacher_assignment'); setFocusedSubjectId('ALL'); }}
-            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'teacher_assignment' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'teacher_assignment' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
           >
             <UserCheck size={16} />
             {language === 'bn' ? 'শিক্ষক দায়িত্ব বণ্টন' : 'Teacher Assignment'}
           </button>
           <button 
             onClick={() => { setTab('exam_assignment'); setFocusedSubjectId('ALL'); }}
-            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'exam_assignment' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
+            className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${tab === 'exam_assignment' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'}`}
           >
             <Calendar size={16} />
             {language === 'bn' ? 'পরীক্ষায় নির্ধারণ' : 'Exam Setup'}
@@ -476,7 +476,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                   placeholder={language === 'bn' ? 'বিষয় খুঁজুন (নাম বা কোড)...' : 'Search subjects by name or code...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-gray-50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 transition-colors"
+                  className="w-full pl-9 pr-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-gray-50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[var(--color-brand-ring)] transition-colors"
                 />
               </div>
 
@@ -545,12 +545,12 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                       filteredSubjects.map((sub) => {
                         const isInactive = sub.status === 'INACTIVE';
                         return (
-                          <tr key={sub.id} className={`${editingId === sub.id ? 'bg-blue-50 dark:bg-blue-950/50' : 'hover:bg-gray-50/70 dark:hover:bg-slate-800/60/70'} ${isInactive ? 'opacity-60 bg-gray-50 dark:bg-slate-800/60' : ''}`}>
+                          <tr key={sub.id} className={`${editingId === sub.id ? 'bg-[var(--color-brand-light)] dark:bg-teal-950/50' : 'hover:bg-gray-50/70 dark:hover:bg-slate-800/60/70'} ${isInactive ? 'opacity-60 bg-gray-50 dark:bg-slate-800/60' : ''}`}>
                             <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-slate-400">{sub.order}</td>
                             <td className="px-4 py-3">
                               <div className="font-bold text-gray-900 dark:text-white font-bangla flex items-center gap-1.5">
                                 {sub.code && (
-                                  <span className="text-[10px] font-mono bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold">
+                                  <span className="text-[10px] font-mono bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 px-1.5 py-0.5 rounded font-bold">
                                     {sub.code}
                                   </span>
                                 )}
@@ -574,7 +574,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                               {sub.isOptional ? (
                                 <span className="text-[11px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded-full font-bold">ঐচ্ছিক</span>
                               ) : (
-                                <span className="text-[11px] bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full font-bold">আবশ্যিক</span>
+                                <span className="text-[11px] bg-[var(--color-brand-light)] dark:bg-teal-950/50 text-[var(--color-brand)] dark:text-teal-300 px-2 py-0.5 rounded-full font-bold">আবশ্যিক</span>
                               )}
                             </td>
                             <td className="px-4 py-3 text-right">
@@ -592,7 +592,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                                 </button>
                                 <button 
                                   onClick={() => handleEditSubject(sub)} 
-                                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 p-1 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded cursor-pointer transition-colors" 
+                                  className="text-[var(--color-brand)] dark:text-teal-300 hover:text-[var(--color-brand)] dark:hover:text-teal-300 p-1 hover:bg-[var(--color-brand-light)] dark:hover:bg-teal-950/50 rounded cursor-pointer transition-colors" 
                                   title="Edit"
                                 >
                                   <Edit2 size={15} />
@@ -627,7 +627,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
             <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-100 dark:border-slate-800 h-fit">
               <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100 dark:border-slate-800">
                 <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  {editingId ? <Edit2 size={16} className="text-blue-600 dark:text-blue-400" /> : <Plus size={16} className="text-blue-600 dark:text-blue-400" />}
+                  {editingId ? <Edit2 size={16} className="text-[var(--color-brand)] dark:text-teal-300" /> : <Plus size={16} className="text-[var(--color-brand)] dark:text-teal-300" />}
                   {editingId ? t('update') : (language === 'bn' ? 'নতুন বিষয় তৈরি' : 'Add New Subject')}
                 </h3>
                 {editingId && (
@@ -643,7 +643,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                   <input 
                     required 
                     type="text" 
-                    className="w-full border rounded-lg p-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500" 
+                    className="w-full border rounded-lg p-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--color-brand-ring)]" 
                     value={newSubject.name} 
                     onChange={e => setNewSubject({...newSubject, name: e.target.value})} 
                     placeholder="e.g. Mathematics / Hadith Sharif"
@@ -654,7 +654,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                   <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 mb-1">{t('subjectName')} (বাংলা নাম)</label>
                   <input 
                     type="text" 
-                    className="w-full border rounded-lg p-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla focus:ring-2 focus:ring-blue-500" 
+                    className="w-full border rounded-lg p-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bangla focus:ring-2 focus:ring-[var(--color-brand-ring)]" 
                     value={newSubject.nameBn || ''} 
                     onChange={e => setNewSubject({...newSubject, nameBn: e.target.value})} 
                     placeholder="যেমন: গণিত / হাদিস শরীফ"
@@ -666,7 +666,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                     <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 mb-1">বিষয় কোড (Code)</label>
                     <input 
                       type="text" 
-                      className="w-full border rounded-lg p-2 text-sm font-mono bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 uppercase" 
+                      className="w-full border rounded-lg p-2 text-sm font-mono bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--color-brand-ring)] uppercase" 
                       value={newSubject.code || ''} 
                       onChange={e => setNewSubject({...newSubject, code: e.target.value.toUpperCase()})} 
                       placeholder="e.g. 109 / AR-101"
@@ -676,7 +676,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-slate-200 mb-1">ক্যাটাগরি</label>
                     <select 
-                      className="w-full border rounded-lg p-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="w-full border rounded-lg p-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--color-brand-ring)]"
                       value={newSubject.category || 'General'}
                       onChange={e => setNewSubject({...newSubject, category: e.target.value as any})}
                     >
@@ -699,7 +699,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                         type="checkbox" 
                         checked={newSubject.hasCQ} 
                         onChange={e => setNewSubject({...newSubject, hasCQ: e.target.checked})}
-                        className="rounded text-blue-600 dark:text-blue-400 focus:ring-blue-500"
+                        className="rounded text-[var(--color-brand)] dark:text-teal-300 focus:ring-[var(--color-brand-ring)]"
                       />
                       CQ (সৃজনশীল)
                     </label>
@@ -708,7 +708,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                         type="checkbox" 
                         checked={newSubject.hasMCQ} 
                         onChange={e => setNewSubject({...newSubject, hasMCQ: e.target.checked})}
-                        className="rounded text-blue-600 dark:text-blue-400 focus:ring-blue-500"
+                        className="rounded text-[var(--color-brand)] dark:text-teal-300 focus:ring-[var(--color-brand-ring)]"
                       />
                       MCQ (নৈর্ব্যক্তিক)
                     </label>
@@ -717,7 +717,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                         type="checkbox" 
                         checked={newSubject.hasPractical} 
                         onChange={e => setNewSubject({...newSubject, hasPractical: e.target.checked})}
-                        className="rounded text-blue-600 dark:text-blue-400 focus:ring-blue-500"
+                        className="rounded text-[var(--color-brand)] dark:text-teal-300 focus:ring-[var(--color-brand-ring)]"
                       />
                       ব্যবহারিক (Practical)
                     </label>
@@ -822,7 +822,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                       type="checkbox" 
                       checked={newSubject.isOptional} 
                       onChange={e => setNewSubject({...newSubject, isOptional: e.target.checked})}
-                      className="rounded text-blue-600 dark:text-blue-400"
+                      className="rounded text-[var(--color-brand)] dark:text-teal-300"
                     />
                     ঐচ্ছিক বিষয় (Optional)
                   </label>
@@ -831,7 +831,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                       type="checkbox" 
                       checked={newSubject.isFourthSubject} 
                       onChange={e => setNewSubject({...newSubject, isFourthSubject: e.target.checked})}
-                      className="rounded text-blue-600 dark:text-blue-400"
+                      className="rounded text-[var(--color-brand)] dark:text-teal-300"
                     />
                     ৪র্থ বিষয় (4th Subject)
                   </label>
@@ -855,7 +855,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
           <div className="flex flex-wrap gap-4 items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Layers className="text-blue-600 dark:text-blue-400" size={20} />
+                <Layers className="text-[var(--color-brand)] dark:text-teal-300" size={20} />
                 {language === 'bn' ? 'শ্রেণীতে বিষয় নির্ধারণ' : 'Class-Subject Assignment'}
               </h3>
             </div>
@@ -920,7 +920,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                   }}
                   className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
                     isAssigned 
-                      ? 'bg-blue-50/70 dark:bg-blue-950/50/70 border-blue-500'
+                      ? 'bg-[var(--color-brand-light)]/70 dark:bg-teal-950/50/70 border-[var(--color-brand)]'
                       : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 opacity-75'
                   }`}
                 >
@@ -944,7 +944,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
 
                   <div>
                     {isAssigned ? (
-                      <CheckCircle2 className="text-blue-600 dark:text-blue-400" size={22} />
+                      <CheckCircle2 className="text-[var(--color-brand)] dark:text-teal-300" size={22} />
                     ) : (
                       <div className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-slate-600"></div>
                     )}
@@ -964,7 +964,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
           <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between">
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <UserCheck className="text-blue-600 dark:text-blue-400" size={20} />
+                <UserCheck className="text-[var(--color-brand)] dark:text-teal-300" size={20} />
                 {language === 'bn' ? 'শিক্ষক দায়িত্ব ও শ্রেণী শিক্ষক বণ্টন' : 'Teacher Academic Assignment'}
               </h3>
             </div>
@@ -973,13 +973,13 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
               <div className="bg-gray-100 dark:bg-slate-800 p-1 rounded-lg flex text-xs font-bold">
                 <button
                   onClick={() => setTeacherViewMode('by_class')}
-                  className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${teacherViewMode === 'by_class' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-300'}`}
+                  className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${teacherViewMode === 'by_class' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-gray-600 dark:text-slate-300'}`}
                 >
                   শ্রেণীভিত্তিক ভিউ (By Class)
                 </button>
                 <button
                   onClick={() => setTeacherViewMode('by_teacher')}
-                  className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${teacherViewMode === 'by_teacher' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-300'}`}
+                  className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${teacherViewMode === 'by_teacher' ? 'bg-white dark:bg-slate-900 text-[var(--color-brand)] dark:text-teal-300' : 'text-gray-600 dark:text-slate-300'}`}
                 >
                   শিক্ষকভিত্তিক ভিউ (By Teacher)
                 </button>
@@ -1012,7 +1012,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
 
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                  <GraduationCap size={18} className="text-blue-600 dark:text-blue-400" />
+                  <GraduationCap size={18} className="text-[var(--color-brand)] dark:text-teal-300" />
                   {language === 'bn' ? `${selectedClass} - বিষয়ভিত্তিক শিক্ষক তালিকা` : `${selectedClass} - Subject Teachers`}
                 </h4>
 
@@ -1066,7 +1066,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                           </select>
 
                           {assignedTeacher && (
-                            <span className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                            <span className="text-xs font-bold text-[var(--color-brand)] dark:text-teal-300 bg-[var(--color-brand-light)] dark:bg-teal-950/50 px-2.5 py-1 rounded-full border border-[var(--color-brand-ring)] dark:border-teal-800">
                               দায়িত্বপ্রাপ্ত
                             </span>
                           )}
@@ -1110,7 +1110,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
                             <h4 className="font-bold text-gray-900 dark:text-white text-base">{currentTeacher?.name}</h4>
                             <p className="text-xs text-gray-500 dark:text-slate-400">{currentTeacher?.designation} • {currentTeacher?.email || 'No email'}</p>
                           </div>
-                          <div className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-3 py-1 rounded-lg">
+                          <div className="text-xs font-bold text-[var(--color-brand)] dark:text-teal-300 bg-[var(--color-brand-light)] dark:bg-teal-950/50 px-3 py-1 rounded-lg">
                             মোট দায়িত্ব: {teacherAssignments.length} টি বিষয়
                           </div>
                         </div>
@@ -1168,7 +1168,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
           <div className="flex flex-wrap gap-4 items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Calendar className="text-blue-600 dark:text-blue-400" size={20} />
+                <Calendar className="text-[var(--color-brand)] dark:text-teal-300" size={20} />
                 {language === 'bn' ? 'পরীক্ষায় বিষয় নির্ধারণ' : 'Assign Subjects to Exam'}
               </h3>
             </div>
@@ -1247,7 +1247,7 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ initialTab = 'di
           <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center pb-2 border-b border-gray-100 dark:border-slate-800">
               <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Users size={18} className="text-blue-600 dark:text-blue-400" />
+                <Users size={18} className="text-[var(--color-brand)] dark:text-teal-300" />
                 {language === 'bn' ? 'নতুন শিক্ষক যুক্ত করুন' : 'Add Academic Teacher'}
               </h3>
               <button onClick={() => setIsTeacherModalOpen(false)} className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 cursor-pointer">

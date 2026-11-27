@@ -2428,6 +2428,11 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               {item.id === 'more' && !moreActive && notices.length > 0 && (
                 <span className="absolute top-2 right-1/2 translate-x-6 w-2.5 h-2.5 rounded-full bg-[#dc2626]" />
               )}
+              {/* Guardian dues dot: parent's ফি tab (action3) gets a red dot
+                  when any of the child's fees are due — same dot as More. */}
+              {item.id === 'action3' && userRole === 'parent' && guardianDuesTotal > 0 && (
+                <span className="absolute top-2 right-1/2 translate-x-6 w-2.5 h-2.5 rounded-full bg-[#dc2626]" />
+              )}
             </button>
           );
         })}
@@ -4984,7 +4989,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
   // -------------------------------------------------------------
   // HOME DASHBOARD — Tutor App style
-  // (gradient hero with quick-action tiles inside, airy stat cards,
+  // (flat-light hero with quick-action tiles inside, airy stat cards,
   //  progress cards, soft nudges — logic unchanged, presentation new)
   // -------------------------------------------------------------
   const tileLabels: Record<string, string> = {

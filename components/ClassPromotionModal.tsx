@@ -457,9 +457,9 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
       <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
         <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
+          <div className="flex items-center justify-between px-6 py-4 bg-[var(--color-brand)] text-white border-b border-[var(--color-brand)]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-xl bg-white/15 text-white flex items-center justify-center font-bold">
                 <GraduationCap size={24} />
               </div>
               <div>
@@ -536,7 +536,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
               <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <Sliders size={18} className="text-indigo-600" />
+                    <Sliders size={18} className="text-[var(--color-brand)]" />
                     <h4 className="font-bold text-slate-800 text-sm">
                       {language === 'bn' ? 'শ্রেণি ও পরীক্ষা সেশন নির্ধারণ' : 'Session & Academic Target Selection'}
                     </h4>
@@ -555,7 +555,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                     <select
                       value={sourceClass}
                       onChange={(e) => setSourceClass(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-[var(--color-brand-ring)] focus:bg-white"
                     >
                       {classes.map(c => {
                         const count = students.filter(s => (s.classLevel === c.name || s.classId === c.name) && !s.isFormer && s.status !== 'Former').length;
@@ -576,7 +576,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                     <select
                       value={examId}
                       onChange={(e) => setExamId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-[var(--color-brand-ring)] focus:bg-white"
                     >
                       {exams.map(e => (
                         <option key={e.id} value={e.id}>
@@ -623,7 +623,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                       value={targetAcademicYear}
                       onChange={(e) => setTargetAcademicYear(e.target.value)}
                       placeholder="e.g. 2027"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-[var(--color-brand-ring)] focus:bg-white"
                     />
                   </div>
                 </div>
@@ -653,7 +653,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => setRuleMode('all')}
                         className={`px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           ruleMode === 'all'
-                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            ? 'bg-[var(--color-brand)] text-white border-[var(--color-brand)]'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -665,7 +665,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => setRuleMode('min_gpa')}
                         className={`px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           ruleMode === 'min_gpa'
-                            ? 'bg-purple-600 text-white border-purple-600'
+                            ? 'bg-[var(--color-brand)] text-white border-[var(--color-brand)]'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -674,9 +674,9 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                     </div>
 
                     {ruleMode === 'min_gpa' && (
-                      <div className="flex items-center gap-4 mt-2.5 bg-purple-50 p-2.5 rounded-lg border border-purple-200">
+                      <div className="flex items-center gap-4 mt-2.5 bg-[var(--color-brand-light)] p-2.5 rounded-lg border border-[var(--color-brand-ring)]">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-purple-900 font-medium">{language === 'bn' ? 'ন্যূনতম GPA:' : 'Min GPA:'}</span>
+                          <span className="text-[var(--color-brand)] font-medium">{language === 'bn' ? 'ন্যূনতম GPA:' : 'Min GPA:'}</span>
                           <input
                             type="number"
                             step="0.1"
@@ -684,18 +684,18 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                             max="5"
                             value={minGpa}
                             onChange={(e) => setMinGpa(parseFloat(e.target.value) || 0)}
-                            className="w-16 bg-white border border-purple-300 rounded-md px-2 py-1 text-center font-bold text-xs"
+                            className="w-16 bg-white border border-[var(--color-brand-ring)] rounded-md px-2 py-1 text-center font-bold text-xs"
                           />
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-purple-900 font-medium">{language === 'bn' ? 'সর্বোচ্চ ফেল বিষয়:' : 'Max Fails Allowed:'}</span>
+                          <span className="text-[var(--color-brand)] font-medium">{language === 'bn' ? 'সর্বোচ্চ ফেল বিষয়:' : 'Max Fails Allowed:'}</span>
                           <input
                             type="number"
                             min="0"
                             max="5"
                             value={maxFailedSubjects}
                             onChange={(e) => setMaxFailedSubjects(parseInt(e.target.value, 10) || 0)}
-                            className="w-16 bg-white border border-purple-300 rounded-md px-2 py-1 text-center font-bold text-xs"
+                            className="w-16 bg-white border border-[var(--color-brand-ring)] rounded-md px-2 py-1 text-center font-bold text-xs"
                           />
                         </div>
                       </div>
@@ -739,7 +739,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                         onClick={() => handleRollModeChange('manual')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold border transition-all ${
                           rollMode === 'manual'
-                            ? 'bg-blue-600 text-white border-blue-600'
+                            ? 'bg-[var(--color-brand)] text-white border-[var(--color-brand)]'
                             : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
@@ -770,9 +770,9 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   <span className="text-rose-800 font-semibold block">{language === 'bn' ? 'অনুত্তীর্ণ (ফেল)' : 'Failed'}</span>
                   <span className="text-lg font-extrabold text-rose-700">{formatNumber(stats.failed, language)}</span>
                 </div>
-                <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200">
-                  <span className="text-indigo-800 font-semibold block">{language === 'bn' ? 'উত্তীর্ণ হবে' : 'To Promote'}</span>
-                  <span className="text-lg font-extrabold text-indigo-700">{formatNumber(stats.promoteCount, language)}</span>
+                <div className="bg-[var(--color-brand-light)]/70 p-3 rounded-xl border border-[var(--color-brand-ring)]">
+                  <span className="text-[var(--color-brand)] font-semibold block">{language === 'bn' ? 'উত্তীর্ণ হবে' : 'To Promote'}</span>
+                  <span className="text-lg font-extrabold text-[var(--color-brand)]">{formatNumber(stats.promoteCount, language)}</span>
                 </div>
                 <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200">
                   <span className="text-amber-800 font-semibold block">{language === 'bn' ? 'একই শ্রেণিতে থাকবে' : 'To Retain'}</span>
@@ -794,7 +794,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                     value={tableSearch}
                     onChange={(e) => setTableSearch(e.target.value)}
                     placeholder={language === 'bn' ? 'নাম বা রোল দিয়ে খুঁজুন...' : 'Search student or roll...'}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-[var(--color-brand-ring)]"
                   />
                 </div>
 
@@ -835,7 +835,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                   <button
                     type="button"
                     onClick={handlePromoteAll}
-                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-300 rounded-md font-semibold text-xs transition-colors"
+                    className="px-2.5 py-1 bg-[var(--color-brand-light)] hover:bg-[var(--color-brand-light)] text-[var(--color-brand)] border border-[var(--color-brand-ring)] rounded-md font-semibold text-xs transition-colors"
                   >
                     {language === 'bn' ? 'সবাইকে উত্তরণ' : 'Promote All'}
                   </button>
@@ -945,7 +945,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                                   <span className={`px-1.5 py-0.2 rounded-xs text-[11px] font-bold ${
                                     perf.overallGrade === 'A+' ? 'bg-emerald-100 text-emerald-800' :
                                     perf.overallGrade === 'F' ? 'bg-rose-100 text-rose-800' :
-                                    'bg-indigo-100 text-indigo-800'
+                                    'bg-[var(--color-brand-light)] text-[var(--color-brand)]'
                                   }`}>
                                     {perf.overallGrade}
                                   </span>
@@ -1140,7 +1140,7 @@ export const ClassPromotionModal: React.FC<ClassPromotionModalProps> = ({
                           <span className="font-bold text-slate-900 text-sm">
                             {rec.sourceClass} ➔ {rec.targetClass}
                           </span>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-brand-light)] text-[var(--color-brand)] font-semibold border border-[var(--color-brand-ring)]">
                             {rec.academicYear} ➔ {rec.targetAcademicYear}
                           </span>
                           {rec.examName && (

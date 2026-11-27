@@ -299,40 +299,6 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         </div>
         }
       >
-<div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('student-fee')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--color-brand-light)] dark:bg-teal-500/10 hover:bg-[var(--color-brand-light)] dark:hover:bg-teal-500/20 text-[var(--color-brand)] dark:text-teal-300 border border-[var(--color-brand-ring)] dark:border-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <GraduationCap size={14} className="text-[var(--color-brand)] dark:text-teal-300" />
-              <span>{isBn ? 'ছাত্র ফি আদায়' : 'Collect Fee'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('donation')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <HeartHandshake size={14} className="text-emerald-600 dark:text-emerald-400" />
-              <span>{isBn ? 'দান ও সদকা' : 'Donations'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('salary')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <CreditCard size={14} className="text-rose-600 dark:text-rose-400" />
-              <span>{isBn ? 'উস্তাদ বেতন' : 'Salary'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('reports')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileSpreadsheet size={14} className="text-teal-600 dark:text-teal-400" />
-              <span>{isBn ? 'আর্থিক বিবরণী' : 'Reports'}</span>
-            </button>
-          </div>
       </PageHeader>
 
 {/* Sub-Navigation Tabs */}
