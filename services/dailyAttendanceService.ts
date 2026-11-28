@@ -260,7 +260,17 @@ class DailyAttendanceService {
       if (savedStudents) {
         this.studentRecords = JSON.parse(savedStudents);
       } else {
-        this.seedInitialStudentAttendance();
+        // NO AUTO-SEED (28 Nov 2026): attendance is NEVER invented
+        // on first load. An empty mirror stays empty — a day with no
+        // records shows "not taken", exactly as the principal wants
+        // (all existing records are demo/test; the old first-run
+        // seed stub that used to sit here is removed so demo rows
+        // can never come back after the cleanup deletes them).
+        // Real records arrive only when someone takes attendance
+        // (DailyAttendanceHub / StaffMobileApp save handlers) or
+        // when cloud hydration merges them in.
+        this.studentRecords = {};
+        this.saveToStorage();
       }
 
       const savedStaff = localStorage.getItem(STORAGE_KEY_STAFF);
@@ -280,13 +290,6 @@ class DailyAttendanceService {
       console.error('Error saving attendance to storage:', e);
     }
     this.emitChange();
-  }
-
-  private seedInitialStudentAttendance() {
-    const today = new Date().toISOString().split('T')[0];
-    this.studentRecords = {};
-    // Saved will populate dynamically when user opens or takes attendance
-    this.saveToStorage();
   }
 
   // --- Student Attendance Methods ---

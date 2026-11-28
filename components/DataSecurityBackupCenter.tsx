@@ -49,6 +49,7 @@ import {
   runAttendanceCleanup,
   readAttendanceClearMarkerFromCloud,
   getAppliedAttendanceClearMarker,
+  clearAppliedAttendanceClearMarker,
   type AttendanceCleanupCounts,
   type AttendanceCleanupBackup,
   type AttendanceCleanupResult,
@@ -143,11 +144,27 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
   // real attendance later. Local marker hides it immediately on
   // this device; the cloud marker (read on mount) hides it on
   // every device.
+  // FIX (28 Nov 2026): the button hides ONLY on the VERIFIED cloud
+  // marker. A local flag with NO cloud marker is stale — the 28 Nov
+  // run set the flag before the cloud delete, then the delete was
+  // denied, so the module hid on reload with nothing deleted and
+  // no retry path. On mount, a stale flag is cleared and the module
+  // comes back, so the principal can retry.
   const [cleanupAlreadyDone, setCleanupAlreadyDone] = useState(() => getAppliedAttendanceClearMarker() > 0);
   useEffect(() => {
     let cancelled = false;
     readAttendanceClearMarkerFromCloud()
-      .then((marker) => { if (!cancelled && typeof marker === 'number' && marker > 0) setCleanupAlreadyDone(true); })
+      .then((marker) => {
+        if (cancelled) return;
+        if (typeof marker === 'number' && marker > 0) {
+          setCleanupAlreadyDone(true);
+        } else if (getAppliedAttendanceClearMarker() > 0) {
+          // Stale flag from a failed run (no cloud marker was ever
+          // written) — clear it so the cleanup module shows again.
+          clearAppliedAttendanceClearMarker();
+          setCleanupAlreadyDone(false);
+        }
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);

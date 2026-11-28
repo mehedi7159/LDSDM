@@ -109,6 +109,19 @@ export function setAppliedAttendanceClearMarker(ts: number): void {
   } catch {}
 }
 
+/**
+ * Clear the once-per-device self-clear flag (28 Nov 2026 fix).
+ * Used ONLY when the cloud marker is proven absent: a flag with no
+ * cloud marker means a cleanup run set the flag and then failed
+ * before writing the marker, so the flag is stale and must not
+ * hide the retry button. Never called after a verified delete.
+ */
+export function clearAppliedAttendanceClearMarker(): void {
+  try {
+    localStorage.removeItem(ATTENDANCE_SELF_CLEARED_FLAG_KEY);
+  } catch {}
+}
+
 /** Read the clear marker from the settings doc (null when none). */
 export async function readAttendanceClearMarkerFromCloud(): Promise<number | null> {
   const snap = await getDoc(settingsDocRef());
@@ -163,8 +176,16 @@ function recordDateOf(r: any): string {
  * is still cleared: the app always dates new attendance, so an
  * undatable record cannot be new real attendance — and leaving it
  * would let it resurrect into the cloud on the next backfill.
- * Also drops the field's queued upserts and records the marker as
- * applied on this device.
+ * Also drops the field's queued upserts.
+ *
+ * FIX (28 Nov 2026): this function does NOT set the once-per-device
+ * self-clear flag. The flag means "this device already applied a
+ * VERIFIED cloud marker" and only the self-clear path
+ * (applyAttendanceClearMarker in AppContext, which runs after
+ * seeing the cloud marker) may set it. The cleanup run calls this
+ * BEFORE the cloud delete; setting the flag here poisoned the
+ * Backup Hub on a failed run — the module hid on reload even
+ * though nothing was deleted and no marker was ever written.
  */
 function clearLocalFieldBefore(
   field: AttendanceSplitField,
@@ -192,7 +213,6 @@ function clearLocalFieldBefore(
   if (isStudent) dailyAttendanceService.replaceStudentRecords(kept as any);
   else dailyAttendanceService.replaceStaffRecords(kept as any);
   clearPendingPayloadsForField(field);
-  setAppliedAttendanceClearMarker(markerTs);
   return { cleared: all.length - kept.length, kept: kept.length };
 }
 
@@ -343,6 +363,21 @@ export interface AttendanceCleanupResult {
   remainingMainStoreStaff: number;
 }
 
+/**
+ * FIX (28 Nov 2026): name the exact cloud operation in every
+ * failure. The 28 Nov browser run failed with a bare "Missing or
+ * insufficient permissions" while the counts proved nothing had
+ * been deleted — but nothing said WHICH write was denied. Each
+ * cloud step below now rethrows with its operation + Firestore
+ * path, so the next failure points straight at the rule that
+ * denied it (28 Nov root cause: the batched deleteDoc on the
+ * student attendance collection — the first cloud mutation).
+ */
+function cleanupStepError(step: string, path: string, err: any): Error {
+  const reason = err?.message || String(err || 'অজ্ঞাত ত্রুটি');
+  return new Error(`${step} — ${path}: ${reason}`);
+}
+
 async function deleteCollectionDocs(field: AttendanceSplitField): Promise<number> {
   const docs = await readAttendanceFieldFromCollection(field);
   const col = field === 'dailyStudentAttendance'
@@ -417,18 +452,48 @@ export async function runAttendanceCleanup(opts: {
   const local = clearLocalAttendanceBefore(clearedAt);
 
   // 4. Collection docs, batched 500 at a time (Firestore limit).
+  // Each batch names its own failure: on 28 Nov the student batch
+  // was denied by the live Firestore rules ("Missing or
+  // insufficient permissions") and the run died here — before
+  // main_store and before the marker, so nothing was deleted.
   progress('ক্লাউড থেকে ছাত্র হাজিরা মুছে ফেলা হচ্ছে…');
-  const deletedStudentDocs = await deleteCollectionDocs('dailyStudentAttendance');
+  let deletedStudentDocs: number;
+  try {
+    deletedStudentDocs = await deleteCollectionDocs('dailyStudentAttendance');
+  } catch (err: any) {
+    throw cleanupStepError(
+      'ক্লাউডের ছাত্র হাজিরা মোছা যায়নি (batched deleteDoc)',
+      'institutions/inst_madrasah_primary/dailyStudentAttendance',
+      err
+    );
+  }
   progress('ক্লাউড থেকে staff হাজিরা মুছে ফেলা হচ্ছে…');
-  const deletedStaffDocs = await deleteCollectionDocs('dailyStaffAttendance');
+  let deletedStaffDocs: number;
+  try {
+    deletedStaffDocs = await deleteCollectionDocs('dailyStaffAttendance');
+  } catch (err: any) {
+    throw cleanupStepError(
+      'ক্লাউডের staff হাজিরা মোছা যায়নি (batched deleteDoc)',
+      'institutions/inst_madrasah_primary/dailyStaffAttendance',
+      err
+    );
+  }
 
   // 5. main_store arrays — explicit setDoc merge, never the sync path.
   progress('মূল ডেটা থেকে হাজিরা মুছে ফেলা হচ্ছে…');
-  await setDoc(
-    doc(db, 'institution', 'main_store'),
-    { dailyStudentAttendance: [], dailyStaffAttendance: [] },
-    { merge: true }
-  );
+  try {
+    await setDoc(
+      doc(db, 'institution', 'main_store'),
+      { dailyStudentAttendance: [], dailyStaffAttendance: [] },
+      { merge: true }
+    );
+  } catch (err: any) {
+    throw cleanupStepError(
+      'মূল ডেটার হাজিরা মোছা যায়নি (setDoc merge)',
+      'institution/main_store (dailyStudentAttendance[], dailyStaffAttendance[])',
+      err
+    );
+  }
 
   // 6. Verify by re-reading — all four must be 0.
   progress('মুছে গেছে কি না যাচাই করা হচ্ছে…');
@@ -459,7 +524,15 @@ export async function runAttendanceCleanup(opts: {
   // self-clear on seeing it, and the Backup Hub hides this
   // one-time action forever after.
   progress('পরিষ্কার সম্পূর্ণ — চিহ্ন লেখা হচ্ছে…');
-  await writeSettingsToCollection({ [ATTENDANCE_CLEARED_MARKER_FIELD]: clearedAt });
+  try {
+    await writeSettingsToCollection({ [ATTENDANCE_CLEARED_MARKER_FIELD]: clearedAt });
+  } catch (err: any) {
+    throw cleanupStepError(
+      'পরিষ্কারের চিহ্ন লেখা যায়নি (setDoc merge) — হাজিরা মুছে গেছে, কিন্তু চিহ্ন ছাড়া অন্য ডিভাইস নিজে পরিষ্কার হবে না',
+      'institutions/inst_madrasah_primary/settings/main (attendanceClearedAt)',
+      err
+    );
+  }
 
   return {
     clearedAt,

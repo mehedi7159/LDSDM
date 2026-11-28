@@ -204,6 +204,7 @@ import {
 } from '../services/payloadQueue';
 import {
   getAppliedAttendanceClearMarker,
+  setAppliedAttendanceClearMarker,
   clearLocalAttendanceBefore,
   readAttendanceClearMarkerFromCloud,
 } from '../services/attendanceCleanupService';
@@ -2996,6 +2997,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     if (!Number.isFinite(markerTs) || markerTs <= 0) return { cleared: 0, kept: 0 };
     if (getAppliedAttendanceClearMarker() >= markerTs) return { cleared: 0, kept: 0 };
     const { student, staff } = clearLocalAttendanceBefore(markerTs);
+    // FIX (28 Nov 2026): the once-per-device flag is recorded HERE —
+    // the self-clear path, which only runs after seeing a VERIFIED
+    // cloud marker. clearLocalAttendanceBefore no longer sets it:
+    // the cleanup run calls it BEFORE the cloud delete, and setting
+    // the flag there hid the retry button after a failed run.
+    setAppliedAttendanceClearMarker(markerTs);
     const keptStudents = dailyAttendanceService.getAllStudentRecords();
     const keptStaff = dailyAttendanceService.getAllStaffRecords();
     setDailyStudentAttendance(keptStudents);
