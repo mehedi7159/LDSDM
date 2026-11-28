@@ -20,6 +20,8 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
+import { attCardCls, attAvatarTint, attInitials, RosterCard, RosterQuickActions, RosterSummaryChips } from './attendance/RosterCard';
+import { toAsciiDigits } from '../services/studentService';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
 import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
 import { isMarkEntryAllowedForExam } from '../services/markEntryGate';
@@ -101,27 +103,7 @@ interface StaffMobileAppProps {
 
 const cardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl';
 const softBg = 'bg-[#f4f6fb] dark:bg-white/5';
-// ---- Attendance page (Tutor pattern) helpers ----
-// Tutor card shell: rounded-2xl white card (LDSDM's cardCls is 24px).
-const attCardCls = 'bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl';
-// Tutor avatar tints (pastel bg + dark text, hashed by id).
-const ATT_AVATAR_TINTS = [
-  { bg: '#dcfce7', color: '#15803d' },
-  { bg: '#fee2e2', color: '#b91c1c' },
-  { bg: '#dbeafe', color: '#1d4ed8' },
-  { bg: '#ffedd5', color: '#c2410c' },
-] as const;
-const attAvatarTint = (id: string) => {
-  let h = 0;
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return ATT_AVATAR_TINTS[h % ATT_AVATAR_TINTS.length];
-};
-const attInitials = (name: string) => {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-};
+// Attendance card helpers now live in ./attendance/RosterCard (shared with every roll-call view).
 const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 // Tutor late-picker drum wheels: hours 0-3 x minutes 0-59 (total 0-239).
 const WHEEL_ITEM_H = 46;
@@ -712,6 +694,22 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
 
     return { total, present, absent, late, leave, attended, rate, takenCount, unmarked: total - takenCount };
   }, [classStudents, studentAttendanceMap]);
+
+  // U1: roll-call search (name / roll / phone / student ID) — filters the
+  // displayed cards only; mark-all / reset / save still work on the whole class.
+  const [rosterSearch, setRosterSearch] = useState('');
+  const visibleRosterStudents = useMemo(() => {
+    const term = toAsciiDigits(rosterSearch.trim()).toLowerCase();
+    if (!term) return classStudents;
+    return classStudents.filter(st => {
+      const nameEn = (st.name || '').toLowerCase();
+      const nameBn = (st.nameBn || '').toLowerCase();
+      const roll = toAsciiDigits(st.roll || st.rollNumber || '').toLowerCase();
+      const phone = toAsciiDigits(st.guardianPhone || '').toLowerCase();
+      const sid = toAsciiDigits(st.studentId || st.id || '').toLowerCase();
+      return nameEn.includes(term) || nameBn.includes(term) || roll.includes(term) || phone.includes(term) || sid.includes(term);
+    });
+  }, [rosterSearch, classStudents]);
 
   const handleMarkAllPresent = () => {
     const nextMap: Record<string, AttendanceStatus> = { ...studentAttendanceMap };
@@ -2761,20 +2759,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                         <p className="text-[12px] text-[#8a93a8] dark:text-slate-500">
                           {isEn ? 'Tap a status button to mark attendance' : 'স্ট্যাটাস বাটনে চাপ দিয়ে হাজিরা চিহ্নিত করুন'}
                         </p>
-                        <div className="flex gap-2 flex-wrap">
-                          {([
-                            { label: isEn ? 'Present' : 'উপস্থিত', value: attendanceStats.present, cls: 'text-[#10b981] dark:text-emerald-300' },
-                            { label: isEn ? 'Late' : 'দেরি', value: attendanceStats.late, cls: 'text-[#d97706] dark:text-amber-300' },
-                            { label: isEn ? 'Absent' : 'অনুপস্থিত', value: attendanceStats.absent, cls: 'text-[#dc2626] dark:text-rose-300' },
-                            { label: isEn ? 'Leave' : 'ছুটি', value: attendanceStats.leave, cls: 'text-[#3b82f6] dark:text-blue-300' },
-                            { label: isEn ? 'Unmarked' : 'চিহ্নিত নয়', value: attendanceStats.unmarked, cls: 'text-[#5b6478] dark:text-slate-400' },
-                          ] as const).map(c => (
-                            <div key={c.label} className="flex-1 min-w-[70px] rounded-xl px-2 py-2 text-center bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10">
-                              <p className={`text-[15px] font-bold ${c.cls}`}>{toBn(c.value)}</p>
-                              <p className="text-[11px] text-[#5b6478] dark:text-slate-400">{c.label}</p>
-                            </div>
-                          ))}
-                        </div>
+                        <RosterSummaryChips stats={attendanceStats} isEn={isEn} />
                       </>
                     )}
                   </div>
@@ -2801,101 +2786,54 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
                           <Users size={15} className="brand-text" />
                           {toBn(classStudents.length)} {isEn ? 'students' : 'জন শিক্ষার্থী'}
                         </span>
-                        <button
-                          type="button"
-                          onClick={handleMarkAllPresent}
+                        <RosterQuickActions
                           disabled={classStudents.length === 0}
-                          className="flex-1 min-w-[130px] h-10 rounded-xl text-[13px] font-bold disabled:opacity-50 bg-[#d1fae5] dark:bg-emerald-500/15 text-[#059669] dark:text-emerald-300 cursor-pointer"
-                        >
-                          ✓ {isEn ? 'ALL PRESENT' : 'সবাই উপস্থিত'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleMarkAllAbsent}
-                          disabled={classStudents.length === 0}
-                          className="flex-1 min-w-[130px] h-10 rounded-xl text-[13px] font-bold disabled:opacity-50 bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 cursor-pointer"
-                        >
-                          ✗ {isEn ? 'ALL ABSENT' : 'সবাই অনুপস্থিত'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleResetAttendance}
-                          disabled={attendanceStats.takenCount === 0}
-                          className="h-10 px-4 rounded-xl text-[13px] font-bold disabled:opacity-50 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
-                        >
-                          {isEn ? 'Reset' : 'রিসেট'}
-                        </button>
+                          resetDisabled={attendanceStats.takenCount === 0}
+                          isEn={isEn}
+                          onMarkAllPresent={handleMarkAllPresent}
+                          onMarkAllAbsent={handleMarkAllAbsent}
+                          onReset={handleResetAttendance}
+                        />
+                      </div>
+
+                      {/* Roll-call search — filters the displayed cards only (U1). */}
+                      <div className="relative">
+                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8a93a8]" />
+                        <input
+                          type="text"
+                          value={rosterSearch}
+                          onChange={e => setRosterSearch(e.target.value)}
+                          placeholder={isEn ? 'Search by name, roll or phone…' : 'নাম, রোল বা মোবাইল দিয়ে খুঁজুন...'}
+                          className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10 rounded-2xl text-xs font-medium placeholder:text-[#8a93a8] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)]"
+                        />
                       </div>
 
                       {/* Roster cards — Tutor pattern: big Present button + 3 below */}
-                      {classStudents.length === 0 ? (
+                      {visibleRosterStudents.length === 0 ? (
                         <div className={`${attCardCls} p-8 text-center space-y-2`}>
                           <Users size={32} className="mx-auto text-[#c3c9d9]" />
-                          <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{selectedClass}-{isEn ? ' no students found.' : 'এ কোনো শিক্ষার্থী পাওয়া যায়নি।'}</p>
+                          <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{rosterSearch.trim() ? (isEn ? 'No student matches your search.' : 'খুঁজে কোনো শিক্ষার্থী মেলেনি।') : `${selectedClass}-${isEn ? ' no students found.' : 'এ কোনো শিক্ষার্থী পাওয়া যায়নি।'}`}</p>
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {classStudents.map(st => {
+                          {visibleRosterStudents.map(st => {
                             const currentStatus: AttendanceStatus | undefined = studentAttendanceMap[st.id] as AttendanceStatus | undefined;
                             const displayName = st.nameBn || st.name || '';
-                            const tint = attAvatarTint(st.id);
                             const phone = (st.guardianPhone || '').trim();
                             const roll = st.roll || st.rollNumber || '';
-                            const badgeCls = currentStatus === undefined
-                              ? 'bg-[#f4f6fb] dark:bg-white/5 text-[#8a93a8] dark:text-slate-400'
-                              : currentStatus === 'PRESENT'
-                              ? 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300'
-                              : currentStatus === 'ABSENT'
-                                ? 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300'
-                                : currentStatus === 'LATE'
-                                  ? 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300'
-                                  : 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300';
-                            const badgeLabel = currentStatus === undefined
-                              ? (isEn ? 'Not marked' : 'চিহ্নিত নয়')
-                              : currentStatus === 'PRESENT'
-                              ? (isEn ? 'Present' : 'উপস্থিত')
-                              : currentStatus === 'ABSENT'
-                                ? (isEn ? 'Absent' : 'অনুপস্থিত')
-                                : currentStatus === 'LATE'
-                                  ? (lateMinutesMap[st.id] ? `${isEn ? 'Late' : 'দেরি'} · ${toBn(lateMinutesMap[st.id])} ${isEn ? 'min' : 'মিনিট'}` : (isEn ? 'Late' : 'দেরি'))
-                                  : (isEn ? 'Leave' : 'ছুটি');
-                            const rosterBtn = (status: AttendanceStatus, label: string, solidCls: string, softCls: string) => (
-                              <button
-                                type="button"
-                                onClick={() => status === 'LATE' ? handleLatePress(st.id) : handleSetStudentStatus(st.id, status)}
-                                className={`h-11 rounded-xl text-[13px] font-bold cursor-pointer active:scale-[0.98] transition-all ${currentStatus === status ? solidCls : softCls}`}
-                              >
-                                {label}
-                              </button>
-                            );
                             return (
-                              <div key={st.id} className={`${attCardCls} p-4`}>
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-[15px] shrink-0"
-                                    style={{ background: tint.bg, color: tint.color }}
-                                  >
-                                    {attInitials(displayName)}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-[15px] truncate">{displayName}</p>
-                                    <p className="flex items-center gap-1 text-[12px] mt-0.5 text-[#5b6478] dark:text-slate-400">
-                                      <Phone size={12} className="shrink-0" />
-                                      <span className="truncate">{phone ? toBn(phone) : '—'}{roll ? ` • ${isEn ? 'Roll' : 'রোল'}: ${toBn(roll)}` : ''}</span>
-                                    </p>
-                                    {isRecordUnconfirmed('dailyStudentAttendance', `${attendanceDate}_${st.id}`) && <UnconfirmedBadge isBn={!isEn} />}
-                                  </div>
-                                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 ${badgeCls}`}>
-                                    {badgeLabel}
-                                  </span>
-                                </div>
-                                <div className="mt-3 grid grid-cols-4 gap-2">
-                                  {rosterBtn('PRESENT', isEn ? 'Present' : 'উপস্থিত', 'bg-[#10b981] text-white w-full', 'bg-[#d1fae5] dark:bg-emerald-500/15 text-[#10b981] dark:text-emerald-300 w-full')}
-                                  {rosterBtn('ABSENT', isEn ? 'Absent' : 'অনুপস্থিত', 'bg-[#ef4444] text-white w-full', 'bg-[#fee2e2] dark:bg-rose-500/15 text-[#dc2626] dark:text-rose-300 w-full')}
-                                  {rosterBtn('LATE', isEn ? 'Late' : 'দেরি', 'bg-[#f59e0b] text-white w-full', 'bg-[#fef3c7] dark:bg-amber-500/15 text-[#d97706] dark:text-amber-300 w-full')}
-                                  {rosterBtn('LEAVE', isEn ? 'Leave' : 'ছুটি', 'bg-[#3b82f6] text-white w-full', 'bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300 w-full')}
-                                </div>
-                              </div>
+                              <RosterCard
+                                key={st.id}
+                                id={st.id}
+                                name={displayName}
+                                subLine={<>{phone ? toBn(phone) : '—'}{roll ? ` • ${isEn ? 'Roll' : 'রোল'}: ${toBn(roll)}` : ''}</>}
+                                status={currentStatus}
+                                lateMinutes={lateMinutesMap[st.id]}
+                                isEn={isEn}
+                                unconfirmed={isRecordUnconfirmed('dailyStudentAttendance', `${attendanceDate}_${st.id}`)}
+                                onSelect={status => handleSetStudentStatus(st.id, status)}
+                                onLatePress={() => handleLatePress(st.id)}
+                              />
                             );
                           })}
                         </div>
