@@ -678,7 +678,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               </div>
               <div>
                 <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight font-bangla">
-                  {isBn ? '৪. দৈনিক উপস্থিতি ব্যবস্থাপনা' : '4. Daily Attendance Management'}
+                  {isBn ? 'দৈনিক উপস্থিতি ব্যবস্থাপনা' : 'Daily Attendance Management'}
                 </h2>
               </div>
             </div>

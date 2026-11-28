@@ -90,7 +90,7 @@ export const RosterCard: React.FC<RosterCardProps> = (props) => {
     : status === 'ABSENT'
     ? (isEn ? 'Absent' : 'অনুপস্থিত')
     : status === 'LATE'
-    ? (lateMinutes ? `${isEn ? 'Late' : 'দেরি'} · ${toBengali(lateMinutes)} ${isEn ? 'min' : 'মিনিট'}` : (isEn ? 'Late' : 'দেরি'))
+    ? (lateMinutes ? `${isEn ? 'Late' : 'দেরি'} · ${isEn ? String(lateMinutes) : toBengali(lateMinutes)} ${isEn ? 'min' : 'মিনিট'}` : (isEn ? 'Late' : 'দেরি'))
     : (isEn ? 'Leave' : 'ছুটি');
   return (
     <div className={`${attCardCls} p-4`}>

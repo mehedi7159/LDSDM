@@ -3,10 +3,13 @@ import { useApp } from '../context/AppContext';
 import { 
   Calendar, 
   AlertCircle, 
+  CheckCircle2, 
+  Clock, 
   LogOut, 
   Printer, 
   QrCode, 
-  User
+  User, 
+  XCircle
 } from 'lucide-react';
 import { calculateTotalGPA, calculateGrade, formatBanglaNumber, toBengali } from '../services/utils';
 import { classNamesMatch } from '../services/classNames';
@@ -171,6 +174,106 @@ export const GuardianPortal: React.FC = () => {
     if (!linkedStudent) return null;
     return calculateStudentAttendanceForExamFromRecords(dailyStudentAttendance, linkedStudent.id);
   }, [linkedStudent, dailyStudentAttendance]);
+
+  // U5 — monthly attendance calendar (V3 ledger reuse, read-only):
+  // the guardian sees only their OWN child's records (linkedStudent),
+  // day by day, exactly as the staff profile ledger shows them —
+  // Friday = weekly holiday, a working day with no record =
+  // 'নথিভুক্ত নয়', never invented. Summary follows the service's
+  // canonical monthly definition (recorded non-Friday days only).
+  const [guardianAttendanceMonth, setGuardianAttendanceMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  const guardianMonthlyAttendance = useMemo(() => {
+    const empty = {
+      days: [] as Array<{ day: number; date: string; dayNameBn: string; dayNameEn: string; status: 'HOLIDAY' | 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE' | 'NOT_RECORDED'; label: string }>,
+      summary: { workingDays: 0, present: 0, absent: 0, late: 0, leave: 0, rate: 0, scheduledDays: 0, isPartial: false },
+    };
+    if (!linkedStudent) return empty;
+
+    // This student's records, newest first (same as the profile
+    // ledger) — newest record wins per date.
+    const myRecords = dailyStudentAttendance
+      .filter(r =>
+        r.studentId === linkedStudent.id ||
+        (linkedStudent.studentId && r.studentId === linkedStudent.studentId))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    const [yearStr, monthStr] = guardianAttendanceMonth.split('-');
+    const year = parseInt(yearStr, 10) || new Date().getFullYear();
+    const month = parseInt(monthStr, 10) || new Date().getMonth() + 1;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+    const monthRecByDate = new Map<string, string>();
+    for (const r of myRecords) {
+      if (!r.date || !r.date.startsWith(monthPrefix)) continue;
+      if (!monthRecByDate.has(r.date)) monthRecByDate.set(r.date, r.status);
+    }
+
+    const dayNamesBn = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
+    const dayNamesEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const statusLabel = (status: string) =>
+      status === 'PRESENT' ? (language === 'bn' ? 'উপস্থিত' : 'Present')
+      : status === 'ABSENT' ? (language === 'bn' ? 'অনুপস্থিত' : 'Absent')
+      : status === 'LATE' ? (language === 'bn' ? 'বিলম্বে উপস্থিত' : 'Late')
+      : status === 'LEAVE' ? (language === 'bn' ? 'ছুটিতে' : 'Leave')
+      : (language === 'bn' ? 'নথিভুক্ত নয়' : 'Not recorded');
+
+    const days: typeof empty.days = [];
+    let scheduledDays = 0;
+    let workingDays = 0;
+    let presentCount = 0;
+    let absentCount = 0;
+    let lateCount = 0;
+    let leaveCount = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, month - 1, d);
+      const dayOfWeek = dateObj.getDay(); // 0 is Sunday, 5 is Friday
+      const isFriday = dayOfWeek === 5; // Friday is weekly holiday in Madrasah/Bangladesh
+      const dateString = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const base = {
+        day: d,
+        date: dateString,
+        dayNameBn: dayNamesBn[dayOfWeek],
+        dayNameEn: dayNamesEn[dayOfWeek],
+      };
+      if (isFriday) {
+        days.push({ ...base, status: 'HOLIDAY' as const, label: language === 'bn' ? 'সাপ্তাহিক ছুটি' : 'Weekly Holiday' });
+        continue;
+      }
+      scheduledDays++;
+      const rec = monthRecByDate.get(dateString);
+      if (!rec || (rec !== 'PRESENT' && rec !== 'ABSENT' && rec !== 'LATE' && rec !== 'LEAVE')) {
+        days.push({ ...base, status: 'NOT_RECORDED' as const, label: statusLabel('NOT_RECORDED') });
+        continue;
+      }
+      workingDays++;
+      if (rec === 'PRESENT') presentCount++;
+      else if (rec === 'ABSENT') absentCount++;
+      else if (rec === 'LATE') { lateCount++; presentCount++; } // Late is still counted present
+      else if (rec === 'LEAVE') leaveCount++;
+      days.push({ ...base, status: rec as 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE', label: statusLabel(rec) });
+    }
+
+    const rate = workingDays > 0 ? Math.round((presentCount / workingDays) * 100) : 0;
+
+    return {
+      days,
+      summary: {
+        workingDays,
+        present: presentCount,
+        absent: absentCount,
+        late: lateCount,
+        leave: leaveCount,
+        rate,
+        scheduledDays,
+        isPartial: workingDays < scheduledDays,
+      },
+    };
+  }, [linkedStudent, guardianAttendanceMonth, language, dailyStudentAttendance]);
 
   // Unlinked guardian account: an honest empty state — NEVER another
   // student's data and never the full directory as a fallback.
@@ -433,6 +536,147 @@ export const GuardianPortal: React.FC = () => {
                     ? 'Calculated from recorded attendance days only.'
                     : 'হিসাবটি শুধু রেকর্ডকৃত হাজিরার দিনের ভিত্তিতে।'}
                 </p>
+
+                {/* U5 — monthly attendance calendar (V3 ledger reuse,
+                    read-only): the same day-by-day view the staff
+                    profile shows — Friday is the weekly holiday, a
+                    working day with no record shows 'নথিভুক্ত নয়'.
+                    Only this child's records, never another student's. */}
+                <div className="bg-white dark:bg-[#161c2e] rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={18} className="text-[var(--color-brand)]" />
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {language === 'bn' ? 'মাসভিত্তিক হাজিরা ক্যালেন্ডার' : 'Monthly Attendance Calendar'}
+                      </h3>
+                      {guardianMonthlyAttendance.summary.isPartial && guardianMonthlyAttendance.summary.workingDays > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 shrink-0">
+                          {language === 'bn' ? 'আংশিক' : 'Partial'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        {language === 'bn' ? 'মাস নির্বাচন:' : 'Select Month:'}
+                      </label>
+                      <input
+                        type="month"
+                        value={guardianAttendanceMonth}
+                        onChange={(e) => setGuardianAttendanceMonth(e.target.value)}
+                        className="px-3 py-1.5 border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] bg-white dark:bg-[#161c2e]"
+                      />
+                    </div>
+                  </div>
+
+                  {guardianMonthlyAttendance.summary.isPartial && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {guardianMonthlyAttendance.summary.workingDays === 0
+                        ? (language === 'bn' ? 'এই মাসে এখনো কোনো হাজিরা নথিভুক্ত হয়নি।' : 'No attendance recorded yet this month.')
+                        : (language === 'bn'
+                          ? `এই মাসে ${formatBanglaNumber(guardianMonthlyAttendance.summary.scheduledDays)} কর্মদিবসের মধ্যে ${formatBanglaNumber(guardianMonthlyAttendance.summary.workingDays)} দিন নথিভুক্ত হয়েছে — বাকি দিনগুলো 'নথিভুক্ত নয়' হিসেবে দেখাচ্ছে।`
+                          : `${guardianMonthlyAttendance.summary.workingDays} of ${guardianMonthlyAttendance.summary.scheduledDays} working days recorded this month — the rest show as 'Not recorded'.`)}
+                    </p>
+                  )}
+
+                  {guardianMonthlyAttendance.summary.workingDays === 0 ? (
+                    <div className="py-8 text-center">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{language === 'bn' ? 'এই মাসে এখনো কোনো হাজিরা নথিভুক্ত হয়নি।' : 'No attendance recorded yet this month.'}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{language === 'bn' ? 'শ্রেণি শিক্ষক হাজিরা নিলে এখানে দেখা যাবে।' : 'It will appear here once the class teacher takes attendance.'}</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-1.5 sm:gap-2">
+                      {guardianMonthlyAttendance.days.map((dayItem) => {
+                        const isHoliday = dayItem.status === 'HOLIDAY';
+                        const isPresent = dayItem.status === 'PRESENT';
+                        const isLate = dayItem.status === 'LATE';
+                        const isAbsent = dayItem.status === 'ABSENT';
+                        const isLeave = dayItem.status === 'LEAVE';
+                        const isNotRecorded = dayItem.status === 'NOT_RECORDED';
+                        return (
+                          <div
+                            key={dayItem.day}
+                            className={`p-1.5 sm:p-2.5 min-h-[54px] rounded-xl border text-center transition-all ${
+                              isHoliday
+                                ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 dark:text-slate-500'
+                                : isPresent
+                                ? 'bg-emerald-50/80 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30 text-emerald-950 dark:text-emerald-300 font-medium'
+                                : isLate
+                                ? 'bg-amber-50/80 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30 text-amber-950 dark:text-amber-300 font-medium'
+                                : isLeave
+                                ? 'bg-sky-50/80 dark:bg-sky-500/15 border-sky-200 dark:border-sky-500/30 text-sky-950 dark:text-sky-300 font-medium'
+                                : isNotRecorded
+                                ? 'bg-slate-50 dark:bg-white/5 border-dashed border-slate-300 dark:border-white/20 text-slate-400 dark:text-slate-500'
+                                : 'bg-rose-50/80 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30 text-rose-950 dark:text-rose-300 font-medium'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="font-bold font-mono">{formatBanglaNumber(dayItem.day)}</span>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[44px] sm:max-w-none">
+                                {language === 'bn' ? dayItem.dayNameBn : dayItem.dayNameEn}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-center py-0.5 sm:py-1">
+                              {isHoliday && <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{language === 'bn' ? 'ছুটি' : 'Holiday'}</span>}
+                              {isPresent && (
+                                <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 size={12} className="shrink-0" />
+                                  <span>{language === 'bn' ? 'হাজির' : 'Present'}</span>
+                                </div>
+                              )}
+                              {isLate && (
+                                <div className="flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                                  <Clock size={12} className="shrink-0" />
+                                  <span>{language === 'bn' ? 'বিলম্ব' : 'Late'}</span>
+                                </div>
+                              )}
+                              {isAbsent && (
+                                <div className="flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                                  <XCircle size={12} className="shrink-0" />
+                                  <span>{language === 'bn' ? 'অনুপস্থিত' : 'Absent'}</span>
+                                </div>
+                              )}
+                              {isLeave && (
+                                <div className="flex items-center gap-1 text-[11px] font-bold text-sky-600 dark:text-sky-400">
+                                  <span>{language === 'bn' ? 'ছুটিতে' : 'Leave'}</span>
+                                </div>
+                              )}
+                              {isNotRecorded && (
+                                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{language === 'bn' ? 'নথিভুক্ত নয়' : 'Not recorded'}</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-center gap-4 pt-3 border-t border-slate-100 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                      <span>{language === 'bn' ? 'উপস্থিত' : 'Present'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                      <span>{language === 'bn' ? 'বিলম্বে উপস্থিত' : 'Late'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-rose-500"></span>
+                      <span>{language === 'bn' ? 'অনুপস্থিত' : 'Absent'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-slate-300"></span>
+                      <span>{language === 'bn' ? 'ছুটি / শুক্রবার' : 'Holiday / Friday'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-sky-500"></span>
+                      <span>{language === 'bn' ? 'ছুটিতে' : 'Leave'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-slate-200 border border-dashed border-slate-400"></span>
+                      <span>{language === 'bn' ? 'নথিভুক্ত নয়' : 'Not recorded'}</span>
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
               <EmptyState
