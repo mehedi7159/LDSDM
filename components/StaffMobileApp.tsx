@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 're
 import { useApp } from '../context/AppContext';
 import { useTheme, ACCENT_THEMES, CURATED_ACCENTS } from '../context/ThemeContext';
 import { calculateSubjectGrade, calcPassRate } from '../services/gradingEngine';
-import { calculateTotalGPA, generateVoucherNo } from '../services/utils';
+import { calculateTotalGPA, generateVoucherNo, toBengali } from '../services/utils';
 import { normalizeRoleKey, bestDesignationRole } from '../services/roleResolution';
 import {
   dashboardRoleKeyFromMobileHome,
@@ -19,7 +19,7 @@ import { OfflineIndicator } from './ui/OfflineIndicator';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { UnconfirmedBadge } from './ui/UnconfirmedBadge';
 import { SegmentedControl } from './ui/SegmentedControl';
-import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, DailyStudentAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
+import { dailyAttendanceService, filterStudentRecordsByDateAndClass, calculateStudentAttendanceForExamFromRecords, getStudentMonthlySummaryFromRecords, isFridayDate, DailyStudentAttendanceRecord, DailyStaffAttendanceRecord, AttendanceStatus } from '../services/dailyAttendanceService';
 import { attCardCls, attAvatarTint, attInitials, RosterCard, RosterQuickActions, RosterSummaryChips } from './attendance/RosterCard';
 import { toAsciiDigits } from '../services/studentService';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, MARKS_CLOUD_FAILURE_MESSAGE, LEAVE_CLOUD_FAILURE_MESSAGE, STAFF_CLOUD_FAILURE_MESSAGE, STUDENTS_CLOUD_FAILURE_MESSAGE, STUDENT_DELETE_CLOUD_FAILURE_MESSAGE, feeCloudFailureMessage, RECEIPT_LOCAL_ONLY_NOTE, RETRY_LABEL } from '../services/cloudConfirm';
@@ -197,6 +197,141 @@ function WheelColumn(props: {
   );
 }
 
+// Late drum picker — one modal for both roll-calls (U3: extracted from
+// the student roll-call so the staff roll-call reuses it instead of a
+// copy). Presentational: hours/minutes + confirm/cancel come from the
+// caller. Digits use the shared toBengali (same mapping as the old
+// component-local toBn).
+function LatePickerModal(props: {
+  personName: string;
+  personId: string;
+  hours: number;
+  minutes: number;
+  isEn: boolean;
+  onHours: (v: number) => void;
+  onMinutes: (v: number) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { personName, personId, hours, minutes, isEn, onHours, onMinutes, onCancel, onConfirm } = props;
+  const total = hours * 60 + minutes;
+  const mm = String(minutes).padStart(2, '0');
+  const tint = attAvatarTint(personId);
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: 'rgba(15, 20, 35, 0.45)' }}
+      onClick={onCancel}
+    >
+      <div
+        className="w-full sm:max-w-[440px] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-3">
+          <h2 className="text-[17px] font-bold">{personName}</h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={isEn ? 'Cancel' : 'বাতিল'}
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-400 cursor-pointer"
+          >
+            <X size={17} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-6 pb-4">
+          <style>{'.late-wheel-scroll::-webkit-scrollbar{display:none}'}</style>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-[14px] shrink-0"
+                style={{ background: tint.bg, color: tint.color }}
+              >
+                {attInitials(personName)}
+              </div>
+              <p className="text-[15px] font-bold">
+                {personName} {isEn ? 'was late by how much?' : 'কতক্ষণ দেরি করেছে?'}
+              </p>
+            </div>
+            <div className="rounded-2xl py-3 px-4 text-center bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10">
+              <p className="text-[38px] leading-none font-extrabold tabular-nums text-[#d97706] dark:text-amber-300" aria-live="polite">
+                {toBengali(hours)}:{toBengali(mm)}
+              </p>
+              <p className="mt-1.5 text-[13px] font-semibold text-[#5b6478] dark:text-slate-400">
+                {toBengali(hours)} {isEn ? 'hr' : 'ঘণ্টা'} {toBengali(minutes)} {isEn ? 'min' : 'মিনিট'}
+              </p>
+            </div>
+            <div>
+              <div className="flex gap-2 mb-1">
+                <p className="flex-1 text-center text-[12px] font-bold text-[#5b6478] dark:text-slate-400">
+                  {isEn ? 'Hours' : 'ঘণ্টা'}
+                </p>
+                <p className="flex-1 text-center text-[12px] font-bold text-[#5b6478] dark:text-slate-400">
+                  {isEn ? 'Minutes' : 'মিনিট'}
+                </p>
+              </div>
+              <div className="relative">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 border-y border-[#e8ecf4] dark:border-white/10"
+                  style={{ height: 46 }}
+                />
+                <div
+                  className="relative flex gap-2"
+                  style={{ maskImage: WHEEL_FADE, WebkitMaskImage: WHEEL_FADE }}
+                >
+                  <WheelColumn
+                    values={LATE_HOURS}
+                    value={hours}
+                    onChange={onHours}
+                    format={v => toBengali(v)}
+                    ariaLabel={isEn ? 'Hours' : 'ঘণ্টা'}
+                  />
+                  <WheelColumn
+                    values={LATE_MINUTE_VALUES}
+                    value={minutes}
+                    onChange={onMinutes}
+                    format={v => toBengali(String(v).padStart(2, '0'))}
+                    ariaLabel={isEn ? 'Minutes' : 'মিনিট'}
+                  />
+                </div>
+              </div>
+            </div>
+            {total === 0 && (
+              <p className="text-center text-[12px] font-bold text-[#dc2626] dark:text-rose-300">
+                {isEn ? 'Pick at least 1 minute' : 'কমপক্ষে ১ মিনিট বেছে নিন'}
+              </p>
+            )}
+          </div>
+        </div>
+        <div
+          className="shrink-0 px-5 sm:px-6 pt-3 rounded-b-3xl bg-white dark:bg-[#161c2e] border-t border-[#e8ecf4] dark:border-white/10"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 14px)' }}
+        >
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 h-12 rounded-xl text-[14px] font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+            >
+              {isEn ? 'Cancel' : 'বাতিল'}
+            </button>
+            <button
+              type="button"
+              disabled={total === 0}
+              onClick={onConfirm}
+              className="flex-1 h-12 rounded-xl text-[14px] font-bold text-white disabled:opacity-50 bg-[#f59e0b] cursor-pointer"
+            >
+              {isEn ? 'Save' : 'সংরক্ষণ করুন'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // Short Bengali month names for report bars ("2026-09" -> "সেপ ২০২৬" via bnMonth below).
 const BN_MONTH_SHORT = ['জান', 'ফেব', 'মার', 'এপ্র', 'মে', 'জুন', 'জুল', 'আগ', 'সেপ', 'অক্ট', 'নভে', 'ডিস'];
@@ -236,8 +371,10 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     calendarEvents = [],
     teachers = [],
     dailyStudentAttendance = [],
+    dailyStaffAttendance = [],
     addTransaction,
     confirmAttendanceCloudSync,
+    confirmStaffAttendanceCloudSync,
     confirmFeeCloudSync,
     confirmMarksCloudSync,
     confirmLeavesCloudSync,
@@ -597,6 +734,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // old records simply lack it.
   const [lateMinutesMap, setLateMinutesMap] = useState<Record<string, number>>({});
   const [latePicker, setLatePicker] = useState<{ studentId: string; hours: number; minutes: number } | null>(null);
+  // U3: staff roll-call state (native mobile module). The map holds
+  // { status?, inTime?, outTime? } per staff member — an unmarked member
+  // has NO entry (hub F1 rule: never default to PRESENT). Late minutes
+  // stay session-only: DailyStaffAttendanceRecord carries no
+  // lateMinutes field, so picked minutes show in the badge but are not
+  // persisted (see U3-DONE.md).
+  const [staffAttendanceMap, setStaffAttendanceMap] = useState<Record<string, { status?: AttendanceStatus; inTime?: string; outTime?: string }>>({});
+  const [staffLateMinutesMap, setStaffLateMinutesMap] = useState<Record<string, number>>({});
+  const [staffLatePicker, setStaffLatePicker] = useState<{ staffId: string; hours: number; minutes: number } | null>(null);
+  const [staffSaving, setStaffSaving] = useState(false);
   // Phase 3: roll-call / monthly-sheet tabs + sheet month.
   const [attTab, setAttTab] = useState<'rollcall' | 'sheet'>('rollcall');
   const [sheetMonth, setSheetMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
@@ -779,12 +926,13 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   };
 
   // Late picker open -> lock body scroll (Tutor ModalShell behavior).
+  // U3: the staff picker locks scroll the same way.
   useEffect(() => {
-    if (!latePicker) return;
+    if (!latePicker && !staffLatePicker) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [latePicker]);
+  }, [latePicker, staffLatePicker]);
 
   // 7 Nov 2026 Job 7 (instant save): the local batch save applies at
   // once and the UI answers immediately — the cloud confirm runs in the
@@ -851,6 +999,161 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     } finally {
       setAttendanceRetrying(false);
     }
+  };
+
+  // U3: staff roll-call — load, stats, handlers, save. Mirrors the
+  // student roll-call above and the hub's staff mode (same rules:
+  // only touched members save; Friday never saves; the save itself
+  // re-checks the admin-only gate).
+  useEffect(() => {
+    const map: Record<string, { status?: AttendanceStatus; inTime?: string; outTime?: string }> = {};
+    (dailyStaffAttendance || []).forEach(r => {
+      if (r.date !== attendanceDate) return;
+      map[r.staffId] = { status: r.status, inTime: r.inTime, outTime: r.outTime };
+    });
+    setStaffAttendanceMap(map);
+    // Staff records carry no lateMinutes — picked minutes never
+    // survive a reload, so a new date starts with none.
+    setStaffLateMinutesMap({});
+  }, [attendanceDate]);
+
+  // Institution-wide holiday for the staff date (class-specific
+  // holidays do not block staff attendance — hence the empty class).
+  const staffHoliday = holidayForDate(attendanceDate, '');
+  const staffSavedCount = (dailyStaffAttendance || []).filter(r => r.date === attendanceDate).length;
+  const staffDayOff = !!staffHoliday && staffSavedCount === 0;
+
+  const staffAttendanceStats = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    let leave = 0;
+    const total = teachers.length;
+    teachers.forEach(t => {
+      const status = staffAttendanceMap[t.id]?.status;
+      if (status === 'PRESENT') present++;
+      else if (status === 'ABSENT') absent++;
+      else if (status === 'LATE') late++;
+      else if (status === 'LEAVE') leave++;
+    });
+    const takenCount = present + absent + late + leave;
+    return { total, present, absent, late, leave, takenCount, unmarked: total - takenCount };
+  }, [teachers, staffAttendanceMap]);
+
+  const handleSetStaffStatus = (staffId: string, status: AttendanceStatus) => {
+    setStaffAttendanceMap(prev => ({
+      ...prev,
+      [staffId]: { ...prev[staffId], status }
+    }));
+    if (status !== 'LATE') {
+      setStaffLateMinutesMap(prev => {
+        if (!(staffId in prev)) return prev;
+        const next = { ...prev };
+        delete next[staffId];
+        return next;
+      });
+    }
+  };
+
+  const handleStaffLatePress = (staffId: string) => {
+    const saved = Math.min(LATE_MAX_TOTAL, Math.max(0, staffLateMinutesMap[staffId] || 0));
+    const total = saved > 0 ? saved : 10;
+    setStaffLatePicker({ staffId, hours: Math.floor(total / 60), minutes: total % 60 });
+  };
+
+  const handleStaffLateConfirm = () => {
+    if (!staffLatePicker) return;
+    const total = staffLatePicker.hours * 60 + staffLatePicker.minutes;
+    setStaffAttendanceMap(prev => ({ ...prev, [staffLatePicker.staffId]: { ...prev[staffLatePicker.staffId], status: 'LATE' } }));
+    setStaffLateMinutesMap(prev => {
+      if (total <= 0) {
+        if (!(staffLatePicker.staffId in prev)) return prev;
+        const next = { ...prev };
+        delete next[staffLatePicker.staffId];
+        return next;
+      }
+      return { ...prev, [staffLatePicker.staffId]: total };
+    });
+    setStaffLatePicker(null);
+  };
+
+  const handleMarkAllStaffPresent = () => {
+    const nextMap: Record<string, { status?: AttendanceStatus; inTime?: string; outTime?: string }> = { ...staffAttendanceMap };
+    teachers.forEach(t => {
+      nextMap[t.id] = { ...nextMap[t.id], status: 'PRESENT' };
+    });
+    setStaffAttendanceMap(nextMap);
+    setStaffLateMinutesMap({});
+  };
+
+  const handleMarkAllStaffAbsent = () => {
+    const nextMap: Record<string, { status?: AttendanceStatus; inTime?: string; outTime?: string }> = { ...staffAttendanceMap };
+    teachers.forEach(t => {
+      nextMap[t.id] = { ...nextMap[t.id], status: 'ABSENT' };
+    });
+    setStaffAttendanceMap(nextMap);
+    setStaffLateMinutesMap({});
+  };
+
+  const handleResetStaffAttendance = () => {
+    setStaffAttendanceMap({});
+    setStaffLateMinutesMap({});
+  };
+
+  // U3: staff save — same instant/optimistic shape as the student
+  // save, but the hub's staff rules: only touched members save (an
+  // entry with no status — e.g. only a time was typed — counts as
+  // present), Friday never saves, and the admin-only gate is
+  // re-checked here, not just at the route.
+  const handleSaveStaffAttendance = () => {
+    if (staffSaving) return;
+    if (!hasPermission('staff.attendance.manage')) {
+      setAttendanceCloudFailure(isEn ? 'Only an admin can save staff attendance.' : 'স্টাফ হাজিরা শুধু অ্যাডমিন সংরক্ষণ করতে পারেন।');
+      return;
+    }
+    if (isFridayDate(attendanceDate)) {
+      setAttendanceCloudFailure(isEn ? 'Friday is the weekly holiday — no attendance is taken.' : 'শুক্রবার সাপ্তাহিক ছুটি — এই দিনে হাজিরা নেওয়া হয় না।');
+      return;
+    }
+    const markedTeachers = teachers.filter(t => staffAttendanceMap[t.id]);
+    if (markedTeachers.length === 0) {
+      setAttendanceCloudFailure(isEn ? 'Nobody is marked — mark at least one staff member before saving.' : 'কাউকে চিহ্নিত করা হয়নি — সংরক্ষণের আগে অন্তত একজন শিক্ষক/কর্মীর হাজিরা চিহ্নিত করুন।');
+      return;
+    }
+    const records: DailyStaffAttendanceRecord[] = markedTeachers.map(t => {
+      const current = staffAttendanceMap[t.id];
+      return {
+        id: `${attendanceDate}_${t.id}`,
+        date: attendanceDate,
+        staffId: t.id,
+        staffName: t.nameBn || t.name,
+        designation: t.designation || 'শিক্ষক',
+        status: current.status || 'PRESENT',
+        inTime: current.inTime,
+        outTime: current.outTime
+      };
+    });
+
+    dailyAttendanceService.batchSaveStaffAttendance(records);
+    setAttendanceCloudFailure(null);
+    setStaffSaving(true);
+    setSaveSuccessNotice(isEn ? 'Staff attendance saved on this device — syncing to cloud…' : 'স্টাফ হাজিরা এই ডিভাইসে সংরক্ষিত হয়েছে — cloud-এ যাচ্ছে…');
+    void confirmStaffAttendanceCloudSync().then((result) => {
+      setStaffSaving(false);
+      if (result.success) {
+        setAttendanceCloudFailure(null);
+        setSaveSuccessNotice('✓ স্টাফ হাজিরা সফলভাবে সংরক্ষিত হয়েছে!');
+        setTimeout(() => setSaveSuccessNotice(null), 3000);
+      } else {
+        setSaveSuccessNotice(null);
+        setAttendanceCloudFailure(confirmErrorMessage(result, ATTENDANCE_CLOUD_FAILURE_MESSAGE));
+      }
+    }).catch((err) => {
+      console.error('Background staff attendance cloud confirm failed:', err);
+      setStaffSaving(false);
+      setSaveSuccessNotice(null);
+      setAttendanceCloudFailure(ATTENDANCE_CLOUD_FAILURE_MESSAGE);
+    });
   };
 
   // 4. Marks Entry state (teacher)
@@ -1390,7 +1693,7 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     return () => { document.body.style.overflow = prev; };
   }, [moreOpen]);
 
-  const NATIVE_MODULES = ['teacher_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result', 'teacher_routine', 'cashier_collect', 'mobile_students'];
+  const NATIVE_MODULES = ['teacher_attendance', 'staff_attendance', 'teacher_students_dues', 'teacher_marks', 'teacher_notices', 'teacher_report_attendance', 'teacher_report_result', 'teacher_routine', 'cashier_collect', 'mobile_students'];
 
   const handleOpenModule = (moduleKey: string) => {
     // Every screen opens at its top: without this, the browser keeps
@@ -3145,127 +3448,208 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
               {/* Late picker — Tutor's drum-wheel sheet (ModalShell pattern) */}
               {latePicker && (() => {
                 const pickerStudent = classStudents.find(s => s.id === latePicker.studentId);
-                const pickerName = pickerStudent?.nameBn || pickerStudent?.name || '';
-                const total = latePicker.hours * 60 + latePicker.minutes;
-                const mm = String(latePicker.minutes).padStart(2, '0');
-                const tint = attAvatarTint(latePicker.studentId);
                 return (
-                  <div
-                    className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4"
-                    style={{ background: 'rgba(15, 20, 35, 0.45)' }}
-                    onClick={() => setLatePicker(null)}
-                  >
-                    <div
-                      className="w-full sm:max-w-[440px] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-xl bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10"
-                      onClick={e => e.stopPropagation()}
-                      role="dialog"
-                      aria-modal="true"
-                    >
-                      <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-3">
-                        <h2 className="text-[17px] font-bold">{pickerName}</h2>
-                        <button
-                          type="button"
-                          onClick={() => setLatePicker(null)}
-                          aria-label={isEn ? 'Cancel' : 'বাতিল'}
-                          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-[#f4f6fb] dark:bg-white/5 text-[#5b6478] dark:text-slate-400 cursor-pointer"
-                        >
-                          <X size={17} />
-                        </button>
-                      </div>
-                      <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-6 pb-4">
-                        <style>{'.late-wheel-scroll::-webkit-scrollbar{display:none}'}</style>
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-[14px] shrink-0"
-                              style={{ background: tint.bg, color: tint.color }}
-                            >
-                              {attInitials(pickerName)}
-                            </div>
-                            <p className="text-[15px] font-bold">
-                              {pickerName} {isEn ? 'was late by how much?' : 'কতক্ষণ দেরি করেছে?'}
-                            </p>
-                          </div>
-                          <div className="rounded-2xl py-3 px-4 text-center bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10">
-                            <p className="text-[38px] leading-none font-extrabold tabular-nums text-[#d97706] dark:text-amber-300" aria-live="polite">
-                              {toBn(latePicker.hours)}:{toBn(mm)}
-                            </p>
-                            <p className="mt-1.5 text-[13px] font-semibold text-[#5b6478] dark:text-slate-400">
-                              {toBn(latePicker.hours)} {isEn ? 'hr' : 'ঘণ্টা'} {toBn(latePicker.minutes)} {isEn ? 'min' : 'মিনিট'}
-                            </p>
-                          </div>
-                          <div>
-                            <div className="flex gap-2 mb-1">
-                              <p className="flex-1 text-center text-[12px] font-bold text-[#5b6478] dark:text-slate-400">
-                                {isEn ? 'Hours' : 'ঘণ্টা'}
-                              </p>
-                              <p className="flex-1 text-center text-[12px] font-bold text-[#5b6478] dark:text-slate-400">
-                                {isEn ? 'Minutes' : 'মিনিট'}
-                              </p>
-                            </div>
-                            <div className="relative">
-                              <div
-                                aria-hidden="true"
-                                className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none rounded-xl bg-[#fef3c7] dark:bg-amber-500/15 border-y border-[#e8ecf4] dark:border-white/10"
-                                style={{ height: 46 }}
-                              />
-                              <div
-                                className="relative flex gap-2"
-                                style={{ maskImage: WHEEL_FADE, WebkitMaskImage: WHEEL_FADE }}
-                              >
-                                <WheelColumn
-                                  values={LATE_HOURS}
-                                  value={latePicker.hours}
-                                  onChange={v => setLatePicker(p => p ? { ...p, hours: v } : p)}
-                                  format={v => toBn(v)}
-                                  ariaLabel={isEn ? 'Hours' : 'ঘণ্টা'}
-                                />
-                                <WheelColumn
-                                  values={LATE_MINUTE_VALUES}
-                                  value={latePicker.minutes}
-                                  onChange={v => setLatePicker(p => p ? { ...p, minutes: v } : p)}
-                                  format={v => toBn(String(v).padStart(2, '0'))}
-                                  ariaLabel={isEn ? 'Minutes' : 'মিনিট'}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          {total === 0 && (
-                            <p className="text-center text-[12px] font-bold text-[#dc2626] dark:text-rose-300">
-                              {isEn ? 'Pick at least 1 minute' : 'কমপক্ষে ১ মিনিট বেছে নিন'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div
-                        className="shrink-0 px-5 sm:px-6 pt-3 rounded-b-3xl bg-white dark:bg-[#161c2e] border-t border-[#e8ecf4] dark:border-white/10"
-                        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 14px)' }}
-                      >
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setLatePicker(null)}
-                            className="flex-1 h-12 rounded-xl text-[14px] font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
-                          >
-                            {isEn ? 'Cancel' : 'বাতিল'}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={total === 0}
-                            onClick={handleLateConfirm}
-                            className="flex-1 h-12 rounded-xl text-[14px] font-bold text-white disabled:opacity-50 bg-[#f59e0b] cursor-pointer"
-                          >
-                            {isEn ? 'Save' : 'সংরক্ষণ করুন'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <LatePickerModal
+                    personName={pickerStudent?.nameBn || pickerStudent?.name || ''}
+                    personId={latePicker.studentId}
+                    hours={latePicker.hours}
+                    minutes={latePicker.minutes}
+                    isEn={isEn}
+                    onHours={v => setLatePicker(p => p ? { ...p, hours: v } : p)}
+                    onMinutes={v => setLatePicker(p => p ? { ...p, minutes: v } : p)}
+                    onCancel={() => setLatePicker(null)}
+                    onConfirm={handleLateConfirm}
+                  />
                 );
               })()}
             </div>
           )}
 
+          {/* ============ STAFF ATTENDANCE (U3, native) ============ */}
+          {/* The mobile staff roll-call — same RosterCard as the student
+              roll-call. Reached only from the principal-only "সব মডিউল"
+              directory; the save re-checks the admin-only gate. */}
+          {activeSubModule === 'staff_attendance' && (
+            <div className="space-y-4">
+              {/* Title */}
+              <div className={`${attCardCls} p-4 space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-9 h-9 rounded-2xl bg-[#dbeafe] dark:bg-blue-500/15 text-[#3b82f6] dark:text-blue-300 flex items-center justify-center">
+                      <UserCheck size={17} />
+                    </span>
+                    <h2 className="text-sm font-bold">{isEn ? 'Staff attendance' : 'স্টাফ হাজিরা'}</h2>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-1 rounded-full brand-soft font-bold">
+                    {toBn(teachers.length)} {isEn ? 'staff' : 'জন'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Date card — same as the student roll-call */}
+              <div className={`${attCardCls} p-4 space-y-3`}>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
+                    className="h-10 w-10 shrink-0 rounded-xl text-[14px] font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+                  >
+                    ‹
+                  </button>
+                  <input
+                    type="date"
+                    value={attendanceDate}
+                    onChange={e => e.target.value && setAttendanceDate(e.target.value)}
+                    className="h-10 px-3 rounded-xl text-[14px] font-semibold outline-none flex-1 min-w-0 bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 dark:[color-scheme:dark]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { const d = new Date(attendanceDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setAttendanceDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }}
+                    className="h-10 w-10 shrink-0 rounded-xl text-[14px] font-bold bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10 cursor-pointer"
+                  >
+                    ›
+                  </button>
+                </div>
+
+                {!staffDayOff && (
+                  <>
+                    <p className="text-[12px] text-[#8a93a8] dark:text-slate-500">
+                      {isEn ? 'Tap a status button to mark attendance' : 'স্ট্যাটাস বাটনে চাপ দিয়ে হাজিরা চিহ্নিত করুন'}
+                    </p>
+                    <RosterSummaryChips stats={staffAttendanceStats} isEn={isEn} />
+                  </>
+                )}
+              </div>
+
+              {staffDayOff ? (
+                <div className="rounded-2xl p-5 space-y-3 bg-[#dbeafe] dark:bg-blue-500/10 border border-[#e8ecf4] dark:border-white/5">
+                  <div className="flex items-center gap-2.5">
+                    <CalendarDays size={18} className="shrink-0 text-[#3b82f6] dark:text-blue-300" />
+                    <p className="font-bold text-[15px]">
+                      {isEn ? 'Holiday' : 'আজ ছুটি'}{staffHoliday ? ` — ${staffHoliday.titleBn || staffHoliday.title}` : ''}
+                    </p>
+                  </div>
+                  <p className="text-[13px] text-[#5b6478] dark:text-slate-400">
+                    {isEn
+                      ? 'No attendance today — the calendar marks it as a holiday.'
+                      : 'ক্যালেন্ডার অনুযায়ী আজ ছুটির দিন, তাই হাজিরা নেওয়া যাবে না।'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Roster header — count chip + quick actions */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3 h-10 rounded-xl text-[13px] font-bold flex items-center gap-1.5 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/10">
+                      <Users size={15} className="brand-text" />
+                      {toBn(teachers.length)} {isEn ? 'staff' : 'জন শিক্ষক ও কর্মী'}
+                    </span>
+                    <RosterQuickActions
+                      disabled={teachers.length === 0}
+                      resetDisabled={staffAttendanceStats.takenCount === 0}
+                      isEn={isEn}
+                      onMarkAllPresent={handleMarkAllStaffPresent}
+                      onMarkAllAbsent={handleMarkAllStaffAbsent}
+                      onReset={handleResetStaffAttendance}
+                    />
+                  </div>
+
+                  {/* Roster cards */}
+                  {teachers.length === 0 ? (
+                    <div className={`${attCardCls} p-8 text-center space-y-2`}>
+                      <Users size={32} className="mx-auto text-[#c3c9d9]" />
+                      <p className="text-xs text-[#5b6478] dark:text-slate-400 font-medium">{isEn ? 'No staff members found.' : 'কোনো শিক্ষক/কর্মী পাওয়া যায়নি।'}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {teachers.map(t => {
+                        const current = staffAttendanceMap[t.id] || {};
+                        return (
+                          <div key={t.id} className="space-y-2">
+                            <RosterCard
+                              id={t.id}
+                              name={t.nameBn || t.name}
+                              subLine={<>{t.designation || 'শিক্ষক'}{t.phone ? ` • ${toBn(t.phone)}` : ''}</>}
+                              status={current.status}
+                              lateMinutes={staffLateMinutesMap[t.id]}
+                              isEn={isEn}
+                              unconfirmed={isRecordUnconfirmed('dailyStaffAttendance', `${attendanceDate}_${t.id}`)}
+                              onSelect={status => handleSetStaffStatus(t.id, status)}
+                              onLatePress={() => handleStaffLatePress(t.id)}
+                            />
+                            {/* In/Out — hub staff mode-এর মতো, কার্ডের নিচে ছোট করে */}
+                            <div className="flex items-center gap-2 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl px-3 py-2">
+                              <label className="flex-1 min-w-0">
+                                <span className="block text-[10px] font-bold text-[#8a93a8] dark:text-slate-500">{isEn ? 'In' : 'প্রবেশ'}</span>
+                                <input
+                                  type="text"
+                                  value={current.inTime || '08:15 AM'}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setStaffAttendanceMap(prev => ({
+                                      ...prev,
+                                      [t.id]: { ...prev[t.id], inTime: val }
+                                    }));
+                                  }}
+                                  className="w-full px-2 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200"
+                                />
+                              </label>
+                              <label className="flex-1 min-w-0">
+                                <span className="block text-[10px] font-bold text-[#8a93a8] dark:text-slate-500">{isEn ? 'Out' : 'প্রস্থান'}</span>
+                                <input
+                                  type="text"
+                                  value={current.outTime || '04:00 PM'}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setStaffAttendanceMap(prev => ({
+                                      ...prev,
+                                      [t.id]: { ...prev[t.id], outTime: val }
+                                    }));
+                                  }}
+                                  className="w-full px-2 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200"
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Save bar */}
+                  {teachers.length > 0 && (
+                    <div className="sticky bottom-[84px] z-30 pt-1">
+                      <button
+                        onClick={handleSaveStaffAttendance}
+                        disabled={staffSaving}
+                        className="w-full py-3.5 px-4 rounded-[20px] brand-flat text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <Save size={17} />
+                        <span>{staffSaving ? (isEn ? 'Saving…' : 'সংরক্ষণ হচ্ছে…') : (isEn ? 'Save staff attendance' : 'স্টাফ হাজিরা সংরক্ষণ করুন')}</span>
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Staff late picker — the same drum modal as the student roll-call */}
+              {staffLatePicker && (() => {
+                const pickerStaff = teachers.find(x => x.id === staffLatePicker.staffId);
+                return (
+                  <LatePickerModal
+                    personName={pickerStaff?.nameBn || pickerStaff?.name || ''}
+                    personId={staffLatePicker.staffId}
+                    hours={staffLatePicker.hours}
+                    minutes={staffLatePicker.minutes}
+                    isEn={isEn}
+                    onHours={v => setStaffLatePicker(p => p ? { ...p, hours: v } : p)}
+                    onMinutes={v => setStaffLatePicker(p => p ? { ...p, minutes: v } : p)}
+                    onCancel={() => setStaffLatePicker(null)}
+                    onConfirm={handleStaffLateConfirm}
+                  />
+                );
+              })()}
+            </div>
+          )}
           {/* ============ TEACHER: STUDENTS & DUES ============ */}
           {activeSubModule === 'teacher_students_dues' && (
             <div className="space-y-4">

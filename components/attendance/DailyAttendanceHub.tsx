@@ -248,6 +248,37 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     }));
   };
 
+  // U3: staff counterpart of handleSetStudentStatus — same one-line
+  // status set; in/out times live on the same map entries, untouched.
+  const handleSetStaffStatus = (staffId: string, status: AttendanceStatus) => {
+    setStaffAttendanceMap(prev => ({
+      ...prev,
+      [staffId]: { ...prev[staffId], status }
+    }));
+  };
+
+  // U3: staff quick actions — mark every staff member at once (the
+  // students toolbar has the same two buttons; no Reset in the hub,
+  // same as students mode).
+  const handleMarkAllStaffPresent = () => {
+    setStaffAttendanceMap(prev => {
+      const updated = { ...prev };
+      teachers.forEach(t => {
+        updated[t.id] = { ...updated[t.id], status: 'PRESENT' };
+      });
+      return updated;
+    });
+  };
+  const handleMarkAllStaffAbsent = () => {
+    setStaffAttendanceMap(prev => {
+      const updated = { ...prev };
+      teachers.forEach(t => {
+        updated[t.id] = { ...updated[t.id], status: 'ABSENT' };
+      });
+      return updated;
+    });
+  };
+
   // Save student attendance — local save first (never dropped), then
   // the cloud confirm is AWAITED: 'saved' shows only after the cloud
   // write succeeds, otherwise the error state shows and the confirm
@@ -612,6 +643,20 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     );
   }, [classStudents, searchQuery]);
 
+  // U3: staff list filtered by the same search box (name / designation /
+  // phone). The box existed in staff mode before but filtered nothing —
+  // the table mapped `teachers` directly.
+  const filteredTeachers = useMemo(() => {
+    if (!searchQuery.trim()) return teachers;
+    const q = searchQuery.toLowerCase().trim();
+    return teachers.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      (t.nameBn && t.nameBn.includes(q)) ||
+      (t.designation && t.designation.toLowerCase().includes(q)) ||
+      (t.phone && t.phone.includes(q))
+    );
+  }, [teachers, searchQuery]);
+
   // List of absent students
   const absentStudents = useMemo(() => {
     return classStudents.filter(s => {
@@ -686,12 +731,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         </div>
       )}
 
-      {/* 2. Top Summary Metrics Strip — students mode: the 5 shared
-          summary chips (recorded data only, same numbers as the old
-          7 tiles); other modes keep the 7-tile strip (U3/U4 scope). */}
-      {activeMode === 'students' ? (
+      {/* 2. Top Summary Metrics Strip — students + staff modes: the 5
+          shared summary chips (recorded data only, same numbers as the
+          old 7 tiles); other modes keep the 7-tile strip (U4 scope). */}
+      {activeMode === 'students' || activeMode === 'staff' ? (
         <div className="bg-white dark:bg-[#161c2e] p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-white/10">
-          <RosterSummaryChips stats={{ present: summary.present, late: summary.late, absent: summary.absent, leave: summary.leave, unmarked: summary.pending }} isEn={!isBn} />
+          <RosterSummaryChips stats={activeMode === 'staff'
+            ? { present: staffSummary.present, late: staffSummary.late, absent: staffSummary.absent, leave: staffSummary.leave, unmarked: staffSummary.pending }
+            : { present: summary.present, late: summary.late, absent: summary.absent, leave: summary.leave, unmarked: summary.pending }} isEn={!isBn} />
         </div>
       ) : (
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
@@ -777,7 +824,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isBn ? 'নাম, রোল বা মোবাইল দিয়ে খুঁজুন...' : 'Search student or phone...'}
+              placeholder={activeMode === 'staff'
+                ? (isBn ? 'নাম, পদবি বা মোবাইল দিয়ে খুঁজুন...' : 'Search name, designation or phone...')
+                : (isBn ? 'নাম, রোল বা মোবাইল দিয়ে খুঁজুন...' : 'Search student or phone...')}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500"
             />
           </div>
@@ -791,6 +840,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{isBn ? 'মোট' : 'Total'} {formatNumber(summary.total, language)}{isBn ? ' জন' : ''}</span>
               <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>
               <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400">{isBn ? 'হার' : 'Rate'} {summary.percentage !== null ? `${formatNumber(summary.percentage, language)}%` : '—'}</span>
+            </div>
+          )}
+          {/* U3: staff mode-এ একই মিনি-ব্লক (staffSummary-র সংখ্যা)। */}
+          {activeMode === 'staff' && (
+            <div className="shrink-0 text-right leading-tight px-1">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{isBn ? 'মোট' : 'Total'} {formatNumber(staffSummary.total, language)}{isBn ? ' জন' : ''}</span>
+              <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>
+              <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400">{isBn ? 'হার' : 'Rate'} {staffSummary.percentage !== null ? `${formatNumber(staffSummary.percentage, language)}%` : '—'}</span>
             </div>
           )}
           {activeMode === 'students' && (
@@ -814,15 +871,27 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             </>
           )}
 
+          {/* U3: staff quick বোতাম (students mode-এর মতোই)। Save বোতাম
+              টুলবার থেকে সরে নিচের sticky বারে গেছে (students mode-এর মতো)। */}
           {activeMode === 'staff' && (
-            <Button
-              onClick={handleSaveStaffAttendance}
-              disabled={staffSaving || staffSyncing || staffRetrying}
-              className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2"
-            >
-              <Save size={16} />
-              <span>{staffSyncing ? (isBn ? 'cloud-এ যাচ্ছে…' : 'Syncing to cloud…') : (isBn ? 'স্টাফ হাজিরা সংরক্ষণ' : 'Save Staff')}</span>
-            </Button>
+            <>
+              <button
+                onClick={handleMarkAllStaffPresent}
+                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                title={isBn ? 'সকলকে উপস্থিত হিসেবে চিহ্নিত করুন' : 'Mark all present'}
+              >
+                <CheckCircle2 size={14} className="text-emerald-600" />
+                <span>{isBn ? 'সবাই উপস্থিত' : 'All Present'}</span>
+              </button>
+              <button
+                onClick={handleMarkAllStaffAbsent}
+                className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                title={isBn ? 'সকলকে অনুপস্থিত হিসেবে চিহ্নিত করুন' : 'Mark all absent'}
+              >
+                <XCircle size={14} className="text-rose-600" />
+                <span>{isBn ? 'সবাই অনুপস্থিত' : 'All Absent'}</span>
+              </button>
+            </>
           )}
 
           <Button
@@ -970,133 +1039,118 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         </>
       )}
 
-      {/* 5. MODE 2: Staff / Teacher Attendance */}
+      {/* 5. MODE 2: Staff / Teacher Attendance — U3: table → card grid
+          (same RosterCard as the student roll-call; LATE is a real
+          button now, LEAVE is blue via the shared card; the Save button
+          moved from the toolbar to the sticky bar below). */}
       {activeMode === 'staff' && (
-        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-          <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+        <>
+        <div className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden">
+          <div className="p-4 bg-slate-50/80 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Briefcase size={17} className="text-teal-700" />
-              <h3 className="text-sm font-bold text-slate-800">
-                {isBn ? 'শিক্ষক ও কর্মচারী দৈনিক উপস্থিতি তালিকা' : 'Staff Daily Attendance'} • {formatSafeDate(selectedDate, isBn)}
+              <Briefcase size={17} className="text-teal-700 dark:text-teal-400" />
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+                {isBn ? 'শিক্ষক ও কর্মচারী দৈনিক উপস্থিতি তালিকা' : 'Staff Daily Attendance'} • {formatSafeDate(selectedDate, isBn)} ({formatNumber(filteredTeachers.length, language)} {isBn ? 'জন শিক্ষক ও কর্মী' : 'staff members'})
               </h3>
             </div>
-            <span className="text-xs text-slate-500 font-semibold">
-              {formatNumber(teachers.length, language)} {isBn ? 'জন শিক্ষক ও কর্মী' : 'staff members'}
-            </span>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all print:hidden"
+              title={isBn ? 'হাজিরা তালিকা প্রিন্ট করুন' : 'Print attendance list'}
+            >
+              <Printer size={13} />
+              <span>{isBn ? 'প্রিন্ট' : 'Print'}</span>
+            </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50/50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider">
-                <tr>
-                  <th className="py-3 px-4">{isBn ? 'নাম ও পদবি' : 'Name & Designation'}</th>
-                  <th className="py-3 px-4 text-center">{isBn ? 'হাজিরা স্ট্যাটাস' : 'Status'}</th>
-                  <th className="py-3 px-4">{isBn ? 'প্রবেশ সময় (In)' : 'In Time'}</th>
-                  <th className="py-3 px-4">{isBn ? 'প্রস্থান সময় (Out)' : 'Out Time'}</th>
-                  <th className="py-3 px-4">{isBn ? 'মোবাইল নম্বর' : 'Phone'}</th>
-                  <th className="py-3 px-4">{isBn ? 'মন্তব্য' : 'Remarks'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {teachers.map(teacher => {
-                  // Master audit F1: an unmarked teacher has no entry, so
-                  // no status button is highlighted — the row must not
-                  // look PRESENT before anyone marks it.
-                  const current: { status?: AttendanceStatus; inTime?: string; outTime?: string; note?: string } = staffAttendanceMap[teacher.id] || {};
-                  const currentStatus = current.status;
+          {filteredTeachers.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 dark:text-slate-500">
+              <Briefcase className="w-12 h-12 mx-auto mb-2 opacity-30" />
+              <p>{searchQuery.trim() ? (isBn ? 'খুঁজে কোনো শিক্ষক/কর্মী মেলেনি।' : 'No staff member matches your search.') : (isBn ? 'কোনো শিক্ষক/কর্মী পাওয়া যায়নি।' : 'No staff members found.')}</p>
+            </div>
+          ) : (
+            <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-w-7xl mx-auto">
+              {filteredTeachers.map(teacher => {
+                const current: { status?: AttendanceStatus; inTime?: string; outTime?: string; note?: string } = staffAttendanceMap[teacher.id] || {};
+                return (
+                  <div key={teacher.id} className="space-y-2">
+                    <RosterCard
+                      id={teacher.id}
+                      name={teacher.nameBn || teacher.name}
+                      subLine={<>{teacher.designation || 'শিক্ষক'}{teacher.phone ? (<> • <a href={`tel:${teacher.phone}`} className="text-teal-700 dark:text-teal-400 hover:underline font-mono font-bold">{teacher.phone}</a></>) : ''}</>}
+                      status={current.status}
+                      isEn={!isBn}
+                      unconfirmed={isRecordUnconfirmed('dailyStaffAttendance', `${selectedDate}_${teacher.id}`)}
+                      onSelect={(s) => handleSetStaffStatus(teacher.id, s)}
+                      onLatePress={() => handleSetStaffStatus(teacher.id, 'LATE')}
+                    />
+                    {/* প্রবেশ/প্রস্থান সময় + নোট — টেবিলের কলামগুলো কার্ডের
+                        নিচে ছোট স্ট্রিপে; RosterCard-এ হাত পড়েনি। */}
+                    <div className="flex items-center gap-2 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl px-3 py-2">
+                      <input
+                        type="text"
+                        value={current.inTime || '08:15 AM'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStaffAttendanceMap(prev => ({
+                            ...prev,
+                            [teacher.id]: { ...prev[teacher.id], inTime: val }
+                          }));
+                        }}
+                        title={isBn ? 'প্রবেশ সময়' : 'Time in'}
+                        className="w-24 px-2 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200"
+                      />
+                      <input
+                        type="text"
+                        value={current.outTime || '04:00 PM'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStaffAttendanceMap(prev => ({
+                            ...prev,
+                            [teacher.id]: { ...prev[teacher.id], outTime: val }
+                          }));
+                        }}
+                        title={isBn ? 'প্রস্থান সময়' : 'Time out'}
+                        className="w-24 px-2 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200"
+                      />
+                      <input
+                        type="text"
+                        value={current.note || ''}
+                        placeholder={isBn ? 'মন্তব্য...' : 'Note...'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStaffAttendanceMap(prev => ({
+                            ...prev,
+                            [teacher.id]: { ...prev[teacher.id], note: val }
+                          }));
+                        }}
+                        className="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-                  return (
-                    <tr key={teacher.id} className="hover:bg-slate-50/70">
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">{teacher.name}</div>
-                        <div className="text-[11px] text-teal-800 font-semibold">{teacher.designation || 'শিক্ষক'}</div>
-                        {isRecordUnconfirmed('dailyStaffAttendance', `${selectedDate}_${teacher.id}`) && (
-                          <UnconfirmedBadge isBn={isBn} />
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => setStaffAttendanceMap(prev => ({
-                              ...prev,
-                              [teacher.id]: { ...prev[teacher.id], status: 'PRESENT' }
-                            }))}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                              currentStatus === 'PRESENT' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {isBn ? 'উপস্থিত' : 'Present'}
-                          </button>
-                          <button
-                            onClick={() => setStaffAttendanceMap(prev => ({
-                              ...prev,
-                              [teacher.id]: { ...prev[teacher.id], status: 'ABSENT' }
-                            }))}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                              currentStatus === 'ABSENT' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {isBn ? 'অনুপস্থিত' : 'Absent'}
-                          </button>
-                          <button
-                            onClick={() => setStaffAttendanceMap(prev => ({
-                              ...prev,
-                              [teacher.id]: { ...prev[teacher.id], status: 'LEAVE' }
-                            }))}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                              currentStatus === 'LEAVE' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {isBn ? 'ছুটি' : 'Leave'}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <input 
-                          type="text"
-                          value={current.inTime || '08:15 AM'}
-                          onChange={(e) => setStaffAttendanceMap(prev => ({
-                            ...prev,
-                            [teacher.id]: { ...prev[teacher.id], inTime: e.target.value }
-                          }))}
-                          className="w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono"
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <input 
-                          type="text"
-                          value={current.outTime || '04:00 PM'}
-                          onChange={(e) => setStaffAttendanceMap(prev => ({
-                            ...prev,
-                            [teacher.id]: { ...prev[teacher.id], outTime: e.target.value }
-                          }))}
-                          className="w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono"
-                        />
-                      </td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-700">
-                        {teacher.phone || '—'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <input 
-                          type="text"
-                          value={current.note || ''}
-                          placeholder={isBn ? 'মন্তব্য...' : 'Note...'}
-                          onChange={(e) => setStaffAttendanceMap(prev => ({
-                            ...prev,
-                            [teacher.id]: { ...prev[teacher.id], note: e.target.value }
-                          }))}
-                          className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {/* Sticky save bar — students mode-এর মতো, PC-তেও নিচে আটকে থাকে। */}
+        <div className="sticky bottom-0 z-10 print:hidden">
+          <div className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-white/10 rounded-2xl p-3 shadow-md">
+            <button
+              type="button"
+              onClick={handleSaveStaffAttendance}
+              disabled={staffSaving || staffSyncing || staffRetrying}
+              className="w-full h-12 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer transition-all"
+            >
+              <Save size={16} />
+              <span>{staffSyncing ? (isBn ? 'cloud-এ যাচ্ছে…' : 'Syncing to cloud…') : (isBn ? 'স্টাফ হাজিরা সংরক্ষণ' : 'Save Staff')}</span>
+            </button>
           </div>
         </div>
+        </>
       )}
-
       {/* 6. MODE 3: Absentees & SMS Notification */}
       {activeMode === 'absentees' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
