@@ -74,7 +74,6 @@ interface LayoutProps {
 
 interface MainMenuItem {
   id: string;
-  orderNumber: string;
   titleBn: string;
   titleEn: string;
   icon: any;
@@ -299,7 +298,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const mainMenuItems: MainMenuItem[] = [
     {
       id: 'dashboard',
-      orderNumber: '১',
       titleBn: homeTab === 'dashboard' ? 'ড্যাশবোর্ড' : 'হোম',
       titleEn: homeTab === 'dashboard' ? 'Dashboard' : 'Home',
       icon: homeTab === 'dashboard' ? LayoutDashboard : Home,
@@ -308,7 +306,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'students',
-      orderNumber: '২',
       titleBn: 'শিক্ষার্থী ব্যবস্থাপনা',
       titleEn: 'Student Management',
       icon: Users,
@@ -323,7 +320,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'academic',
-      orderNumber: '৩',
       titleBn: 'একাডেমিক ব্যবস্থাপনা',
       titleEn: 'Academic Management',
       icon: BookOpen,
@@ -337,7 +333,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'attendance',
-      orderNumber: '৪',
       titleBn: 'উপস্থিতি ব্যবস্থাপনা',
       titleEn: 'Attendance Management',
       icon: UserCheck,
@@ -351,7 +346,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'finance',
-      orderNumber: '৫',
       titleBn: 'হিসাব ও ফি ব্যবস্থাপনা',
       titleEn: 'Finance & Accounts',
       icon: Wallet,
@@ -361,7 +355,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'examination',
-      orderNumber: '৬',
       titleBn: 'পরীক্ষা ও ফলাফল',
       titleEn: 'Exams & Results',
       icon: Award,
@@ -374,7 +367,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'staff',
-      orderNumber: '৭',
       titleBn: 'শিক্ষক ও কর্মচারী',
       titleEn: 'Staff & HR Management',
       icon: Briefcase,
@@ -389,7 +381,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'notices',
-      orderNumber: '৮',
       titleBn: 'নোটিশ ও রিপোর্ট',
       titleEn: 'Notices & Reports',
       icon: Megaphone,
@@ -398,7 +389,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'settings',
-      orderNumber: '৯',
       titleBn: 'সেটিংস ও সিস্টেম',
       titleEn: 'Settings & System',
       icon: Settings,
@@ -412,7 +402,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'backup',
-      orderNumber: '১০',
       titleBn: 'ডাটা সুরক্ষা ও ব্যাকআপ',
       titleEn: 'Data Safety & Backup',
       icon: ShieldCheck,
@@ -428,7 +417,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'portals',
-      orderNumber: '১১',
       titleBn: 'পোর্টাল ও সেবা',
       titleEn: 'Portals & Services',
       icon: Globe,
@@ -440,7 +428,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     },
     {
       id: 'user_settings',
-      orderNumber: '⚙️',
       titleBn: 'আমার সেটিংস',
       titleEn: 'My Settings',
       icon: Sliders,
@@ -627,7 +614,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                         <Icon size={15} />
                       </div>
                       <span className="truncate">
-                        {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
                         {language === 'bn' ? menu.titleBn : menu.titleEn}
                       </span>
                     </div>
@@ -666,7 +652,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                           <Icon size={15} />
                         </div>
                         <span className="truncate">
-                          {menu.orderNumber ? `${menu.orderNumber}. ` : ''}
                           {language === 'bn' ? menu.titleBn : menu.titleEn}
                         </span>
                         {menu.badge && (

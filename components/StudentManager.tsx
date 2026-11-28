@@ -1046,7 +1046,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
       {/* 1. Hub Header & Quick Actions */}
       <PageHeader
         icon={Users}
-        title={language === 'bn' ? '২. শিক্ষার্থী ব্যবস্থাপনা' : '2. Student Management'}
+        title={language === 'bn' ? 'শিক্ষার্থী ব্যবস্থাপনা' : 'Student Management'}
       >
         <div className="flex items-center gap-2 flex-wrap">
           {canCreate && (
