@@ -122,10 +122,10 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
   }, [students, teachers, selectedDate, dailyStudentAttendance, dailyStaffAttendance]);
 
   // Sub-navigation tabs
-  const tabs: { id: AttendanceSubTab; labelBn: string; labelEn: string; icon: any; badge?: string }[] = [
+  const tabs: { id: AttendanceSubTab; labelBn: string; labelEn: string; icon: any }[] = [
     { id: 'students', labelBn: 'শিক্ষার্থী', labelEn: 'Students', icon: UserCheck },
     { id: 'staff', labelBn: 'স্টাফ', labelEn: 'Staff', icon: Briefcase },
-    { id: 'absentees', labelBn: 'অনুপস্থিত', labelEn: 'Absentees', icon: Phone, badge: kpis.absentRecorded > 0 ? formatNumber(kpis.absentRecorded, language) : undefined },
+    { id: 'absentees', labelBn: 'অনুপস্থিত', labelEn: 'Absentees', icon: Phone },
     { id: 'register', labelBn: 'রেজিস্টার', labelEn: 'Register', icon: FileSpreadsheet },
     { id: 'sync', labelBn: 'সিঙ্ক', labelEn: 'Sync', icon: Sparkles },
     { id: 'reports', labelBn: 'রিপোর্ট', labelEn: 'Reports', icon: BarChart3 },
@@ -258,13 +258,6 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({
             >
               <Icon size={15} />
               <span>{isBn ? t.labelBn : t.labelEn}</span>
-              {t.badge && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-800'
-                }`}>
-                  {t.badge}
-                </span>
-              )}
             </button>
           );
         })}

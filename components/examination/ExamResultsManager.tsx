@@ -150,7 +150,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
       labelBn: 'নম্বর এন্ট্রি', 
       labelEn: 'Marks Entry', 
       icon: PenTool,
-      badge: kpis.totalMarksEntries > 0 ? `${formatNumber(kpis.totalMarksEntries, 'bn')}` : undefined 
     },
     { 
       id: 'blank_sheet' as ExamSubTab, 
@@ -360,17 +359,6 @@ export const ExamResultsManager: React.FC<ExamResultsManagerProps> = ({
               >
                 <Icon size={15} className={isActive ? 'text-white' : 'text-slate-500'} />
                 <span>{isBn ? tab.labelBn : tab.labelEn}</span>
-                {tab.badge && (
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
               </button>
             );
           })}

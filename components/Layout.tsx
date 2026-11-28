@@ -82,7 +82,6 @@ interface MainMenuItem {
   permissions?: string[];
   isAdminOnly?: boolean;
   isSuperAdminOnly?: boolean;
-  badge?: string;
   // Opens a sub-tab of Settings instead of targetTab (sidebar §10:
   // the standalone 'backup_recovery' tab denies the principal, but
   // the same backup centre is the Settings > Backup sub-tab).
@@ -106,7 +105,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     effectiveRoles,
     currentMember,
     teachers,
-    pendingMembers = [],
     logoutAdmin 
   } = useApp();
 
@@ -290,9 +288,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     return true;
   };
 
-  // Phase 1 live notice: pending-applicant count for the HR menu badge.
-  const pendingHrCount = (pendingMembers || []).length;
-
   // Direct menus: single-level rows, except Student Management, which gets
   // the floating flyout submenu (see the rail rendering below).
   const mainMenuItems: MainMenuItem[] = [
@@ -377,7 +372,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         'staff_analytics'
       ],
       permissions: ['roles.view', 'users.view', 'teachers.view'],
-      badge: pendingHrCount > 0 ? `${pendingHrCount}` : undefined
     },
     {
       id: 'notices',
@@ -552,11 +546,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                         style={{ backgroundColor: 'var(--color-brand, #0d9488)' }}
                       />
                     )}
-                    {menu.badge && (
-                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold flex items-center justify-center">
-                        {menu.badge}
-                      </span>
-                    )}
                   </button>
                 );
                 // Student Management alone: the collapsed icon row anchors
@@ -618,11 +607,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {menu.badge && (
-                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
-                          {menu.badge}
-                        </span>
-                      )}
                       <ChevronRight size={13} className={isActive ? 'text-white translate-x-0.5' : 'text-slate-400'} />
                     </div>
                   </button>
@@ -654,11 +638,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                         <span className="truncate">
                           {language === 'bn' ? menu.titleBn : menu.titleEn}
                         </span>
-                        {menu.badge && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950 shrink-0 ml-1">
-                            {menu.badge}
-                          </span>
-                        )}
                       </button>
                       <button
                         type="button"
