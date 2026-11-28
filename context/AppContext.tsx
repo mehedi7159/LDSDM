@@ -203,6 +203,11 @@ import {
   type PendingPayloadItem,
 } from '../services/payloadQueue';
 import {
+  getAppliedAttendanceClearMarker,
+  clearLocalAttendanceBefore,
+  readAttendanceClearMarkerFromCloud,
+} from '../services/attendanceCleanupService';
+import {
   buildCreateAcademicYearPayload,
   buildUpdateAcademicYearPayload,
   setCurrentAcademicYear,
@@ -2973,11 +2978,57 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
   // records), so repeat runs write the same docs; a failure only
   // logs — the next snapshot retries, and dual-write keeps main_store
   // correct.
+  // Attendance cleanup (28 Nov 2026, Backup Hub cleanup action):
+  // when the settings doc carries attendanceClearedAt (written by
+  // the cleanup action, only after a verified delete), this device
+  // clears its own local attendance mirrors — STUDENT and STAFF —
+  // ONCE. Two protections for his real attendance: the clear is
+  // TIMESTAMP-SCOPED (only records dated on/before the marker's
+  // date — new daily attendance dated after the marker is never
+  // touched) and ONCE-PER-DEVICE (the self-clear flag below — a
+  // device that already applied this marker never runs it again).
+  // Records recorded after the marker are kept (fresh attendance
+  // taken after the cleanup). Idempotent: the applied marker is
+  // stored in localStorage, so a later snapshot with the same
+  // marker is a no-op and a newer marker (a later cleanup) applies
+  // again.
+  const applyAttendanceClearMarker = (markerTs: number): { cleared: number; kept: number } => {
+    if (!Number.isFinite(markerTs) || markerTs <= 0) return { cleared: 0, kept: 0 };
+    if (getAppliedAttendanceClearMarker() >= markerTs) return { cleared: 0, kept: 0 };
+    const { student, staff } = clearLocalAttendanceBefore(markerTs);
+    const keptStudents = dailyAttendanceService.getAllStudentRecords();
+    const keptStaff = dailyAttendanceService.getAllStaffRecords();
+    setDailyStudentAttendance(keptStudents);
+    setDailyStaffAttendance(keptStaff);
+    lastConfirmedRef.current['dailyStudentAttendance'] = keptStudents;
+    lastConfirmedRef.current['dailyStaffAttendance'] = keptStaff;
+    return { cleared: student.cleared + staff.cleared, kept: student.kept + staff.kept };
+  };
+
   const backfillAttendanceOnce = async (field: AttendanceSplitField, source?: any[]) => {
     if (attendanceBackfillInFlightRef.current[field]) return;
-    const list = source || lastConfirmedRef.current[field] || [];
-    const pending = (list || []).filter((r) => r && attendanceRecordKey(r) && !backfilledAttendanceIdsRef.current[field].has(attendanceRecordKey(r)));
+    const computePending = (list: any[]) => (list || []).filter((r) => r && attendanceRecordKey(r) && !backfilledAttendanceIdsRef.current[field].has(attendanceRecordKey(r)));
+    let pending = computePending(source || lastConfirmedRef.current[field] || []);
     if (pending.length === 0) return;
+    // Attendance-cleanup gate (28 Nov 2026, both attendance fields):
+    // a clear marker in the settings doc means the principal deleted
+    // this field's records. Clearing first stops this backfill from
+    // resurrecting them into the collection. Fail-open on read
+    // errors — normal sync must never break because the marker
+    // could not be read.
+    {
+      try {
+        const applied = getAppliedAttendanceClearMarker();
+        const marker = await readAttendanceClearMarkerFromCloud();
+        if (typeof marker === 'number' && marker > 0 && marker > applied) {
+          applyAttendanceClearMarker(marker);
+          pending = computePending(lastConfirmedRef.current[field] || []);
+          if (pending.length === 0) return;
+        }
+      } catch (err: any) {
+        console.warn('Attendance clear-marker check notice:', err?.message || err);
+      }
+    }
     attendanceBackfillInFlightRef.current[field] = true;
     try {
       await migrateFieldToCollection(field, pending);
@@ -4340,6 +4391,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
           const data = snapshot.exists() ? (snapshot.data() as any) : null;
           lastCollectionSettingsRef.current = data;
           hasLoadedSettingsCollectionRef.current = true;
+          // Attendance-cleanup marker (28 Nov 2026): the Backup Hub
+          // cleanup action writes attendanceClearedAt to this doc;
+          // every device clears its own local attendance mirrors
+          // (student + staff) once on seeing it.
+          const clearMarker = (data as any)?.attendanceClearedAt;
+          if (typeof clearMarker === 'number' && clearMarker > 0) {
+            try { applyAttendanceClearMarker(clearMarker); } catch (err: any) { console.warn('Attendance clear-marker notice:', err?.message || err); }
+          }
           const payload = settingsDocToRemoteData(data);
           if (payload.schoolProfile) {
             // Completeness gate: the settings doc exists with a

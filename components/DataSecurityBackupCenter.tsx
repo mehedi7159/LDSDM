@@ -17,7 +17,8 @@ import {
   Info,
   Clock,
   Check,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { PageHeader } from './ui/PageHeader';
 import {
@@ -42,6 +43,17 @@ import {
 } from '../services/multiStorePersistence';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { RestorePreviewModal } from './ui/RestorePreview';
+import {
+  countAttendanceForCleanup,
+  takeAttendanceCleanupBackup,
+  runAttendanceCleanup,
+  readAttendanceClearMarkerFromCloud,
+  getAppliedAttendanceClearMarker,
+  type AttendanceCleanupCounts,
+  type AttendanceCleanupBackup,
+  type AttendanceCleanupResult,
+  type AttendanceFieldCleanupCounts,
+} from '../services/attendanceCleanupService';
 import { RecycleBinPanel } from './RecycleBinPanel';
 import { formatNumber, formatSafeDateTime } from '../services/utils';
 import { auth, db, isCachedGoogleAccessTokenDrive } from '../services/firebase';
@@ -113,6 +125,32 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
 
   // Recycle Bin states
   const [isRecycleBinOpen, setIsRecycleBinOpen] = useState(false);
+
+  // Attendance cleanup states (28 Nov 2026, path খ):
+  // student + staff, admin-only, backup first, double confirm.
+  const [cleanupCounts, setCleanupCounts] = useState<AttendanceCleanupCounts | null>(null);
+  const [isCountingCleanup, setIsCountingCleanup] = useState(false);
+  const [cleanupBackup, setCleanupBackup] = useState<AttendanceCleanupBackup | null>(null);
+  const [isBackingUpCleanup, setIsBackingUpCleanup] = useState(false);
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupProgress, setCleanupProgress] = useState<string | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<AttendanceCleanupResult | null>(null);
+  const [confirmCleanupOpen, setConfirmCleanupOpen] = useState(false);
+  const [confirmCleanupFinalOpen, setConfirmCleanupFinalOpen] = useState(false);
+  // ONE-TIME (28 Nov 2026): this cleanup action exists only until
+  // the attendanceClearedAt marker is set — after one successful
+  // delete the button hides forever, so a stray tap can never wipe
+  // real attendance later. Local marker hides it immediately on
+  // this device; the cloud marker (read on mount) hides it on
+  // every device.
+  const [cleanupAlreadyDone, setCleanupAlreadyDone] = useState(() => getAppliedAttendanceClearMarker() > 0);
+  useEffect(() => {
+    let cancelled = false;
+    readAttendanceClearMarkerFromCloud()
+      .then((marker) => { if (!cancelled && typeof marker === 'number' && marker > 0) setCleanupAlreadyDone(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Snapshots states (Phase 3: full list, paginated — the old 5-item cap hid older entries)
   const [snapshots, setSnapshots] = useState<SystemSnapshot[]>([]);
@@ -375,6 +413,89 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
   const snapPageCount = Math.max(1, Math.ceil(filteredSnapshots.length / SNAP_PAGE_SIZE));
   const safeSnapPage = Math.min(snapPage, snapPageCount - 1);
   const visibleSnapshots = filteredSnapshots.slice(safeSnapPage * SNAP_PAGE_SIZE, safeSnapPage * SNAP_PAGE_SIZE + SNAP_PAGE_SIZE);
+
+  // ── Attendance cleanup (28 Nov 2026, path খ) ────────────────
+  // Scope: student + staff attendance, all dates (both are test
+  // data — the principal confirmed 28 Nov 07:31 staff attendance
+  // is also demo/test, not original). Nothing is deleted until the
+  // admin taps the delete button twice (two ConfirmDialogs below);
+  // the backup runs first and must hold at least as many records
+  // as the cloud for BOTH fields.
+  const cleanupFieldTotal = (f: AttendanceFieldCleanupCounts) =>
+    f.collectionDocs + f.mainStoreRecords + f.localRecords;
+  const cleanupTotal = cleanupCounts
+    ? cleanupFieldTotal(cleanupCounts.student) + cleanupFieldTotal(cleanupCounts.staff)
+    : 0;
+  const cleanupBackupReady = !!cleanupBackup
+    && cleanupBackup.backupStudent >= cleanupBackup.cloudStudent
+    && cleanupBackup.backupStaff >= cleanupBackup.cloudStaff;
+  const cleanupCanDelete = !!cleanupCounts && cleanupBackupReady && cleanupTotal > 0 && !cleanupRunning;
+
+  const handleCountCleanup = async () => {
+    setIsCountingCleanup(true);
+    setStatusMessage(null);
+    try {
+      const counts = await countAttendanceForCleanup();
+      setCleanupCounts(counts);
+      setCleanupBackup(null);
+      setCleanupResult(null);
+      const total = cleanupFieldTotal(counts.student) + cleanupFieldTotal(counts.staff);
+      if (total === 0) {
+        setStatusMessage({ type: 'info', text: 'ছাত্র ও staff হাজিরা ইতিমধ্যে খালি — মোছার মতো কোনো রেকর্ড নেই।' });
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: 'হাজিরা গুনতে সমস্যা হয়েছে: ' + (err?.message || 'কানেকশন চেক করুন') });
+    } finally {
+      setIsCountingCleanup(false);
+    }
+  };
+
+  const handleBackupCleanup = async () => {
+    setIsBackingUpCleanup(true);
+    setStatusMessage(null);
+    try {
+      const backup = await takeAttendanceCleanupBackup(authUser?.email || adminEmail);
+      setCleanupBackup(backup);
+      const backupTotal = backup.backupStudent + backup.backupStaff;
+      const cloudTotal = backup.cloudStudent + backup.cloudStaff;
+      if (backupTotal === 0 && cloudTotal === 0) {
+        setStatusMessage({ type: 'info', text: 'ব্যাকআপ নেওয়া হয়েছে — তবে ছাত্র ও staff হাজিরা কোথাও নেই, মোছার মতো কিছু নেই।' });
+      } else if (backup.backupStudent < backup.cloudStudent || backup.backupStaff < backup.cloudStaff) {
+        setStatusMessage({ type: 'warning', text: `সতর্কতা: ব্যাকআপে ছাত্র হাজিরা ${formatNumber(backup.backupStudent, language)}টি (ক্লাউডে ${formatNumber(backup.cloudStudent, language)}টি) ও staff হাজিরা ${formatNumber(backup.backupStaff, language)}টি (ক্লাউডে ${formatNumber(backup.cloudStaff, language)}টি) — এই ডিভাইসে সব রেকর্ড নেই। মুছতে আগে উপরের ৩ নম্বর মডিউল থেকে 'ক্লাউড থেকে ডেটা নামান' চাপুন, তারপর আবার ব্যাকআপ নিন।` });
+      } else {
+        setStatusMessage({ type: 'success', text: `সেফটি ব্যাকআপ নেওয়া হয়েছে (পিন করা) — ব্যাকআপে ছাত্র হাজিরা ${formatNumber(backup.backupStudent, language)}টি ও staff হাজিরা ${formatNumber(backup.backupStaff, language)}টি।` });
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: 'সেফটি ব্যাকআপ নিতে সমস্যা হয়েছে: ' + (err?.message || 'কানেকশন চেক করুন') });
+    } finally {
+      setIsBackingUpCleanup(false);
+    }
+  };
+
+  const handleRunCleanup = async () => {
+    setConfirmCleanupFinalOpen(false);
+    setCleanupRunning(true);
+    setCleanupProgress('শুরু হচ্ছে…');
+    setStatusMessage(null);
+    try {
+      const res = await runAttendanceCleanup({
+        updatedBy: authUser?.email || adminEmail,
+        isAdmin,
+        onProgress: (msg) => setCleanupProgress(msg),
+      });
+      setCleanupResult(res);
+      setCleanupProgress(null);
+      // ONE-TIME: the marker is now set — hide this action forever.
+      setCleanupAlreadyDone(true);
+      setStatusMessage({ type: 'success', text: `হাজিরা পরিষ্কার হয়েছে — ক্লাউড থেকে ছাত্র ${formatNumber(res.deletedStudentDocs, language)}টি ও staff ${formatNumber(res.deletedStaffDocs, language)}টি রেকর্ড মুছে গেছে, এখন ০টি বাকি। এই পরিষ্কারের বোতাম আর দেখাবে না। পেজ রিলোড হচ্ছে…` });
+      setTimeout(() => { window.location.reload(); }, 2500);
+    } catch (err: any) {
+      setCleanupProgress(null);
+      setStatusMessage({ type: 'error', text: 'পরিষ্কার করা যায়নি: ' + (err?.message || 'অজ্ঞাত ত্রুটি') });
+    } finally {
+      setCleanupRunning(false);
+    }
+  };
 
   return (
     <div className={`space-y-6 ${isModal ? 'p-4 sm:p-6' : 'max-w-6xl mx-auto'}`}>
@@ -742,6 +863,132 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         </div>
       </div>
 
+      {/* 5. Attendance cleanup (test data) — admin only, ONE-TIME.
+          Student + staff attendance, all dates (both are test data).
+          Shows only until the attendanceClearedAt marker is set —
+          after one successful delete this whole card hides forever,
+          so a stray tap can never wipe real attendance later. The
+          delete button stays disabled until (a) counts are shown
+          and (b) a pinned safety backup holds at least as many
+          records as the cloud for BOTH fields. */}
+      {isAdmin && !cleanupAlreadyDone && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-rose-200/90 dark:border-rose-800 space-y-4">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+              <Trash2 size={24} />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  ৫. হাজিরা পরিষ্কার (test ডেটা)
+                </h2>
+                <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 text-[10px] font-bold">
+                  শুধু অ্যাডমিন
+                </span>
+                <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                  একবারই ব্যবহার করা যাবে
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                এখন পর্যন্ত নেওয়া সব ছাত্র ও staff হাজিরা (সব তারিখ) মুছে ফেলুন — এগুলো শুধু test ডেটা, আসল হাজিরা এখনো তোলা হয়নি। <strong className="text-slate-700 dark:text-slate-200">এই বোতাম একবারই ব্যবহার করা যাবে — একবার পরিষ্কার হলে আর দেখাবে না</strong>, যাতে পরে আসল হাজিরা ভুল চাপে মুছে না যায়। পরিষ্কারের পর প্রতিদিনের নতুন হাজিরা কখনো মোছা হবে না — শুধু ওই দিনের আগের রেকর্ড মুছবে, আর প্রতিটা ডিভাইসে একবারই। মুছতে ৩ ধাপ: ১) সংখ্যা গুনুন, ২) সেফটি ব্যাকআপ নিন (pin-সহ), ৩) দুইবার নিশ্চিত করে মুছুন। মুছে গেলে অন্য ডিভাইসগুলোও নিজে নিজে পরিষ্কার হয়ে যাবে। JSON ব্যাকআপও ডাউনলোড করে রাখুন (উপরের ১ নম্বর মডিউল)।
+              </p>
+            </div>
+          </div>
+
+          {cleanupCounts && (
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300">ছাত্র হাজিরা</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.student.collectionDocs, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">ক্লাউডে রেকর্ড</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.student.mainStoreRecords, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">মূল ডেটায় রেকর্ড</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.student.localRecords, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">এই ডিভাইসে</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.student.queuedItems, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">সিঙ্কের সারিতে</div>
+                </div>
+              </div>
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 pt-1">Staff হাজিরা</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.staff.collectionDocs, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">ক্লাউডে রেকর্ড</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.staff.mainStoreRecords, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">মূল ডেটায় রেকর্ড</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.staff.localRecords, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">এই ডিভাইসে</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-center">
+                  <div className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(cleanupCounts.staff.queuedItems, language)}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">সিঙ্কের সারিতে</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cleanupBackup && (
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+              সেফটি ব্যাকআপ নেওয়া হয়েছে (পিন করা) — ব্যাকআপে ছাত্র হাজিরা {formatNumber(cleanupBackup.backupStudent, language)}টি (ক্লাউডে {formatNumber(cleanupBackup.cloudStudent, language)}টি) ও staff হাজিরা {formatNumber(cleanupBackup.backupStaff, language)}টি (ক্লাউডে {formatNumber(cleanupBackup.cloudStaff, language)}টি)।
+              {(cleanupBackup.backupStudent < cleanupBackup.cloudStudent || cleanupBackup.backupStaff < cleanupBackup.cloudStaff) && (
+                <span className="block mt-1 font-bold text-amber-800 dark:text-amber-300">
+                  ব্যাকআপে ক্লাউডের সব রেকর্ড নেই — মুছতে আগে উপরের ৩ নম্বর মডিউল থেকে 'ক্লাউড থেকে ডেটা নামান' চাপুন, তারপর আবার ব্যাকআপ নিন।
+                </span>
+              )}
+            </div>
+          )}
+
+          {cleanupRunning && cleanupProgress && (
+            <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200 font-bold flex items-center gap-2">
+              <RefreshCw size={14} className="animate-spin" />
+              {cleanupProgress}
+            </div>
+          )}
+
+          {cleanupResult && (
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+              হাজিরা পরিষ্কার হয়েছে — ক্লাউড থেকে ছাত্র {formatNumber(cleanupResult.deletedStudentDocs, language)}টি ও staff {formatNumber(cleanupResult.deletedStaffDocs, language)}টি রেকর্ড মুছে গেছে, এখন ০টি বাকি। এই ডিভাইস থেকে ছাত্র {formatNumber(cleanupResult.localClearedStudent, language)}টি ও staff {formatNumber(cleanupResult.localClearedStaff, language)}টি মুছেছে। এই পরিষ্কারের বোতাম আর দেখাবে না।
+            </div>
+          )}
+
+          <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 justify-end">
+            <button
+              onClick={handleCountCleanup}
+              disabled={isCountingCleanup || cleanupRunning}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <span>{isCountingCleanup ? 'গুনছি…' : '১. সংখ্যা গুনুন'}</span>
+            </button>
+            <button
+              onClick={handleBackupCleanup}
+              disabled={!cleanupCounts || isBackingUpCleanup || cleanupRunning}
+              className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <span>{isBackingUpCleanup ? 'ব্যাকআপ নিচ্ছি…' : '২. সেফটি ব্যাকআপ নিন (pin-সহ)'}</span>
+            </button>
+            <button
+              onClick={() => setConfirmCleanupOpen(true)}
+              disabled={!cleanupCanDelete}
+              className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              <span>{cleanupRunning ? 'মুছছি…' : '৩. হাজিরা মুছে ফেলুন'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Clean Snapshots & Auto-Checkpoints History */}
  <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -886,6 +1133,30 @@ export const DataSecurityBackupCenter: React.FC<DataSecurityBackupCenterProps> =
         message="বর্তমান অবস্থায় শিক্ষার্থী আছে কিন্তু শিক্ষক নেই — এটি ক্ষতিগ্রস্ত (degraded) অবস্থার লক্ষণ। এই ফাইলে শিক্ষক তথ্য থাকবে না। তারপরও ডাউনলোড করতে চাইলে নিশ্চিত করুন।"
         confirmLabel="হ্যাঁ, ডাউনলোড করুন"
         variant="warning"
+      />
+
+      {/* Attendance cleanup — confirm 1 of 2 (counts shown) */}
+      <ConfirmDialog
+        isOpen={confirmCleanupOpen}
+        onClose={() => setConfirmCleanupOpen(false)}
+        onConfirm={() => { setConfirmCleanupOpen(false); setConfirmCleanupFinalOpen(true); }}
+        title="ছাত্র ও staff হাজিরা মুছে ফেলবেন?"
+        message={cleanupCounts
+          ? `ছাত্র হাজিরা: ক্লাউডে ${formatNumber(cleanupCounts.student.collectionDocs, language)}টি + মূল ডেটায় ${formatNumber(cleanupCounts.student.mainStoreRecords, language)}টি + এই ডিভাইসে ${formatNumber(cleanupCounts.student.localRecords, language)}টি। Staff হাজিরা: ক্লাউডে ${formatNumber(cleanupCounts.staff.collectionDocs, language)}টি + মূল ডেটায় ${formatNumber(cleanupCounts.staff.mainStoreRecords, language)}টি + এই ডিভাইসে ${formatNumber(cleanupCounts.staff.localRecords, language)}টি। সব তারিখের সব রেকর্ড মুছে যাবে। সেফটি ব্যাকআপ নেওয়া হয়েছে (পিন করা)।`
+          : 'ছাত্র ও staff হাজিরা (সব তারিখ) মুছে যাবে।'}
+        confirmLabel="হ্যাঁ, এগিয়ে যান"
+        variant="danger"
+      />
+
+      {/* Attendance cleanup — confirm 2 of 2 (final) */}
+      <ConfirmDialog
+        isOpen={confirmCleanupFinalOpen}
+        onClose={() => setConfirmCleanupFinalOpen(false)}
+        onConfirm={handleRunCleanup}
+        title="আপনি নিশ্চিত তো?"
+        message="এটা ফেরানো যাবে শুধু ব্যাকআপ থেকে (রিস্টোর)। মুছে গেলে সব প্রোফাইলে হাজিরা খালি দেখাবে, যতক্ষণ না নতুন হাজিরা নেওয়া হয়। এই কাজ একবারই করা যাবে — এরপর বোতাম আর দেখাবে না, আর পরের নতুন হাজিরা কখনো মোছা হবে না।"
+        confirmLabel="হ্যাঁ, মুছে ফেলুন"
+        variant="danger"
       />
 
       {/* Interactive Smart Recycle Bin Modal — same panel as the dedicated page */}
