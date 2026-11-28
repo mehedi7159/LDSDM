@@ -670,14 +670,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       
       {/* 1. Header & Mode Switcher */}
       {!hideTopSwitcher && (
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-white dark:bg-[#161c2e] p-5 rounded-3xl border border-slate-200 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-teal-600 text-white rounded-2xl">
                 <Calendar size={22} />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-slate-800 tracking-tight font-bangla">
+                <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight font-bangla">
                   {isBn ? '৪. দৈনিক উপস্থিতি ব্যবস্থাপনা' : '4. Daily Attendance Management'}
                 </h2>
               </div>
@@ -685,11 +685,11 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 text-xs font-bold w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-white/5 p-1.5 rounded-2xl border border-slate-200 dark:border-white/10 text-xs font-bold w-full md:w-auto">
             <button
               onClick={() => setActiveMode('students')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'students' ? 'bg-white text-teal-800' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'students' ? 'bg-white dark:bg-[#161c2e] text-teal-800 dark:text-teal-300' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <Users size={15} />
@@ -698,7 +698,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <button
               onClick={() => setActiveMode('staff')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'staff' ? 'bg-white text-teal-800' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'staff' ? 'bg-white dark:bg-[#161c2e] text-teal-800 dark:text-teal-300' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <Briefcase size={15} />
@@ -707,13 +707,13 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <button
               onClick={() => setActiveMode('absentees')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'absentees' ? 'bg-white text-rose-800' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'absentees' ? 'bg-white dark:bg-[#161c2e] text-rose-800 dark:text-rose-300' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <UserX size={15} />
               <span>{isBn ? 'অনুপস্থিত' : 'Absentees'}</span>
               {absentStudents.length > 0 && (
-                <span className="px-1.5 py-0.2 bg-rose-100 text-rose-800 rounded-full text-[10px]">
+                <span className="px-1.5 py-0.2 bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300 rounded-full text-[10px]">
                   {formatNumber(absentStudents.length, language)}
                 </span>
               )}
@@ -721,7 +721,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             <button
               onClick={() => setActiveMode('sync_exam')}
               className={`py-2 px-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                activeMode === 'sync_exam' ? 'bg-white text-indigo-800' : 'text-slate-600 hover:text-slate-900'
+                activeMode === 'sync_exam' ? 'bg-white dark:bg-[#161c2e] text-teal-800 dark:text-teal-300' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <Sparkles size={15} />
@@ -742,43 +742,43 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         </div>
       ) : (
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200">
-          <span className="text-[11px] font-bold text-slate-500 uppercase">{activeMode === 'staff' ? (isBn ? 'মোট স্টাফ' : 'Total staff') : (isBn ? 'মোট শিক্ষার্থী' : 'Total')}</span>
-          <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(stripSummary.total, language)}</p>
-          <span className="text-[10px] text-teal-700 font-semibold">{activeMode === 'staff' ? (isBn ? 'শিক্ষক ও কর্মী' : 'Teachers & staff') : selectedClass}</span>
+        <div className="bg-white dark:bg-[#161c2e] p-3.5 rounded-2xl border border-slate-200 dark:border-white/10">
+          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">{activeMode === 'staff' ? (isBn ? 'মোট স্টাফ' : 'Total staff') : (isBn ? 'মোট শিক্ষার্থী' : 'Total')}</span>
+          <p className="text-2xl font-black text-slate-800 dark:text-white mt-1 font-bangla">{formatNumber(stripSummary.total, language)}</p>
+          <span className="text-[10px] text-teal-700 dark:text-teal-300 font-semibold">{activeMode === 'staff' ? (isBn ? 'শিক্ষক ও কর্মী' : 'Teachers & staff') : selectedClass}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/20">
-          <span className="text-[11px] font-bold text-emerald-700 uppercase">{isBn ? 'উপস্থিত' : 'Present'}</span>
-          <p className="text-2xl font-black text-emerald-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.present, language) : '—'}</p>
+        <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-500/10">
+          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">{isBn ? 'উপস্থিত' : 'Present'}</span>
+          <p className="text-2xl font-black text-emerald-900 dark:text-emerald-300 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.present, language) : '—'}</p>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-rose-200 bg-rose-50/20">
-          <span className="text-[11px] font-bold text-rose-700 uppercase">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
-          <p className="text-2xl font-black text-rose-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.absent, language) : '—'}</p>
-          <span className="text-[10px] text-rose-700 font-semibold">{isBn ? 'অনুমতি ছাড়া' : 'Unexcused'}</span>
+        <div className="bg-white p-3.5 rounded-2xl border border-rose-200 dark:border-rose-500/20 bg-rose-50/20 dark:bg-rose-500/10">
+          <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase">{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
+          <p className="text-2xl font-black text-rose-900 dark:text-rose-300 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.absent, language) : '—'}</p>
+          <span className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold">{isBn ? 'অনুমতি ছাড়া' : 'Unexcused'}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-amber-200 bg-amber-50/20">
-          <span className="text-[11px] font-bold text-amber-700 uppercase">{isBn ? 'বিলম্বিত' : 'Late'}</span>
-          <p className="text-2xl font-black text-amber-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.late, language) : '—'}</p>
+        <div className="bg-white p-3.5 rounded-2xl border border-amber-200 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-500/10">
+          <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase">{isBn ? 'বিলম্বিত' : 'Late'}</span>
+          <p className="text-2xl font-black text-amber-900 dark:text-amber-300 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.late, language) : '—'}</p>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/20">
-          <span className="text-[11px] font-bold text-indigo-700 uppercase">{isBn ? 'ছুটি / মার্জিত' : 'Leave'}</span>
-          <p className="text-2xl font-black text-indigo-900 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.leave, language) : '—'}</p>
-          <span className="text-[10px] text-indigo-700 font-semibold">{isBn ? 'দরখাস্ত গৃহীত' : 'Approved Leave'}</span>
+        <div className="bg-white p-3.5 rounded-2xl border border-blue-200 dark:border-blue-500/20 bg-blue-50/20 dark:bg-blue-500/10">
+          <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase">{isBn ? 'ছুটি / মার্জিত' : 'Leave'}</span>
+          <p className="text-2xl font-black text-blue-900 dark:text-blue-300 mt-1 font-bangla">{stripSummary.recorded > 0 ? formatNumber(stripSummary.leave, language) : '—'}</p>
+          <span className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold">{isBn ? 'দরখাস্ত গৃহীত' : 'Approved Leave'}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-300 bg-slate-50/40">
-          <span className="text-[11px] font-bold text-slate-600 uppercase">{isBn ? 'চিহ্নিত হয়নি' : 'Unmarked'}</span>
-          <p className="text-2xl font-black text-slate-800 mt-1 font-bangla">{formatNumber(stripSummary.pending, language)}</p>
-          <span className="text-[10px] text-slate-500 font-semibold">{stripSummary.recorded === 0 ? (isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet') : (isBn ? 'এখনো চিহ্নিত হয়নি' : 'Not marked yet')}</span>
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-300 dark:border-white/10 bg-slate-50/40 dark:bg-white/5">
+          <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase">{isBn ? 'চিহ্নিত হয়নি' : 'Unmarked'}</span>
+          <p className="text-2xl font-black text-slate-800 dark:text-white mt-1 font-bangla">{formatNumber(stripSummary.pending, language)}</p>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{stripSummary.recorded === 0 ? (isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet') : (isBn ? 'এখনো চিহ্নিত হয়নি' : 'Not marked yet')}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-teal-200 bg-teal-50/30">
-          <span className="text-[11px] font-bold text-teal-700 uppercase">{isBn ? 'উপস্থিতির হার' : 'Rate'}</span>
+        <div className="bg-white p-3.5 rounded-2xl border border-teal-200 dark:border-teal-500/20 bg-teal-50/30 dark:bg-teal-500/10">
+          <span className="text-[11px] font-bold text-teal-700 dark:text-teal-300 uppercase">{isBn ? 'উপস্থিতির হার' : 'Rate'}</span>
           {stripSummary.percentage !== null ? (
             <>
-              <p className="text-2xl font-black text-teal-900 mt-1 font-bangla">{formatNumber(stripSummary.percentage, language)}%</p>
-              <span className="text-[10px] text-teal-700 font-semibold">{isBn ? `রেকর্ডকৃত ${formatNumber(stripSummary.recorded, language)} জনের ভিত্তিতে` : `Based on ${formatNumber(stripSummary.recorded, language)} recorded`}</span>
+              <p className="text-2xl font-black text-teal-900 dark:text-teal-300 mt-1 font-bangla">{formatNumber(stripSummary.percentage, language)}%</p>
+              <span className="text-[10px] text-teal-700 dark:text-teal-300 font-semibold">{isBn ? `রেকর্ডকৃত ${formatNumber(stripSummary.recorded, language)} জনের ভিত্তিতে` : `Based on ${formatNumber(stripSummary.recorded, language)} recorded`}</span>
             </>
           ) : (
-            <p className="text-sm font-black text-amber-600 mt-1.5">{isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}</p>
+            <p className="text-sm font-black text-amber-600 dark:text-amber-400 mt-1.5">{isBn ? 'হাজিরা নেওয়া হয়নি' : 'Not taken yet'}</p>
           )}
         </div>
       </div>
@@ -1153,14 +1153,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       )}
       {/* 6. MODE 3: Absentees & SMS Notification */}
       {activeMode === 'absentees' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+        <div className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200 dark:border-white/10 p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-white/5 pb-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <UserX className="text-rose-600" size={20} />
                 <span>{isBn ? 'অনুপস্থিত শিক্ষার্থীর তালিকা ও অভিভাবক যোগাযোগ' : 'Absent Students & Guardian Alert'}</span>
               </h3>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {isBn ? `${formatSafeDate(selectedDate, isBn)} তারিখে ${selectedClass} এর অনুপস্থিত তালিবুল ইলম` : `Absentees on ${selectedDate}`}
               </p>
             </div>
@@ -1175,7 +1175,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+              <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 font-bold uppercase text-[11px]">
                 <tr>
                   <th className="py-2.5 px-3">{isBn ? 'রোল' : 'Roll'}</th>
                   <th className="py-2.5 px-3">{isBn ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
@@ -1185,11 +1185,11 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                   <th className="py-2.5 px-3 text-right">{isBn ? 'দ্রুত যোগাযোগ' : 'Quick Actions'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-medium">
                 {absentStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-emerald-700 font-bold">
-                      <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-600" />
+                    <td colSpan={6} className="py-12 text-center text-emerald-700 dark:text-emerald-300 font-bold">
+                      <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-600 dark:text-emerald-400" />
                       <p>{isBn ? 'কোনো শিক্ষার্থী অনুপস্থিত নেই।' : 'No absentees in this class today!'}</p>
                     </td>
                   </tr>
@@ -1198,13 +1198,13 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                     const smsBody = `${isBn ? 'সম্মানিত অভিভাবক, আপনার সন্তান' : 'Respected guardian, student'} ${student.nameBn || student.name} (${isBn ? 'রোল' : 'Roll'}: ${student.roll || student.rollNumber || '১'}) ${isBn ? 'আজ মাদরাসায় অনুপস্থিত। যোগাযোগ:' : 'is absent today. Contact:'} ${schoolProfile.phone || ''}`;
 
                     return (
-                      <tr key={student.id} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-slate-700">{student.roll || student.rollNumber || '—'}</td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">{student.nameBn || student.name}</td>
-                        <td className="py-2.5 px-3 text-slate-800">{student.fatherNameBn || student.fatherName || '—'}</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-teal-800">{student.guardianPhone || '—'}</td>
+                      <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
+                        <td className="py-2.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">{student.roll || student.rollNumber || '—'}</td>
+                        <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{student.nameBn || student.name}</td>
+                        <td className="py-2.5 px-3 text-slate-800 dark:text-slate-300">{student.fatherNameBn || student.fatherName || '—'}</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-teal-800 dark:text-teal-300">{student.guardianPhone || '—'}</td>
                         <td className="py-2.5 px-3 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300">
                             {isBn ? 'অনুপস্থিত' : 'Absent'}
                           </span>
                         </td>
@@ -1214,14 +1214,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               <>
                                 <a 
                                   href={`tel:${student.guardianPhone}`} 
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200 transition"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 rounded-lg text-xs font-bold border border-emerald-200 dark:border-emerald-500/20 transition"
                                 >
                                   <Phone size={12} />
                                   <span>{isBn ? 'কল' : 'Call'}</span>
                                 </a>
                                 <a 
                                   href={`sms:${student.guardianPhone}?body=${encodeURIComponent(smsBody)}`} 
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg text-xs font-bold border border-blue-200 transition"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-500/10 dark:hover:bg-teal-500/20 text-teal-800 dark:text-teal-300 rounded-lg text-xs font-bold border border-teal-200 dark:border-teal-500/20 transition"
                                 >
                                   <MessageSquare size={12} />
                                   <span>SMS</span>
@@ -1243,14 +1243,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       {/* 7. MODE 4: Sync to Exam Marksheet & Remarks Fine-Tuning */}
       {activeMode === 'sync_exam' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
-            <div className="border-b border-slate-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200 dark:border-white/10 p-6 space-y-6">
+            <div className="border-b border-slate-100 dark:border-white/5 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Sparkles className="text-indigo-600" size={20} />
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <Sparkles className="text-teal-700 dark:text-teal-400" size={20} />
                   <span>{isBn ? 'দৈনিক উপস্থিতি থেকে পরীক্ষার মার্কশিটে স্বয়ংক্রিয় গণনা ও সিঙ্ক' : 'Automated Rollup to Exam Marksheets'}</span>
                 </h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
                   {isBn 
                     ? 'আলাদা করে ম্যানুয়াল হিসাব করার প্রয়োজন নেই! সংরক্ষিত দৈনিক হাজিরার ডেটা বিশ্লেষণ করে পরীক্ষার টার্মের মোট কার্যদিবস ও উপস্থিতি স্বয়ংক্রিয়ভাবে রেজাল্ট শিটে যুক্ত হবে।' 
                     : 'Automatically calculate and push student working days, total present, and absent counts directly to Exam result cards.'}
@@ -1273,15 +1273,15 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             </div>
 
             {/* Filter and Action Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/70 dark:bg-white/5 p-4 rounded-2xl border border-slate-200/80 dark:border-white/10">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
                   {isBn ? '১. টার্ম / পরীক্ষা নির্বাচন করুন' : '1. Select Exam Term'}
                 </label>
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200"
                 >
                   {exams.map(e => (
                     <option key={e.id} value={e.id}>{e.name} ({e.academicYear})</option>
@@ -1290,13 +1290,13 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
                   {isBn ? '২. লক্ষ্য শ্রেণি' : '2. Target Class'}
                 </label>
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200"
                 >
                   {classes.map(c => (
                     <option key={c.id} value={c.name}>{c.name}</option>
@@ -1316,7 +1316,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             </div>
 
             {syncStatus && (
-              <div className="p-3 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
+              <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
                 <CheckCircle2 size={16} />
                 <span>{syncStatus}</span>
               </div>
@@ -1324,16 +1324,16 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           </div>
 
           {/* Detailed Exam Attendance & Remarks Editor Table */}
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden">
+            <div className="p-4 bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Award size={16} className="text-teal-700" />
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Award size={16} className="text-teal-700 dark:text-teal-400" />
                   <span>{isBn ? 'পরীক্ষার মার্কশিট হাজিরা ও শিক্ষক মন্তব্য এডিটর' : 'Exam Attendance & Remarks Editor'}</span>
                 </h4>
               </div>
 
-              <div className="text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200">
+              <div className="text-xs font-bold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 px-3 py-1.5 rounded-xl border border-teal-200 dark:border-teal-500/20">
                 {formatNumber(classStudents.length, language)} {isBn ? 'জন শিক্ষার্থী' : 'students'}
               </div>
             </div>
@@ -1341,7 +1341,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             {/* Master audit F10: impossible triples are warned here and
                 never saved — fix the numbers and the warning clears. */}
             {Object.keys(remarksWarnings).length > 0 && (
-              <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs font-semibold space-y-1">
+              <div className="mx-4 mt-3 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-900 dark:text-amber-200 rounded-2xl text-xs font-semibold space-y-1">
                 {Object.entries(remarksWarnings).map(([studentId, problem]) => {
                   const st = classStudents.find(s => s.id === studentId);
                   return (
@@ -1355,7 +1355,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-400 uppercase text-[11px] font-bold border-b border-slate-200 dark:border-white/10">
                   <tr>
                     <th className="py-3 px-3 text-center w-12">{isBn ? 'ক্রমিক' : 'SL'}</th>
                     <th className="py-3 px-3 text-left w-24">{isBn ? 'রোল / আইডি' : 'Roll / ID'}</th>
@@ -1367,10 +1367,10 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                     <th className="py-3 px-3 text-left min-w-[240px]">{isBn ? 'শিক্ষকের চারিত্রিক মন্তব্য' : 'Teacher Remark'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-medium">
                   {classStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400 font-bold">
+                      <td colSpan={8} className="py-12 text-center text-slate-400 dark:text-slate-500 font-bold">
                         {isBn ? 'এই শ্রেণিতে কোনো শিক্ষার্থী নেই।' : 'No students in this class.'}
                       </td>
                     </tr>
@@ -1384,14 +1384,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                       const rate = cappedAttendanceRate(present, workingDays);
 
                       return (
-                        <tr key={student.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-2.5 px-3 text-center font-mono text-slate-500 font-bold">{formatNumber(idx + 1, language)}</td>
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-700">
+                        <tr key={student.id} className="hover:bg-slate-50/80 dark:hover:bg-white/5 transition-colors">
+                          <td className="py-2.5 px-3 text-center font-mono text-slate-500 dark:text-slate-400 font-bold">{formatNumber(idx + 1, language)}</td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
                             {formatNumber(student.roll || student.rollNumber || student.studentId || '-', language)}
                           </td>
                           <td className="py-2.5 px-3">
-                            <div className="font-bold text-slate-900">{student.nameBn || student.name}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">ID: {student.studentId || '-'}</div>
+                            <div className="font-bold text-slate-900 dark:text-white">{student.nameBn || student.name}</div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">ID: {student.studentId || '-'}</div>
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <input 
@@ -1400,7 +1400,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               value={data.workingDays ?? ''}
                               onChange={(e) => handleRemarkFieldChange(student.id, 'workingDays', e.target.value)}
                               placeholder="0"
-                              className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-center text-xs font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none"
+                              className="w-16 px-2 py-1 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg text-center text-xs font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 outline-none"
                             />
                           </td>
                           <td className="py-2.5 px-3 text-center">
@@ -1410,7 +1410,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               value={data.totalPresent ?? ''}
                               onChange={(e) => handleRemarkFieldChange(student.id, 'totalPresent', e.target.value)}
                               placeholder="0"
-                              className="w-16 px-2 py-1 bg-white border border-emerald-300 rounded-lg text-center text-xs font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+                              className="w-16 px-2 py-1 bg-white dark:bg-white/5 border border-emerald-300 dark:border-emerald-500/30 rounded-lg text-center text-xs font-bold text-emerald-800 dark:text-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                             />
                           </td>
                           <td className="py-2.5 px-3 text-center">
@@ -1420,12 +1420,12 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                               value={data.totalAbsent ?? ''}
                               onChange={(e) => handleRemarkFieldChange(student.id, 'totalAbsent', e.target.value)}
                               placeholder="0"
-                              className="w-16 px-2 py-1 bg-white border border-rose-300 rounded-lg text-center text-xs font-bold text-rose-800 focus:ring-2 focus:ring-rose-500 outline-none"
+                              className="w-16 px-2 py-1 bg-white dark:bg-white/5 border border-rose-300 dark:border-rose-500/30 rounded-lg text-center text-xs font-bold text-rose-800 dark:text-rose-300 focus:ring-2 focus:ring-rose-500 outline-none"
                             />
                           </td>
                           <td className="py-2.5 px-3 text-center font-bold">
                             <span className={`px-2 py-0.5 rounded-full text-[11px] ${
-                              rate >= 85 ? 'bg-emerald-100 text-emerald-800' : (rate >= 70 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
+                              rate >= 85 ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' : (rate >= 70 ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300' : 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300')
                             }`}>
                               {formatNumber(rate, language)}%
                             </span>
@@ -1437,7 +1437,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                                 value={data.remark ?? ''}
                                 onChange={(e) => handleRemarkFieldChange(student.id, 'remark', e.target.value)}
                                 placeholder={isBn ? 'চারিত্রিক ও আচরণিক মন্তব্য...' : 'Behavioral remark...'}
-                                className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="w-full px-2.5 py-1 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg text-xs text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 outline-none"
                               />
                               <div className="flex items-center gap-1 flex-wrap">
                                 {[
@@ -1449,7 +1449,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                                     key={preset}
                                     type="button"
                                     onClick={() => handleApplyPresetRemark(student.id, preset)}
-                                    className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-teal-100 hover:text-teal-800 text-slate-600 font-semibold transition cursor-pointer"
+                                    className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 hover:bg-teal-100 dark:hover:bg-teal-500/15 hover:text-teal-800 dark:hover:text-teal-300 text-slate-600 dark:text-slate-300 font-semibold transition cursor-pointer"
                                   >
                                     +{preset}
                                   </button>
@@ -1471,17 +1471,17 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
       {/* 8. Absentee SMS Composer Modal */}
       {isSmsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white dark:bg-[#161c2e] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-white/10 space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
               <div className="flex items-center gap-2.5 text-rose-700">
                 <div className="p-2 bg-rose-100 rounded-xl">
                   <Send size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     {isBn ? 'অনুপস্থিত শিক্ষার্থীর অভিভাবক SMS নোটিফিকেশন' : 'Absentee Guardian SMS Alert'}
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     {formatSafeDate(selectedDate, isBn)} • {selectedClass}
                   </p>
                 </div>
@@ -1489,21 +1489,21 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
               <button 
                 type="button"
                 onClick={() => setIsSmsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg text-lg font-bold cursor-pointer"
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             {/* Target Recipients Summary */}
-            <div className="bg-rose-50/80 p-3.5 rounded-2xl border border-rose-200/80 text-xs text-rose-950 space-y-1">
+            <div className="bg-rose-50/80 dark:bg-rose-500/10 p-3.5 rounded-2xl border border-rose-200/80 dark:border-rose-500/20 text-xs text-rose-950 dark:text-rose-200 space-y-1">
               <div className="flex items-center justify-between font-bold">
                 <span>{isBn ? 'অনুপস্থিত মোট শিক্ষার্থী:' : 'Total Absentees:'}</span>
-                <span className="text-rose-700 font-mono text-sm">{formatNumber(absentStudents.length, language)} {isBn ? 'জন' : ''}</span>
+                <span className="text-rose-700 dark:text-rose-300 font-mono text-sm">{formatNumber(absentStudents.length, language)} {isBn ? 'জন' : ''}</span>
               </div>
-              <div className="flex items-center justify-between text-slate-600">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                 <span>{isBn ? 'সচল অভিভাবক মোবাইল নম্বর:' : 'Valid Phone Numbers:'}</span>
-                <span className="font-mono font-bold text-teal-800">
+                <span className="font-mono font-bold text-teal-800 dark:text-teal-300">
                   {formatNumber(absentStudents.filter(s => s.guardianPhone).length, language)} {isBn ? 'টি' : ''}
                 </span>
               </div>
@@ -1511,10 +1511,10 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
             {/* SMS Message Template Preview */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                 {isBn ? 'প্রস্তুতকৃত বাংলা SMS বার্তা:' : 'Prepared SMS Message:'}
               </label>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-800 font-sans leading-relaxed">
+              <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed">
                 {isBn 
                   ? `সম্মানিত অভিভাবক, আপনার সন্তান আজ (${formatSafeDate(selectedDate, true)}) মাদরাসায় উপস্থিত হয়নি। জরুরি প্রয়োজনে মাদরাসা অফিসে যোগাযোগ করার জন্য অনুরোধ করা হলো। - ${schoolProfile.nameBn || schoolProfile.name || 'মাদরাসা কর্তৃপক্ষ'}`
                   : `Dear Guardian, your student is absent today (${selectedDate}). Please contact the madrasah office for any queries. - ${schoolProfile.name || 'Administration'}`}
@@ -1523,7 +1523,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
             {/* Action Feedback Notification */}
             {smsCopiedNotice && (
-              <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+              <div className="p-2.5 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2">
                 <CheckCircle2 size={15} />
                 <span>{smsCopiedNotice}</span>
               </div>
@@ -1544,7 +1544,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                     setTimeout(() => setSmsCopiedNotice(null), 3000);
                   }
                 }}
-                className="w-full sm:w-1/2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 text-xs flex items-center justify-center gap-1.5 rounded-xl cursor-pointer"
+                className="w-full sm:w-1/2 bg-slate-800 hover:bg-slate-900 dark:bg-white/10 dark:hover:bg-white/15 text-white font-bold py-2.5 text-xs flex items-center justify-center gap-1.5 rounded-xl cursor-pointer"
               >
                 <Copy size={14} />
                 <span>{isBn ? 'নম্বরসমূহ কপি করুন' : 'Copy All Numbers'}</span>

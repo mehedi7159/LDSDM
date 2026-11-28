@@ -192,7 +192,7 @@ export function RosterSummaryChips(props: { stats: RosterSummaryStats; isEn: boo
         { label: isEn ? 'Unmarked' : 'চিহ্নিত নয়', value: stats.unmarked, cls: 'text-[#5b6478] dark:text-slate-400' },
       ] as const).map(c => (
         <div key={c.label} className="flex-1 min-w-[70px] rounded-xl px-2 py-2 text-center bg-[#f4f6fb] dark:bg-white/5 border border-[#e8ecf4] dark:border-white/10">
-          <p className={`text-[15px] font-bold ${c.cls}`}>{toBengali(c.value)}</p>
+          <p className={`text-[15px] font-bold ${c.cls}`}>{isEn ? String(c.value) : toBengali(c.value)}</p>
           <p className="text-[11px] text-[#5b6478] dark:text-slate-400">{c.label}</p>
         </div>
       ))}
