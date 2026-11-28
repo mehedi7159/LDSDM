@@ -689,73 +689,88 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     return remarks.filter(r => r.studentId === currentStudent.id);
   }, [remarks, currentStudent]);
 
-  // Generate realistic monthly attendance ledger (deterministic from student ID and selected month)
+  // V3 — REAL monthly attendance ledger: no simulation. Every day of
+  // the selected month gets its status from this student's actual
+  // dailyStudentAttendance records (the same source the alert strip
+  // uses): Friday = weekly holiday; a record that day = its real
+  // PRESENT / ABSENT / LATE / LEAVE status; no record on a working
+  // day = 'নথিভুক্ত নয়' — never invented. Summary counts follow the
+  // service's canonical monthly definition (services/
+  // dailyAttendanceService.getStudentMonthlySummaryFromRecords):
+  // workingDays = RECORDED non-Friday days only, rate =
+  // (present + late) / recorded, 0 when nothing is recorded. The
+  // lookup uses myAttendanceRecords (both student id variants, same
+  // as the alert strip), so the ledger, the alert strip and the
+  // at-a-glance rate all read the same records.
   const monthlyAttendanceData = useMemo(() => {
-    if (!currentStudent) return { days: [], summary: { workingDays: 24, present: 22, absent: 2, late: 0, rate: 91.7 } };
+    const empty = {
+      days: [] as Array<{ day: number; date: string; dayNameBn: string; dayNameEn: string; status: 'HOLIDAY' | 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE' | 'NOT_RECORDED'; label: string }>,
+      summary: { workingDays: 0, present: 0, absent: 0, late: 0, leave: 0, rate: 0, scheduledDays: 0, isPartial: false },
+    };
+    if (!currentStudent) return empty;
 
     const [yearStr, monthStr] = attendanceMonth.split('-');
     const year = parseInt(yearStr, 10) || new Date().getFullYear();
     const month = parseInt(monthStr, 10) || new Date().getMonth() + 1;
     const daysInMonth = new Date(year, month, 0).getDate();
+    const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
 
-    // Student specific seed
-    const seed = (currentStudent.id || 'std').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) + month * 13;
+    // This student's records in this month (newest first wins per date).
+    const monthRecByDate = new Map<string, string>();
+    for (const r of myAttendanceRecords) {
+      if (!r.date || !r.date.startsWith(monthPrefix)) continue;
+      if (!monthRecByDate.has(r.date)) monthRecByDate.set(r.date, r.status);
+    }
 
-    const days = [];
+    const dayNamesBn = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
+    const dayNamesEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const statusLabel = (status: string) =>
+      status === 'PRESENT' ? (language === 'bn' ? 'উপস্থিত' : 'Present')
+      : status === 'ABSENT' ? (language === 'bn' ? 'অনুপস্থিত' : 'Absent')
+      : status === 'LATE' ? (language === 'bn' ? 'বিলম্বে উপস্থিত' : 'Late')
+      : status === 'LEAVE' ? (language === 'bn' ? 'ছুটিতে' : 'Leave')
+      : (language === 'bn' ? 'নথিভুক্ত নয়' : 'Not recorded');
+
+    const days: typeof empty.days = [];
+    let scheduledDays = 0;
     let workingDays = 0;
     let presentCount = 0;
     let absentCount = 0;
     let lateCount = 0;
+    let leaveCount = 0;
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateObj = new Date(year, month - 1, d);
       const dayOfWeek = dateObj.getDay(); // 0 is Sunday, 5 is Friday
       const isFriday = dayOfWeek === 5; // Friday is weekly holiday in Madrasah/Bangladesh
-      const isWeekend = isFriday;
-
       const dateString = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-      if (isWeekend) {
-        days.push({
-          day: d,
-          date: dateString,
-          dayNameBn: ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'][dayOfWeek],
-          dayNameEn: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
-          status: 'HOLIDAY' as const,
-          label: language === 'bn' ? 'সাপ্তাহিক ছুটি' : 'Weekly Holiday'
-        });
-      } else {
-        workingDays++;
-        // Deterministic simulation
-        const dayScore = (seed * d * 17) % 100;
-        let status: 'PRESENT' | 'ABSENT' | 'LATE' = 'PRESENT';
-        let label = language === 'bn' ? 'উপস্থিত' : 'Present';
-
-        if (dayScore < 6) {
-          status = 'ABSENT';
-          label = language === 'bn' ? 'অনুপস্থিত' : 'Absent';
-          absentCount++;
-        } else if (dayScore < 12) {
-          status = 'LATE';
-          label = language === 'bn' ? 'বিলম্বে উপস্থিত' : 'Late';
-          lateCount++;
-          presentCount++; // Late is still counted present
-        } else {
-          presentCount++;
-        }
-
-        days.push({
-          day: d,
-          date: dateString,
-          dayNameBn: ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'][dayOfWeek],
-          dayNameEn: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
-          status,
-          label
-        });
+      const base = {
+        day: d,
+        date: dateString,
+        dayNameBn: dayNamesBn[dayOfWeek],
+        dayNameEn: dayNamesEn[dayOfWeek],
+      };
+      if (isFriday) {
+        days.push({ ...base, status: 'HOLIDAY' as const, label: language === 'bn' ? 'সাপ্তাহিক ছুটি' : 'Weekly Holiday' });
+        continue;
       }
+      scheduledDays++;
+      const rec = monthRecByDate.get(dateString);
+      if (!rec || (rec !== 'PRESENT' && rec !== 'ABSENT' && rec !== 'LATE' && rec !== 'LEAVE')) {
+        days.push({ ...base, status: 'NOT_RECORDED' as const, label: statusLabel('NOT_RECORDED') });
+        continue;
+      }
+      // A record exists on a working day: it counts (Friday records
+      // never reach here — the loop skips Fridays first).
+      workingDays++;
+      if (rec === 'PRESENT') presentCount++;
+      else if (rec === 'ABSENT') absentCount++;
+      else if (rec === 'LATE') { lateCount++; presentCount++; } // Late is still counted present
+      else if (rec === 'LEAVE') leaveCount++;
+      days.push({ ...base, status: rec as 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE', label: statusLabel(rec) });
     }
 
-    const rate = workingDays > 0 ? Number(((presentCount / workingDays) * 100).toFixed(1)) : 100;
+    const rate = workingDays > 0 ? Math.round((presentCount / workingDays) * 100) : 0;
 
     return {
       days,
@@ -764,13 +779,24 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         present: presentCount,
         absent: absentCount,
         late: lateCount,
-        rate
-      }
+        leave: leaveCount,
+        rate,
+        scheduledDays,
+        isPartial: workingDays < scheduledDays,
+      },
     };
-  }, [currentStudent, attendanceMonth, language]);
+  }, [currentStudent, attendanceMonth, language, myAttendanceRecords]);
 
-  // Overall attendance across all terms/months
-  const overallAttendanceRate = monthlyAttendanceData.summary.rate;
+  // V3 — Overall attendance rate from REAL records (all time): the
+  // alert strip's exact definition (PRESENT + LATE) / all recorded
+  // days, so this number matches the alert strip's rate. null when
+  // nothing is recorded yet.
+  const overallAttendance = useMemo(() => {
+    const total = myAttendanceRecords.length;
+    if (total === 0) return { rate: null as number | null, total };
+    const present = myAttendanceRecords.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
+    return { rate: Math.round((present / total) * 100), total };
+  }, [myAttendanceRecords]);
 
   // ==========================================
   // 2. MARKS COMPUTATIONS
@@ -1244,7 +1270,11 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 {toBn(monthlyAttendanceData.summary.workingDays)} <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">{language === 'bn' ? 'দিন' : 'Days'}</span>
               </div>
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                {language === 'bn' ? 'চলতি মাসে নির্ধারিত ক্লাস' : 'Scheduled class days'}
+                {monthlyAttendanceData.summary.workingDays === 0
+                  ? (language === 'bn' ? 'এই মাসে এখনো নথিভুক্ত হয়নি' : 'Not recorded yet this month')
+                  : monthlyAttendanceData.summary.isPartial
+                  ? (language === 'bn' ? 'আংশিক নথিভুক্ত' : 'Partially recorded')
+                  : (language === 'bn' ? 'চলতি মাসে নির্ধারিত ক্লাস' : 'Scheduled class days')}
               </p>
             </div>
 
@@ -1272,7 +1302,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 {toBn(monthlyAttendanceData.summary.absent)} <span className="text-xs text-rose-700 dark:text-rose-400 font-normal">{language === 'bn' ? 'দিন' : 'Days'}</span>
               </div>
               <p className="text-[11px] text-rose-500/80 mt-1">
-                {language === 'bn' ? 'ছুটি / অনুপস্থিত' : 'Leave / Unexcused'}
+                {monthlyAttendanceData.summary.leave > 0
+                  ? (language === 'bn' ? `ছুটি ${toBn(monthlyAttendanceData.summary.leave)} দিন` : `Leave ${monthlyAttendanceData.summary.leave} days`)
+                  : (language === 'bn' ? 'ছুটি / অনুপস্থিত' : 'Leave / Unexcused')}
               </p>
             </div>
 
@@ -1283,8 +1315,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-3xl sm:text-4xl font-black text-[var(--color-brand)]">
-                  {toBn(monthlyAttendanceData.summary.rate)}%
+                  {monthlyAttendanceData.summary.workingDays > 0 ? `${toBn(monthlyAttendanceData.summary.rate)}%` : '—'}
                 </span>
+                {monthlyAttendanceData.summary.workingDays > 0 && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                   monthlyAttendanceData.summary.rate >= 90 
                     ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' 
@@ -1298,9 +1331,12 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     ? (language === 'bn' ? 'সন্তোষজনক' : 'Good')
                     : (language === 'bn' ? 'সতর্কতা' : 'Warning')}
                 </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                {language === 'bn' ? 'ন্যূনতম লক্ষ্য: ৮০%' : 'Minimum target: 80%'}
+                {monthlyAttendanceData.summary.workingDays === 0
+                  ? (language === 'bn' ? 'এই মাসে এখনো নথিভুক্ত হয়নি' : 'Not recorded yet this month')
+                  : (language === 'bn' ? 'ন্যূনতম লক্ষ্য: ৮০%' : 'Minimum target: 80%')}
               </p>
             </div>
 
@@ -1411,6 +1447,12 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                     {language === 'bn' ? 'মাসভিত্তিক দিনভিত্তিক হাজিরা ক্যালেন্ডার' : 'Daily Attendance Calendar'}
                   </h3>
                 </div>
+                {/* V3 — "আংশিক": এই মাসের সব কর্মদিবস নথিভুক্ত হয়নি */}
+                {monthlyAttendanceData.summary.isPartial && monthlyAttendanceData.summary.workingDays > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 shrink-0">
+                    {language === 'bn' ? 'আংশিক' : 'Partial'}
+                  </span>
+                )}
               </div>
 
               {/* Month selector */}
@@ -1427,13 +1469,32 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               </div>
             </div>
 
-            {/* Attendance Days Grid */}
+            {/* V3 — কভারেজ নোট: কত দিন নথিভুক্ত হয়েছে, সৎভাবে */}
+            {monthlyAttendanceData.summary.isPartial && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {monthlyAttendanceData.summary.workingDays === 0
+                  ? (language === 'bn' ? 'এই মাসে এখনো কোনো হাজিরা নথিভুক্ত হয়নি।' : 'No attendance recorded yet this month.')
+                  : (language === 'bn'
+                    ? `এই মাসে ${toBn(monthlyAttendanceData.summary.scheduledDays)} কর্মদিবসের মধ্যে ${toBn(monthlyAttendanceData.summary.workingDays)} দিন নথিভুক্ত হয়েছে — বাকি দিনগুলো 'নথিভুক্ত নয়' হিসেবে দেখাচ্ছে।`
+                    : `${monthlyAttendanceData.summary.workingDays} of ${monthlyAttendanceData.summary.scheduledDays} working days recorded this month — the rest show as 'Not recorded'.`)}
+              </p>
+            )}
+
+            {/* Attendance Days Grid — V3: কিছুই নথিভুক্ত না হলে সৎ empty state, গ্রিড নয় */}
+            {monthlyAttendanceData.summary.workingDays === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{language === 'bn' ? 'এই মাসে এখনো কোনো হাজিরা নথিভুক্ত হয়নি।' : 'No attendance recorded yet this month.'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{language === 'bn' ? 'শ্রেণি শিক্ষক হাজিরা নিলে এখানে দেখা যাবে।' : 'It will appear here once the class teacher takes attendance.'}</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-1.5 sm:gap-2">
               {monthlyAttendanceData.days.map((dayItem) => {
                 const isHoliday = dayItem.status === 'HOLIDAY';
                 const isPresent = dayItem.status === 'PRESENT';
                 const isLate = dayItem.status === 'LATE';
                 const isAbsent = dayItem.status === 'ABSENT';
+                const isLeave = dayItem.status === 'LEAVE';
+                const isNotRecorded = dayItem.status === 'NOT_RECORDED';
 
                 return (
                   <div
@@ -1445,6 +1506,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                         ? 'bg-emerald-50/80 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30 text-emerald-950 dark:text-emerald-300 font-medium'
                         : isLate 
                         ? 'bg-amber-50/80 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30 text-amber-950 dark:text-amber-300 font-medium'
+                        : isLeave
+                        ? 'bg-sky-50/80 dark:bg-sky-500/15 border-sky-200 dark:border-sky-500/30 text-sky-950 dark:text-sky-300 font-medium'
+                        : isNotRecorded
+                        ? 'bg-slate-50 dark:bg-white/5 border-dashed border-slate-300 dark:border-white/20 text-slate-400 dark:text-slate-500'
                         : 'bg-rose-50/80 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30 text-rose-950 dark:text-rose-300 font-medium'
                     }`}
                   >
@@ -1475,11 +1540,20 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                           <span>{language === 'bn' ? 'অনুপস্থিত' : 'Absent'}</span>
                         </div>
                       )}
+                      {isLeave && (
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-sky-600 dark:text-sky-400">
+                          <span>{language === 'bn' ? 'ছুটিতে' : 'Leave'}</span>
+                        </div>
+                      )}
+                      {isNotRecorded && (
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{language === 'bn' ? 'নথিভুক্ত নয়' : 'Not recorded'}</span>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
+            )}
 
             {/* Attendance Legend */}
             <div className="flex flex-wrap items-center justify-center gap-4 pt-3 border-t border-slate-100 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
@@ -1498,6 +1572,14 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-slate-300"></span>
                 <span>{language === 'bn' ? 'ছুটি / শুক্রবার' : 'Holiday / Friday'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-sky-500"></span>
+                <span>{language === 'bn' ? 'ছুটিতে' : 'Leave'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-slate-200 border border-dashed border-slate-400"></span>
+                <span>{language === 'bn' ? 'নথিভুক্ত নয়' : 'Not recorded'}</span>
               </div>
             </div>
 
@@ -2608,10 +2690,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   );
 
   // ==========================================
-  // V2 — এক নজরে strip (staff view only): ৩ stat, আসল ডেটা শুধু।
-  // হাজিরার হার V3-র আগে দেখানো যাবে না (এখনকার হার simulation
-  // থেকে আসে) — তাই ৩ stat: বকেয়া মাস · শেষ পরীক্ষার GPA · আসন্ন
-  // পরীক্ষা। মোবাইলে ২ কলাম, শেষ টাইল col-span-2 (ফাঁকা স্লট নয়)।
+  // V2 — এক নজরে strip (staff view only): আসল ডেটা শুধু।
+  // V3 — ৪ stat: বকেয়া মাস · শেষ পরীক্ষার GPA · হাজিরার হার (আসল,
+  // overallAttendance — alert strip-এর সংজ্ঞাই) · আসন্ন পরীক্ষা।
+  // মোবাইলে ২×২ grid, ডেস্কটপে ৪-কলাম (ফাঁকা স্লট নয়)।
   // GPA শুধু ওই পরীক্ষার যেটায় আসলেই মার্ক দেওয়া হয়েছে (নইলে
   // 0/F দেখাত — G2-র ফাঁদ); মার্ক না থাকলে সৎ "মার্ক এখনো দেওয়া হয়নি"।
   // ==========================================
@@ -2625,7 +2707,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
         <Eye size={18} className="text-[var(--color-brand)]" />
         <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'এক নজরে' : 'At a Glance'}</h3>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {/* বকেয়া মাস */}
         <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161c2e] p-3 text-center flex flex-col items-center justify-center min-h-[84px]">
           <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বকেয়া মাস' : 'Due Months'}</div>
@@ -2654,8 +2736,20 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 : (language === 'bn' ? 'মার্ক এখনো দেওয়া হয়নি' : 'Marks not given yet'))}
           </div>
         </div>
-        {/* আসন্ন পরীক্ষা — শেষ টাইল, মোবাইলে col-span-2 (ফাঁকা স্লট নয়) */}
-        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161c2e] p-3 text-center flex flex-col items-center justify-center min-h-[84px] col-span-2 lg:col-span-1">
+        {/* হাজিরার হার (আসল) — V3: overallAttendance, alert strip-এর সংজ্ঞাই, তাই হার মিলবে */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161c2e] p-3 text-center flex flex-col items-center justify-center min-h-[84px]">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'হাজিরার হার' : 'Attendance Rate'}</div>
+          <div className={`text-2xl font-black ${overallAttendance.rate !== null && overallAttendance.rate < 60 ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--color-brand)] dark:text-teal-300'}`}>
+            {overallAttendance.rate !== null ? `${toBn(overallAttendance.rate)}%` : '—'}
+          </div>
+          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            {overallAttendance.total > 0
+              ? (language === 'bn' ? `রেকর্ডকৃত ${toBn(overallAttendance.total)} দিনে` : `Over ${overallAttendance.total} recorded days`)
+              : (language === 'bn' ? 'এখনো নথিভুক্ত হয়নি' : 'Not recorded yet')}
+          </div>
+        </div>
+        {/* আসন্ন পরীক্ষা */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161c2e] p-3 text-center flex flex-col items-center justify-center min-h-[84px]">
           <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'আসন্ন পরীক্ষা' : 'Next Exam'}</div>
           <div className="text-lg font-black text-slate-900 dark:text-slate-100 break-words leading-snug">
             {nextExam ? (language === 'bn' ? (nextExam.examNameBn || nextExam.examName) : nextExam.examName) : '—'}
