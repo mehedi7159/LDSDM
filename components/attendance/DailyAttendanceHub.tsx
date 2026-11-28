@@ -134,7 +134,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   const [attendanceMap, setAttendanceMap] = useState<Record<string, { status: AttendanceStatus; timeIn?: string; note?: string }>>({});
 
   // Staff attendance map: staffId -> status
-  const [staffAttendanceMap, setStaffAttendanceMap] = useState<Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string }>>({});
+  const [staffAttendanceMap, setStaffAttendanceMap] = useState<Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string; lateMinutes?: number }>>({});
 
   // SAVED records for the selected date (+class) — the only source the
   // summary strip may present as fact. The working maps above are
@@ -198,7 +198,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
   // present without anyone marking them.
   useEffect(() => {
     const records = savedStaffRecords;
-    const newStaffMap: Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string }> = {};
+    const newStaffMap: Record<string, { status: AttendanceStatus; inTime?: string; outTime?: string; note?: string; lateMinutes?: number }> = {};
 
     teachers.forEach(teacher => {
       const existing = records.find(r => r.staffId === teacher.id);
@@ -207,7 +207,10 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           status: existing.status,
           inTime: existing.inTime,
           outTime: existing.outTime,
-          note: existing.note
+          note: existing.note,
+          // U6: saved late minutes come back (mobile load effect-এর মতো)
+          // — reload-এর পর badge-এ "দেরি · X মিনিট" থাকে; শুধু LATE-তেই।
+          ...(existing.status === 'LATE' && existing.lateMinutes ? { lateMinutes: existing.lateMinutes } : {})
         };
       }
     });
@@ -250,11 +253,15 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
   // U3: staff counterpart of handleSetStudentStatus — same one-line
   // status set; in/out times live on the same map entries, untouched.
+  // U6: LATE ছাড়া অন্য স্ট্যাটাসে মিনিট থাকে না (mobile-এর নিয়ম);
+  // LATE-তে আগের মিনিট বহাল থাকে (hub-এ picker নেই — মোবাইলে বাছা
+  // মিনিট re-stamp-এ হারাবে না)।
   const handleSetStaffStatus = (staffId: string, status: AttendanceStatus) => {
-    setStaffAttendanceMap(prev => ({
-      ...prev,
-      [staffId]: { ...prev[staffId], status }
-    }));
+    setStaffAttendanceMap(prev => {
+      const entry = { ...prev[staffId], status };
+      if (status !== 'LATE') delete entry.lateMinutes;
+      return { ...prev, [staffId]: entry };
+    });
   };
 
   // U3: staff quick actions — mark every staff member at once (the
@@ -264,7 +271,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     setStaffAttendanceMap(prev => {
       const updated = { ...prev };
       teachers.forEach(t => {
-        updated[t.id] = { ...updated[t.id], status: 'PRESENT' };
+        const entry = { ...updated[t.id], status: 'PRESENT' as AttendanceStatus };
+        delete entry.lateMinutes;
+        updated[t.id] = entry;
       });
       return updated;
     });
@@ -273,7 +282,9 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     setStaffAttendanceMap(prev => {
       const updated = { ...prev };
       teachers.forEach(t => {
-        updated[t.id] = { ...updated[t.id], status: 'ABSENT' };
+        const entry = { ...updated[t.id], status: 'ABSENT' as AttendanceStatus };
+        delete entry.lateMinutes;
+        updated[t.id] = entry;
       });
       return updated;
     });
@@ -357,6 +368,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
     }
     const recordsToSave: DailyStaffAttendanceRecord[] = markedTeachers.map(teacher => {
       const current = staffAttendanceMap[teacher.id];
+      const status = current.status || 'PRESENT';
       return {
         id: `${selectedDate}_${teacher.id}`,
         date: selectedDate,
@@ -365,7 +377,11 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         designation: teacher.designation || 'শিক্ষক',
         // An entry with no status (e.g. only a time/note was typed)
         // means the admin touched the row — count it present.
-        status: current.status || 'PRESENT',
+        status,
+        // U6: LATE-র মিনিট রেকর্ডে লেখা হয় (mobile save-এর মতো) —
+        // hub-এ picker নেই বলে মিনিট শুধু আগের save থেকে আসতে পারে
+        // (মোবাইলে বাছা); অন্য স্ট্যাটাসে মিনিট থাকে না।
+        ...(status === 'LATE' && current.lateMinutes ? { lateMinutes: current.lateMinutes } : {}),
         inTime: current.inTime,
         outTime: current.outTime,
         note: current.note
@@ -1072,7 +1088,7 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           ) : (
             <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-w-7xl mx-auto">
               {filteredTeachers.map(teacher => {
-                const current: { status?: AttendanceStatus; inTime?: string; outTime?: string; note?: string } = staffAttendanceMap[teacher.id] || {};
+                const current: { status?: AttendanceStatus; inTime?: string; outTime?: string; note?: string; lateMinutes?: number } = staffAttendanceMap[teacher.id] || {};
                 return (
                   <div key={teacher.id} className="space-y-2">
                     <RosterCard
@@ -1080,6 +1096,10 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                       name={teacher.nameBn || teacher.name}
                       subLine={<>{teacher.designation || 'শিক্ষক'}{teacher.phone ? (<> • <a href={`tel:${teacher.phone}`} className="text-teal-700 dark:text-teal-400 hover:underline font-mono font-bold">{teacher.phone}</a></>) : ''}</>}
                       status={current.status}
+                      // U6: saved late minutes — reload-এর পরেও badge-এ
+                      // "দেরি · X মিনিট" দেখায় (RosterCard মিনিট শুধু
+                      // LATE badge-এই দেখায়)।
+                      lateMinutes={current.lateMinutes}
                       isEn={!isBn}
                       unconfirmed={isRecordUnconfirmed('dailyStaffAttendance', `${selectedDate}_${teacher.id}`)}
                       onSelect={(s) => handleSetStaffStatus(teacher.id, s)}

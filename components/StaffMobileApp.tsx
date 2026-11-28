@@ -737,9 +737,9 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // U3: staff roll-call state (native mobile module). The map holds
   // { status?, inTime?, outTime? } per staff member — an unmarked member
   // has NO entry (hub F1 rule: never default to PRESENT). Late minutes
-  // stay session-only: DailyStaffAttendanceRecord carries no
-  // lateMinutes field, so picked minutes show in the badge but are not
-  // persisted (see U3-DONE.md).
+  // live in staffLateMinutesMap (picker) and persist on the record as
+  // the additive optional lateMinutes field (U6 — student-এর মতো);
+  // old records simply lack it, so a reload shows just "দেরি".
   const [staffAttendanceMap, setStaffAttendanceMap] = useState<Record<string, { status?: AttendanceStatus; inTime?: string; outTime?: string }>>({});
   const [staffLateMinutesMap, setStaffLateMinutesMap] = useState<Record<string, number>>({});
   const [staffLatePicker, setStaffLatePicker] = useState<{ staffId: string; hours: number; minutes: number } | null>(null);
@@ -1007,14 +1007,16 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
   // re-checks the admin-only gate).
   useEffect(() => {
     const map: Record<string, { status?: AttendanceStatus; inTime?: string; outTime?: string }> = {};
+    const mins: Record<string, number> = {};
     (dailyStaffAttendance || []).forEach(r => {
       if (r.date !== attendanceDate) return;
       map[r.staffId] = { status: r.status, inTime: r.inTime, outTime: r.outTime };
+      // U6: saved late minutes come back into the picker map (student
+      // load effect-এর মতো) — reload-এর পর badge-এ "দেরি · X মিনিট" থাকে।
+      if (r.status === 'LATE' && r.lateMinutes && r.lateMinutes > 0) mins[r.staffId] = r.lateMinutes;
     });
     setStaffAttendanceMap(map);
-    // Staff records carry no lateMinutes — picked minutes never
-    // survive a reload, so a new date starts with none.
-    setStaffLateMinutesMap({});
+    setStaffLateMinutesMap(mins);
   }, [attendanceDate]);
 
   // Institution-wide holiday for the staff date (class-specific
@@ -1122,13 +1124,18 @@ export const StaffMobileApp: React.FC<StaffMobileAppProps> = ({ onLogout, render
     }
     const records: DailyStaffAttendanceRecord[] = markedTeachers.map(t => {
       const current = staffAttendanceMap[t.id];
+      const status = current.status || 'PRESENT';
+      // U6: LATE-র মিনিট রেকর্ডে লেখা হয় (student save-এর মতো) —
+      // শুধু LATE-তেই; অন্য স্ট্যাটাসে মিনিট থাকে না।
+      const mins = status === 'LATE' ? (staffLateMinutesMap[t.id] || 0) : 0;
       return {
         id: `${attendanceDate}_${t.id}`,
         date: attendanceDate,
         staffId: t.id,
         staffName: t.nameBn || t.name,
         designation: t.designation || 'শিক্ষক',
-        status: current.status || 'PRESENT',
+        status,
+        ...(mins > 0 ? { lateMinutes: mins } : {}),
         inTime: current.inTime,
         outTime: current.outTime
       };

@@ -33,6 +33,12 @@ export interface DailyStaffAttendanceRecord {
   status: AttendanceStatus;
   inTime?: string;
   outTime?: string;
+  // U6: minutes late, recorded only when the status is LATE — the
+  // student record's lateMinutes, mirrored. ADDITIVE optional field —
+  // old records simply lack it; batchSave/save spread the whole
+  // record (and the cloud writer setDoc-merges it), so no service
+  // logic change was needed to persist it.
+  lateMinutes?: number;
   note?: string;
 }
 
