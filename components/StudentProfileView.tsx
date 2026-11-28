@@ -2145,43 +2145,30 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                   {language === 'bn' ? 'সম্পূর্ণ ছাড়' : 'Full waiver'}
                 </span>
               )}
+              {/* V2 — ধরন chip-এ (আগের "ধরন:" সারির বদলে; arrangement এখন এক লাইনের সূত্র) */}
+              {feeArrangement && feeArrangement.discountType !== 'full' && feeArrangement.discountType !== 'none' && (
+                <span className="px-2 py-0.5 rounded-full bg-[var(--color-brand-light)] text-[var(--color-brand)] text-[11px] font-black">
+                  {language === 'bn'
+                    ? FEE_DISCOUNT_TYPE_LABELS[feeArrangement.discountType]
+                    : feeArrangement.discountType === 'partial' ? 'Partial waiver'
+                      : feeArrangement.discountType === 'etim' ? 'Orphan fund' : 'Other fund'}
+                </span>
+              )}
             </div>
             {feeArrangement && arrangementExists ? (
               <div className="text-xs space-y-1.5 text-slate-700 dark:text-slate-200">
-                <div className="flex justify-between gap-2">
-                  <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ধরন:' : 'Type:'}</span>
-                  <span className="font-bold">
-                    {language === 'bn'
-                      ? FEE_DISCOUNT_TYPE_LABELS[feeArrangement.discountType]
-                      : feeArrangement.discountType === 'none' ? 'No discount'
-                        : feeArrangement.discountType === 'full' ? 'Full waiver'
-                          : feeArrangement.discountType === 'partial' ? 'Partial waiver'
-                            : feeArrangement.discountType === 'etim' ? 'Orphan fund' : 'Other fund'}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'প্রতিষ্ঠান ফি:' : 'Institute base:'}</span>
-                  <span className="font-bold">৳{toBn(feeArrangement.baseAmount.toLocaleString('en-US'))}</span>
-                </div>
-                {feeArrangement.waiverAmount > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ওয়েভার:' : 'Waiver:'}</span>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-400">− ৳{toBn(feeArrangement.waiverAmount.toLocaleString('en-US'))}</span>
-                  </div>
-                )}
-                {feeArrangement.fundAmount > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'ফান্ড:' : 'Fund:'}</span>
-                    <span className="font-bold">
-                      − ৳{toBn(feeArrangement.fundAmount.toLocaleString('en-US'))}
-                      {feeArrangement.fundSource ? ` (${feeArrangement.fundSource})` : ''}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between gap-2 pt-1 border-t border-slate-100 dark:border-white/10">
-                  <span className="text-slate-500 dark:text-slate-400">{language === 'bn' ? 'শিক্ষার্থীকে দিতে হবে:' : 'Student pays:'}</span>
-                  <span className="font-black text-slate-900 dark:text-slate-100">৳{toBn(feeArrangement.payableAmount.toLocaleString('en-US'))}</span>
-                </div>
+                {/* V2 — এক লাইন সূত্র: বেস − ছাড় − ফান্ড = দেয় (আগের ৫ সারির বদলে; সংখ্যা একই) */}
+                <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm leading-relaxed">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">৳{toBn(feeArrangement.baseAmount.toLocaleString('en-US'))}</span>
+                  {feeArrangement.waiverAmount > 0 && (
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">− {language === 'bn' ? 'ছাড়' : 'waiver'} ৳{toBn(feeArrangement.waiverAmount.toLocaleString('en-US'))}</span>
+                  )}
+                  {feeArrangement.fundAmount > 0 && (
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">− {language === 'bn' ? 'ফান্ড' : 'fund'} ৳{toBn(feeArrangement.fundAmount.toLocaleString('en-US'))}{feeArrangement.fundSource ? ` (${feeArrangement.fundSource})` : ''}</span>
+                  )}
+                  <span className="text-slate-400">=</span>
+                  <span className="font-black text-base text-slate-900 dark:text-slate-100">{language === 'bn' ? 'দেয়' : 'pays'} ৳{toBn(feeArrangement.payableAmount.toLocaleString('en-US'))}</span>
+                </p>
                 {feeArrangement.fundAmount > 0 && (
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     {language === 'bn' ? 'ফান্ডের টাকা শিক্ষার্থীর ঋণ নয়।' : 'The fund share is not student debt.'}
@@ -2212,16 +2199,12 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </h3>
             {feeAging && monthlyExpected > 0 ? (
               <div className="space-y-3">
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-2xl font-black ${feeAging.totalAged > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                    ৳{toBn(feeAging.totalAged.toLocaleString('en-US'))}
-                  </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {feeAging.totalAged > 0
-                      ? (language === 'bn' ? `মোট বকেয়া · ${toBn(feeAging.byMonth.length)} মাস` : `total due · ${feeAging.byMonth.length} months`)
-                      : (language === 'bn' ? 'কোনো বকেয়া নেই' : 'No dues outstanding')}
-                  </span>
-                </div>
+                {/* V2 — fee hero-র বকেয়া সংখ্যা এখানে আর repeat নয় (মোট উপরে hero-তে আছে); এখানে শুধু মাসভিত্তিক বিবরণ */}
+                {feeAging.totalAged <= 0 && (
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    {language === 'bn' ? 'কোনো বকেয়া নেই' : 'No dues outstanding'}
+                  </p>
+                )}
                 {feeAging.byMonth.length > 0 && (
                   <div className="text-xs space-y-1 text-slate-700 dark:text-slate-200">
                     {feeAging.byMonth.map(m => (
@@ -2490,7 +2473,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   // the staff view can pair it with the fee summary card in a 2-col
   // desktop grid; the portal renders it alone, exactly as before.
   const identityCard = (
-    <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-7 text-slate-900 dark:text-slate-100 relative overflow-hidden print:hidden">
+    <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-6 text-slate-900 dark:text-slate-100 relative overflow-hidden print:hidden">
 
       {/* Ambient Top Glow */}
 
@@ -2554,7 +2537,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
 
             {/* Labeled identity fields — show-when-present; staff-only fields gated on isStaffView (same gating as before). Guardian email is not shown in the hero (name, not email). */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 pt-2">
               <div>
                 <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'আইডি:' : 'ID:'}</p>
                 <p className="mt-0.5"><span className="font-mono font-bold text-sm px-2 py-0.5 rounded-md border" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)', borderColor: 'var(--color-brand-ring)' }}>{currentStudent.studentId || currentStudent.id}</span></p>
@@ -2623,6 +2606,99 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
 
     </div>
   );
+
+  // ==========================================
+  // V2 — এক নজরে strip (staff view only): ৩ stat, আসল ডেটা শুধু।
+  // হাজিরার হার V3-র আগে দেখানো যাবে না (এখনকার হার simulation
+  // থেকে আসে) — তাই ৩ stat: বকেয়া মাস · শেষ পরীক্ষার GPA · আসন্ন
+  // পরীক্ষা। মোবাইলে ২ কলাম, শেষ টাইল col-span-2 (ফাঁকা স্লট নয়)।
+  // GPA শুধু ওই পরীক্ষার যেটায় আসলেই মার্ক দেওয়া হয়েছে (নইলে
+  // 0/F দেখাত — G2-র ফাঁদ); মার্ক না থাকলে সৎ "মার্ক এখনো দেওয়া হয়নি"।
+  // ==========================================
+  const lastMarkedExam = [...examProgressionHistory].reverse().find(h =>
+    marks.some(m => m.studentId === currentStudent.id && m.examId === h.examId)
+  );
+  const nextExam = upcomingSchedules.find(s => s.status === 'UPCOMING' || s.status === 'TODAY');
+  const atAGlanceStrip = isStaffView ? (
+    <div className="print:hidden">
+      <div className="flex items-center gap-2 px-1 mb-2">
+        <Eye size={18} className="text-[var(--color-brand)]" />
+        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'এক নজরে' : 'At a Glance'}</h3>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+        {/* বকেয়া মাস */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161c2e] p-3 text-center flex flex-col items-center justify-center min-h-[84px]">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'বকেয়া মাস' : 'Due Months'}</div>
+          <div className={`text-2xl font-black ${feeAging && feeAging.totalAged > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            {feeAging ? toBn(feeAging.byMonth.length) : '—'}
+          </div>
+          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            {feeAging
+              ? (feeAging.totalAged > 0
+                ? (language === 'bn' ? `মোট ৳${toBn(feeAging.totalAged.toLocaleString('en-US'))}` : `Total ৳${feeAging.totalAged.toLocaleString('en-US')}`)
+                : (language === 'bn' ? 'কোনো বকেয়া নেই' : 'No dues'))
+              : (language === 'bn' ? 'ফি কাঠামো নির্ধারিত হয়নি' : 'No fee structure')}
+          </div>
+        </div>
+        {/* শেষ পরীক্ষার GPA */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161c2e] p-3 text-center flex flex-col items-center justify-center min-h-[84px]">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'শেষ পরীক্ষার GPA' : 'Latest Exam GPA'}</div>
+          <div className={`text-2xl font-black ${lastMarkedExam?.isFail ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--color-brand)] dark:text-teal-300'}`}>
+            {lastMarkedExam ? toBn(lastMarkedExam.gpa) : '—'}
+          </div>
+          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 break-words">
+            {lastMarkedExam
+              ? `${lastMarkedExam.examName} · ${language === 'bn' ? 'গ্রেড' : 'Grade'} ${lastMarkedExam.grade}`
+              : (exams.length === 0
+                ? (language === 'bn' ? 'এখনো কোনো পরীক্ষা নির্ধারিত নেই' : 'No exam scheduled yet')
+                : (language === 'bn' ? 'মার্ক এখনো দেওয়া হয়নি' : 'Marks not given yet'))}
+          </div>
+        </div>
+        {/* আসন্ন পরীক্ষা — শেষ টাইল, মোবাইলে col-span-2 (ফাঁকা স্লট নয়) */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161c2e] p-3 text-center flex flex-col items-center justify-center min-h-[84px] col-span-2 lg:col-span-1">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'আসন্ন পরীক্ষা' : 'Next Exam'}</div>
+          <div className="text-lg font-black text-slate-900 dark:text-slate-100 break-words leading-snug">
+            {nextExam ? (language === 'bn' ? (nextExam.examNameBn || nextExam.examName) : nextExam.examName) : '—'}
+          </div>
+          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            {nextExam
+              ? (nextExam.status === 'TODAY'
+                ? (language === 'bn' ? `আজ · ${toBn(nextExam.examDate)}` : `Today · ${nextExam.examDate}`)
+                : (language === 'bn' ? `${toBn(nextExam.examDate)} · ${toBn(nextExam.daysLeft)} দিন বাকি` : `${nextExam.examDate} · in ${nextExam.daysLeft} days`))
+              : (language === 'bn' ? 'কোনো আসন্ন পরীক্ষা নেই' : 'No upcoming exam')}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  // V2 — Section nav (staff view only): anchor chip — চাপলে ওই সেকশনে
+  // scroll (section-গুলোতে scroll-mt-24 আছে, sticky selector bar-এর নিচে থামে)
+  const sectionNavItems = [
+    { id: 'profile-section-fees', icon: Banknote, labelBn: 'ফি', labelEn: 'Fees' },
+    { id: 'profile-section-marks', icon: Award, labelBn: 'নম্বর', labelEn: 'Marks' },
+    { id: 'profile-section-attendance', icon: CalendarCheck, labelBn: 'হাজিরা', labelEn: 'Attendance' },
+    { id: 'profile-section-schedule', icon: Clock, labelBn: 'রুটিন', labelEn: 'Routine' },
+    { id: 'profile-section-id_card', icon: QrCode, labelBn: 'আইডি কার্ড', labelEn: 'ID Card' },
+  ];
+  const sectionNav = isStaffView ? (
+    <div className="flex flex-wrap gap-2 print:hidden">
+      {sectionNavItems.map(item => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="flex items-center gap-1.5 rounded-full border border-[var(--color-brand-ring)] bg-[var(--color-brand-light)] dark:bg-teal-500/15 px-3.5 py-2 text-xs font-semibold text-[var(--color-brand)] dark:text-teal-300 transition cursor-pointer"
+          >
+            <Icon size={14} />
+            <span>{language === 'bn' ? item.labelBn : item.labelEn}</span>
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
 
   return (
     <div className={`space-y-6 pb-12 ${language === 'bn' ? 'font-bangla' : ''}`}>
@@ -2699,6 +2775,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           ))}
         </div>
       )}
+
+      {/* V2 — এক নজরে strip + section nav (staff view only; portal-এ null) */}
+      {atAGlanceStrip}
+      {sectionNav}
 
       {/* 2. TAB NAVIGATION BAR (portal/guardian only — staff view stacks all sections, no tabs) */}
       {!isStaffView && (
@@ -2797,9 +2877,10 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       )}
 
       {/* STAFF: ONE SCROLLABLE PAGE — the five tab bodies are stacked here
-          (fee -> attendance -> marks -> schedule -> ID card), then the
-          timeline below. No tab bar in staff view. PORTAL/GUARDIAN: the tab
-          bar above and the active tab body below, exactly as before. */}
+          (V2: fees -> marks -> attendance -> schedule + ID card side by
+          side), then the timeline below. No tab bar in staff view.
+          PORTAL/GUARDIAN: the tab bar above and the active tab body below,
+          exactly as before. */}
       {isStaffView ? (
         <div className="space-y-6">
           <section id="profile-section-fees" className="space-y-4 scroll-mt-24">
@@ -2809,13 +2890,6 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
             {feesSection}
           </section>
-          <section id="profile-section-attendance" className="space-y-4 scroll-mt-24">
-            <div className="flex items-center gap-2 px-1">
-              <CalendarCheck size={18} className="text-[var(--color-brand)]" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'হাজিরা খতিয়ান' : 'Attendance History'}</h3>
-            </div>
-            {attendanceSection}
-          </section>
           <section id="profile-section-marks" className="space-y-4 scroll-mt-24">
             <div className="flex items-center gap-2 px-1">
               <Award size={18} className="text-[var(--color-brand)]" />
@@ -2823,20 +2897,30 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </div>
             {marksSection}
           </section>
-          <section id="profile-section-schedule" className="space-y-4 scroll-mt-24">
+          <section id="profile-section-attendance" className="space-y-4 scroll-mt-24">
             <div className="flex items-center gap-2 px-1">
-              <Clock size={18} className="text-[var(--color-brand)]" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'পরীক্ষার রুটিন ও সিডিউল' : 'Exam Schedules'}</h3>
+              <CalendarCheck size={18} className="text-[var(--color-brand)]" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'হাজিরা খতিয়ান' : 'Attendance History'}</h3>
             </div>
-            {scheduleSection}
+            {attendanceSection}
           </section>
-          <section id="profile-section-id_card" className="space-y-4 scroll-mt-24">
-            <div className="flex items-center gap-2 px-1">
-              <QrCode size={18} className="text-[var(--color-brand)]" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Student ID Card'}</h3>
-            </div>
-            {idCardSection}
-          </section>
+          {/* V2 — schedule + ID card পাশাপাশি (ডেস্কটপ ২-কলাম, মোবাইল stacked) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <section id="profile-section-schedule" className="space-y-4 scroll-mt-24">
+              <div className="flex items-center gap-2 px-1">
+                <Clock size={18} className="text-[var(--color-brand)]" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'পরীক্ষার রুটিন ও সিডিউল' : 'Exam Schedules'}</h3>
+              </div>
+              {scheduleSection}
+            </section>
+            <section id="profile-section-id_card" className="space-y-4 scroll-mt-24">
+              <div className="flex items-center gap-2 px-1">
+                <QrCode size={18} className="text-[var(--color-brand)]" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{language === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Student ID Card'}</h3>
+              </div>
+              {idCardSection}
+            </section>
+          </div>
         </div>
       ) : (
         <>
@@ -2870,7 +2954,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
             </h3>
           </div>
           <div className="text-xs space-y-1.5 text-slate-700 dark:text-slate-200">
-            {timelineItems.map((item, idx) => (
+            {/* V2 — timeline compact: সর্বোচ্চ ৫টা */}
+            {timelineItems.slice(0, 5).map((item, idx) => (
               <div key={`${item.date}-${idx}`} className="flex justify-between gap-2 border-b border-slate-50 pb-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand)] shrink-0 mt-1.5" />
                 <span className="font-semibold flex-1">{item.label}</span>
