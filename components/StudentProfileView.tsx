@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student, Exam, Subject, MarkRecord, RemarkRecord, ExamSubjectAssignment } from '../types';
-import { calculateGrade, calculateTotalGPA, getConsolidatedMark, formatNumber } from '../services/utils';
+import { calculateGrade, calculateTotalGPA, getConsolidatedMark, formatNumber, getStudentRoll } from '../services/utils';
 import { showSecondName } from '../services/displayNames';
 import { 
   User, 
@@ -36,7 +36,8 @@ import {
   Banknote,
   MessageCircle,
   History,
-  ScrollText
+  ScrollText,
+  X
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { NoticeBoardAlertBanner } from './NoticeBoard';
@@ -44,6 +45,7 @@ import { calculateFeeAging, academicYearFallbackStartMonth, monthlyExpectedFor, 
 import { feeArrangementOf, hasFeeArrangement, FEE_DISCOUNT_TYPE_LABELS } from '../services/studentFeeArrangement';
 import { paidExamFeeKeys, examFeePaidKey } from '../services/examFeeService';
 import { paymentMethodLabel } from '../services/paymentMethod';
+import { toAsciiDigits } from '../services/studentService';
 
 interface StudentProfileViewProps {
   initialStudentId?: string;
@@ -81,10 +83,20 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     setLanguage 
   } = useApp();
 
+  // V1 — staff view (signed-in, non-guardian). Defined up here so the
+  // student-id initializer below can use it: the staff view never
+  // inherits the portal's saved student id (v2 plan §5).
+  const isStaffView = !!authUser && userRole !== 'guardian';
+
   // Authentication State with Student ID
   const [studentIdInput, setStudentIdInput] = useState<string>('');
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
     if (initialStudentId) return initialStudentId;
+    // V1: staff view ignores the portal's saved student id — a rail
+    // entry always opens the selector page instead of the last
+    // portal-logged-in student's profile. The portal path keeps
+    // localStorage exactly as before.
+    if (isStaffView) return '';
     return localStorage.getItem('mms_logged_in_student_id') || '';
   });
   const [loginError, setLoginError] = useState<string>('');
@@ -134,12 +146,13 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     }
   }, [exams, selectedExamId]);
 
-  // Save student session to localStorage
+  // Save student session to localStorage (portal only — V1: the staff
+  // view never writes the portal key; staff recents use their own key).
   useEffect(() => {
-    if (currentStudent) {
+    if (currentStudent && !isStaffView) {
       localStorage.setItem('mms_logged_in_student_id', currentStudent.studentId || currentStudent.id);
     }
-  }, [currentStudent]);
+  }, [currentStudent, isStaffView]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,7 +217,8 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   // as the dashboard alert strip (last 7 class attendance days all
   // ABSENT; recorded rate < 60% with >= 10 recorded days).
   // ==========================================
-  const isStaffView = !!authUser && userRole !== 'guardian';
+  // (isStaffView is defined at the top of the component — the V1
+  // selector needs it before the student-id initializer runs.)
 
   // Staff-path lookup wait (P1): when staff opens a profile before the
   // student list hydrates, currentStudent is briefly null. The skeleton
@@ -219,6 +233,263 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
     const t = window.setTimeout(() => setStaffLookupWaited(true), 10000);
     return () => window.clearTimeout(t);
   }, [isStaffView, currentStudent, students.length]);
+
+  // ==========================================
+  // V1 — STUDENT SELECTOR (staff view only, v2 plan §5)
+  // A sticky search bar above the profile: search by name (Bangla +
+  // English) / Student ID / roll / father's name (the StudentManager
+  // search pattern — toAsciiDigits, so a Bengali digit finds an ASCII
+  // roll and vice versa), a class filter, up to 8 results, and the
+  // last 5 viewed students as chips (own localStorage key — never the
+  // portal's mms_logged_in_student_id). Selecting sets
+  // activeStudentId in place; the exam selector is untouched.
+  // ==========================================
+  const RECENT_PROFILE_STUDENTS_KEY = 'ldsdm_recent_profile_students';
+  const [selectorQuery, setSelectorQuery] = useState('');
+  const [selectorClass, setSelectorClass] = useState('All');
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectorActiveIdx, setSelectorActiveIdx] = useState(-1);
+  const selectorRef = useRef<HTMLDivElement>(null);
+
+  const [recentStudentIds, setRecentStudentIds] = useState<string[]>(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(RECENT_PROFILE_STUDENTS_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string').slice(0, 5) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Record the viewed student (staff only) for the recent chips.
+  useEffect(() => {
+    if (!isStaffView || !currentStudent) return;
+    const id = currentStudent.studentId || currentStudent.id;
+    if (!id) return;
+    setRecentStudentIds(prev => {
+      if (prev[0] === id) return prev;
+      return [id, ...prev.filter(x => x !== id)].slice(0, 5);
+    });
+  }, [isStaffView, currentStudent]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RECENT_PROFILE_STUDENTS_KEY, JSON.stringify(recentStudentIds));
+    } catch {
+      // Private mode / full storage: recents are a nicety, never a blocker.
+    }
+  }, [recentStudentIds]);
+
+  // Classes in display order (Job 5: sorted by order, Play → Class 10).
+  const selectorClasses = useMemo(
+    () => [...classes].sort((a, b) => (((a as any).order ?? 999) - ((b as any).order ?? 999)) || (a.name || '').localeCompare(b.name || '')),
+    [classes]
+  );
+
+  const displayStudentName = (s: Student) =>
+    language === 'bn' ? (s.nameBn || s.name || '') : (s.name || s.nameBn || '');
+
+  const selectorMatches = useMemo(() => {
+    if (!isStaffView) return [];
+    const term = selectorQuery.toLowerCase().trim();
+    const asciiTerm = toAsciiDigits(term);
+    const classIds = new Set(
+      selectorClasses.filter(c => c.name === selectorClass || (c as any).nameBn === selectorClass).map(c => c.id)
+    );
+    const classOrder = new Map<string, number>(selectorClasses.map((c, i) => [c.name, i]));
+    return students
+      .filter(s => {
+        if ((s as any).isFormer || s.status === 'Former') return false;
+        const matchesClass =
+          selectorClass === 'All' ||
+          s.classLevel === selectorClass ||
+          (s.classId != null && classIds.has(s.classId));
+        if (!matchesClass) return false;
+        // No query and no class filter: no arbitrary list — the hint
+        // below tells the user what to type.
+        if (!term) return selectorClass !== 'All';
+        return (
+          (s.name && s.name.toLowerCase().includes(term)) ||
+          (s.nameBn && s.nameBn.includes(term)) ||
+          (s.studentId && toAsciiDigits(String(s.studentId)).toLowerCase().includes(asciiTerm)) ||
+          (toAsciiDigits(getStudentRoll(s)).toLowerCase().includes(asciiTerm)) ||
+          (s.fatherName && s.fatherName.toLowerCase().includes(term)) ||
+          (s.fatherNameBn && s.fatherNameBn.includes(term))
+        );
+      })
+      .sort((a, b) => {
+        const oa = classOrder.get(a.classLevel) ?? 999;
+        const ob = classOrder.get(b.classLevel) ?? 999;
+        if (oa !== ob) return oa - ob;
+        const ra = parseInt(toAsciiDigits(getStudentRoll(a) || '0'), 10) || 0;
+        const rb = parseInt(toAsciiDigits(getStudentRoll(b) || '0'), 10) || 0;
+        if (ra !== rb) return ra - rb;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+  }, [isStaffView, students, selectorQuery, selectorClass, selectorClasses]);
+
+  const selectorResults = selectorMatches.slice(0, 8);
+  const selectorOverflow = selectorMatches.length - selectorResults.length;
+
+  const recentStudents = useMemo(
+    () =>
+      recentStudentIds
+        .map(id => students.find(s => s.studentId === id || s.id === id) || null)
+        .filter((s): s is Student => !!s && !(s as any).isFormer && s.status !== 'Former'),
+    [recentStudentIds, students]
+  );
+
+  // Close the results dropdown on outside tap.
+  useEffect(() => {
+    if (!selectorOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (selectorRef.current && !selectorRef.current.contains(e.target as Node)) setSelectorOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [selectorOpen]);
+
+  useEffect(() => { setSelectorActiveIdx(-1); }, [selectorQuery, selectorClass]);
+
+  const handleSelectStudent = (studentId: string) => {
+    setActiveStudentId(studentId);
+    setSelectorQuery('');
+    setSelectorOpen(false);
+    setSelectorActiveIdx(-1);
+    window.scrollTo(0, 0);
+  };
+
+  const onSelectorKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setSelectorOpen(false);
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') return;
+    if (selectorResults.length === 0) return;
+    e.preventDefault();
+    if (e.key === 'Enter') {
+      const pick = selectorResults[selectorActiveIdx >= 0 ? selectorActiveIdx : 0];
+      if (pick) handleSelectStudent(pick.studentId || pick.id);
+      return;
+    }
+    setSelectorOpen(true);
+    setSelectorActiveIdx(prev => {
+      const next = e.key === 'ArrowDown' ? prev + 1 : prev - 1;
+      if (next < 0) return selectorResults.length - 1;
+      if (next >= selectorResults.length) return 0;
+      return next;
+    });
+  };
+
+  // V1 — the selector bar itself (staff view only). Rendered sticky
+  // above the quick actions in the main return, and as the whole page
+  // when no student is selected yet. print:hidden: never in print.
+  const selectorBar = isStaffView ? (
+    <div ref={selectorRef} className="sticky top-2 z-30 print:hidden">
+      <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-2xl p-3 shadow-sm space-y-2">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+              <Search size={16} />
+            </div>
+            <input
+              type="text"
+              value={selectorQuery}
+              onChange={e => { setSelectorQuery(e.target.value); setSelectorOpen(true); }}
+              onFocus={() => setSelectorOpen(true)}
+              onKeyDown={onSelectorKeyDown}
+              placeholder={language === 'bn' ? 'ছাত্র খুঁজুন — নাম / আইডি / রোল…' : 'Search student — name / ID / roll…'}
+              className="w-full pl-9 pr-9 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            />
+            {selectorQuery && (
+              <button
+                type="button"
+                onClick={() => { setSelectorQuery(''); setSelectorOpen(true); }}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                title={language === 'bn' ? 'মুছুন' : 'Clear'}
+              >
+                <X size={16} />
+              </button>
+            )}
+            {selectorOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-white/15 rounded-2xl shadow-lg overflow-hidden z-40">
+                {selectorResults.length > 0 ? (
+                  <ul className="max-h-72 overflow-y-auto py-1">
+                    {selectorResults.map((s, idx) => {
+                      const id = s.studentId || s.id;
+                      const name = displayStudentName(s);
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectStudent(id)}
+                            onMouseEnter={() => setSelectorActiveIdx(idx)}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition cursor-pointer ${idx === selectorActiveIdx ? 'bg-[var(--color-brand-light)] dark:bg-teal-500/15' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                          >
+                            <span className="w-9 h-9 shrink-0 rounded-xl bg-[var(--color-brand-light)] dark:bg-teal-500/15 text-[var(--color-brand)] dark:text-teal-300 flex items-center justify-center text-sm font-black">
+                              {name.trim().charAt(0) || '?'}
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-sm font-bold text-slate-900 dark:text-slate-100 break-words">{name}</span>
+                              <span className="block text-[11px] text-slate-500 dark:text-slate-400 break-words">
+                                {s.classLevel}
+                                {getStudentRoll(s) ? ` · ${language === 'bn' ? 'রোল' : 'Roll'} ${toBn(getStudentRoll(s))}` : ''}
+                                {s.studentId ? ` · ${s.studentId}` : ''}
+                              </span>
+                            </span>
+                            <ChevronRight size={16} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-3.5 text-xs text-slate-500 dark:text-slate-400">
+                    {selectorQuery.trim() || selectorClass !== 'All'
+                      ? (language === 'bn' ? 'কোনো ছাত্র মেলেনি। নাম, আইডি বা রোল যাচাই করে আবার লিখুন।' : 'No student matched. Check the name, ID or roll and try again.')
+                      : (language === 'bn' ? 'নাম, আইডি বা রোল লিখে খুঁজুন, অথবা শ্রেণি বাছুন।' : 'Type a name, ID or roll to search, or pick a class.')}
+                  </p>
+                )}
+                {selectorOverflow > 0 && (
+                  <p className="px-4 py-2 border-t border-slate-100 dark:border-white/10 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {language === 'bn' ? `আরও ${toBn(selectorOverflow)} জন মিলেছে — খোঁজ আরও নির্দিষ্ট করুন।` : `${selectorOverflow} more matched — narrow the search.`}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <select
+            value={selectorClass}
+            onChange={e => { setSelectorClass(e.target.value); setSelectorOpen(true); }}
+            className="w-full sm:w-44 px-3 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-ring)] cursor-pointer"
+            title={language === 'bn' ? 'শ্রেণি' : 'Class'}
+          >
+            <option value="All">{language === 'bn' ? 'সব শ্রেণি' : 'All Classes'}</option>
+            {selectorClasses.map(c => (
+              <option key={c.id} value={c.name}>{language === 'bn' ? (c.nameBn || c.name) : c.name}</option>
+            ))}
+          </select>
+        </div>
+        {recentStudents.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{language === 'bn' ? 'সাম্প্রতিক:' : 'Recent:'}</span>
+            {recentStudents.map(s => {
+              const id = s.studentId || s.id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => handleSelectStudent(id)}
+                  className={`px-2.5 py-1.5 rounded-full border text-xs font-semibold transition cursor-pointer ${currentStudent && (currentStudent.studentId === id || currentStudent.id === id) ? 'bg-[var(--color-brand-light)] dark:bg-teal-500/15 text-[var(--color-brand)] dark:text-teal-300 border-[var(--color-brand-ring)]' : 'bg-slate-50 dark:bg-white/5 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15 hover:bg-slate-100 dark:hover:bg-white/10'}`}
+                >
+                  {displayStudentName(s)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
 
   // Fee arrangement (tuition-fee-arrangement job fields on Student).
   const feeArrangement = useMemo(
@@ -796,20 +1067,28 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
           </div>
         );
       }
+      // V1: no dead-end — the selector IS the page when no student is
+      // selected, and it also sits under the not-found card when the
+      // saved/typed id matches nobody.
+      const noStudentSelected = !activeStudentId;
       return (
         <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 ${language === 'bn' ? 'font-bangla' : ''}`}>
-          <div className="max-w-2xl w-full mx-auto">
+          <div className="max-w-2xl w-full mx-auto space-y-4">
             <div className="bg-white dark:bg-[#161c2e] border border-slate-200/80 dark:border-white/10 rounded-3xl p-6 sm:p-8 text-center space-y-4">
               <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center" style={{ backgroundColor: 'var(--color-brand-light)', color: 'var(--color-brand)' }}>
                 <Search size={28} />
               </div>
               <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100">
-                {language === 'bn' ? 'ছাত্র পাওয়া যায়নি' : 'Student not found'}
+                {language === 'bn' ? (noStudentSelected ? 'ছাত্র বাছাই করুন' : 'ছাত্র পাওয়া যায়নি') : (noStudentSelected ? 'Choose a student' : 'Student not found')}
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 {language === 'bn'
-                  ? `“${activeStudentId}” আইডির কোনো শিক্ষার্থী পাওয়া যায়নি। আইডি যাচাই করে আবার চেষ্টা করুন।`
-                  : `No student found with ID “${activeStudentId}”. Please check the ID and try again.`}
+                  ? (noStudentSelected
+                    ? 'নাম, আইডি বা রোল দিয়ে ছাত্র খুঁজে প্রোফাইল দেখুন।'
+                    : `“${activeStudentId}” আইডির কোনো শিক্ষার্থী পাওয়া যায়নি। আইডি যাচাই করে আবার চেষ্টা করুন, অথবা নিচে খুঁজে বাছুন।`)
+                  : (noStudentSelected
+                    ? 'Search by name, ID or roll to open a student profile.'
+                    : `No student found with ID “${activeStudentId}”. Check the ID and try again, or search below.`)}
               </p>
               {onBack && (
                 <button
@@ -821,6 +1100,7 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
                 </button>
               )}
             </div>
+            {selectorBar}
           </div>
         </div>
       );
@@ -2087,7 +2367,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
   if (isStaffView && onNavigateTab) quickActions.push({ key: 'tc', labelBn: 'TC', labelEn: 'TC', icon: ScrollText, tone: 'brand', onClick: () => onNavigateTab('student_tc') });
   quickActions.push({ key: 'print', labelBn: 'প্রিন্ট', labelEn: 'Print', icon: Printer, tone: 'neutral', onClick: handlePrint });
   if (isStaffView && whatsappDuesLink) quickActions.push({ key: 'wa', labelBn: 'বকেয়া WhatsApp', labelEn: 'WhatsApp Dues', icon: MessageCircle, tone: 'emerald', href: whatsappDuesLink });
-  quickActions.push({ key: 'logout', labelBn: 'লগআউট', labelEn: 'Logout', icon: LogOut, tone: 'rose', onClick: handleLogout });
+  // V1: staff view — "অন্য ছাত্র" (opens the selector page); the portal
+  // keeps "লগআউট" (switches the logged-in student id).
+  quickActions.push({ key: 'logout', labelBn: isStaffView ? 'অন্য ছাত্র' : 'লগআউট', labelEn: isStaffView ? 'Other Student' : 'Logout', icon: LogOut, tone: 'rose', onClick: handleLogout });
   const quickActionToneClass = (tone: QuickActionTone) =>
     tone === 'emerald'
       ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/25'
@@ -2347,6 +2629,9 @@ export const StudentProfileView: React.FC<StudentProfileViewProps> = ({
       
       {/* 0. NOTICE BOARD MARQUEE & URGENT ALERT BANNER */}
       <NoticeBoardAlertBanner />
+
+      {/* V1 — STUDENT SELECTOR BAR (staff view only, sticky; print:hidden) */}
+      {selectorBar}
 
       {/* P2 — QUICK ACTION CHIPS (plan §4/§5): hero buttons moved up; only real destinations */}
       {quickActions.length > 0 && (
