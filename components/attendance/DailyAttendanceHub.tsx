@@ -13,11 +13,11 @@ import { formatNumber, formatSafeDate } from '../../services/utils';
 import { ATTENDANCE_CLOUD_FAILURE_MESSAGE, RETRY_LABEL } from '../../services/cloudConfirm';
 import { UnconfirmedBadge } from '../ui/UnconfirmedBadge';
 import { Button } from '../ui/Button';
+import { RosterCard, RosterSummaryChips } from './RosterCard';
 import { 
   Calendar, 
   CheckCircle2, 
   XCircle, 
-  Clock, 
   AlertCircle, 
   Users, 
   UserCheck, 
@@ -686,7 +686,14 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
         </div>
       )}
 
-      {/* 2. Top Summary Metrics Strip */}
+      {/* 2. Top Summary Metrics Strip — students mode: the 5 shared
+          summary chips (recorded data only, same numbers as the old
+          7 tiles); other modes keep the 7-tile strip (U3/U4 scope). */}
+      {activeMode === 'students' ? (
+        <div className="bg-white dark:bg-[#161c2e] p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+          <RosterSummaryChips stats={{ present: summary.present, late: summary.late, absent: summary.absent, leave: summary.leave, unmarked: summary.pending }} isEn={!isBn} />
+        </div>
+      ) : (
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200">
           <span className="text-[11px] font-bold text-slate-500 uppercase">{activeMode === 'staff' ? (isBn ? 'মোট স্টাফ' : 'Total staff') : (isBn ? 'মোট শিক্ষার্থী' : 'Total')}</span>
@@ -728,18 +735,19 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           )}
         </div>
       </div>
+      )}
 
       {/* 3. Controls Bar: Date, Class, Quick Bulk Actions */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#161c2e] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-1 items-center gap-3 w-full">
           {/* Date Picker */}
           <div className="w-44 shrink-0">
-            <label className="text-[11px] font-bold text-slate-500 block mb-1">{isBn ? 'তারিখ' : 'Date'}</label>
+            <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">{isBn ? 'তারিখ' : 'Date'}</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => handleDateChange(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500"
             />
             {fridayNotice && (
               <p className="text-[11px] font-bold text-amber-700 mt-1">{fridayNotice}</p>
@@ -749,11 +757,11 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
           {/* Class Selector (for Students mode) */}
           {activeMode !== 'staff' && (
             <div className="w-48 shrink-0">
-              <label className="text-[11px] font-bold text-slate-500 block mb-1">{isBn ? 'শ্রেণি / জামাত' : 'Class'}</label>
+              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">{isBn ? 'শ্রেণি / জামাত' : 'Class'}</label>
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500"
               >
                 {classes.map(c => (
                   <option key={c.id} value={c.name}>{c.name}</option>
@@ -764,19 +772,27 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
           {/* Search Query */}
           <div className="flex-1">
-            <label className="text-[11px] font-bold text-slate-500 block mb-1">{isBn ? 'খোঁজ' : 'Search'}</label>
+            <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">{isBn ? 'খোঁজ' : 'Search'}</label>
             <input 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={isBn ? 'নাম, রোল বা মোবাইল দিয়ে খুঁজুন...' : 'Search student or phone...'}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500"
             />
           </div>
         </div>
 
         {/* Quick Bulk Actions */}
         <div className="flex items-center gap-2 shrink-0 pt-4 md:pt-0">
+          {/* মোট + হার — টুলবারের ডানে ছোট করে (৭-টাইলের স্ট্রিপের বদলে, students mode-এ)। */}
+          {activeMode === 'students' && (
+            <div className="shrink-0 text-right leading-tight px-1">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{isBn ? 'মোট' : 'Total'} {formatNumber(summary.total, language)}{isBn ? ' জন' : ''}</span>
+              <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>
+              <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400">{isBn ? 'হার' : 'Rate'} {summary.percentage !== null ? `${formatNumber(summary.percentage, language)}%` : '—'}</span>
+            </div>
+          )}
           {activeMode === 'students' && (
             <>
               <button
@@ -795,14 +811,6 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
                 <XCircle size={14} className="text-rose-600" />
                 <span>{isBn ? 'সবাই অনুপস্থিত' : 'All Absent'}</span>
               </button>
-              <Button
-                onClick={handleSaveStudentAttendance}
-                disabled={saveStatus === 'saving'}
-                className="bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-2"
-              >
-                <Save size={16} />
-                <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত হয়েছে!' : 'Saved!') : saveStatus === 'error' ? (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন' : 'Save failed — try again') : (isBn ? 'হাজিরা সংরক্ষণ' : 'Save')}</span>
-              </Button>
             </>
           )}
 
@@ -866,11 +874,12 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
 
       {/* 4. MODE 1: Student Daily Attendance List */}
       {activeMode === 'students' && (
-        <div className="mobile-responsive-table bg-white rounded-3xl border border-slate-200 overflow-hidden">
-          <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+        <>
+        <div className="bg-white dark:bg-[#161c2e] rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden">
+          <div className="p-4 bg-slate-50/80 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users size={17} className="text-teal-700" />
-              <h3 className="text-sm font-bold text-slate-800">
+              <Users size={17} className="text-teal-700 dark:text-teal-400" />
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">
                 {selectedClass} • {formatSafeDate(selectedDate, isBn)} ({formatNumber(filteredStudents.length, language)} {isBn ? 'জন শিক্ষার্থী' : 'students'})
               </h3>
             </div>
@@ -885,146 +894,80 @@ export const DailyAttendanceHub: React.FC<DailyAttendanceHubProps> = ({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50/50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider">
-                <tr>
-                  <th className="py-3 px-4 w-12 text-center">{isBn ? 'রোল' : 'Roll'}</th>
-                  <th className="py-3 px-4">{isBn ? 'শিক্ষার্থীর নাম ও আইডি' : 'Student & ID'}</th>
-                  <th className="py-3 px-4 text-center">{isBn ? 'উপস্থিতি নির্ধারণ (Status)' : 'Attendance Status'}</th>
-                  <th className="py-3 px-4">{isBn ? 'প্রবেশ সময়' : 'Time In'}</th>
-                  <th className="py-3 px-4">{isBn ? 'অভিভাবকের যোগাযোগ' : 'Guardian Contact'}</th>
-                  <th className="py-3 px-4">{isBn ? 'মন্তব্য / নোট' : 'Note'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredStudents.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
-                      <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                      <p>{isBn ? 'এই শ্রেণিতে কোনো সক্রিয় শিক্ষার্থী পাওয়া যায়নি।' : 'No students found in this class.'}</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStudents.map(student => {
-                    const current = attendanceMap[student.id] || { status: 'PRESENT' };
-                    const currentStatus = current.status;
+          {filteredStudents.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 dark:text-slate-500">
+              <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
+              <p>{isBn ? 'এই শ্রেণিতে কোনো সক্রিয় শিক্ষার্থী পাওয়া যায়নি।' : 'No students found in this class.'}</p>
+            </div>
+          ) : (
+            <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-w-7xl mx-auto">
+              {filteredStudents.map(student => {
+                const current = attendanceMap[student.id] || { status: 'PRESENT' };
+                const currentStatus = current.status;
+                return (
+                  <div key={student.id} className="space-y-2">
+                    <RosterCard
+                      id={student.id}
+                      name={student.nameBn || student.name}
+                      subLine={<>{student.guardianPhone ? (<a href={`tel:${student.guardianPhone}`} className="text-teal-700 dark:text-teal-400 hover:underline font-mono font-bold">{student.guardianPhone}</a>) : '—'} • {isBn ? 'রোল' : 'Roll'}: {student.roll || student.rollNumber || '—'}</>}
+                      status={currentStatus}
+                      isEn={!isBn}
+                      unconfirmed={isRecordUnconfirmed('dailyStudentAttendance', `${selectedDate}_${student.id}`)}
+                      onSelect={(s) => handleSetStudentStatus(student.id, s)}
+                      onLatePress={() => handleSetStudentStatus(student.id, 'LATE')}
+                    />
+                    {/* প্রবেশ সময় + নোট — টেবিলের কলাম দুটো কার্ডের নিচে ছোট স্ট্রিপে
+                        রাখা হলো; RosterCard-এ হাত পড়েনি (U1-এর ফাইল, U1-এর push-এর)। */}
+                    <div className="flex items-center gap-2 bg-white dark:bg-[#161c2e] border border-[#e8ecf4] dark:border-white/5 rounded-2xl px-3 py-2">
+                      <input
+                        type="text"
+                        value={current.timeIn || '08:00 AM'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setAttendanceMap(prev => ({
+                            ...prev,
+                            [student.id]: { ...prev[student.id], timeIn: val }
+                          }));
+                        }}
+                        title={isBn ? 'প্রবেশ সময়' : 'Time in'}
+                        className="w-24 px-2 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200"
+                      />
+                      <input
+                        type="text"
+                        value={current.note || ''}
+                        placeholder={isBn ? 'নোট...' : 'Note...'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setAttendanceMap(prev => ({
+                            ...prev,
+                            [student.id]: { ...prev[student.id], note: val }
+                          }));
+                        }}
+                        className="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-                    return (
-                      <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-700">
-                          {student.roll || student.rollNumber || '—'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900">{student.nameBn || student.name}</div>
-                          <div className="text-[11px] text-slate-400 font-mono">আইডি: {student.studentId || student.id}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-center gap-1">
-                            {/* PRESENT */}
-                            <button
-                              onClick={() => handleSetStudentStatus(student.id, 'PRESENT')}
-                              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
-                                currentStatus === 'PRESENT'
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
-                              }`}
-                            >
-                              <CheckCircle2 size={13} />
-                              <span>{isBn ? 'উপস্থিত' : 'Present'}</span>
-                            </button>
-
-                            {/* ABSENT */}
-                            <button
-                              onClick={() => handleSetStudentStatus(student.id, 'ABSENT')}
-                              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
-                                currentStatus === 'ABSENT'
-                                  ? 'bg-rose-600 text-white'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
-                              }`}
-                            >
-                              <XCircle size={13} />
-                              <span>{isBn ? 'অনুপস্থিত' : 'Absent'}</span>
-                            </button>
-
-                            {/* LATE */}
-                            <button
-                              onClick={() => handleSetStudentStatus(student.id, 'LATE')}
-                              className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
-                                currentStatus === 'LATE'
-                                  ? 'bg-amber-500 text-white'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
-                              }`}
-                              title={isBn ? 'বিলম্বিত' : 'Late'}
-                            >
-                              <Clock size={13} />
-                              <span>{isBn ? 'বিলম্ব' : 'Late'}</span>
-                            </button>
-
-                            {/* LEAVE */}
-                            <button
-                              onClick={() => handleSetStudentStatus(student.id, 'LEAVE')}
-                              className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
-                                currentStatus === 'LEAVE'
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'
-                              }`}
-                              title={isBn ? 'ছুটি / মার্জিত' : 'Leave'}
-                            >
-                              <span>{isBn ? 'ছুটি' : 'Leave'}</span>
-                            </button>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 font-mono text-slate-600">
-                          <input 
-                            type="text"
-                            value={current.timeIn || '08:00 AM'}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setAttendanceMap(prev => ({
-                                ...prev,
-                                [student.id]: { ...prev[student.id], timeIn: val }
-                              }));
-                            }}
-                            className="w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          {student.guardianPhone ? (
-                            <a 
-                              href={`tel:${student.guardianPhone}`} 
-                              className="text-teal-700 hover:underline font-mono font-bold flex items-center gap-1"
-                            >
-                              <Phone size={12} />
-                              <span>{student.guardianPhone}</span>
-                            </a>
-                          ) : (
-                            <span className="text-slate-400 text-[11px]">—</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <input 
-                            type="text"
-                            value={current.note || ''}
-                            placeholder={isBn ? 'নোট...' : 'Note...'}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setAttendanceMap(prev => ({
-                                ...prev,
-                                [student.id]: { ...prev[student.id], note: val }
-                              }));
-                            }}
-                            className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+        {/* Sticky save bar — mobile reference-এর মতো, PC-তেও নিচে আটকে থাকে। */}
+        <div className="sticky bottom-0 z-10 print:hidden">
+          <div className="bg-white dark:bg-[#161c2e] border border-slate-200 dark:border-white/10 rounded-2xl p-3 shadow-md">
+            <button
+              type="button"
+              onClick={handleSaveStudentAttendance}
+              disabled={saveStatus === 'saving'}
+              className="w-full h-12 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer transition-all"
+            >
+              <Save size={16} />
+              <span>{saveStatus === 'saved' ? (isBn ? 'সংরক্ষিত হয়েছে!' : 'Saved!') : saveStatus === 'error' ? (isBn ? 'সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন' : 'Save failed — try again') : (isBn ? 'হাজিরা সংরক্ষণ করুন' : 'Save Attendance')}</span>
+            </button>
           </div>
         </div>
+        </>
       )}
 
       {/* 5. MODE 2: Staff / Teacher Attendance */}
